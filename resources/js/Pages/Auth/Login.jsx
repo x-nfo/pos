@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Head, Link, useForm } from "@inertiajs/react";
+import { Head, Link, useForm, usePage } from "@inertiajs/react";
 import { useTranslation } from "react-i18next";
 import AuthBotGuardFields from "@/Components/AuthBotGuardFields";
 import {
@@ -14,6 +14,7 @@ import { useState } from "react";
 
 export default function Login({ status, canResetPassword, canRegister, botGuard }) {
     const { t } = useTranslation();
+    const { branding } = usePage().props;
     const honeypotField = botGuard?.honeypot_field || "company_website";
     const tokenField = botGuard?.token_field || "bot_guard_token";
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -36,7 +37,7 @@ export default function Login({ status, canResetPassword, canRegister, botGuard 
 
     return (
         <>
-            <Head title={t("auth.login.title")} />
+            <Head title={branding?.appName ? `Login - ${branding.appName}` : t("auth.login.title")} />
 
             <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950">
                 {/* Left - Form */}
@@ -48,15 +49,25 @@ export default function Login({ status, canResetPassword, canRegister, botGuard 
                                 href="/"
                                 className="inline-flex items-center gap-3 mb-6"
                             >
-                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
-                                    <IconShoppingCart
-                                        size={24}
-                                        className="text-white"
+                                {branding?.logoLight ? (
+                                    <img
+                                        src={branding.logoLight}
+                                        alt={branding.appName}
+                                        className="h-12 max-w-[180px] object-contain"
                                     />
-                                </div>
-                                <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {t("auth.login.appName")}
-                                </span>
+                                ) : (
+                                    <>
+                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
+                                            <IconShoppingCart
+                                                size={24}
+                                                className="text-white"
+                                            />
+                                        </div>
+                                        <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                                            {branding?.appName || t("auth.login.appName")}
+                                        </span>
+                                    </>
+                                )}
                             </Link>
                             <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
                                 {t("auth.login.subtitle")}

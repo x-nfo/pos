@@ -14,8 +14,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // Only handle GET requests for caching
-    if (event.request.method !== 'GET') {
+    // Only handle HTTP/HTTPS GET requests
+    if (event.request.method !== 'GET' || !url.protocol.startsWith('http')) {
         return;
     }
 
@@ -28,8 +28,12 @@ self.addEventListener('fetch', (event) => {
                     if (!response.ok || response.status >= 500) {
                         return caches.match(event.request).then((cached) => cached || response);
                     }
-                    const clone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                    if (response.status === 200) {
+                        const clone = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, clone).catch(() => {});
+                        });
+                    }
                     return response;
                 })
                 .catch(() => caches.match(event.request))
@@ -52,8 +56,12 @@ self.addEventListener('fetch', (event) => {
                         return response;
                     });
                 }
-                const clone = response.clone();
-                caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                if (response.status === 200) {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, clone).catch(() => {});
+                    });
+                }
                 return response;
             })
             .catch(() => {

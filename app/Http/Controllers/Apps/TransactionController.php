@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class TransactionController extends Controller
 {
@@ -43,17 +44,24 @@ class TransactionController extends Controller
     /**
      * index
      *
-     * @return \Inertia\Response
+     * @return Response
      */
-    public function index()
+    public function index(Request $request)
     {
+        $userAgent = (string) $request->header('User-Agent', '');
+        $isMobile = (bool) preg_match('/(android|iphone|ipad|ipod|mobile|phone)/i', $userAgent);
+
+        if ($isMobile && ! $request->has('desktop')) {
+            return Inertia::render('Dashboard/Transactions/Mobile', $this->getTransactionPageData());
+        }
+
         return Inertia::render('Dashboard/Transactions/Index', $this->getTransactionPageData());
     }
 
     /**
      * mobile
      *
-     * @return \Inertia\Response
+     * @return Response
      */
     public function mobile()
     {
@@ -62,8 +70,6 @@ class TransactionController extends Controller
 
     /**
      * getTransactionPageData
-     *
-     * @return array
      */
     private function getTransactionPageData(): array
     {

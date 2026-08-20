@@ -1,16 +1,36 @@
 import React, { useEffect, useRef, useState } from "react";
-import { IconCamera, IconBarcode, IconX } from "@tabler/icons-react";
+import { IconCamera, IconBarcode, IconX, IconBulb, IconBulbOff } from "@tabler/icons-react";
+import { useHaptic } from "@/Hooks/useHaptic";
 
 export default function BarcodeScanner({ onScan, onClose }) {
-    const scannerRef = useRef(null);
+    const { triggerHaptic } = useHaptic();
     const [scanning, setScanning] = useState(false);
     const [error, setError] = useState("");
+    const [isTorchOn, setIsTorchOn] = useState(false);
+    const [torchSupported, setTorchSupported] = useState(false);
     const html5QrCodeRef = useRef(null);
+
+    const toggleTorch = async () => {
+        try {
+            if (!html5QrCodeRef.current) return;
+            const newTorchState = !isTorchOn;
+            // Apply torch constraint
+            await html5QrCodeRef.current.applyVideoConstraints({
+                advanced: [{ torch: newTorchState }],
+            });
+            setIsTorchOn(newTorchState);
+            triggerHaptic("tap");
+        } catch (err) {
+            console.warn("Torch not supported or failed:", err);
+            setTorchSupported(false);
+        }
+    };
 
     const startScanner = async () => {
         try {
             setError("");
             setScanning(false);
+            setIsTorchOn(false);
 
             if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
                 setError("Akses kamera membutuhkan protokol HTTPS. Pastikan URL diawali https://");
@@ -22,7 +42,6 @@ export default function BarcodeScanner({ onScan, onClose }) {
                 return;
             }
 
-            // Wait a brief moment to ensure DOM element is rendered
             await new Promise((resolve) => setTimeout(resolve, 150));
 
             const elem = document.getElementById("barcode-scanner-element");
@@ -33,7 +52,6 @@ export default function BarcodeScanner({ onScan, onClose }) {
 
             const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
 
-            // Stop existing instance if running
             if (html5QrCodeRef.current) {
                 try {
                     await html5QrCodeRef.current.stop();
@@ -57,22 +75,23 @@ export default function BarcodeScanner({ onScan, onClose }) {
             html5QrCodeRef.current = scanner;
 
             const qrCodeSuccessCallback = (decodedText) => {
+                triggerHaptic("scan");
                 scanner.stop().catch(() => {});
                 setScanning(false);
                 onScan(decodedText);
             };
 
             const qrConfig = {
-                fps: 15,
+                fps: 20,
                 qrbox: (viewfinderWidth, viewfinderHeight) => {
-                    const width = Math.min(viewfinderWidth - 20, 280);
-                    const height = Math.min(viewfinderHeight - 20, 160);
+                    const width = Math.min(viewfinderWidth - 20, 300);
+                    const height = Math.min(viewfinderHeight - 20, 180);
                     return { width, height };
                 },
                 aspectRatio: 1.0,
             };
 
-            // 1. First attempt: standard environment facingMode
+            // Attempt 1: Facing environment
             try {
                 await scanner.start(
                     { facingMode: "environment" },
@@ -81,12 +100,19 @@ export default function BarcodeScanner({ onScan, onClose }) {
                     () => {}
                 );
                 setScanning(true);
+                // Check torch capabilities
+                try {
+                    const capabilities = scanner.getRunningTrackCameraCapabilities();
+                    if (capabilities?.torchFeature()?.isSupported()) {
+                        setTorchSupported(true);
+                    }
+                } catch (_) {}
                 return;
             } catch (facingErr) {
-                console.warn("facingMode: environment failed, falling back to camera list...", facingErr);
+                console.warn("facingMode: environment failed, trying camera list...", facingErr);
             }
 
-            // 2. Second attempt: enumerate cameras and pick rear or first camera
+            // Attempt 2: Enumerate devices
             const devices = await Html5Qrcode.getCameras();
             if (devices && devices.length > 0) {
                 const backCamera = devices.find((d) =>
@@ -137,42 +163,76 @@ export default function BarcodeScanner({ onScan, onClose }) {
     }, [onScan]);
 
     return (
-        <div className="fixed inset-0 z-[9999] bg-black/95 flex flex-col justify-between">
-            <div className="flex items-center justify-between p-4 text-white">
-                <span className="text-sm font-medium">
-                    {scanning ? "Arahkan ke barcode" : "Memulai kamera..."}
-                </span>
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-                >
-                    <IconX size={24} />
-                </button>
+        <div className="fixed inset-0 z-[9999] bg-black/95 flex flex-col justify-between pt-safe pb-safe select-none">
+            {/* Top Bar HUD */}
+            <div className="flex items-center justify-between p-4 px-6 text-white z-10">
+                <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                    <span className="text-sm font-semibold tracking-wide">
+                        {scanning ? "Pindai Barcode / QR Produk" : "Menghubungkan kamera..."}
+                    </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    {torchSupported && (
+                        <button
+                            type="button"
+                            onClick={toggleTorch}
+                            className={`p-2.5 rounded-full backdrop-blur-md transition-all active:scale-90 ${
+                                isTorchOn
+                                    ? "bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/40"
+                                    : "bg-white/15 text-white hover:bg-white/25"
+                            }`}
+                            title="Senter"
+                        >
+                            {isTorchOn ? <IconBulb size={20} /> : <IconBulbOff size={20} />}
+                        </button>
+                    )}
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            triggerHaptic("tap");
+                            onClose();
+                        }}
+                        className="p-2.5 rounded-full bg-white/15 hover:bg-white/25 text-white backdrop-blur-md active:scale-90 transition-all"
+                    >
+                        <IconX size={20} />
+                    </button>
+                </div>
             </div>
 
-            <div className="flex-1 flex items-center justify-center p-8">
+            {/* Viewfinder Center */}
+            <div className="flex-1 relative flex items-center justify-center p-4">
                 <div
                     id="barcode-scanner-element"
-                    className="w-full max-w-sm aspect-square rounded-2xl overflow-hidden"
+                    className="w-full max-w-sm aspect-square rounded-3xl overflow-hidden shadow-2xl relative"
                 />
+
+                {/* Laser animation indicator when scanning */}
+                {scanning && (
+                    <div className="absolute inset-x-8 max-w-sm mx-auto h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#22d3ee] animate-pulse-subtle pointer-events-none" />
+                )}
             </div>
 
+            {/* Error Display */}
             {error && (
-                <div className="p-4 text-center max-w-md mx-auto">
-                    <p className="text-sm text-danger-400 mb-4 bg-danger-950/50 p-3 rounded-xl border border-danger-800/50">{error}</p>
+                <div className="p-4 px-6 text-center max-w-md mx-auto z-10 animate-slide-up">
+                    <p className="text-xs text-rose-300 mb-3 bg-rose-950/80 p-3 rounded-2xl border border-rose-800 backdrop-blur-md">
+                        {error}
+                    </p>
                     <div className="flex items-center justify-center gap-3">
                         <button
                             type="button"
                             onClick={startScanner}
-                            className="px-5 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-medium hover:bg-primary-500 transition-colors shadow-lg"
+                            className="px-5 py-2.5 rounded-2xl bg-primary-600 text-white text-xs font-bold hover:bg-primary-500 transition-colors shadow-lg active:scale-95"
                         >
                             Coba Lagi
                         </button>
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-5 py-2.5 rounded-xl bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors"
+                            className="px-5 py-2.5 rounded-2xl bg-white/15 text-white text-xs font-medium hover:bg-white/25 transition-colors active:scale-95"
                         >
                             Tutup
                         </button>
@@ -180,8 +240,9 @@ export default function BarcodeScanner({ onScan, onClose }) {
                 </div>
             )}
 
-            <div className="p-4 text-center text-xs text-white/50">
-                Atau tutup untuk input manual
+            {/* Bottom Tip */}
+            <div className="p-4 text-center text-xs text-white/60 tracking-wide pb-6">
+                Arahkan kamera ke barcode atau kode QR produk
             </div>
         </div>
     );

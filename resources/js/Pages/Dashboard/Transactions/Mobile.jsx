@@ -17,6 +17,8 @@ import MobilePaymentSheet from "@/Components/POS/Mobile/MobilePaymentSheet";
 import { WALK_IN_CUSTOMER } from "@/Components/POS/CustomerSelect";
 import QuickAddProductModal from "@/Components/POS/QuickAddProductModal";
 import useBarcodeScanner from "@/Hooks/useBarcodeScanner";
+import { useHaptic } from "@/Hooks/useHaptic";
+import { useWebShare } from "@/Hooks/useWebShare";
 import { useAuthorization } from "@/Utils/authorization";
 import {
     queueTransaction,
@@ -46,12 +48,16 @@ export default function Mobile({
 }) {
     const { auth, activeCashierShift, flash, errors } = usePage().props;
     const { can } = useAuthorization();
+    const { triggerHaptic } = useHaptic();
+    const { share: nativeShare, isSupported: isShareSupported } = useWebShare();
 
     useEffect(() => {
         if (flash?.error) {
+            triggerHaptic("error");
             toast.error(flash.error);
         }
         if (flash?.success) {
+            triggerHaptic("success");
             toast.success(flash.success);
         }
     }, [flash]);
@@ -294,11 +300,14 @@ export default function Mobile({
         const availableStock = Number(product.stock || 0);
 
         if (availableStock > 0 && currentQty + 1 > availableStock) {
+            triggerHaptic("warning");
             toast.error(
                 `Stok ${product.title} tidak mencukupi. Tersedia: ${availableStock}`
             );
             return;
         }
+
+        triggerHaptic("light");
 
         if (!navigator.onLine) {
             const existingIndex = activeCarts.findIndex(
@@ -349,10 +358,12 @@ export default function Mobile({
             {
                 preserveScroll: true,
                 onSuccess: () => {
+                    triggerHaptic("tap");
                     toast.success(`${product.title} ditambahkan`);
                     setAddingProductId(null);
                 },
                 onError: (err) => {
+                    triggerHaptic("error");
                     setAddingProductId(null);
                     if (err?.message) toast.error(err.message);
                     else toast.error("Gagal menambahkan produk");
@@ -372,12 +383,15 @@ export default function Mobile({
         if (targetCart?.product) {
             const availableStock = Number(targetCart.product.stock || 0);
             if (availableStock > 0 && newQty > availableStock) {
+                triggerHaptic("warning");
                 toast.error(
                     `Stok tidak mencukupi. Tersedia: ${availableStock}`
                 );
                 return;
             }
         }
+
+        triggerHaptic("tap");
 
         if (!navigator.onLine) {
             const updated = activeCarts.map((c) => {
@@ -405,6 +419,7 @@ export default function Mobile({
             {
                 preserveScroll: true,
                 onError: (err) => {
+                    triggerHaptic("error");
                     if (err?.message) toast.error(err.message);
                     else if (err?.qty) toast.error(err.qty);
                     else toast.error("Gagal mengubah kuantitas");
@@ -415,6 +430,8 @@ export default function Mobile({
 
     // Handle remove from cart
     const handleRemoveFromCart = (cartId) => {
+        triggerHaptic("medium");
+
         if (!navigator.onLine) {
             const updated = activeCarts.filter(
                 (c) => c.id !== cartId && c.cart_id !== cartId
@@ -442,6 +459,7 @@ export default function Mobile({
             );
 
             if (product) {
+                triggerHaptic("scan");
                 if (product.stock > 0 || !navigator.onLine) {
                     handleAddToCart(product);
                 } else {

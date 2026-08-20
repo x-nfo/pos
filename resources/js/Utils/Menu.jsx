@@ -41,6 +41,7 @@ import {
     IconBrandWhatsapp,
     IconToolsKitchen2,
     IconDeviceMobile,
+    IconPalette,
 } from "@tabler/icons-react";
 import hasAnyPermission from "./Permission";
 import React from "react";
@@ -102,15 +103,12 @@ export default function Menu() {
                 {
                     title: t("sidebar.items.transactions"),
                     href: route("transactions.index"),
-                    active: url === "/dashboard/transactions" || url === "/transactions" ? true : false,
+                    active:
+                        url === "/dashboard/transactions" ||
+                        url === "/transactions" ||
+                        url === "/transactions/mobile" ||
+                        url === "/dashboard/transactions/mobile",
                     icon: <IconShoppingCart size={20} strokeWidth={1.5} />,
-                    permissions: hasAnyPermission(["transactions-access"]),
-                },
-                {
-                    title: "Mobile POS",
-                    href: route("transactions.mobile"),
-                    active: url === "/dashboard/transactions/mobile" || url === "/transactions/mobile" ? true : false,
-                    icon: <IconDeviceMobile size={20} strokeWidth={1.5} />,
                     permissions: hasAnyPermission(["transactions-access"]),
                 },
                 {
@@ -387,6 +385,13 @@ export default function Menu() {
                     href: route("settings.store"),
                     active: url === "/dashboard/settings/store",
                     icon: <IconBuildingStore size={20} strokeWidth={1.5} />,
+                    permissions: hasAnyPermission(["dashboard-access"]),
+                },
+                {
+                    title: "Branding & Tampilan",
+                    href: route("settings.branding"),
+                    active: url === "/dashboard/settings/branding",
+                    icon: <IconPalette size={20} strokeWidth={1.5} />,
                     permissions: hasAnyPermission(["dashboard-access"]),
                 },
                 {

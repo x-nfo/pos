@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\ProductReference;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class ProductCatalogService
@@ -87,9 +86,7 @@ class ProductCatalogService
     /**
      * Sinkronisasi data katalog dari Google Sheet CSV.
      *
-     * @param  string|null  $url
      * @param  callable|null  $progressCallback  function(int $processed, int $total)
-     * @return array
      */
     public function syncFromGoogleSheet(?string $url = null, ?callable $progressCallback = null): array
     {

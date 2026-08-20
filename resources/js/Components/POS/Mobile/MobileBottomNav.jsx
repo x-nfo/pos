@@ -1,10 +1,12 @@
 import React from "react";
+import { Link } from "@inertiajs/react";
 import {
     IconBuildingStore,
     IconShoppingCart,
     IconHistory,
     IconUser,
 } from "@tabler/icons-react";
+import { useHaptic } from "@/Hooks/useHaptic";
 
 export default function MobileBottomNav({
     currentTab = "catalog",
@@ -12,13 +14,18 @@ export default function MobileBottomNav({
     cartCount = 0,
     onOpenShiftModal,
 }) {
+    const { triggerHaptic } = useHaptic();
+
     return (
-        <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 safe-bottom">
+        <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 pb-safe shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
             <div className="max-w-md mx-auto grid grid-cols-4 h-16 px-2">
                 {/* 1. Katalog */}
                 <button
                     type="button"
-                    onClick={() => onTabChange("catalog")}
+                    onClick={() => {
+                        triggerHaptic("tap");
+                        onTabChange("catalog");
+                    }}
                     className={`flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${
                         currentTab === "catalog"
                             ? "text-primary-600 dark:text-primary-400 font-bold"
@@ -40,7 +47,10 @@ export default function MobileBottomNav({
                 {/* 2. Keranjang */}
                 <button
                     type="button"
-                    onClick={() => onTabChange("cart")}
+                    onClick={() => {
+                        triggerHaptic("tap");
+                        onTabChange("cart");
+                    }}
                     className={`flex flex-col items-center justify-center gap-1 transition-all active:scale-95 relative ${
                         currentTab === "cart"
                             ? "text-primary-600 dark:text-primary-400 font-bold"
@@ -65,18 +75,22 @@ export default function MobileBottomNav({
                 </button>
 
                 {/* 3. Riwayat */}
-                <a
+                <Link
                     href={route("transactions.history")}
+                    onClick={() => triggerHaptic("tap")}
                     className="flex flex-col items-center justify-center gap-1 transition-all active:scale-95 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                 >
                     <IconHistory size={22} strokeWidth={1.8} />
                     <span className="text-[10px]">Riwayat</span>
-                </a>
+                </Link>
 
                 {/* 4. Shift Kasir */}
                 <button
                     type="button"
-                    onClick={onOpenShiftModal}
+                    onClick={() => {
+                        triggerHaptic("tap");
+                        onOpenShiftModal();
+                    }}
                     className="flex flex-col items-center justify-center gap-1 transition-all active:scale-95 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                 >
                     <IconUser size={22} strokeWidth={1.8} />

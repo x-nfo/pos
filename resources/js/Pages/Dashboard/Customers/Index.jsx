@@ -18,6 +18,7 @@ import {
 import Search from "@/Components/Dashboard/Search";
 import Table from "@/Components/Dashboard/Table";
 import Pagination from "@/Components/Dashboard/Pagination";
+import MobileDataCard from "@/Components/Mobile/MobileDataCard";
 import { useAuthorization } from "@/Utils/authorization";
 import toast from "react-hot-toast";
 
@@ -225,130 +226,221 @@ export default function Index({ customers }) {
                     </div>
                 ) : (
                     /* List View */
-                    <Table.Card title={"Data Pelanggan"}>
-                        <Table>
-                            <Table.Thead>
-                                <tr>
-                                    <Table.Th className="w-10">No</Table.Th>
-                                    <Table.Th>Pelanggan</Table.Th>
-                                    <Table.Th>Loyalty</Table.Th>
-                                    <Table.Th>No. Telepon</Table.Th>
-                                    <Table.Th>Alamat</Table.Th>
-                                    <Table.Th></Table.Th>
-                                </tr>
-                            </Table.Thead>
-                            <Table.Tbody>
-                                {customers.data.map((customer, i) => (
-                                    <tr
-                                        className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                                        key={customer.id}
-                                    >
-                                        <Table.Td className="text-center">
-                                            {++i +
-                                                (customers.current_page - 1) *
-                                                    customers.per_page}
-                                        </Table.Td>
-                                        <Table.Td>
-                                            <div className="flex items-center gap-3">
-                                                {customer.avatar ? (
-                                                    <img
-                                                        src={customer.avatar}
-                                                        alt={customer.name}
-                                                        className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0"
-                                                    />
-                                                ) : (
-                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                                                        {customer.name
-                                                            .charAt(0)
-                                                            .toUpperCase()}
+                    <div>
+                        {/* Mobile Cards (< sm) */}
+                        <div className="sm:hidden space-y-3">
+                            {customers.data.map((customer) => (
+                                <MobileDataCard
+                                    key={customer.id}
+                                    title={customer.name}
+                                    subtitle={customer.address || "Tidak ada alamat"}
+                                    avatar={
+                                        customer.avatar ? (
+                                            <img
+                                                src={customer.avatar}
+                                                alt={customer.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white text-base font-bold">
+                                                {customer.name.charAt(0).toUpperCase()}
+                                            </div>
+                                        )
+                                    }
+                                    badge={
+                                        <span
+                                            className={`px-2 py-0.5 text-xs font-bold rounded-lg ${
+                                                customer.is_loyalty_member
+                                                    ? "bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300"
+                                                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                                            }`}
+                                        >
+                                            {customer.is_loyalty_member
+                                                ? `${customer.loyalty_tier} • ${customer.loyalty_points || 0} poin`
+                                                : "Umum"}
+                                        </span>
+                                    }
+                                    meta={[
+                                        ...(customer.no_telp
+                                            ? [
+                                                  {
+                                                      label: customer.no_telp,
+                                                      variant: "success",
+                                                  },
+                                              ]
+                                            : []),
+                                    ]}
+                                    actions={[
+                                        ...(customer.no_telp
+                                            ? [
+                                                  {
+                                                      label: "Hubungi WA",
+                                                      onClick: () =>
+                                                          window.open(
+                                                              `https://wa.me/${customer.no_telp.replace(/\D/g, "")}`,
+                                                              "_blank"
+                                                          ),
+                                                  },
+                                              ]
+                                            : []),
+                                        ...(canEditCustomers
+                                            ? [
+                                                  {
+                                                      label: "Edit",
+                                                      onClick: () =>
+                                                          router.get(
+                                                              route(
+                                                                  "customers.edit",
+                                                                  customer.id
+                                                              )
+                                                          ),
+                                                  },
+                                              ]
+                                            : []),
+                                        {
+                                            label: "Detail",
+                                            variant: "primary",
+                                            onClick: () =>
+                                                router.get(
+                                                    route(
+                                                        "customers.show",
+                                                        customer.id
+                                                    )
+                                                ),
+                                        },
+                                    ]}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Desktop Table (>= sm) */}
+                        <div className="hidden sm:block">
+                            <Table.Card title={"Data Pelanggan"}>
+                                <Table>
+                                    <Table.Thead>
+                                        <tr>
+                                            <Table.Th className="w-10">No</Table.Th>
+                                            <Table.Th>Pelanggan</Table.Th>
+                                            <Table.Th>Loyalty</Table.Th>
+                                            <Table.Th>No. Telepon</Table.Th>
+                                            <Table.Th>Alamat</Table.Th>
+                                            <Table.Th></Table.Th>
+                                        </tr>
+                                    </Table.Thead>
+                                    <Table.Tbody>
+                                        {customers.data.map((customer, i) => (
+                                            <tr
+                                                className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                                                key={customer.id}
+                                            >
+                                                <Table.Td className="text-center">
+                                                    {++i +
+                                                        (customers.current_page - 1) *
+                                                            customers.per_page}
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <div className="flex items-center gap-3">
+                                                        {customer.avatar ? (
+                                                            <img
+                                                                src={customer.avatar}
+                                                                alt={customer.name}
+                                                                className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+                                                                {customer.name
+                                                                    .charAt(0)
+                                                                    .toUpperCase()}
+                                                            </div>
+                                                        )}
+                                                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                                            <Link
+                                                                href={route(
+                                                                    "customers.show",
+                                                                    customer.id
+                                                                )}
+                                                                className="hover:text-primary-600"
+                                                            >
+                                                                {customer.name}
+                                                            </Link>
+                                                        </p>
                                                     </div>
-                                                )}
-                                                <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                                                    <Link
-                                                        href={route(
-                                                            "customers.show",
-                                                            customer.id
-                                                        )}
-                                                        className="hover:text-primary-600"
-                                                    >
-                                                        {customer.name}
-                                                    </Link>
-                                                </p>
-                                            </div>
-                                        </Table.Td>
-                                        <Table.Td>
-                                            <div className="flex flex-col">
-                                                <span className="text-xs font-semibold text-primary-600 dark:text-primary-300">
-                                                    {customer.is_loyalty_member
-                                                        ? customer.loyalty_tier
-                                                        : "non-member"}
-                                                </span>
-                                                <span className="text-xs text-slate-500 dark:text-slate-400">
-                                                    {customer.loyalty_points ||
-                                                        0}{" "}
-                                                    poin
-                                                </span>
-                                            </div>
-                                        </Table.Td>
-                                        <Table.Td>
-                                            <span className="text-sm text-slate-600 dark:text-slate-400">
-                                                {customer.no_telp || "-"}
-                                            </span>
-                                        </Table.Td>
-                                        <Table.Td>
-                                            <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1">
-                                                {customer.address || "-"}
-                                            </p>
-                                        </Table.Td>
-                                        <Table.Td>
-                                            <div className="flex gap-2">
-                                                {canEditCustomers && (
-                                                    <Button
-                                                        type={"edit"}
-                                                        icon={
-                                                            <IconPencilCog
-                                                                size={16}
-                                                                strokeWidth={
-                                                                    1.5
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-semibold text-primary-600 dark:text-primary-300">
+                                                            {customer.is_loyalty_member
+                                                                ? customer.loyalty_tier
+                                                                : "non-member"}
+                                                        </span>
+                                                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                                                            {customer.loyalty_points ||
+                                                                0}{" "}
+                                                            poin
+                                                        </span>
+                                                    </div>
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                                                        {customer.no_telp || "-"}
+                                                    </span>
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1">
+                                                        {customer.address || "-"}
+                                                    </p>
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <div className="flex gap-2">
+                                                        {canEditCustomers && (
+                                                            <Button
+                                                                type={"edit"}
+                                                                icon={
+                                                                    <IconPencilCog
+                                                                        size={16}
+                                                                        strokeWidth={
+                                                                            1.5
+                                                                        }
+                                                                    />
                                                                 }
-                                                            />
-                                                        }
-                                                        className={
-                                                            "border bg-warning-100 border-warning-200 text-warning-600 hover:bg-warning-200 dark:bg-warning-900/50 dark:border-warning-800 dark:text-warning-400"
-                                                        }
-                                                        href={route(
-                                                            "customers.edit",
-                                                            customer.id
-                                                        )}
-                                                    />
-                                                )}
-                                                {canDeleteCustomers && (
-                                                    <Button
-                                                        type={"delete"}
-                                                        icon={
-                                                            <IconTrash
-                                                                size={16}
-                                                                strokeWidth={
-                                                                    1.5
+                                                                className={
+                                                                    "border bg-warning-100 border-warning-200 text-warning-600 hover:bg-warning-200 dark:bg-warning-900/50 dark:border-warning-800 dark:text-warning-400"
                                                                 }
+                                                                href={route(
+                                                                    "customers.edit",
+                                                                    customer.id
+                                                                )}
                                                             />
-                                                        }
-                                                        className={
-                                                            "border bg-danger-100 border-danger-200 text-danger-600 hover:bg-danger-200 dark:bg-danger-900/50 dark:border-danger-800 dark:text-danger-400"
-                                                        }
-                                                        url={route(
-                                                            "customers.destroy",
-                                                            customer.id
                                                         )}
-                                                    />
-                                                )}
-                                            </div>
-                                        </Table.Td>
-                                    </tr>
-                                ))}
-                            </Table.Tbody>
-                        </Table>
-                    </Table.Card>
+                                                        {canDeleteCustomers && (
+                                                            <Button
+                                                                type={"delete"}
+                                                                icon={
+                                                                    <IconTrash
+                                                                        size={16}
+                                                                        strokeWidth={
+                                                                            1.5
+                                                                        }
+                                                                    />
+                                                                }
+                                                                className={
+                                                                    "border bg-danger-100 border-danger-200 text-danger-600 hover:bg-danger-200 dark:bg-danger-900/50 dark:border-danger-800 dark:text-danger-400"
+                                                                }
+                                                                url={route(
+                                                                    "customers.destroy",
+                                                                    customer.id
+                                                                )}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </Table.Td>
+                                            </tr>
+                                        ))}
+                                    </Table.Tbody>
+                                </Table>
+                            </Table.Card>
+                        </div>
+                    </div>
                 )
             ) : (
                 /* Empty State */

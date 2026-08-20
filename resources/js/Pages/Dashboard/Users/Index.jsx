@@ -17,6 +17,7 @@ import Search from "@/Components/Dashboard/Search";
 import Table from "@/Components/Dashboard/Table";
 import Checkbox from "@/Components/Dashboard/Checkbox";
 import Pagination from "@/Components/Dashboard/Pagination";
+import MobileDataCard from "@/Components/Mobile/MobileDataCard";
 import { useAuthorization } from "@/Utils/authorization";
 import Swal from "sweetalert2";
 
@@ -274,148 +275,209 @@ export default function Index() {
                         ))}
                     </div>
                 ) : (
-                    <Table.Card title={"Data Pengguna"}>
-                        <Table>
-                            <Table.Thead>
-                                <tr>
-                                    <Table.Th className={"w-10"}>
-                                        {canDeleteUsers && (
-                                            <Checkbox
-                                                onChange={(e) => {
-                                                    const allUserIds =
-                                                        users.data.map((user) =>
-                                                            user.id.toString()
-                                                        );
-                                                    setData(
-                                                        "selectedUser",
-                                                        e.target.checked
-                                                            ? allUserIds
-                                                            : []
-                                                    );
-                                                }}
-                                                checked={
-                                                    data.selectedUser.length ===
-                                                    users.data.length
-                                                }
+                    <div>
+                        {/* Mobile Cards (< sm) */}
+                        <div className="sm:hidden space-y-3">
+                            {users.data.map((user) => (
+                                <MobileDataCard
+                                    key={user.id}
+                                    title={user.name}
+                                    subtitle={user.email}
+                                    avatar={
+                                        user.avatar ? (
+                                            <img
+                                                src={user.avatar}
+                                                alt={user.name}
+                                                className="w-full h-full object-cover"
                                             />
-                                        )}
-                                    </Table.Th>
-                                    <Table.Th className={"w-10"}>No</Table.Th>
-                                    <Table.Th>Pengguna</Table.Th>
-                                    <Table.Th>Group Akses</Table.Th>
-                                    <Table.Th></Table.Th>
-                                </tr>
-                            </Table.Thead>
-                            <Table.Tbody>
-                                {users.data.map((user, i) => (
-                                    <tr
-                                        className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                                        key={user.id}
-                                    >
-                                        <Table.Td>
-                                            {canDeleteUsers && (
-                                                <Checkbox
-                                                    value={user.id}
-                                                    onChange={setSelectedUser}
-                                                    checked={data.selectedUser.includes(
-                                                        user.id.toString()
-                                                    )}
-                                                />
-                                            )}
-                                        </Table.Td>
-                                        <Table.Td className={"text-center"}>
-                                            {++i +
-                                                (users.current_page - 1) *
-                                                    users.per_page}
-                                        </Table.Td>
-                                    <Table.Td>
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-bold overflow-hidden">
-                                                    {user.avatar ? (
-                                                        <img
-                                                            src={user.avatar}
-                                                            alt={user.name}
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        user.name
-                                                            .charAt(0)
-                                                            .toUpperCase()
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                                                        {user.name}
-                                                    </p>
-                                                    <p className="text-xs text-slate-500">
-                                                        {user.email}
-                                                    </p>
-                                                </div>
+                                        ) : (
+                                            <div className="w-full h-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white text-base font-bold">
+                                                {(user.name || user.email || "?")
+                                                    .charAt(0)
+                                                    .toUpperCase()}
                                             </div>
-                                        </Table.Td>
-                                        <Table.Td>
-                                            <div className="flex flex-wrap gap-1">
-                                                {user.roles.map(
-                                                    (role, index) => (
-                                                        <span
-                                                            key={index}
-                                                            className="px-2 py-0.5 text-xs font-medium bg-accent-100 dark:bg-accent-900/50 text-accent-700 dark:text-accent-400 rounded-full"
-                                                        >
-                                                            {role.name}
-                                                        </span>
-                                                    )
-                                                )}
-                                            </div>
-                                        </Table.Td>
-                                        <Table.Td>
-                                            <div className="flex gap-2">
-                                                {canUpdateUsers && (
-                                                    <Button
-                                                        type={"edit"}
-                                                        icon={
-                                                            <IconPencilCog
-                                                                size={16}
-                                                                strokeWidth={
-                                                                    1.5
-                                                                }
-                                                            />
-                                                        }
-                                                        className={
-                                                            "border bg-warning-100 border-warning-200 text-warning-600 hover:bg-warning-200 dark:bg-warning-900/50 dark:border-warning-800 dark:text-warning-400"
-                                                        }
-                                                        href={route(
-                                                            "users.edit",
-                                                            user.id
-                                                        )}
-                                                    />
-                                                )}
+                                        )
+                                    }
+                                    meta={user.roles.map((role) => ({
+                                        label: role.name,
+                                        variant: "primary",
+                                    }))}
+                                    actions={[
+                                        ...(canUpdateUsers
+                                            ? [
+                                                  {
+                                                      label: "Edit",
+                                                      onClick: () =>
+                                                          router.get(
+                                                              route(
+                                                                  "users.edit",
+                                                                  user.id
+                                                              )
+                                                          ),
+                                                  },
+                                              ]
+                                            : []),
+                                        ...(canDeleteUsers
+                                            ? [
+                                                  {
+                                                      label: "Hapus",
+                                                      variant: "danger",
+                                                      onClick: () =>
+                                                          deleteData(user.id),
+                                                  },
+                                              ]
+                                            : []),
+                                    ]}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Desktop Table (>= sm) */}
+                        <div className="hidden sm:block">
+                            <Table.Card title={"Data Pengguna"}>
+                                <Table>
+                                    <Table.Thead>
+                                        <tr>
+                                            <Table.Th className={"w-10"}>
                                                 {canDeleteUsers && (
-                                                    <Button
-                                                        type={"delete"}
-                                                        icon={
-                                                            <IconTrash
-                                                                size={16}
-                                                                strokeWidth={
-                                                                    1.5
-                                                                }
-                                                            />
+                                                    <Checkbox
+                                                        onChange={(e) => {
+                                                            const allUserIds =
+                                                                users.data.map((user) =>
+                                                                    user.id.toString()
+                                                                );
+                                                            setData(
+                                                                "selectedUser",
+                                                                e.target.checked
+                                                                    ? allUserIds
+                                                                    : []
+                                                            );
+                                                        }}
+                                                        checked={
+                                                            data.selectedUser.length ===
+                                                            users.data.length
                                                         }
-                                                        className={
-                                                            "border bg-danger-100 border-danger-200 text-danger-600 hover:bg-danger-200 dark:bg-danger-900/50 dark:border-danger-800 dark:text-danger-400"
-                                                        }
-                                                        url={route(
-                                                            "users.destroy",
-                                                            user.id
-                                                        )}
                                                     />
                                                 )}
-                                            </div>
-                                        </Table.Td>
-                                    </tr>
-                                ))}
-                            </Table.Tbody>
-                        </Table>
-                    </Table.Card>
+                                            </Table.Th>
+                                            <Table.Th className={"w-10"}>No</Table.Th>
+                                            <Table.Th>Pengguna</Table.Th>
+                                            <Table.Th>Group Akses</Table.Th>
+                                            <Table.Th></Table.Th>
+                                        </tr>
+                                    </Table.Thead>
+                                    <Table.Tbody>
+                                        {users.data.map((user, i) => (
+                                            <tr
+                                                className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                                                key={user.id}
+                                            >
+                                                <Table.Td>
+                                                    {canDeleteUsers && (
+                                                        <Checkbox
+                                                            value={user.id}
+                                                            onChange={setSelectedUser}
+                                                            checked={data.selectedUser.includes(
+                                                                user.id.toString()
+                                                            )}
+                                                        />
+                                                    )}
+                                                </Table.Td>
+                                                <Table.Td className={"text-center"}>
+                                                    {++i +
+                                                        (users.current_page - 1) *
+                                                            users.per_page}
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-bold overflow-hidden">
+                                                            {user.avatar ? (
+                                                                <img
+                                                                    src={user.avatar}
+                                                                    alt={user.name}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                user.name
+                                                                    .charAt(0)
+                                                                    .toUpperCase()
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                                                {user.name}
+                                                            </p>
+                                                            <p className="text-xs text-slate-500">
+                                                                {user.email}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {user.roles.map(
+                                                            (role, index) => (
+                                                                <span
+                                                                    key={index}
+                                                                    className="px-2 py-0.5 text-xs font-medium bg-accent-100 dark:bg-accent-900/50 text-accent-700 dark:text-accent-400 rounded-full"
+                                                                >
+                                                                    {role.name}
+                                                                </span>
+                                                            )
+                                                        )}
+                                                    </div>
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <div className="flex gap-2">
+                                                        {canUpdateUsers && (
+                                                            <Button
+                                                                type={"edit"}
+                                                                icon={
+                                                                    <IconPencilCog
+                                                                        size={16}
+                                                                        strokeWidth={
+                                                                            1.5
+                                                                        }
+                                                                    />
+                                                                }
+                                                                className={
+                                                                    "border bg-warning-100 border-warning-200 text-warning-600 hover:bg-warning-200 dark:bg-warning-900/50 dark:border-warning-800 dark:text-warning-400"
+                                                                }
+                                                                href={route(
+                                                                    "users.edit",
+                                                                    user.id
+                                                                )}
+                                                            />
+                                                        )}
+                                                        {canDeleteUsers && (
+                                                            <Button
+                                                                type={"delete"}
+                                                                icon={
+                                                                    <IconTrash
+                                                                        size={16}
+                                                                        strokeWidth={
+                                                                            1.5
+                                                                        }
+                                                                    />
+                                                                }
+                                                                className={
+                                                                    "border bg-danger-100 border-danger-200 text-danger-600 hover:bg-danger-200 dark:bg-danger-900/50 dark:border-danger-800 dark:text-danger-400"
+                                                                }
+                                                                url={route(
+                                                                    "users.destroy",
+                                                                    user.id
+                                                                )}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </Table.Td>
+                                            </tr>
+                                        ))}
+                                    </Table.Tbody>
+                                </Table>
+                            </Table.Card>
+                        </div>
+                    </div>
                 )
             ) : (
                 <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">

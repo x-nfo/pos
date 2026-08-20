@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Receivable;
 use App\Models\Setting;
 use App\Models\Transaction;
+use App\Services\BrandingService;
 use App\Services\CashierShiftService;
 use App\Services\PayableAgingService;
 use App\Services\ReceivableService;
@@ -163,8 +164,11 @@ class HandleInertiaRequests extends Middleware
             ];
         }
 
+        $branding = app(BrandingService::class)->getBranding();
+
         return [
             ...parent::share($request),
+            'branding' => $branding,
             'auth' => [
                 'user' => $request->user(),
                 'permissions' => $request->user() ? $request->user()->getPermissions() : [],
