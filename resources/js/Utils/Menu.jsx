@@ -42,6 +42,7 @@ import {
     IconToolsKitchen2,
     IconDeviceMobile,
     IconPalette,
+    IconSparkles,
 } from "@tabler/icons-react";
 import hasAnyPermission from "./Permission";
 import React from "react";
@@ -394,6 +395,14 @@ export default function Menu() {
                     icon: <IconPalette size={20} strokeWidth={1.5} />,
                     permissions: hasAnyPermission(["dashboard-access"]),
                 },
+                {
+                    title: "OCR & AI Vision",
+                    href: route("settings.ocr"),
+                    active: url === "/dashboard/settings/ocr",
+                    icon: <IconSparkles size={20} strokeWidth={1.5} />,
+                    permissions: hasAnyPermission(["dashboard-access"]),
+                },
+
                 {
                     title: t("sidebar.items.bankAccounts"),
                     href: route("settings.bank-accounts.index"),

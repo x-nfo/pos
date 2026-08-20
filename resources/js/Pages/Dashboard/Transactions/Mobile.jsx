@@ -518,14 +518,96 @@ export default function Mobile({
     );
 
     useBarcodeScanner(handleBarcodeScan, {
+
         enabled: true,
         minLength: 3,
     });
+
+    const handleOcrScanResult = useCallback(
+        (ocrResult) => {
+            const barcode = (ocrResult.barcode || "").trim();
+            const title = (ocrResult.title || "").trim();
+            const existing = ocrResult.existing_product || (ocrResult.is_existing ? ocrResult : null);
+
+            // 1. Jika backend OCR mendeteksi produk sudah ada di database toko
+            if (existing && existing.id) {
+                let found = productList.find((p) => p.id === existing.id);
+                if (!found) {
+                    found = {
+                        id: existing.id,
+                        title: existing.title,
+                        barcode: existing.barcode,
+                        sku: existing.sku,
+                        image: existing.image,
+                        stock: existing.stock !== undefined ? existing.stock : 10,
+                        buy_price: existing.buy_price || 0,
+                        sell_price: existing.sell_price || 0,
+                        category_id: existing.category_id,
+                    };
+                    setProductList((prev) => [found, ...prev]);
+                }
+                triggerHaptic("scan");
+                toast.success(`Produk Ditemukan: ${found.title}`);
+                handleAddToCart(found);
+                return;
+            }
+
+            // 2. Cek barcode di productList lokal
+            let localFound = null;
+            if (barcode) {
+                const cleanBarcode = barcode.replace(/[^A-Za-z0-9]/g, "").toLowerCase();
+                localFound = productList.find(
+                    (p) => (p.barcode || "").replace(/[^A-Za-z0-9]/g, "").toLowerCase() === cleanBarcode
+                );
+            }
+
+            // 3. Cek nama produk dengan pencocokan kata kunci (Fuzzy match)
+            if (!localFound && title) {
+                const searchWords = title.toLowerCase().split(/\s+/).filter((w) => w.length >= 3);
+                if (searchWords.length > 0) {
+                    localFound = productList.find((p) => {
+                        const pTitle = (p.title || "").toLowerCase();
+                        return (
+                            pTitle === title.toLowerCase() ||
+                            searchWords.every((w) => pTitle.includes(w)) ||
+                            (searchWords.length >= 2 && pTitle.includes(searchWords[0]) && pTitle.includes(searchWords[1]))
+                        );
+                    });
+                }
+            }
+
+            if (localFound) {
+                triggerHaptic("scan");
+                toast.success(`Produk Ditemukan: ${localFound.title}`);
+                handleAddToCart(localFound);
+                return;
+            }
+
+            // 4. Jika produk belum terdaftar di toko, buka QuickAdd modal
+            setQuickAddInitialData({
+                barcode: barcode,
+                title: title,
+                buy_price: ocrResult.buy_price ? String(ocrResult.buy_price) : "0",
+                sell_price: ocrResult.sell_price ? String(ocrResult.sell_price) : "",
+                category_id: ocrResult.category_id ? String(ocrResult.category_id) : "",
+                description: ocrResult.description || title,
+                stock: 10,
+                fromCatalog: Boolean(ocrResult.from_catalog),
+            });
+            setQuickAddModalOpen(true);
+            toast(`Produk belum terdaftar di toko: ${title || barcode || "Kemasan"}`, {
+                icon: "✨",
+            });
+        },
+        [productList, handleAddToCart, triggerHaptic]
+    );
+
 
     const handleQuickAddSuccess = (newProduct) => {
         setProductList((prev) => [newProduct, ...prev]);
         handleAddToCart(newProduct);
     };
+
 
     // Hold Cart Handler
     const handleHoldCart = (label = null) => {
@@ -743,11 +825,13 @@ export default function Mobile({
                                 searchQuery={searchQuery}
                                 onSearchChange={setSearchQuery}
                                 onBarcodeScan={handleBarcodeScan}
+                                onOcrScan={handleOcrScanResult}
                                 isSearching={isSearching}
                                 onAddToCart={handleAddToCart}
                                 addingProductId={addingProductId}
                                 searchInputRef={searchInputRef}
                             />
+
 
                             {/* Floating Cart Bar */}
                             <MobileFloatingCartBar

@@ -7,9 +7,11 @@ import {
     IconCamera,
     IconX,
     IconBarcode,
+    IconSparkles,
 } from "@tabler/icons-react";
 import { getProductImageUrl } from "@/Utils/imageUrl";
 import BarcodeScanner from "./BarcodeScanner";
+import ProductOcrModal from "@/Components/OCR/ProductOcrModal";
 
 const formatPrice = (value = 0) =>
     Number(value || 0).toLocaleString("id-ID", {
@@ -139,11 +141,14 @@ function SearchInput({
     onChange,
     onSearch,
     onBarcodeScan,
+    onOcrScan,
+    categories = [],
     isSearching,
     placeholder,
     inputRef,
 }) {
     const [showScanner, setShowScanner] = useState(false);
+    const [showOcrModal, setShowOcrModal] = useState(false);
 
     return (
         <div className="flex items-center gap-2">
@@ -184,15 +189,26 @@ function SearchInput({
                 ) : null}
             </div>
 
+            {/* AI Vision OCR Scan Button */}
+            <button
+                type="button"
+                onClick={() => setShowOcrModal(true)}
+                className="h-12 px-3 sm:px-3.5 rounded-xl bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white flex items-center justify-center gap-1.5 transition-all active:scale-95 flex-shrink-0 shadow-md shadow-primary-500/20"
+                title="Scan Kemasan / Label Produk dengan AI (OCR)"
+            >
+                <IconSparkles size={18} />
+                <span className="hidden sm:inline text-xs font-bold">Scan AI</span>
+            </button>
+
             {/* Camera Scan Button */}
             <button
                 type="button"
                 onClick={() => setShowScanner(true)}
-                className="h-12 px-3.5 sm:px-4 rounded-xl bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-800 hover:bg-primary-100 dark:hover:bg-primary-900/50 flex items-center justify-center gap-1.5 transition-all active:scale-95 flex-shrink-0 shadow-sm"
+                className="h-12 px-3 sm:px-3.5 rounded-xl bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-800 hover:bg-primary-100 dark:hover:bg-primary-900/50 flex items-center justify-center gap-1.5 transition-all active:scale-95 flex-shrink-0 shadow-sm"
                 title="Scan Barcode via Kamera"
             >
-                <IconCamera size={20} />
-                <span className="hidden sm:inline text-xs font-semibold">Scan</span>
+                <IconCamera size={18} />
+                <span className="hidden sm:inline text-xs font-semibold">Barcode</span>
             </button>
 
             {showScanner && (
@@ -209,6 +225,16 @@ function SearchInput({
                     onClose={() => setShowScanner(false)}
                 />
             )}
+
+            <ProductOcrModal
+                isOpen={showOcrModal}
+                onClose={() => setShowOcrModal(false)}
+                onSuccess={(ocrRes) => {
+                    setShowOcrModal(false);
+                    onOcrScan?.(ocrRes);
+                }}
+                categories={categories}
+            />
         </div>
     );
 }
@@ -223,6 +249,7 @@ export default function ProductGrid({
     onSearchChange,
     onSearch,
     onBarcodeScan,
+    onOcrScan,
     isSearching,
     onAddToCart,
     addingProductId,
@@ -252,11 +279,14 @@ export default function ProductGrid({
                     onChange={onSearchChange}
                     onSearch={onSearch}
                     onBarcodeScan={onBarcodeScan}
+                    onOcrScan={onOcrScan}
+                    categories={categories}
                     isSearching={isSearching}
                     placeholder="Cari produk atau scan barcode... (tekan / untuk fokus)"
                     inputRef={searchInputRef}
                 />
             </div>
+
 
             {/* Category Tabs */}
             <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-hide">

@@ -16,13 +16,16 @@ import {
     IconPrinter,
     IconUpload,
     IconDownload,
+    IconSparkles,
 } from "@tabler/icons-react";
 import Search from "@/Components/Dashboard/Search";
 import Table from "@/Components/Dashboard/Table";
 import Pagination from "@/Components/Dashboard/Pagination";
 import { getProductImageUrl } from "@/Utils/imageUrl";
 import BarcodePrintModal from "@/Components/Barcode/BarcodePrintModal";
+import InvoiceBatchOcrModal from "@/Components/OCR/InvoiceBatchOcrModal";
 import MobileDataCard from "@/Components/Mobile/MobileDataCard";
+
 import { useAuthorization } from "@/Utils/authorization";
 import { router } from "@inertiajs/react";
 
@@ -171,10 +174,11 @@ function ProductCard({
     );
 }
 
-export default function Index({ products }) {
+export default function Index({ products, warehouses = [], categories = [] }) {
     const { can } = useAuthorization();
     const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
     const [showBarcodeModal, setShowBarcodeModal] = useState(false);
+    const [showInvoiceOcrModal, setShowInvoiceOcrModal] = useState(false);
     const [singleProductBarcode, setSingleProductBarcode] = useState(null);
     const [selectedProducts, setSelectedProducts] = useState([]);
     const canCreateProducts = can("products-create");
@@ -271,6 +275,14 @@ export default function Index({ products }) {
                                         if (file) router.post(route("import.products"), { file });
                                     }}
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowInvoiceOcrModal(true)}
+                                    className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white text-sm font-semibold shadow-md shadow-primary-500/20 active:scale-95 transition-all w-full sm:w-auto"
+                                >
+                                    <IconSparkles size={18} />
+                                    <span>Import Faktur OCR</span>
+                                </button>
                             </>
                         )}
                         {canCreateProducts && (
@@ -292,6 +304,7 @@ export default function Index({ products }) {
                     </div>
                 </div>
             </div>
+
 
             {/* Toolbar */}
             <div className="mb-4 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
@@ -618,8 +631,16 @@ export default function Index({ products }) {
                 products={selectedProducts}
                 singleProduct={singleProductBarcode}
             />
+
+            {/* Invoice Batch OCR Modal */}
+            <InvoiceBatchOcrModal
+                isOpen={showInvoiceOcrModal}
+                onClose={() => setShowInvoiceOcrModal(false)}
+                categories={categories}
+            />
         </>
     );
 }
+
 
 Index.layout = (page) => <DashboardLayout children={page} />;

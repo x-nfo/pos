@@ -22,6 +22,7 @@ use App\Http\Controllers\Apps\PriceListController;
 use App\Http\Controllers\Apps\PricingRuleController;
 use App\Http\Controllers\Apps\ProductCatalogController;
 use App\Http\Controllers\Apps\ProductController;
+use App\Http\Controllers\Apps\ProductOcrController;
 use App\Http\Controllers\Apps\PurchaseOrderController;
 use App\Http\Controllers\Apps\ReceivableController;
 use App\Http\Controllers\Apps\SalesReturnController;
@@ -133,6 +134,21 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::post('/products/quick-store', [ProductController::class, 'quickStore'])
         ->middleware('permission:products-create|transactions-access')
         ->name('products.quick-store');
+
+    // OCR Product Routes
+    Route::post('/products/ocr/scan-single', [ProductOcrController::class, 'scanSingle'])
+        ->middleware('permission:products-create|transactions-access')
+        ->name('products.ocr.scan-single');
+    Route::post('/products/ocr/scan-invoice', [ProductOcrController::class, 'scanInvoice'])
+        ->middleware('permission:products-create')
+        ->name('products.ocr.scan-invoice');
+    Route::post('/products/ocr/batch-store', [ProductOcrController::class, 'batchStore'])
+        ->middleware('permission:products-create')
+        ->name('products.ocr.batch-store');
+    Route::post('/products/ocr/test-connection', [ProductOcrController::class, 'testConnection'])
+        ->middleware('permission:dashboard-access')
+        ->name('products.ocr.test-connection');
+
 
     // import/export
     Route::get('/export/products', [ImportExportController::class, 'exportProducts'])->middleware('permission:products-export')->name('export.products');
@@ -331,6 +347,9 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::post('/settings/printer', [SettingController::class, 'updatePrinter'])->middleware('permission:dashboard-access')->name('settings.printer.update');
     Route::get('/settings/loyalty', [SettingController::class, 'loyalty'])->middleware('permission:dashboard-access')->name('settings.loyalty');
     Route::post('/settings/loyalty', [SettingController::class, 'updateLoyalty'])->middleware('permission:dashboard-access')->name('settings.loyalty.update');
+    Route::get('/settings/ocr', [SettingController::class, 'ocr'])->middleware('permission:dashboard-access')->name('settings.ocr');
+    Route::post('/settings/ocr', [SettingController::class, 'updateOcr'])->middleware('permission:dashboard-access')->name('settings.ocr.update');
+
 
     // settings whatsapp
     Route::get('/settings/whatsapp', [SettingController::class, 'whatsapp'])->middleware('permission:whatsapp-settings-access')->name('settings.whatsapp');

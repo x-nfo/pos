@@ -35,11 +35,14 @@ class ProductController extends Controller
         })->with('category')->latest()->paginate($this->perPage())->withQueryString();
 
         $warehouses = Warehouse::active()->orderBy('code')->get(['id', 'code', 'name']);
+        $categories = Category::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Dashboard/Products/Index', [
             'products' => $products,
             'warehouses' => $warehouses,
+            'categories' => $categories,
         ]);
+
     }
 
     /**

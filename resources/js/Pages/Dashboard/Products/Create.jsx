@@ -25,6 +25,8 @@ import {
 import ProductUnitsInput from "@/Components/Dashboard/ProductUnitsInput";
 import ImageCaptureUpload from "@/Components/Dashboard/ImageCaptureUpload";
 import BarcodeScanner from "@/Components/POS/BarcodeScanner";
+import ProductOcrModal from "@/Components/OCR/ProductOcrModal";
+
 
 export default function Create({ categories, units = [] }) {
     const { errors } = usePage().props;
@@ -47,12 +49,43 @@ export default function Create({ categories, units = [] }) {
     const [isLookingUp, setIsLookingUp] = useState(false);
     const [catalogMatch, setCatalogMatch] = useState(null);
     const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+    const [showOcrModal, setShowOcrModal] = useState(false);
 
     // Search Modal States
     const [showSearchModal, setShowSearchModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
+
+    const handleOcrSuccess = (ocrResult) => {
+        setData((prev) => ({
+            ...prev,
+            title: ocrResult.title || prev.title,
+            barcode: ocrResult.barcode || prev.barcode,
+            sku: prev.sku ? prev.sku : (ocrResult.sku || ocrResult.barcode || prev.barcode),
+            buy_price: ocrResult.buy_price > 0 ? String(ocrResult.buy_price) : prev.buy_price,
+            sell_price: ocrResult.sell_price > 0 ? String(ocrResult.sell_price) : prev.sell_price,
+            category_id: ocrResult.category_id || prev.category_id,
+            description: ocrResult.description || prev.description,
+            image: ocrResult.imageFile || prev.image,
+        }));
+
+        if (ocrResult.imagePreview) {
+            setImagePreview(ocrResult.imagePreview);
+        }
+
+        if (ocrResult.category_id) {
+            const foundCat = categories.find((c) => c.id === ocrResult.category_id);
+            if (foundCat) {
+                setSelectedCategory(foundCat);
+            }
+        }
+
+        if (ocrResult.from_catalog) {
+            setCatalogMatch(ocrResult);
+        }
+    };
+
 
     const setSelectedCategoryHandler = (value) => {
         setSelectedCategory(value);
@@ -167,18 +200,30 @@ export default function Create({ categories, units = [] }) {
                     </h1>
                 </div>
 
-                <button
-                    type="button"
-                    onClick={() => {
-                        setShowSearchModal(true);
-                        setSearchQuery(data.title || "");
-                    }}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-primary-200 dark:border-primary-900/50 bg-primary-50 dark:bg-primary-950/40 text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-900/60 font-medium text-sm transition-colors shadow-sm"
-                >
-                    <IconSearch size={18} />
-                    Cari di Katalog Referensi (32k+ Data)
-                </button>
+                <div className="flex flex-wrap items-center gap-2.5">
+                    <button
+                        type="button"
+                        onClick={() => setShowOcrModal(true)}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-semibold text-sm shadow-md shadow-primary-500/20 active:scale-95 transition-all"
+                    >
+                        <IconSparkles size={18} />
+                        <span>Scan OCR Kemasan (AI)</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setShowSearchModal(true);
+                            setSearchQuery(data.title || "");
+                        }}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-primary-200 dark:border-primary-900/50 bg-primary-50 dark:bg-primary-950/40 text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-900/60 font-medium text-sm transition-colors shadow-sm"
+                    >
+                        <IconSearch size={18} />
+                        <span>Cari di Katalog (32k+)</span>
+                    </button>
+                </div>
             </div>
+
 
             <form onSubmit={submit}>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -526,8 +571,16 @@ export default function Create({ categories, units = [] }) {
                     onClose={() => setShowBarcodeScanner(false)}
                 />
             )}
+
+            <ProductOcrModal
+                isOpen={showOcrModal}
+                onClose={() => setShowOcrModal(false)}
+                onSuccess={handleOcrSuccess}
+                categories={categories}
+            />
         </>
     );
 }
+
 
 Create.layout = (page) => <DashboardLayout children={page} />;

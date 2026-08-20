@@ -8,6 +8,7 @@ import {
     IconPackage,
     IconPlus,
 } from "@tabler/icons-react";
+import ProductOcrModal from "@/Components/OCR/ProductOcrModal";
 
 export default function QuickAddProductModal({
     isOpen,
@@ -28,6 +29,8 @@ export default function QuickAddProductModal({
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState({});
+    const [showOcrModal, setShowOcrModal] = useState(false);
+
 
     const isFromCatalog = Boolean(initialData?.fromCatalog);
 
@@ -50,7 +53,20 @@ export default function QuickAddProductModal({
         }
     }, [isOpen, initialData, categories]);
 
+    const handleOcrSuccess = (ocrResult) => {
+        setFormData((prev) => ({
+            ...prev,
+            title: ocrResult.title || prev.title,
+            barcode: ocrResult.barcode || prev.barcode,
+            buy_price: ocrResult.buy_price > 0 ? String(ocrResult.buy_price) : prev.buy_price,
+            sell_price: ocrResult.sell_price > 0 ? String(ocrResult.sell_price) : prev.sell_price,
+            category_id: ocrResult.category_id ? String(ocrResult.category_id) : prev.category_id,
+            description: ocrResult.description || prev.description,
+        }));
+    };
+
     if (!isOpen) return null;
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -170,17 +186,30 @@ export default function QuickAddProductModal({
                             </div>
                         </div>
 
-                        {isFromCatalog ? (
-                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowOcrModal(true)}
+                                className="px-2.5 py-1 rounded-xl bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-800 text-xs font-semibold hover:bg-primary-100 dark:hover:bg-primary-900/50 flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+                                title="Scan Kemasan Produk dengan AI"
+                            >
                                 <IconSparkles size={14} />
-                                Katalog Referensi
-                            </span>
-                        ) : (
-                            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                                Produk Baru
-                            </span>
-                        )}
+                                <span>Scan OCR AI</span>
+                            </button>
+
+                            {isFromCatalog ? (
+                                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                                    <IconSparkles size={14} />
+                                    Katalog
+                                </span>
+                            ) : (
+                                <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                                    Produk Baru
+                                </span>
+                            )}
+                        </div>
                     </div>
+
 
                     {/* Nama Produk */}
                     <div>
@@ -340,6 +369,15 @@ export default function QuickAddProductModal({
                     </div>
                 </form>
             </div>
+
+            {/* Product OCR Scanner Modal */}
+            <ProductOcrModal
+                isOpen={showOcrModal}
+                onClose={() => setShowOcrModal(false)}
+                onSuccess={handleOcrSuccess}
+                categories={categories}
+            />
         </div>
     );
 }
+

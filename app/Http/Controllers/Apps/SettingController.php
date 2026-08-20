@@ -384,4 +384,99 @@ class SettingController extends Controller
 
         return response()->json(['status' => true]);
     }
+
+    /**
+     * OCR & AI Settings page
+     */
+    public function ocr()
+    {
+        $rawModel = Setting::get('ocr_gemini_model', config('services.ocr.gemini.model', 'gemini-flash-lite-latest'));
+
+        $model = ($rawModel === 'gemini-2.0-flash' || $rawModel === 'gemini-1.5-flash-8b' || empty($rawModel)) ? 'gemini-flash-lite-latest' : $rawModel;
+
+        $settings = [
+            'ocr_enabled' => Setting::getBool('ocr_enabled', true),
+            'ocr_provider' => Setting::get('ocr_provider', config('services.ocr.provider', 'gemini')),
+            'ocr_gemini_api_key' => Setting::get('ocr_gemini_api_key', config('services.ocr.gemini.api_key', '')),
+            'ocr_gemini_model' => $model,
+            'ocr_openai_api_key' => Setting::get('ocr_openai_api_key', config('services.ocr.openai.api_key', '')),
+            'ocr_openai_model' => Setting::get('ocr_openai_model', config('services.ocr.openai.model', 'gpt-4o-mini')),
+            'ocr_openrouter_api_key' => Setting::get('ocr_openrouter_api_key', config('services.ocr.openrouter.api_key', '')),
+            'ocr_openrouter_model' => Setting::get('ocr_openrouter_model', config('services.ocr.openrouter.model', 'openai/gpt-4o-mini')),
+            'ocr_openrouter_base_url' => Setting::get('ocr_openrouter_base_url', config('services.ocr.openrouter.base_url', 'https://openrouter.ai/api/v1/chat/completions')),
+            'ocr_default_margin_percentage' => (float) Setting::get('ocr_default_margin_percentage', 20.0),
+            'ocr_auto_match_catalog' => Setting::getBool('ocr_auto_match_catalog', true),
+        ];
+
+        return Inertia::render('Dashboard/Settings/Ocr', [
+            'settings' => $settings,
+        ]);
+    }
+
+    /**
+     * Update OCR & AI Settings
+     */
+    public function updateOcr(Request $request)
+    {
+        $request->validate([
+            'ocr_enabled' => 'boolean',
+            'ocr_provider' => 'required|string|in:gemini,openai,openrouter,mock',
+            'ocr_gemini_api_key' => 'nullable|string|max:255',
+            'ocr_gemini_model' => 'nullable|string|max:100',
+            'ocr_openai_api_key' => 'nullable|string|max:255',
+            'ocr_openai_model' => 'nullable|string|max:100',
+            'ocr_openrouter_api_key' => 'nullable|string|max:255',
+            'ocr_openrouter_model' => 'nullable|string|max:100',
+            'ocr_openrouter_base_url' => 'nullable|string|max:255',
+            'ocr_default_margin_percentage' => 'required|numeric|min:0|max:500',
+            'ocr_auto_match_catalog' => 'boolean',
+        ]);
+
+        $before = [
+            'ocr_enabled' => Setting::get('ocr_enabled'),
+            'ocr_provider' => Setting::get('ocr_provider'),
+            'ocr_gemini_api_key' => Setting::get('ocr_gemini_api_key'),
+            'ocr_gemini_model' => Setting::get('ocr_gemini_model'),
+            'ocr_openai_api_key' => Setting::get('ocr_openai_api_key'),
+            'ocr_openai_model' => Setting::get('ocr_openai_model'),
+            'ocr_openrouter_api_key' => Setting::get('ocr_openrouter_api_key'),
+            'ocr_openrouter_model' => Setting::get('ocr_openrouter_model'),
+            'ocr_openrouter_base_url' => Setting::get('ocr_openrouter_base_url'),
+            'ocr_default_margin_percentage' => Setting::get('ocr_default_margin_percentage'),
+            'ocr_auto_match_catalog' => Setting::get('ocr_auto_match_catalog'),
+        ];
+
+        Setting::set('ocr_enabled', $request->boolean('ocr_enabled') ? '1' : '0', 'Aktifkan fitur OCR');
+        Setting::set('ocr_provider', $request->ocr_provider, 'Provider OCR');
+        Setting::set('ocr_gemini_api_key', $request->ocr_gemini_api_key ?? '', 'API Key Google Gemini');
+        Setting::set('ocr_gemini_model', $request->ocr_gemini_model ?? 'gemini-flash-lite-latest', 'Model AI Gemini');
+        Setting::set('ocr_openai_api_key', $request->ocr_openai_api_key ?? '', 'API Key OpenAI');
+        Setting::set('ocr_openai_model', $request->ocr_openai_model ?? 'gpt-4o-mini', 'Model AI OpenAI');
+        Setting::set('ocr_openrouter_api_key', $request->ocr_openrouter_api_key ?? '', 'API Key OpenRouter / Custom AI');
+        Setting::set('ocr_openrouter_model', $request->ocr_openrouter_model ?? 'openai/gpt-4o-mini', 'Model AI OpenRouter');
+        Setting::set('ocr_openrouter_base_url', $request->ocr_openrouter_base_url ?? 'https://openrouter.ai/api/v1/chat/completions', 'Base URL OpenRouter / Custom AI');
+        Setting::set('ocr_default_margin_percentage', (string) $request->ocr_default_margin_percentage, 'Default margin keuntungan OCR (%)');
+        Setting::set('ocr_auto_match_catalog', $request->boolean('ocr_auto_match_catalog') ? '1' : '0', 'Cocokkan otomatis dengan katalog referensi');
+
+        $this->auditLogService->log(
+            event: 'ocr.setting.updated',
+            module: 'ocr_settings',
+            auditable: ['target_label' => 'OCR & AI Settings'],
+            description: 'Pengaturan OCR & AI diperbarui.',
+            before: $before,
+            after: [
+                'ocr_enabled' => $request->boolean('ocr_enabled'),
+                'ocr_provider' => $request->ocr_provider,
+                'ocr_gemini_model' => $request->ocr_gemini_model,
+                'ocr_openai_model' => $request->ocr_openai_model,
+                'ocr_openrouter_model' => $request->ocr_openrouter_model,
+                'ocr_default_margin_percentage' => $request->ocr_default_margin_percentage,
+                'ocr_auto_match_catalog' => $request->boolean('ocr_auto_match_catalog'),
+            ]
+        );
+
+        return back()->with('success', 'Pengaturan OCR & AI berhasil disimpan');
+    }
 }
+
+

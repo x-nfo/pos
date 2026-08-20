@@ -6,9 +6,12 @@ import {
     IconX,
     IconSearch,
     IconPlus,
+    IconSparkles,
 } from "@tabler/icons-react";
 import { getProductImageUrl } from "@/Utils/imageUrl";
 import BarcodeScanner from "../BarcodeScanner";
+import ProductOcrModal from "@/Components/OCR/ProductOcrModal";
+
 
 const formatPrice = (value = 0) =>
     Number(value || 0).toLocaleString("id-ID", {
@@ -133,12 +136,14 @@ export default function MobileProductGrid({
     searchQuery,
     onSearchChange,
     onBarcodeScan,
+    onOcrScan,
     isSearching,
     onAddToCart,
     addingProductId,
     searchInputRef,
 }) {
     const [showScanner, setShowScanner] = useState(false);
+    const [showOcrModal, setShowOcrModal] = useState(false);
 
     const normalizedSelectedCategory =
         selectedCategory === null ? null : Number(selectedCategory);
@@ -188,18 +193,31 @@ export default function MobileProductGrid({
                         ) : null}
                     </div>
 
-                    {/* Camera Scan Button */}
+                    {/* AI Vision OCR Scan Button */}
+                    <button
+                        type="button"
+                        onClick={() => setShowOcrModal(true)}
+                        className="h-10 px-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white flex items-center justify-center gap-1 active:scale-95 transition-transform flex-shrink-0 shadow-sm"
+                        aria-label="Scan OCR AI"
+                        title="Scan Kemasan dengan AI"
+                    >
+                        <IconSparkles size={16} />
+                        <span className="text-xs font-bold">AI</span>
+                    </button>
+
+                    {/* Camera Barcode Scan Button */}
                     <button
                         type="button"
                         onClick={() => setShowScanner(true)}
-                        className="h-10 px-3 rounded-xl bg-primary-50 dark:bg-primary-950/50 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-800 flex items-center justify-center gap-1 active:scale-95 transition-transform flex-shrink-0 shadow-xs"
+                        className="h-10 px-2.5 rounded-xl bg-primary-50 dark:bg-primary-950/50 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-800 flex items-center justify-center gap-1 active:scale-95 transition-transform flex-shrink-0 shadow-xs"
                         aria-label="Scan Barcode Kamera"
                     >
                         <IconCamera size={16} />
-                        <span className="text-xs font-bold">Scan</span>
+                        <span className="text-xs font-bold">Barcode</span>
                     </button>
                 </div>
             </div>
+
 
             {/* Category Chips Bar */}
             <div className="px-3 py-2 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-hide flex-shrink-0">
@@ -269,6 +287,18 @@ export default function MobileProductGrid({
                     onClose={() => setShowScanner(false)}
                 />
             )}
+
+            {/* Product OCR Scanner Modal */}
+            <ProductOcrModal
+                isOpen={showOcrModal}
+                onClose={() => setShowOcrModal(false)}
+                onSuccess={(ocrRes) => {
+                    setShowOcrModal(false);
+                    onOcrScan?.(ocrRes);
+                }}
+                categories={categories}
+            />
         </div>
     );
 }
+
