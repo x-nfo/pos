@@ -78,7 +78,7 @@ function TargetCard({ title, current, target, icon: Icon }) {
     const isAchieved = percentage >= 100;
 
     return (
-        <div className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg">
+        <div className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-primary-600 to-primary-800 text-white shadow-lg shadow-primary-500/20">
             {/* Background Pattern */}
             <div className="absolute top-0 right-0 w-32 h-32 opacity-20">
                 <Icon

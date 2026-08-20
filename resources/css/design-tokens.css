@@ -5,29 +5,7 @@
 
 /* === Color Palette === */
 :root {
-  /* Primary - Deep Blue/Indigo */
-  --color-primary-50: 238 242 255;
-  --color-primary-100: 224 231 255;
-  --color-primary-200: 199 210 254;
-  --color-primary-300: 165 180 252;
-  --color-primary-400: 129 140 248;
-  --color-primary-500: 99 102 241;
-  --color-primary-600: 79 70 229;
-  --color-primary-700: 67 56 202;
-  --color-primary-800: 55 48 163;
-  --color-primary-900: 49 46 129;
-
-  /* Accent - Teal/Cyan */
-  --color-accent-50: 236 254 255;
-  --color-accent-100: 207 250 254;
-  --color-accent-200: 165 243 252;
-  --color-accent-300: 103 232 249;
-  --color-accent-400: 34 211 238;
-  --color-accent-500: 6 182 212;
-  --color-accent-600: 8 145 178;
-  --color-accent-700: 14 116 144;
-  --color-accent-800: 21 94 117;
-  --color-accent-900: 22 78 99;
+  /* Primary & Accent are dynamically injected via BrandingService / BrandingTheme */
 
   /* Success - Emerald */
   --color-success-50: 236 253 245;
@@ -318,3 +296,87 @@ body {
 .animate-count {
   animation: count-up var(--transition-fast);
 }
+
+/* =====================================================
+   MOBILE NATIVE APP ENHANCEMENTS
+   Safe-area insets, zero-latency touch & native feel
+   ===================================================== */
+
+/* Safe Area Inset Variables */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+/* Safe Area Utility Classes */
+.pt-safe {
+  padding-top: var(--sat);
+}
+.pb-safe {
+  padding-bottom: var(--sab);
+}
+.pl-safe {
+  padding-left: var(--sal);
+}
+.pr-safe {
+  padding-right: var(--sar);
+}
+.mb-safe {
+  margin-bottom: var(--sab);
+}
+.mt-safe {
+  margin-top: var(--sat);
+}
+.bottom-safe {
+  bottom: var(--sab);
+}
+
+/* Touch Experience & Tap Target Optimization */
+.touch-action-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.overscroll-contain {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.overscroll-none {
+  overscroll-behavior: none;
+}
+
+/* Native Tap Press Feedback */
+.active-press {
+  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.12s ease;
+}
+.active-press:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+/* Hide Scrollbar for Mobile Carousel / Category Pills */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Native Bottom Sheet Animation */
+@keyframes sheetSlideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-sheet-up {
+  animation: sheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+

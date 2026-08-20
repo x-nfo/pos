@@ -39,6 +39,7 @@ use App\Http\Controllers\DineMenuController;
 use App\Http\Controllers\DineOrderController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\LanguageController;
+use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
@@ -49,11 +50,17 @@ use App\Http\Controllers\Reports\ProfitReportController;
 use App\Http\Controllers\Reports\SalesReportController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
+use App\Models\Setting;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 
 Route::get('/', function () {
+    if (Schema::hasTable('settings') && Setting::get('landing_page_mode') === 'direct_login') {
+        return redirect()->route('login');
+    }
+
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => config('security.auth.public_registration'),
@@ -61,6 +68,8 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+Route::get('/manifest.json', ManifestController::class)->name('manifest');
 
 // Public marketing pages (open source)
 Route::get('/fitur', fn () => Inertia::render('Public/Features'))->name('features.index');
@@ -316,6 +325,8 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::post('/settings/target', [SettingController::class, 'updateTarget'])->middleware('permission:dashboard-access')->name('settings.target.update');
     Route::get('/settings/store', [SettingController::class, 'storeProfile'])->middleware('permission:dashboard-access')->name('settings.store');
     Route::post('/settings/store', [SettingController::class, 'updateStoreProfile'])->middleware('permission:dashboard-access')->name('settings.store.update');
+    Route::get('/settings/branding', [SettingController::class, 'branding'])->middleware('permission:dashboard-access')->name('settings.branding');
+    Route::post('/settings/branding', [SettingController::class, 'updateBranding'])->middleware('permission:dashboard-access')->name('settings.branding.update');
     Route::get('/settings/printer', [SettingController::class, 'printer'])->middleware('permission:dashboard-access')->name('settings.printer');
     Route::post('/settings/printer', [SettingController::class, 'updatePrinter'])->middleware('permission:dashboard-access')->name('settings.printer.update');
     Route::get('/settings/loyalty', [SettingController::class, 'loyalty'])->middleware('permission:dashboard-access')->name('settings.loyalty');

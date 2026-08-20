@@ -22,6 +22,7 @@ import Table from "@/Components/Dashboard/Table";
 import Pagination from "@/Components/Dashboard/Pagination";
 import { getProductImageUrl } from "@/Utils/imageUrl";
 import BarcodePrintModal from "@/Components/Barcode/BarcodePrintModal";
+import MobileDataCard from "@/Components/Mobile/MobileDataCard";
 import { useAuthorization } from "@/Utils/authorization";
 import { router } from "@inertiajs/react";
 
@@ -375,134 +376,205 @@ export default function Index({ products }) {
                     </div>
                 ) : (
                     /* List View */
-                    <Table.Card title={"Data Produk"}>
-                        <Table>
-                            <Table.Thead>
-                                <tr>
-                                    <Table.Th className="w-10">No</Table.Th>
-                                    <Table.Th>Produk</Table.Th>
-                                    <Table.Th>Kategori</Table.Th>
-                                    <Table.Th>Harga Beli</Table.Th>
-                                    <Table.Th>Harga Jual</Table.Th>
-                                    <Table.Th>Stok</Table.Th>
-                                    <Table.Th></Table.Th>
-                                </tr>
-                            </Table.Thead>
-                            <Table.Tbody>
-                                {products.data.map((product, i) => (
-                                    <tr
-                                        className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                    <div>
+                        {/* Mobile Cards View (< 768px) */}
+                        <div className="md:hidden space-y-3">
+                            {products.data.map((product) => {
+                                const lowStock = product.stock > 0 && product.stock <= 5;
+                                const outOfStock = product.stock === 0;
+
+                                return (
+                                    <MobileDataCard
                                         key={product.id}
-                                    >
-                                        <Table.Td className="text-center">
-                                            {++i +
-                                                (products.current_page - 1) *
-                                                    products.per_page}
-                                        </Table.Td>
-                                        <Table.Td>
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden flex-shrink-0">
-                                                    <img
-                                                        src={getProductImageUrl(
-                                                            product.image,
-                                                            true
-                                                        )}
-                                                        alt={product.title}
-                                                        className="w-full h-full object-cover"
-                                                        onError={(e) => {
-                                                            e.currentTarget.src =
-                                                                "/images/product-placeholder.svg";
-                                                        }}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                                                        {product.title}
-                                                    </p>
-                                                    <div className="text-xs text-slate-500 dark:text-slate-400 space-y-0.5">
-                                                        {product.barcode && (
-                                                            <p>
-                                                                Barcode: {product.barcode}
-                                                            </p>
-                                                        )}
-                                                        {product.sku && <p>SKU: {product.sku}</p>}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </Table.Td>
-                                        <Table.Td>
-                                            <span className="px-2 py-0.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded">
-                                                {product.category?.name}
-                                            </span>
-                                        </Table.Td>
-                                        <Table.Td>
-                                            {formatCurrency(product.buy_price)}
-                                        </Table.Td>
-                                        <Table.Td className="font-semibold text-primary-600 dark:text-primary-400">
-                                            {formatCurrency(product.sell_price)}
-                                        </Table.Td>
-                                        <Table.Td>
+                                        title={product.title}
+                                        subtitle={product.category?.name || "Tanpa Kategori"}
+                                        badge={
                                             <span
-                                                className={`px-2 py-0.5 text-xs font-medium rounded ${
-                                                    product.stock === 0
-                                                        ? "bg-danger-100 text-danger-700 dark:bg-danger-900/50 dark:text-danger-400"
-                                                        : product.stock <= 5
-                                                        ? "bg-warning-100 text-warning-700 dark:bg-warning-900/50 dark:text-warning-400"
-                                                        : "bg-success-100 text-success-700 dark:bg-success-900/50 dark:text-success-400"
+                                                className={`px-2 py-0.5 text-xs font-bold rounded-lg ${
+                                                    outOfStock
+                                                        ? "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400"
+                                                        : lowStock
+                                                        ? "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400"
+                                                        : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
                                                 }`}
                                             >
-                                                {product.stock}
+                                                Stok: {product.stock}
                                             </span>
-                                        </Table.Td>
-                                        <Table.Td>
-                                            <div className="flex gap-2">
-                                                {canEditProducts && (
-                                                    <Button
-                                                        type={"edit"}
-                                                        icon={
-                                                            <IconPencilCog
-                                                                size={16}
-                                                                strokeWidth={
-                                                                    1.5
+                                        }
+                                        avatar={
+                                            <img
+                                                src={getProductImageUrl(product.image, true)}
+                                                alt={product.title}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    e.currentTarget.src = "/images/product-placeholder.svg";
+                                                }}
+                                            />
+                                        }
+                                        meta={[
+                                            {
+                                                label: formatCurrency(product.sell_price),
+                                                variant: "primary",
+                                            },
+                                            product.barcode ? { label: `Barcode: ${product.barcode}` } : null,
+                                            product.sku ? { label: `SKU: ${product.sku}` } : null,
+                                        ].filter(Boolean)}
+                                        actions={[
+                                            canEditProducts
+                                                ? {
+                                                      label: "Edit",
+                                                      icon: <IconPencilCog size={15} />,
+                                                      onClick: () =>
+                                                          router.get(route("products.edit", product.id)),
+                                                  }
+                                                : null,
+                                            canDeleteProducts
+                                                ? {
+                                                      label: "Hapus",
+                                                      variant: "danger",
+                                                      icon: <IconTrash size={15} />,
+                                                      onClick: () => handleDelete(product.id),
+                                                  }
+                                                : null,
+                                        ].filter(Boolean)}
+                                    />
+                                );
+                            })}
+                        </div>
+
+                        {/* Desktop Table View (>= 768px) */}
+                        <div className="hidden md:block">
+                            <Table.Card title={"Data Produk"}>
+                                <Table>
+                                    <Table.Thead>
+                                        <tr>
+                                            <Table.Th className="w-10">No</Table.Th>
+                                            <Table.Th>Produk</Table.Th>
+                                            <Table.Th>Kategori</Table.Th>
+                                            <Table.Th>Harga Beli</Table.Th>
+                                            <Table.Th>Harga Jual</Table.Th>
+                                            <Table.Th>Stok</Table.Th>
+                                            <Table.Th></Table.Th>
+                                        </tr>
+                                    </Table.Thead>
+                                    <Table.Tbody>
+                                        {products.data.map((product, i) => (
+                                            <tr
+                                                className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                                                key={product.id}
+                                            >
+                                                <Table.Td className="text-center">
+                                                    {++i +
+                                                        (products.current_page - 1) *
+                                                            products.per_page}
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden flex-shrink-0">
+                                                            <img
+                                                                src={getProductImageUrl(
+                                                                    product.image,
+                                                                    true
+                                                                )}
+                                                                alt={product.title}
+                                                                className="w-full h-full object-cover"
+                                                                onError={(e) => {
+                                                                    e.currentTarget.src =
+                                                                        "/images/product-placeholder.svg";
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                                                {product.title}
+                                                            </p>
+                                                            <div className="text-xs text-slate-500 dark:text-slate-400 space-y-0.5">
+                                                                {product.barcode && (
+                                                                    <p>
+                                                                        Barcode: {product.barcode}
+                                                                    </p>
+                                                                )}
+                                                                {product.sku && <p>SKU: {product.sku}</p>}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <span className="px-2 py-0.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded">
+                                                        {product.category?.name}
+                                                    </span>
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    {formatCurrency(product.buy_price)}
+                                                </Table.Td>
+                                                <Table.Td className="font-semibold text-primary-600 dark:text-primary-400">
+                                                    {formatCurrency(product.sell_price)}
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <span
+                                                        className={`px-2 py-0.5 text-xs font-medium rounded ${
+                                                            product.stock === 0
+                                                                ? "bg-danger-100 text-danger-700 dark:bg-danger-900/50 dark:text-danger-400"
+                                                                : product.stock <= 5
+                                                                ? "bg-warning-100 text-warning-700 dark:bg-warning-900/50 dark:text-warning-400"
+                                                                : "bg-success-100 text-success-700 dark:bg-success-900/50 dark:text-success-400"
+                                                        }`}
+                                                    >
+                                                        {product.stock}
+                                                    </span>
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <div className="flex gap-2">
+                                                        {canEditProducts && (
+                                                            <Button
+                                                                type={"edit"}
+                                                                icon={
+                                                                    <IconPencilCog
+                                                                        size={16}
+                                                                        strokeWidth={
+                                                                            1.5
+                                                                        }
+                                                                    />
+                                                                }
+                                                                className={
+                                                                    "border bg-warning-100 border-warning-200 text-warning-600 hover:bg-warning-200 dark:bg-warning-900/50 dark:border-warning-800 dark:text-warning-400"
+                                                                }
+                                                                href={route(
+                                                                    "products.edit",
+                                                                    product.id
+                                                                )}
+                                                            />
+                                                        )}
+                                                        {canDeleteProducts && (
+                                                            <Button
+                                                                type={"delete"}
+                                                                icon={
+                                                                    <IconTrash
+                                                                        size={16}
+                                                                        strokeWidth={
+                                                                            1.5
+                                                                        }
+                                                                    />
+                                                                }
+                                                                className={
+                                                                    "border bg-danger-100 border-danger-200 text-danger-600 hover:bg-danger-200 dark:bg-danger-900/50 dark:border-danger-800 dark:text-danger-400"
+                                                                }
+                                                                onClick={() =>
+                                                                    handleDelete(
+                                                                        product.id
+                                                                    )
                                                                 }
                                                             />
-                                                        }
-                                                        className={
-                                                            "border bg-warning-100 border-warning-200 text-warning-600 hover:bg-warning-200 dark:bg-warning-900/50 dark:border-warning-800 dark:text-warning-400"
-                                                        }
-                                                        href={route(
-                                                            "products.edit",
-                                                            product.id
                                                         )}
-                                                    />
-                                                )}
-                                                {canDeleteProducts && (
-                                                    <Button
-                                                        type={"delete"}
-                                                        icon={
-                                                            <IconTrash
-                                                                size={16}
-                                                                strokeWidth={
-                                                                    1.5
-                                                                }
-                                                            />
-                                                        }
-                                                        className={
-                                                            "border bg-danger-100 border-danger-200 text-danger-600 hover:bg-danger-200 dark:bg-danger-900/50 dark:border-danger-800 dark:text-danger-400"
-                                                        }
-                                                        url={route(
-                                                            "products.destroy",
-                                                            product.id
-                                                        )}
-                                                    />
-                                                )}
-                                            </div>
-                                        </Table.Td>
-                                    </tr>
-                                ))}
-                            </Table.Tbody>
-                        </Table>
-                    </Table.Card>
+                                                    </div>
+                                                </Table.Td>
+                                            </tr>
+                                        ))}
+                                    </Table.Tbody>
+                                </Table>
+                            </Table.Card>
+                        </div>
+                    </div>
                 )
             ) : (
                 /* Empty State */

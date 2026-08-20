@@ -130,6 +130,17 @@ export default function Index({
         }
     }, [products, customers]);
 
+    // Auto-redirect to Mobile POS on mobile viewport
+    useEffect(() => {
+        if (
+            typeof window !== "undefined" &&
+            window.innerWidth < 768 &&
+            !window.location.search.includes("desktop")
+        ) {
+            router.visit(route("transactions.mobile"), { replace: true });
+        }
+    }, []);
+
     const normalizedSelectedCategory =
         selectedCategory === null ? null : Number(selectedCategory);
     const pricingItemsByCartId = useMemo(() => {

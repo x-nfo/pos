@@ -22,13 +22,16 @@ import {
 import Notification from "@/Components/Dashboard/Notification";
 
 export default function POSLayout({ children }) {
-    const { auth, storeProfile, activeCashierShift, appVersion } = usePage().props;
+    const { auth, storeProfile, activeCashierShift, appVersion, branding } = usePage().props;
     const { darkMode, themeSwitcher } = useTheme();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isSyncingManual, setIsSyncingManual] = useState(false);
     const { isOnline, pendingCount, syncOfflineTransactions } = useOfflineSync();
+
+    const appName = branding?.appName || storeProfile?.name || "KASIR";
+    const appLogo = branding?.logoLight || storeProfile?.logo || null;
 
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
@@ -71,7 +74,7 @@ export default function POSLayout({ children }) {
     return (
         <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
             {/* Top Navigation Bar */}
-            <header className="sticky top-0 z-50 h-16 flex items-center justify-between px-4 lg:px-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm">
+            <header className="sticky top-0 z-50 h-14 lg:h-16 flex items-center justify-between px-3 lg:px-6 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 shadow-xs pt-safe">
                 {/* Left Section - Logo & Time */}
                 <div className="flex items-center gap-4 lg:gap-6">
                     {/* Mobile Menu Toggle */}
@@ -95,20 +98,20 @@ export default function POSLayout({ children }) {
                     {/* Logo */}
                     <Link href={route("dashboard")} className="flex items-center gap-2">
                         <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
-                            {storeProfile?.logo ? (
+                            {appLogo ? (
                                 <img
-                                    src={storeProfile.logo}
-                                    alt={storeProfile?.name || "Store"}
+                                    src={appLogo}
+                                    alt={appName}
                                     className="w-full h-full object-contain"
                                 />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-primary-600 text-white font-bold text-sm">
-                                    {(storeProfile?.name || "K").charAt(0)}
+                                <div className="w-full h-full flex items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 text-white font-bold text-sm shadow-sm">
+                                    {appName.charAt(0).toUpperCase()}
                                 </div>
                             )}
                         </div>
                         <span className="hidden sm:block text-lg font-bold text-slate-800 dark:text-white">
-                            {storeProfile?.name || "KASIR"}
+                            {appName}
                         </span>
                     </Link>
 

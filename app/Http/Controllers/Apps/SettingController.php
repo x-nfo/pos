@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Apps;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Services\AuditLogService;
+use App\Services\BrandingService;
 use App\Services\LoyaltyService;
 use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
@@ -16,7 +17,8 @@ class SettingController extends Controller
     public function __construct(
         private readonly AuditLogService $auditLogService,
         private readonly LoyaltyService $loyaltyService,
-        private readonly WhatsAppService $whatsAppService
+        private readonly WhatsAppService $whatsAppService,
+        private readonly BrandingService $brandingService
     ) {}
 
     /**
@@ -267,13 +269,96 @@ class SettingController extends Controller
         return back()->with('success', 'Pengaturan WhatsApp disimpan.');
     }
 
+    /**
+     * Branding settings page
+     */
+    public function branding()
+    {
+        return Inertia::render('Dashboard/Settings/Branding', [
+            'settings' => $this->brandingService->getSettingsForForm(),
+            'branding' => $this->brandingService->getBranding(),
+        ]);
+    }
+
+    /**
+     * Update branding settings
+     */
+    public function updateBranding(Request $request)
+    {
+        $request->validate([
+            'app_name' => 'required|string|max:255',
+            'app_tagline' => 'nullable|string|max:255',
+            'app_logo_light' => 'nullable|image|max:2048',
+            'app_logo_dark' => 'nullable|image|max:2048',
+            'app_logo_collapsed' => 'nullable|image|max:2048',
+            'app_favicon' => 'nullable|file|mimes:ico,png,svg,webp|max:1024',
+            'theme_primary_color' => ['required', 'string', 'regex:/^#([a-f0-9]{6}|[a-f0-9]{3})$/i'],
+            'theme_accent_color' => ['required', 'string', 'regex:/^#([a-f0-9]{6}|[a-f0-9]{3})$/i'],
+            'app_footer_text' => 'nullable|string|max:255',
+            'app_powered_by_show' => 'nullable|boolean',
+            'app_powered_by_text' => 'nullable|string|max:255',
+            'app_powered_by_url' => 'nullable|string|max:255',
+            'landing_page_mode' => 'required|string|in:public_landing,direct_login',
+        ]);
+
+        $before = $this->brandingService->getSettingsForForm();
+
+        // Handle logo uploads
+        $files = [
+            'app_logo_light' => 'branding',
+            'app_logo_dark' => 'branding',
+            'app_logo_collapsed' => 'branding',
+            'app_favicon' => 'branding',
+        ];
+
+        foreach ($files as $field => $folder) {
+            if ($request->hasFile($field)) {
+                $oldPath = Setting::get($field);
+                if ($oldPath && ! str_starts_with($oldPath, 'http')) {
+                    Storage::disk('public')->delete($oldPath);
+                }
+                $newPath = $request->file($field)->store($folder, 'public');
+                Setting::set($field, $newPath, "Branding asset {$field}");
+            } elseif ($request->boolean("remove_{$field}")) {
+                $oldPath = Setting::get($field);
+                if ($oldPath && ! str_starts_with($oldPath, 'http')) {
+                    Storage::disk('public')->delete($oldPath);
+                }
+                Setting::set($field, '', "Branding asset {$field}");
+            }
+        }
+
+        Setting::set('app_name', $request->app_name, 'Nama Aplikasi White-label');
+        Setting::set('app_tagline', $request->app_tagline ?? '', 'Tagline Aplikasi');
+        Setting::set('theme_primary_color', $request->theme_primary_color, 'Warna Tema Utama');
+        Setting::set('theme_accent_color', $request->theme_accent_color, 'Warna Tema Aksen');
+        Setting::set('app_footer_text', $request->app_footer_text ?? '', 'Teks Footer / Copyright');
+        Setting::set('app_powered_by_show', $request->boolean('app_powered_by_show') ? '1' : '0', 'Tampilkan Powered By');
+        Setting::set('app_powered_by_text', $request->app_powered_by_text ?? '', 'Teks Powered By');
+        Setting::set('app_powered_by_url', $request->app_powered_by_url ?? '', 'URL Powered By');
+        Setting::set('landing_page_mode', $request->landing_page_mode, 'Mode Landing Page');
+
+        $this->auditLogService->log(
+            event: 'branding.setting.updated',
+            module: 'branding_settings',
+            auditable: ['target_label' => 'Branding Settings'],
+            description: 'Pengaturan White Label Branding diperbarui.',
+            before: $before,
+            after: $this->brandingService->getSettingsForForm(),
+        );
+
+        return back()->with('success', 'Pengaturan branding berhasil diperbarui');
+    }
+
     public function testWhatsapp(Request $request)
     {
         $request->validate(['target' => 'required|string']);
 
+        $appName = Setting::get('app_name', config('app.name', 'Point of Sales'));
+
         $sent = $this->whatsAppService->send(
             $request->target,
-            'Test pesan dari Point of Sales — '.config('app.url')
+            "Test pesan dari {$appName} — ".config('app.url')
         );
 
         return response()->json(['status' => $sent]);

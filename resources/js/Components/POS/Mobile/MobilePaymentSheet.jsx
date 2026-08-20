@@ -6,8 +6,10 @@ import {
     IconCreditCard,
     IconClock,
     IconCheck,
-    IconBackspace,
 } from "@tabler/icons-react";
+import MobileBottomSheet from "@/Components/Mobile/MobileBottomSheet";
+import MobileNumpad from "@/Components/Mobile/MobileNumpad";
+import { useHaptic } from "@/Hooks/useHaptic";
 
 const formatPrice = (value = 0) =>
     Number(value || 0).toLocaleString("id-ID", {
@@ -36,6 +38,8 @@ export default function MobilePaymentSheet({
     isSubmitting = false,
     isLoadingPricing = false,
 }) {
+    const { triggerHaptic } = useHaptic();
+
     if (!isOpen) return null;
 
     const cash = Number(cashInput || 0);
@@ -48,276 +52,215 @@ export default function MobilePaymentSheet({
         { value: "gateway", label: "QRIS / EDC", icon: IconCreditCard },
     ];
 
-    const quickAmounts = [10000, 20000, 50000, 100000, 200000];
-
-    const handleKeypadPress = (key) => {
-        if (key === "CLEAR") {
-            onCashInputChange("");
-            return;
-        }
-        if (key === "BACKSPACE") {
-            onCashInputChange((prev) => (prev.length > 1 ? prev.slice(0, -1) : ""));
-            return;
-        }
-        if (key === "EXACT") {
-            onCashInputChange(String(payable));
-            return;
-        }
-        onCashInputChange((prev) => {
-            const next = `${prev}${key}`.replace(/^0+(?=\d)/, "");
-            return next;
-        });
-    };
-
     const isReadyToSubmit =
         !isSubmitting &&
         !isLoadingPricing &&
         (payLater ? !!selectedCustomer?.id : paymentMethod === "cash" ? isCashSufficient : true);
 
+    const handleFormSubmit = () => {
+        if (!isReadyToSubmit) return;
+        triggerHaptic("success");
+        onSubmit();
+    };
+
     return (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
-            {/* Backdrop */}
-            <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
-                onClick={onClose}
-            />
-
-            {/* Modal Sheet Container */}
-            <div className="relative w-full max-w-md mx-auto bg-white dark:bg-slate-900 rounded-t-3xl shadow-2xl border-t border-slate-200 dark:border-slate-800 flex flex-col max-h-[90dvh] safe-bottom select-none">
-                {/* Header */}
-                <div className="p-3.5 px-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between flex-shrink-0">
-                    <div>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                            Total Tagihan
-                        </span>
-                        <h3 className="text-base font-black text-slate-900 dark:text-white">
-                            {formatPrice(payable)}
-                        </h3>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center active:scale-90"
-                    >
-                        <IconX size={16} />
-                    </button>
-                </div>
-
-                {/* Body Content */}
-                <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
-                    {/* Pay Later Toggle */}
-                    <div className="flex items-center justify-between p-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
-                        <div>
-                            <p className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-                                <IconClock size={15} className="text-amber-500" />
-                                Bayar Nanti (Piutang)
-                            </p>
-                            <p className="text-[10px] text-slate-500">
-                                Catat sebagai piutang pelanggan
-                            </p>
-                        </div>
-                        <input
-                            type="checkbox"
-                            checked={payLater}
-                            onChange={(e) => {
-                                onPayLaterChange(e.target.checked);
-                                if (e.target.checked) {
-                                    onPaymentMethodChange("cash");
-                                }
-                            }}
-                            className="w-4.5 h-4.5 rounded text-primary-600 focus:ring-primary-500"
-                        />
-                    </div>
-
-                    {payLater ? (
-                        <div className="space-y-2.5">
-                            {!selectedCustomer?.id && (
-                                <p className="text-xs text-rose-600 font-bold bg-rose-50 dark:bg-rose-950/40 p-2.5 rounded-xl border border-rose-200 dark:border-rose-800">
-                                    ⚠️ Wajib memilih pelanggan terdaftar untuk opsi piutang.
-                                </p>
-                            )}
-                            <div>
-                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                                    Jatuh Tempo
-                                </label>
-                                <input
-                                    type="date"
-                                    value={dueDate}
-                                    onChange={(e) => onDueDateChange(e.target.value)}
-                                    className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
-                                />
-                            </div>
-                        </div>
+        <MobileBottomSheet
+            isOpen={isOpen}
+            onClose={onClose}
+            title="Pembayaran Transaksi"
+            subtitle={`Total Tagihan: ${formatPrice(payable)}`}
+            maxHeight="max-h-[92vh]"
+            footer={
+                <button
+                    type="button"
+                    onClick={handleFormSubmit}
+                    disabled={!isReadyToSubmit}
+                    className={`w-full h-13 rounded-2xl text-sm font-bold tracking-wide flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] ${
+                        isReadyToSubmit
+                            ? "bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white shadow-primary-500/25"
+                            : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed shadow-none"
+                    }`}
+                >
+                    {isSubmitting ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
                         <>
-                            {/* Payment Methods */}
-                            <div>
-                                <div className="grid grid-cols-3 gap-1.5">
-                                    {paymentOptions.map((opt) => {
-                                        const Icon = opt.icon;
-                                        const isActive = paymentMethod === opt.value;
+                            <IconCheck size={20} strokeWidth={2.5} />
+                            <span>
+                                {payLater
+                                    ? "Simpan Sebagai Piutang"
+                                    : `Bayar ${formatPrice(paymentMethod === "cash" && isCashSufficient ? payable : payable)}`}
+                            </span>
+                        </>
+                    )}
+                </button>
+            }
+        >
+            <div className="space-y-4">
+                {/* Pay Later Toggle */}
+                <div className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
+                    <div>
+                        <p className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                            <IconClock size={16} className="text-amber-500" />
+                            Bayar Nanti (Piutang)
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            Catat invoice sebagai piutang customer
+                        </p>
+                    </div>
+                    <input
+                        type="checkbox"
+                        checked={payLater}
+                        onChange={(e) => {
+                            triggerHaptic("tap");
+                            onPayLaterChange(e.target.checked);
+                            if (e.target.checked) {
+                                onPaymentMethodChange("cash");
+                            }
+                        }}
+                        className="w-5 h-5 rounded-lg text-primary-600 focus:ring-primary-500 cursor-pointer"
+                    />
+                </div>
+
+                {payLater ? (
+                    <div className="space-y-3">
+                        {!selectedCustomer?.id && (
+                            <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300 font-semibold">
+                                ⚠️ Wajib memilih pelanggan terdaftar untuk opsi piutang.
+                            </div>
+                        )}
+                        <div>
+                            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                                Jatuh Tempo
+                            </label>
+                            <input
+                                type="date"
+                                value={dueDate}
+                                onChange={(e) => onDueDateChange(e.target.value)}
+                                className="w-full h-11 px-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium focus:ring-2 focus:ring-primary-500"
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        {/* Payment Method Selector */}
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                                Metode Pembayaran
+                            </label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {paymentOptions.map((opt) => {
+                                    const Icon = opt.icon;
+                                    const isActive = paymentMethod === opt.value;
+                                    return (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => {
+                                                triggerHaptic("tap");
+                                                onPaymentMethodChange(opt.value);
+                                            }}
+                                            className={`p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 text-center transition-all active:scale-95 ${
+                                                isActive
+                                                    ? "border-primary-500 bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 font-bold shadow-sm"
+                                                    : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                            }`}
+                                        >
+                                            <Icon size={20} />
+                                            <span className="text-xs">{opt.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Bank Transfer Selection */}
+                        {paymentMethod === "bank_transfer" && (
+                            <div className="space-y-2">
+                                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                                    Pilih Rekening Bank
+                                </label>
+                                <div className="grid grid-cols-1 gap-2">
+                                    {bankAccounts.map((bank) => {
+                                        const isSelected = selectedBankAccount?.id === bank.id;
                                         return (
                                             <button
-                                                key={opt.value}
+                                                key={bank.id}
                                                 type="button"
-                                                onClick={() => onPaymentMethodChange(opt.value)}
-                                                className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 text-center transition-all active:scale-95 ${
-                                                    isActive
-                                                        ? "border-primary-600 bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 font-bold shadow-xs"
-                                                        : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                                                onClick={() => {
+                                                    triggerHaptic("tap");
+                                                    onSelectBankAccount(bank);
+                                                }}
+                                                className={`p-3 rounded-2xl border text-left flex items-center justify-between active:scale-[0.98] transition-all ${
+                                                    isSelected
+                                                        ? "border-primary-500 bg-primary-50 dark:bg-primary-950/40 text-primary-700 dark:text-primary-300 shadow-sm"
+                                                        : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                                                 }`}
                                             >
-                                                <Icon size={18} />
-                                                <span className="text-[11px]">
-                                                    {opt.label}
-                                                </span>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                                                        {bank.bank_name}
+                                                    </p>
+                                                    <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
+                                                        {bank.account_number} a.n. {bank.account_name}
+                                                    </p>
+                                                </div>
+                                                {isSelected && (
+                                                    <div className="w-6 h-6 rounded-full bg-primary-600 text-white flex items-center justify-center">
+                                                        <IconCheck size={14} strokeWidth={3} />
+                                                    </div>
+                                                )}
                                             </button>
                                         );
                                     })}
                                 </div>
                             </div>
-
-                            {/* Bank Selection */}
-                            {paymentMethod === "bank_transfer" && (
-                                <div className="space-y-1.5">
-                                    <label className="block text-[10px] font-bold text-slate-400 uppercase">
-                                        Pilih Rekening
-                                    </label>
-                                    <div className="grid grid-cols-1 gap-1.5">
-                                        {bankAccounts.map((bank) => {
-                                            const isSelected = selectedBankAccount?.id === bank.id;
-                                            return (
-                                                <button
-                                                    key={bank.id}
-                                                    type="button"
-                                                    onClick={() => onSelectBankAccount(bank)}
-                                                    className={`p-2.5 rounded-xl border text-left flex items-center justify-between active:scale-[0.98] ${
-                                                        isSelected
-                                                            ? "border-primary-600 bg-primary-50 dark:bg-primary-950/40 text-primary-700 dark:text-primary-300"
-                                                            : "border-slate-200 dark:border-slate-800"
-                                                    }`}
-                                                >
-                                                    <div>
-                                                        <p className="text-xs font-bold">{bank.bank_name}</p>
-                                                        <p className="text-[11px] font-mono text-slate-500">{bank.account_number} ({bank.account_name})</p>
-                                                    </div>
-                                                    {isSelected && <IconCheck size={16} className="text-primary-600 font-bold" />}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Cash Input & Numpad */}
-                            {paymentMethod === "cash" && (
-                                <div className="space-y-2.5">
-                                    {/* Display Cash & Change */}
-                                    <div className="p-2.5 px-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
-                                        <div className="flex justify-between items-center text-xs">
-                                            <span className="font-bold text-slate-500">
-                                                Uang Diterima:
-                                            </span>
-                                            <span className="font-black text-sm text-slate-900 dark:text-white">
-                                                {formatPrice(cash)}
-                                            </span>
-                                        </div>
-
-                                        <div className="flex justify-between items-center pt-1.5 mt-1.5 border-t border-slate-200 dark:border-slate-700 text-xs">
-                                            <span className="font-bold text-slate-500">
-                                                Kembalian:
-                                            </span>
-                                            <span
-                                                className={`font-black text-sm ${
-                                                    isCashSufficient
-                                                        ? "text-emerald-600 dark:text-emerald-400"
-                                                        : "text-rose-500"
-                                                }`}
-                                            >
-                                                {isCashSufficient
-                                                    ? formatPrice(change)
-                                                    : `Kurang ${formatPrice(payable - cash)}`}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Quick Amount Chips */}
-                                    <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-0.5">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleKeypadPress("EXACT")}
-                                            className="px-2.5 py-1.5 rounded-lg text-[11px] font-black whitespace-nowrap bg-primary-600 text-white shadow-xs active:scale-95"
-                                        >
-                                            Uang Pas
-                                        </button>
-                                        {quickAmounts.map((amt) => (
-                                            <button
-                                                key={amt}
-                                                type="button"
-                                                onClick={() => onCashInputChange(String(amt))}
-                                                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap active:scale-95 transition-all ${
-                                                    cash === amt
-                                                        ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900"
-                                                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-                                                }`}
-                                            >
-                                                {formatPrice(amt)}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    {/* Integrated Keypad */}
-                                    <div className="grid grid-cols-3 gap-1.5">
-                                        {["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0", "BACKSPACE"].map(
-                                            (k) => (
-                                                <button
-                                                    key={k}
-                                                    type="button"
-                                                    onClick={() => handleKeypadPress(k)}
-                                                    className="h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-extrabold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-90 transition-transform flex items-center justify-center shadow-xs"
-                                                >
-                                                    {k === "BACKSPACE" ? <IconBackspace size={18} /> : k}
-                                                </button>
-                                            )
-                                        )}
-                                        <button
-                                            type="button"
-                                            onClick={() => handleKeypadPress("CLEAR")}
-                                            className="col-span-3 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold text-xs active:scale-95"
-                                        >
-                                            Hapus / Reset
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
-
-                {/* Confirm Action Button */}
-                <div className="p-3.5 border-t border-slate-100 dark:border-slate-800 flex-shrink-0">
-                    <button
-                        type="button"
-                        onClick={onSubmit}
-                        disabled={!isReadyToSubmit}
-                        className={`w-full h-12 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] ${
-                            isReadyToSubmit
-                                ? "bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white"
-                                : "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
-                        }`}
-                    >
-                        {isSubmitting ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                            <>
-                                <IconCheck size={18} strokeWidth={3} />
-                                <span>Selesaikan Transaksi</span>
-                            </>
                         )}
-                    </button>
-                </div>
+
+                        {/* Cash Input with Numpad & Quick Presets */}
+                        {paymentMethod === "cash" && (
+                            <div className="space-y-3">
+                                {/* Cash summary & Change box */}
+                                <div className="p-3.5 bg-slate-50 dark:bg-slate-800/70 rounded-2xl border border-slate-200/80 dark:border-slate-700">
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="font-semibold text-slate-500 dark:text-slate-400">
+                                            Uang Diterima
+                                        </span>
+                                        <span className="font-black text-base text-slate-900 dark:text-white font-mono">
+                                            {formatPrice(cash)}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex justify-between items-center pt-2 mt-2 border-t border-slate-200/60 dark:border-slate-700 text-xs">
+                                        <span className="font-semibold text-slate-500 dark:text-slate-400">
+                                            Kembalian
+                                        </span>
+                                        <span
+                                            className={`font-black text-base font-mono ${
+                                                isCashSufficient
+                                                    ? "text-emerald-600 dark:text-emerald-400"
+                                                    : "text-rose-500 dark:text-rose-400"
+                                            }`}
+                                        >
+                                            {isCashSufficient
+                                                ? formatPrice(change)
+                                                : `Kurang ${formatPrice(payable - cash)}`}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Integrated Mobile Numpad */}
+                                <MobileNumpad
+                                    value={cashInput}
+                                    onChange={onCashInputChange}
+                                    targetAmount={payable}
+                                    showShortcuts={true}
+                                />
+                            </div>
+                        )}
+                    </>
+                )}
             </div>
-        </div>
+        </MobileBottomSheet>
     );
 }

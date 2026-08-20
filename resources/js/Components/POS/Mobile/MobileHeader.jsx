@@ -8,20 +8,23 @@ import {
     IconMoon,
     IconRefresh,
     IconHistory,
-    IconWallet,
     IconArrowLeft,
     IconDotsVertical,
+    IconUser,
 } from "@tabler/icons-react";
+import { useHaptic } from "@/Hooks/useHaptic";
 
 export default function MobileHeader({ activeShift, onOpenShiftModal }) {
     const { auth, storeProfile } = usePage().props;
     const { darkMode, themeSwitcher } = useTheme();
+    const { triggerHaptic } = useHaptic();
     const { isOnline, pendingCount, syncOfflineTransactions } = useOfflineSync();
     const [isSyncing, setIsSyncing] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
 
     const handleSync = async () => {
         if (!isOnline || isSyncing) return;
+        triggerHaptic("tap");
         setIsSyncing(true);
         try {
             await syncOfflineTransactions();
@@ -31,17 +34,18 @@ export default function MobileHeader({ activeShift, onOpenShiftModal }) {
     };
 
     return (
-        <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3.5 py-2.5 flex items-center justify-between flex-shrink-0 shadow-xs">
-            {/* Left: Brand & Shift Info */}
-            <div className="flex items-center gap-2.5 min-w-0">
+        <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-3 py-2 pt-safe flex items-center justify-between flex-shrink-0 shadow-xs transition-all">
+            {/* Left: Brand & Shift Status Pill */}
+            <div className="flex items-center gap-2 min-w-0">
                 <Link
                     href={route("dashboard")}
-                    className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center bg-primary-600 text-white font-black text-xs shadow-xs flex-shrink-0 active:scale-95 transition-transform"
+                    onClick={() => triggerHaptic("tap")}
+                    className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-tr from-primary-600 to-primary-700 text-white font-black text-xs shadow-xs flex-shrink-0 active:scale-95 transition-transform"
                 >
                     {storeProfile?.logo ? (
                         <img
                             src={storeProfile.logo}
-                            alt={storeProfile?.name || "Store"}
+                            alt="Logo"
                             className="w-full h-full object-cover"
                         />
                     ) : (
@@ -49,20 +53,23 @@ export default function MobileHeader({ activeShift, onOpenShiftModal }) {
                     )}
                 </Link>
                 <div className="min-w-0">
-                    <h1 className="text-xs font-black text-slate-900 dark:text-white leading-tight truncate">
-                        {storeProfile?.name || "POS Kasir"}
-                    </h1>
-                    <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="flex items-center gap-1.5">
+                        <h1 className="text-xs font-black text-slate-900 dark:text-white leading-tight truncate">
+                            {storeProfile?.name || "POS Kasir"}
+                        </h1>
                         {activeShift ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded-md">
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded-full border border-emerald-200/50 dark:border-emerald-800/50 flex-shrink-0">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                 Shift #{activeShift.id}
                             </span>
                         ) : (
                             <button
                                 type="button"
-                                onClick={onOpenShiftModal}
-                                className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.2 rounded-md"
+                                onClick={() => {
+                                    triggerHaptic("tap");
+                                    onOpenShiftModal();
+                                }}
+                                className="text-[9px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded-full border border-rose-200/50 flex-shrink-0 active:scale-95"
                             >
                                 Buka Shift
                             </button>
@@ -71,11 +78,11 @@ export default function MobileHeader({ activeShift, onOpenShiftModal }) {
                 </div>
             </div>
 
-            {/* Right: Actions */}
-            <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* Right: Offline status, Theme & Menu */}
+            <div className="flex items-center gap-1 flex-shrink-0">
                 {/* Offline Status */}
                 {!isOnline ? (
-                    <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-extrabold flex items-center gap-1">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-bold flex items-center gap-1 border border-amber-200 dark:border-amber-800">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                         Offline
                     </span>
@@ -84,7 +91,7 @@ export default function MobileHeader({ activeShift, onOpenShiftModal }) {
                         type="button"
                         onClick={handleSync}
                         disabled={isSyncing}
-                        className="px-2 py-0.5 rounded-full bg-primary-50 dark:bg-primary-950/50 text-primary-600 dark:text-primary-400 text-[10px] font-bold flex items-center gap-1 border border-primary-200 dark:border-primary-800"
+                        className="px-2 py-0.5 rounded-full bg-primary-50 dark:bg-primary-950/50 text-primary-600 dark:text-primary-400 text-[10px] font-bold flex items-center gap-1 border border-primary-200 dark:border-primary-800 active:scale-95"
                     >
                         <IconRefresh
                             size={12}
@@ -97,31 +104,41 @@ export default function MobileHeader({ activeShift, onOpenShiftModal }) {
                 {/* Theme Toggle */}
                 <button
                     type="button"
-                    onClick={themeSwitcher}
-                    className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:scale-95"
+                    onClick={() => {
+                        triggerHaptic("tap");
+                        themeSwitcher();
+                    }}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:scale-90"
                     aria-label="Toggle Theme"
                 >
-                    {darkMode ? <IconSun size={17} /> : <IconMoon size={17} />}
+                    {darkMode ? (
+                        <IconSun size={16} className="text-amber-400" />
+                    ) : (
+                        <IconMoon size={16} />
+                    )}
                 </button>
 
                 {/* Dropdown Menu */}
                 <div className="relative">
                     <button
                         type="button"
-                        onClick={() => setMenuOpen(!menuOpen)}
-                        className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:scale-95"
+                        onClick={() => {
+                            triggerHaptic("tap");
+                            setMenuOpen(!menuOpen);
+                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:scale-90"
                         aria-label="Menu"
                     >
-                        <IconDotsVertical size={18} />
+                        <IconDotsVertical size={17} />
                     </button>
 
                     {menuOpen && (
                         <>
                             <div
-                                className="fixed inset-0 z-40 bg-black/20"
+                                className="fixed inset-0 z-40 bg-black/30 backdrop-blur-xs"
                                 onClick={() => setMenuOpen(false)}
                             />
-                            <div className="absolute right-0 top-10 w-52 z-50 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl p-1.5 text-slate-800 dark:text-slate-200">
+                            <div className="absolute right-0 top-9 w-52 z-50 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-1.5 text-slate-800 dark:text-slate-200 animate-sheet-up">
                                 <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
                                     <p className="text-[10px] text-slate-400">Kasir Aktif</p>
                                     <p className="text-xs font-bold truncate">
@@ -130,12 +147,12 @@ export default function MobileHeader({ activeShift, onOpenShiftModal }) {
                                 </div>
 
                                 <Link
-                                    href={route("transactions.index")}
+                                    href={route("transactions.index", { desktop: 1 })}
                                     className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-primary-600 dark:text-primary-400"
                                     onClick={() => setMenuOpen(false)}
                                 >
                                     <IconDeviceDesktop size={15} />
-                                    <span>Versi Desktop</span>
+                                    <span>Mode Desktop POS</span>
                                 </Link>
 
                                 <Link
@@ -148,26 +165,18 @@ export default function MobileHeader({ activeShift, onOpenShiftModal }) {
                                 </Link>
 
                                 {activeShift && (
-                                    <Link
-                                        href={route("cashier-shifts.index")}
-                                        className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                                        onClick={() => setMenuOpen(false)}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setMenuOpen(false);
+                                            onOpenShiftModal();
+                                        }}
+                                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                                     >
-                                        <IconWallet size={15} />
-                                        <span>Kelola Shift</span>
-                                    </Link>
+                                        <IconUser size={15} />
+                                        <span>Detail / Tutup Shift</span>
+                                    </button>
                                 )}
-
-                                <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
-
-                                <Link
-                                    href={route("dashboard")}
-                                    className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                                    onClick={() => setMenuOpen(false)}
-                                >
-                                    <IconArrowLeft size={15} />
-                                    <span>Dashboard</span>
-                                </Link>
                             </div>
                         </>
                     )}

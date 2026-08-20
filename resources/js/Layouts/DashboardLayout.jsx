@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { usePage } from "@inertiajs/react";
 import Sidebar from "@/Components/Dashboard/Sidebar";
 import Navbar from "@/Components/Dashboard/Navbar";
+import DashboardBottomNav from "@/Components/Dashboard/DashboardBottomNav";
+import MobileAppMenu from "@/Components/Mobile/MobileAppMenu";
 import { Toaster } from "react-hot-toast";
 import { useTheme } from "@/Context/ThemeSwitcherContext";
 
@@ -52,23 +54,24 @@ export default function AppLayout({ children }) {
         auth?.super === true && securityWarnings.length > 0;
 
     return (
-        <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-950 transition-colors duration-200">
+        <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-950 transition-colors duration-200 touch-action-manipulation">
+            {/* Desktop Sidebar (>= 768px) */}
             <Sidebar sidebarOpen={sidebarOpen} />
-            {/* Mobile overlay */}
-            <div
-                className={`fixed inset-0 bg-slate-900/40 md:hidden transition-opacity duration-300 ${
-                    sidebarOpen ? "opacity-100 pointer-events-auto z-30" : "opacity-0 pointer-events-none"
-                }`}
-                onClick={() => setSidebarOpen(false)}
+
+            {/* Mobile Native App Menu Hub (< 768px) */}
+            <MobileAppMenu
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
             />
+
             <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
                 <Navbar
                     toggleSidebar={toggleSidebar}
                     themeSwitcher={themeSwitcher}
                     darkMode={darkMode}
                 />
-                <main className="dashboard-scrollbar flex-1 overflow-y-auto">
-                    <div className="w-full py-6 px-4 md:px-6 lg:px-8 pb-20 md:pb-6">
+                <main className="dashboard-scrollbar flex-1 overflow-y-auto overscroll-contain">
+                    <div className="w-full py-6 px-4 md:px-6 lg:px-8 pb-28 md:pb-6">
                         {showSecurityWarnings && (
                             <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
                                 <p className="text-sm font-semibold">
@@ -101,6 +104,12 @@ export default function AppLayout({ children }) {
                         {children}
                     </div>
                 </main>
+
+                {/* Native Bottom Navigation for Mobile */}
+                <DashboardBottomNav
+                    toggleSidebar={toggleSidebar}
+                    sidebarOpen={sidebarOpen}
+                />
             </div>
         </div>
     );

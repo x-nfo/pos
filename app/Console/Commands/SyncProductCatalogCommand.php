@@ -30,10 +30,11 @@ class SyncProductCatalogCommand extends Command
 
         if (! $url) {
             $this->error('URL Google Sheet belum dikonfigurasi. Harap isi GOOGLE_SHEET_CATALOG_URL di file .env');
+
             return Command::FAILURE;
         }
 
-        $this->info("Menghubungi Google Sheet...");
+        $this->info('Menghubungi Google Sheet...');
         $this->line("URL: {$url}");
 
         try {
@@ -54,7 +55,8 @@ class SyncProductCatalogCommand extends Command
 
             return Command::SUCCESS;
         } catch (\Throwable $e) {
-            $this->error("Gagal sinkronisasi: " . $e->getMessage());
+            $this->error('Gagal sinkronisasi: '.$e->getMessage());
+
             return Command::FAILURE;
         }
     }

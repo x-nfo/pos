@@ -1,26 +1,41 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
+@php
+    $branding = app(\App\Services\BrandingService::class)->getBranding();
+    $cssVariables = app(\App\Services\BrandingService::class)->generateCssVariables();
+@endphp
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <meta name="theme-color" content="#4f46e5">
-    <meta name="description" content="Dikasir — sistem kasir (POS) open source untuk UMKM Indonesia. Multi-warehouse, PPN, loyalty & CRM, WhatsApp gateway, offline mode. Gratis, MIT License.">
-    <meta property="og:site_name" content="Dikasir">
-    <meta property="og:title" content="Dikasir — Sistem Kasir Open Source untuk UMKM">
-    <meta property="og:description" content="POS gratis & open source: multi-warehouse, PPN, loyalty & CRM, WhatsApp gateway, offline mode. Laravel 13 + React 19.">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="{{ $branding['colors']['primary'] }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ $branding['appName'] }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="description" content="{{ $branding['appName'] }} — {{ $branding['tagline'] }}">
+    <meta property="og:site_name" content="{{ $branding['appName'] }}">
+    <meta property="og:title" content="{{ $branding['appName'] }} — {{ $branding['tagline'] }}">
+    <meta property="og:description" content="{{ $branding['appName'] }} — {{ $branding['tagline'] }}">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ config('app.url') }}/">
-    <meta property="og:image" content="{{ config('app.url') }}/images/og-image.png">
+    <meta property="og:image" content="{{ $branding['logoLight'] ?: config('app.url').'/images/og-image.png' }}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Dikasir — Sistem Kasir Open Source untuk UMKM">
-    <meta name="twitter:description" content="POS gratis & open source: multi-warehouse, PPN, loyalty & CRM, WhatsApp gateway, offline mode.">
-    <meta name="twitter:image" content="{{ config('app.url') }}/images/og-image.png">
+    <meta name="twitter:title" content="{{ $branding['appName'] }} — {{ $branding['tagline'] }}">
+    <meta name="twitter:description" content="{{ $branding['appName'] }} — {{ $branding['tagline'] }}">
+    <meta name="twitter:image" content="{{ $branding['logoLight'] ?: config('app.url').'/images/og-image.png' }}">
+    
+    @if($branding['favicon'])
+        <link rel="icon" type="image/x-icon" href="{{ $branding['favicon'] }}">
+        <link rel="apple-touch-icon" href="{{ $branding['favicon'] }}">
+    @else
+        <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    @endif
     <link rel="manifest" href="/manifest.json">
 
-    <title data-inertia>{{ config('app.name', 'Laravel') }}</title>
+    <title data-inertia>{{ $branding['appName'] }}</title>
 
     <!-- Fonts - Preconnect for performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,6 +49,12 @@
     @viteReactRefresh
     @vite('resources/js/app.jsx')
     @inertiaHead
+
+    <!-- Dynamic Theming CSS Variables (Highest cascade priority) -->
+    <style id="branding-theme-vars">
+        {!! $cssVariables !!}
+    </style>
+
     <style>
         body.dark {
             background-color: rgb(2 6 23);
