@@ -12,9 +12,17 @@ import {
 import { CustomerHistoryButton } from "./CustomerHistoryPanel";
 import AddCustomerModal from "./AddCustomerModal";
 
+export const WALK_IN_CUSTOMER = {
+    id: null,
+    name: "Pelanggan Umum",
+    no_telp: "",
+    is_loyalty_member: false,
+    is_walk_in: true,
+};
+
 export default function CustomerSelect({
     customers = [],
-    selected,
+    selected = WALK_IN_CUSTOMER,
     onSelect,
     placeholder = "Pilih pelanggan...",
     error,
@@ -27,6 +35,13 @@ export default function CustomerSelect({
     const [showAddModal, setShowAddModal] = useState(false);
     const containerRef = useRef(null);
     const inputRef = useRef(null);
+
+    const isWalkInMatch =
+        !search ||
+        "pelanggan umum".includes(search.toLowerCase()) ||
+        "umum".includes(search.toLowerCase()) ||
+        "walk in".includes(search.toLowerCase()) ||
+        "walk-in".includes(search.toLowerCase());
 
     // Filter customers by search
     const filteredCustomers = customers.filter(
@@ -73,7 +88,7 @@ export default function CustomerSelect({
     };
 
     const handleUpgradeMember = async () => {
-        if (!selected || selected.is_loyalty_member) {
+        if (!selected?.id || selected.is_loyalty_member) {
             return;
         }
 
@@ -94,6 +109,8 @@ export default function CustomerSelect({
         }
     };
 
+    const isWalkInSelected = !selected || !selected.id || selected.is_walk_in;
+
     return (
         <>
             <div ref={containerRef} className="relative">
@@ -105,17 +122,17 @@ export default function CustomerSelect({
                 )}
 
                 {/* Select Button with History and Add */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 w-full">
                     <button
                         type="button"
                         onClick={() => setIsOpen(!isOpen)}
                         className={`
-                            flex-1 h-12 px-4 rounded-xl text-left
-                            flex items-center gap-3
-                            border-2 transition-all duration-200
+                            flex-1 min-w-0 h-11 px-2.5 rounded-xl text-left
+                            flex items-center gap-2
+                            border transition-all duration-200
                             ${
                                 isOpen
-                                    ? "border-primary-500 ring-4 ring-primary-500/20"
+                                    ? "border-primary-500 ring-2 ring-primary-500/20"
                                     : error
                                     ? "border-danger-500"
                                     : "border-slate-200 dark:border-slate-700"
@@ -125,81 +142,74 @@ export default function CustomerSelect({
                     >
                         <div
                             className={`
-                            w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
+                            w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0
                             ${
-                                selected
+                                selected && !isWalkInSelected
                                     ? "bg-primary-100 dark:bg-primary-900/50"
                                     : "bg-slate-100 dark:bg-slate-800"
                             }
                         `}
                         >
                             <IconUser
-                                size={18}
+                                size={15}
                                 className={
-                                    selected
+                                    selected && !isWalkInSelected
                                         ? "text-primary-600 dark:text-primary-400"
-                                        : "text-slate-400"
+                                        : "text-slate-500 dark:text-slate-400"
                                 }
                             />
                         </div>
                         <div className="flex-1 min-w-0">
                             {selected ? (
-                                <>
-                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
-                                        {selected.name}
+                                <div className="flex items-center justify-between gap-1.5 min-w-0">
+                                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                                        {selected.name || "Pelanggan Umum"}
                                     </p>
-                                    {selected.no_telp && (
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                                            {selected.no_telp}
-                                        </p>
+                                    {isWalkInSelected ? (
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex-shrink-0">
+                                            Umum
+                                        </span>
+                                    ) : selected.is_loyalty_member ? (
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary-50 dark:bg-primary-950/60 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800 capitalize flex-shrink-0">
+                                            {selected.loyalty_tier || "Member"}
+                                        </span>
+                                    ) : (
+                                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex-shrink-0">
+                                            Non-member
+                                        </span>
                                     )}
-                                    {selected.member_code ? (
-                                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                                            {selected.member_code}
-                                        </p>
-                                    ) : null}
-                                    <p className="text-[11px] text-primary-500 dark:text-primary-300 truncate">
-                                        {selected.is_loyalty_member
-                                            ? `${selected.loyalty_tier} • ${selected.loyalty_points || 0} poin`
-                                            : "Non-member"}
-                                    </p>
-                                </>
+                                </div>
                             ) : (
-                                <p className="text-sm text-slate-400 dark:text-slate-500">
+                                <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
                                     {placeholder}
                                 </p>
                             )}
                         </div>
                         <IconChevronDown
-                            size={18}
-                            className={`text-slate-400 transition-transform ${
+                            size={16}
+                            className={`text-slate-400 flex-shrink-0 transition-transform ${
                                 isOpen ? "rotate-180" : ""
                             }`}
                         />
                     </button>
 
-                    {/* History Button - Show when customer is selected */}
-                    {selected && (
+                    {/* History Button - Show only when registered customer is selected */}
+                    {selected?.id && (
                         <CustomerHistoryButton
                             customerId={selected.id}
                             customerName={selected.name}
+                            className="h-11 w-9 flex-shrink-0 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 active:scale-95"
                         />
                     )}
 
-                    {selected && !selected.is_loyalty_member ? (
+                    {selected?.id && !selected.is_loyalty_member ? (
                         <button
                             type="button"
                             onClick={handleUpgradeMember}
-                            className="h-12 px-3 rounded-xl border border-primary-200 bg-primary-50 text-primary-600 hover:bg-primary-100 dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-300"
+                            className="h-11 w-9 flex-shrink-0 rounded-xl border border-primary-200 bg-primary-50 text-primary-600 hover:bg-primary-100 dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-300 flex items-center justify-center active:scale-95"
                             title="Upgrade pelanggan menjadi member"
                         >
-                            <span className="hidden sm:inline-flex items-center gap-2 text-sm font-semibold">
-                                <IconCrown size={16} />
-                                Upgrade
-                            </span>
-                            <span className="inline-flex sm:hidden">
-                                <IconCrown size={18} />
-                            </span>
+                            <IconCrown size={17} />
                         </button>
                     ) : null}
 
@@ -207,12 +217,12 @@ export default function CustomerSelect({
                     <button
                         type="button"
                         onClick={() => setShowAddModal(true)}
-                        className="h-12 w-12 rounded-xl border-2 border-dashed border-primary-300 dark:border-primary-700
-                            text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-950/30
-                            flex items-center justify-center transition-colors"
+                        className="h-11 w-9 flex-shrink-0 rounded-xl border border-dashed border-primary-300 dark:border-primary-700
+                            text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950/30
+                            flex items-center justify-center active:scale-95 transition-transform"
                         title="Tambah pelanggan baru"
                     >
-                        <IconUserPlus size={20} />
+                        <IconUserPlus size={17} />
                     </button>
                 </div>
 
@@ -243,73 +253,135 @@ export default function CustomerSelect({
                         </div>
 
                         {/* Customer List */}
-                        <div className="max-h-60 overflow-y-auto scrollbar-thin">
+                        <div className="max-h-60 overflow-y-auto scrollbar-thin divide-y divide-slate-100 dark:divide-slate-800/60">
+                            {/* Pelanggan Umum / Walk-in option */}
+                            {isWalkInMatch && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleSelect(WALK_IN_CUSTOMER)}
+                                    className={`
+                                        w-full flex items-center gap-3 px-4 py-3 text-left
+                                        transition-colors
+                                        ${
+                                            isWalkInSelected
+                                                ? "bg-primary-50 dark:bg-primary-950/30"
+                                                : "hover:bg-slate-50 dark:hover:bg-slate-800"
+                                        }
+                                    `}
+                                >
+                                    <div
+                                        className={`
+                                        w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0
+                                        ${
+                                            isWalkInSelected
+                                                ? "bg-primary-500 text-white"
+                                                : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                                        }
+                                    `}
+                                    >
+                                        {isWalkInSelected ? (
+                                            <IconCheck size={16} />
+                                        ) : (
+                                            <IconUser size={18} />
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                                Pelanggan Umum
+                                            </p>
+                                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                                Walk-in
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                            Tanpa data member • Transaksi langsung
+                                        </p>
+                                    </div>
+                                </button>
+                            )}
+
                             {filteredCustomers.length > 0 ? (
                                 <ul>
-                                    {filteredCustomers.map((customer) => (
-                                        <li key={customer.id}>
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    handleSelect(customer)
-                                                }
-                                                className={`
-                                                    w-full flex items-center gap-3 px-4 py-3 text-left
-                                                    transition-colors
-                                                    ${
-                                                        selected?.id ===
-                                                        customer.id
-                                                            ? "bg-primary-50 dark:bg-primary-950/30"
-                                                            : "hover:bg-slate-50 dark:hover:bg-slate-800"
+                                    {filteredCustomers.map((customer) => {
+                                        const isCustomerSelected = selected?.id === customer.id;
+                                        return (
+                                            <li key={customer.id}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        handleSelect(customer)
                                                     }
-                                                `}
-                                            >
-                                                <div
                                                     className={`
-                                                    w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0
-                                                    ${
-                                                        selected?.id ===
-                                                        customer.id
-                                                            ? "bg-primary-500 text-white"
-                                                            : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-                                                    }
-                                                `}
+                                                        w-full flex items-center gap-3 px-4 py-3 text-left
+                                                        transition-colors
+                                                        ${
+                                                            isCustomerSelected
+                                                                ? "bg-primary-50 dark:bg-primary-950/30"
+                                                                : "hover:bg-slate-50 dark:hover:bg-slate-800"
+                                                        }
+                                                    `}
                                                 >
-                                                    {selected?.id ===
-                                                    customer.id ? (
-                                                        <IconCheck size={16} />
-                                                    ) : (
-                                                        <span className="text-sm font-medium">
-                                                            {customer.name
-                                                                .charAt(0)
-                                                                .toUpperCase()}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
-                                                        {customer.name}
-                                                    </p>
-                                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                                                        {customer.no_telp ||
-                                                            "-"}
-                                                    </p>
-                                                    {customer.member_code ? (
-                                                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                                                            {customer.member_code}
-                                                        </p>
-                                                    ) : null}
-                                                    <p className="text-[11px] text-primary-500 dark:text-primary-300 truncate">
-                                                        {customer.is_loyalty_member
-                                                            ? `${customer.loyalty_tier} • ${customer.loyalty_points || 0} poin`
-                                                            : "Non-member"}
-                                                    </p>
-                                                </div>
-                                            </button>
-                                        </li>
-                                    ))}
+                                                    <div
+                                                        className={`
+                                                        w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0
+                                                        ${
+                                                            isCustomerSelected
+                                                                ? "bg-primary-500 text-white"
+                                                                : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                                                        }
+                                                    `}
+                                                    >
+                                                        {isCustomerSelected ? (
+                                                            <IconCheck size={16} />
+                                                        ) : (
+                                                            <span className="text-sm font-medium">
+                                                                {customer.name
+                                                                    .charAt(0)
+                                                                    .toUpperCase()}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 space-y-0.5">
+                                                        <div className="flex items-center justify-between gap-1.5">
+                                                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                                                                {customer.name}
+                                                            </p>
+                                                            {customer.is_loyalty_member ? (
+                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-50 dark:bg-primary-950/60 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800 capitalize flex-shrink-0">
+                                                                    {customer.loyalty_tier || "Member"}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex-shrink-0">
+                                                                    Non-member
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Phone & Member Code */}
+                                                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                                                            {customer.no_telp && <span>{customer.no_telp}</span>}
+                                                            {customer.member_code && (
+                                                                <>
+                                                                    <span>•</span>
+                                                                    <span className="font-mono">{customer.member_code}</span>
+                                                                </>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Loyalty Points */}
+                                                        {customer.is_loyalty_member && (
+                                                            <p className="text-[11px] font-semibold text-primary-600 dark:text-primary-400 truncate">
+                                                                {customer.loyalty_points || 0} poin
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
-                            ) : (
+                            ) : !isWalkInMatch ? (
                                 <div className="py-8 text-center text-slate-400 dark:text-slate-500">
                                     <IconUser
                                         size={24}
@@ -329,19 +401,19 @@ export default function CustomerSelect({
                                         + Tambah pelanggan baru
                                     </button>
                                 </div>
-                            )}
+                            ) : null}
                         </div>
                     </div>
                 )}
             </div>
 
             {/* Add Customer Modal */}
-                <AddCustomerModal
-                    isOpen={showAddModal}
-                    onClose={() => setShowAddModal(false)}
-                    onSuccess={handleAddCustomerSuccess}
-                    tierOptions={tierOptions}
-                />
-            </>
-        );
+            <AddCustomerModal
+                isOpen={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                onSuccess={handleAddCustomerSuccess}
+                tierOptions={tierOptions}
+            />
+        </>
+    );
 }

@@ -93,7 +93,7 @@ class AuthenticationTest extends TestCase
         $response->assertHeader('X-Frame-Options', 'DENY');
         $response->assertHeader(
             'Permissions-Policy',
-            'camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=()'
+            'camera=(self), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=()'
         );
     }
 

@@ -48,4 +48,8 @@ return [
         ],
     ],
 
+    'catalog' => [
+        'google_sheet_csv_url' => env('GOOGLE_SHEET_CATALOG_URL', 'https://docs.google.com/spreadsheets/d/1vv25vH3x2TSTOSvOOYXVzb-mIkp8g__LnZT7b90pdQM/export?format=csv&gid=1120260489'),
+    ],
+
 ];

@@ -50,10 +50,22 @@ export async function getCachedCustomers() {
 
 export async function queueTransaction(transactionData) {
     const db = await dbPromise;
-    return db.add('pending_transactions', {
-        data: transactionData,
-        created_at: new Date().toISOString(),
-    });
+    const clientTxId = transactionData.client_tx_id || 
+        (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'offline-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9));
+
+    const record = {
+        client_tx_id: clientTxId,
+        data: {
+            ...transactionData,
+            client_tx_id: clientTxId,
+        },
+        status: 'pending', // 'pending' | 'syncing' | 'failed'
+        error: null,
+        created_at: transactionData.created_at || new Date().toISOString(),
+    };
+
+    const id = await db.add('pending_transactions', record);
+    return { id, client_tx_id: clientTxId };
 }
 
 export async function getPendingTransactions() {
@@ -64,6 +76,17 @@ export async function getPendingTransactions() {
 export async function getPendingCount() {
     const db = await dbPromise;
     return db.count('pending_transactions');
+}
+
+export async function updatePendingTransaction(id, updates) {
+    const db = await dbPromise;
+    const tx = db.transaction('pending_transactions', 'readwrite');
+    const record = await tx.store.get(id);
+    if (record) {
+        Object.assign(record, updates);
+        await tx.store.put(record);
+    }
+    await tx.done;
 }
 
 export async function removePendingTransaction(id) {

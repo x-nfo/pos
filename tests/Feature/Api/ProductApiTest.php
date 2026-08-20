@@ -14,6 +14,7 @@ class ProductApiTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Category $category;
 
     protected function setUp(): void

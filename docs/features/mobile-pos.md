@@ -15,12 +15,13 @@ Akses POS dari tablet/handphone dengan barcode scanner via kamera, install ke ho
 - Modal fullscreen scanner — buka kamera, scan, tutup otomatis
 - Tombol kamera di search bar POS
 
-### Progressive Web App (PWA)
+### Progressive Web App (PWA) & Offline Sync
 - `manifest.json` — name, icons, display standalone, theme color
 - `sw.js` — service worker untuk cache asset + API master data
 - Theme-color meta tag
 - Install prompt ke home screen (Android Chrome)
 - Support offline (cache-first untuk master data)
+- **Offline Background Sync / Auto-Flush**: Transaksi saat offline disimpan ke IndexedDB dan otomatis disinkronkan ke endpoint `/transactions/sync-offline` ketika internet pulih kembali, lengkap dengan tombol manual *"Sinkronkan Sekarang"*.
 
 ### Fullscreen Mode
 - Tombol fullscreen di header POS
@@ -40,8 +41,11 @@ Akses POS dari tablet/handphone dengan barcode scanner via kamera, install ke ho
 | `public/manifest.json` | PWA manifest |
 | `public/sw.js` | Service worker |
 | `resources/js/app.jsx` | SW registration |
-| `resources/js/Layouts/POSLayout.jsx` | Fullscreen toggle |
-| `resources/js/Context/OnlineStatusContext.jsx` | Online/offline detection |
+| `resources/js/Layouts/POSLayout.jsx` | Fullscreen toggle & Offline Sync Banner |
+| `resources/js/Context/OnlineStatusContext.jsx` | Online/offline detection & Sync Context |
+| `resources/js/Utils/offlineDb.js` | IndexedDB storage (pending transactions, product/customer cache) |
+| `resources/js/Utils/syncEngine.js` | Background sync listener & auto-flush engine |
+| `app/Http/Controllers/Apps/TransactionSyncController.php` | Backend offline transaction sync endpoint |
 
 ## Cara Pakai
 

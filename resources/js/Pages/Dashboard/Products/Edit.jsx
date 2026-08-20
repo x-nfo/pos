@@ -12,11 +12,25 @@ import {
     IconPhoto,
     IconBarcode,
     IconCurrencyDollar,
+    IconCamera,
 } from "@tabler/icons-react";
 import { getProductImageUrl } from "@/Utils/imageUrl";
+import ProductUnitsInput from "@/Components/Dashboard/ProductUnitsInput";
+import ImageCaptureUpload from "@/Components/Dashboard/ImageCaptureUpload";
+import BarcodeScanner from "@/Components/POS/BarcodeScanner";
 
-export default function Edit({ categories, product }) {
+export default function Edit({ categories, product, units = [] }) {
     const { errors } = usePage().props;
+
+    const initialUnits = (product.units || []).map((u) => ({
+        unit_id: u.id,
+        is_base: Boolean(u.pivot?.is_base),
+        conversion_factor: u.pivot?.conversion_factor || 1,
+        buy_price: u.pivot?.buy_price ?? product.buy_price,
+        sell_price: u.pivot?.sell_price ?? product.sell_price,
+        barcode: u.pivot?.barcode || "",
+        sku_suffix: u.pivot?.sku_suffix || "",
+    }));
 
     const { data, setData, post, processing } = useForm({
         image: "",
@@ -27,6 +41,7 @@ export default function Edit({ categories, product }) {
         description: product.description,
         buy_price: product.buy_price,
         sell_price: product.sell_price,
+        units: initialUnits,
         _method: "PUT",
     });
 
@@ -34,6 +49,7 @@ export default function Edit({ categories, product }) {
     const [imagePreview, setImagePreview] = useState(
         product.image ? getProductImageUrl(product.image) : null
     );
+    const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
 
     useEffect(() => {
         if (product.category_id) {
@@ -88,35 +104,18 @@ export default function Edit({ categories, product }) {
                     {/* Left - Image */}
                     <div className="lg:col-span-1">
                         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
-                            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
-                                <IconPhoto size={18} />
-                                Gambar Produk
-                            </h3>
-                            <div className="aspect-square rounded-xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center overflow-hidden mb-4">
-                                {imagePreview ? (
-                                    <img
-                                        src={imagePreview}
-                                        alt="Preview"
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <div className="text-center p-6">
-                                        <IconPhoto
-                                            size={48}
-                                            className="mx-auto text-slate-400 mb-2"
-                                        />
-                                        <p className="text-sm text-slate-500">
-                                            Belum ada gambar
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                            <Input
-                                type="file"
-                                label="Ganti Gambar"
-                                onChange={handleImageChange}
-                                errors={errors.image}
-                                accept="image/*"
+                            <ImageCaptureUpload
+                                label="Gambar Produk"
+                                currentPreview={imagePreview}
+                                onImageSelected={(file, previewUrl) => {
+                                    setData("image", file);
+                                    setImagePreview(previewUrl);
+                                }}
+                                onImageRemoved={() => {
+                                    setData("image", "");
+                                    setImagePreview(null);
+                                }}
+                                error={errors.image}
                             />
                         </div>
                     </div>
@@ -141,16 +140,34 @@ export default function Edit({ categories, product }) {
                                         displayKey="name"
                                     />
                                 </div>
-                                <Input
-                                    type="text"
-                                    label="Barcode"
-                                    value={data.barcode}
-                                    onChange={(e) =>
-                                        setData("barcode", e.target.value)
-                                    }
-                                    errors={errors.barcode}
-                                    placeholder="Kode produk"
-                                />
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                                        Barcode
+                                    </label>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <input
+                                                type="text"
+                                                value={data.barcode}
+                                                onChange={(e) => setData("barcode", e.target.value)}
+                                                placeholder="Kode produk"
+                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 text-sm"
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowBarcodeScanner(true)}
+                                            className="px-3.5 py-2.5 rounded-xl bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-800 hover:bg-primary-100 dark:hover:bg-primary-900/50 flex items-center gap-1.5 text-xs font-semibold shrink-0 transition-all active:scale-95 shadow-sm"
+                                            title="Pindai Barcode via Kamera HP/Webcam"
+                                        >
+                                            <IconCamera size={16} />
+                                            <span>Scan Kamera</span>
+                                        </button>
+                                    </div>
+                                    {errors.barcode && (
+                                        <p className="text-xs text-rose-500 mt-1">{errors.barcode}</p>
+                                    )}
+                                </div>
                                 <Input
                                     type="text"
                                     label="SKU"
@@ -262,6 +279,16 @@ export default function Edit({ categories, product }) {
                             )}
                         </div>
 
+                        {/* Multi-Satuan (UOM) Card */}
+                        <ProductUnitsInput
+                            units={units}
+                            value={data.units}
+                            onChange={(val) => setData("units", val)}
+                            defaultBuyPrice={data.buy_price}
+                            defaultSellPrice={data.sell_price}
+                            errors={errors}
+                        />
+
                         <div className="flex justify-end gap-3">
                             <Link
                                 href={route("products.index")}
@@ -283,6 +310,17 @@ export default function Edit({ categories, product }) {
                     </div>
                 </div>
             </form>
+
+            {showBarcodeScanner && (
+                <BarcodeScanner
+                    onScan={(code) => {
+                        setShowBarcodeScanner(false);
+                        setData("barcode", code);
+                        toast.success(`Barcode berhasil dipindai: ${code}`);
+                    }}
+                    onClose={() => setShowBarcodeScanner(false)}
+                />
+            )}
         </>
     );
 }

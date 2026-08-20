@@ -17,7 +17,7 @@ class SecureHeaders
         $response->headers->set('X-Frame-Options', 'DENY');
         $response->headers->set(
             'Permissions-Policy',
-            'camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=()'
+            'camera=(self), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=()'
         );
 
         return $response;

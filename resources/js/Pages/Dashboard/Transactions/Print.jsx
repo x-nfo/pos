@@ -260,10 +260,34 @@ export default function Print({ transaction }) {
 
                             <button
                                 type="button"
-                                onClick={() => {
-                                    const url = route("portal.transaction", [transaction.invoice, { token: transaction.access_token }]);
-                                    navigator.clipboard?.writeText(window.location.origin + "/" + url.replace(/^\/+/, ""));
-                                    alert("Link invoice disalin");
+                                onClick={async () => {
+                                    try {
+                                        const url = route("portal.transaction", {
+                                            invoice: transaction.invoice,
+                                            token: transaction.access_token,
+                                        });
+                                        const shareUrl = /^https?:\/\//i.test(url)
+                                            ? url
+                                            : `${window.location.origin}${url.startsWith("/") ? "" : "/"}${url}`;
+
+                                        if (navigator.clipboard?.writeText) {
+                                            await navigator.clipboard.writeText(shareUrl);
+                                        } else {
+                                            const textarea = document.createElement("textarea");
+                                            textarea.value = shareUrl;
+                                            textarea.style.position = "fixed";
+                                            textarea.style.left = "-999999px";
+                                            textarea.style.top = "-999999px";
+                                            document.body.appendChild(textarea);
+                                            textarea.focus();
+                                            textarea.select();
+                                            document.execCommand("copy");
+                                            document.body.removeChild(textarea);
+                                        }
+                                        alert("Link invoice disalin");
+                                    } catch (e) {
+                                        alert("Gagal menyalin link: " + (e?.message || "Terjadi kesalahan"));
+                                    }
                                 }}
                                 className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto"
                             >

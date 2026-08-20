@@ -15,9 +15,27 @@ function createClient() {
         try { client.destroy(); } catch (e) {}
     }
 
+    const puppeteerOptions = {
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+    };
+
+    const fs = require('fs');
+    const systemChrome = [
+        process.env.PUPPETEER_EXECUTABLE_PATH,
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium',
+    ].find(p => p && fs.existsSync(p));
+
+    if (systemChrome) {
+        puppeteerOptions.executablePath = systemChrome;
+    }
+
     client = new Client({
         authStrategy: new LocalAuth({ dataPath: './session' }),
-        puppeteer: { headless: true, args: ['--no-sandbox'] },
+        puppeteer: puppeteerOptions,
     });
 
     client.on('qr', async (qr) => {

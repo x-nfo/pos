@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Responses\ApiResponse;
 use App\Http\Traits\ApiResponder;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\AuditLogService;
 use Illuminate\Http\JsonResponse;
@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
+use Spatie\Permission\Models\Role;
 
 class AuthController extends Controller
 {
@@ -118,9 +119,9 @@ class AuthController extends Controller
             'roles' => $user->getRoleNames()->all(),
             'permissions' => $user->getAllPermissions()->pluck('name')->all(),
             'store_profile' => [
-                'name' => \App\Models\Setting::get('store_name', config('app.name')),
-                'address' => \App\Models\Setting::get('store_address', ''),
-                'phone' => \App\Models\Setting::get('store_phone', ''),
+                'name' => Setting::get('store_name', config('app.name')),
+                'address' => Setting::get('store_address', ''),
+                'phone' => Setting::get('store_phone', ''),
             ],
         ], 'OK');
     }
@@ -148,7 +149,7 @@ class AuthController extends Controller
         ]);
 
         // Default role: cashier
-        $cashierRole = \Spatie\Permission\Models\Role::findByName('cashier', 'web');
+        $cashierRole = Role::findByName('cashier', 'web');
         if ($cashierRole) {
             $user->assignRole($cashierRole);
         }

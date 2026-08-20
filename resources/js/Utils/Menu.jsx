@@ -40,6 +40,7 @@ import {
     IconListDetails,
     IconBrandWhatsapp,
     IconToolsKitchen2,
+    IconDeviceMobile,
 } from "@tabler/icons-react";
 import hasAnyPermission from "./Permission";
 import React from "react";
@@ -101,8 +102,15 @@ export default function Menu() {
                 {
                     title: t("sidebar.items.transactions"),
                     href: route("transactions.index"),
-                    active: url === "/dashboard/transactions" ? true : false,
+                    active: url === "/dashboard/transactions" || url === "/transactions" ? true : false,
                     icon: <IconShoppingCart size={20} strokeWidth={1.5} />,
+                    permissions: hasAnyPermission(["transactions-access"]),
+                },
+                {
+                    title: "Mobile POS",
+                    href: route("transactions.mobile"),
+                    active: url === "/dashboard/transactions/mobile" || url === "/transactions/mobile" ? true : false,
+                    icon: <IconDeviceMobile size={20} strokeWidth={1.5} />,
                     permissions: hasAnyPermission(["transactions-access"]),
                 },
                 {

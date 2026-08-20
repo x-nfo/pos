@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,7 +23,7 @@ class PaginationTest extends TestCase
             'guard_name' => 'web',
         ]);
 
-        $this->category = \App\Models\Category::create([
+        $this->category = Category::create([
             'name' => 'Test Kategori',
             'image' => '',
             'description' => '',

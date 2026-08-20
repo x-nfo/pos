@@ -4,6 +4,7 @@ import { Head, useForm, usePage, Link } from "@inertiajs/react";
 import Input from "@/Components/Dashboard/Input";
 import Textarea from "@/Components/Dashboard/TextArea";
 import toast from "react-hot-toast";
+import ImageCaptureUpload from "@/Components/Dashboard/ImageCaptureUpload";
 import {
     IconCategory,
     IconDeviceFloppy,
@@ -65,30 +66,20 @@ export default function Edit({ category }) {
                 <div className="max-w-2xl">
                     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Image */}
                             <div>
-                                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                                    <IconPhoto size={16} />
-                                    Gambar
-                                </h3>
-                                <div className="aspect-video rounded-xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center overflow-hidden mb-3">
-                                    {imagePreview ? (
-                                        <img
-                                            src={imagePreview}
-                                            alt="Preview"
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <IconPhoto
-                                            size={32}
-                                            className="text-slate-400"
-                                        />
-                                    )}
-                                </div>
-                                <Input
-                                    type="file"
-                                    onChange={handleImageChange}
-                                    errors={errors.image}
-                                    accept="image/*"
+                                <ImageCaptureUpload
+                                    label="Gambar Kategori"
+                                    currentPreview={imagePreview}
+                                    onImageSelected={(file, previewUrl) => {
+                                        setData("image", file);
+                                        setImagePreview(previewUrl);
+                                    }}
+                                    onImageRemoved={() => {
+                                        setData("image", "");
+                                        setImagePreview(null);
+                                    }}
+                                    error={errors.image}
                                 />
                             </div>
 

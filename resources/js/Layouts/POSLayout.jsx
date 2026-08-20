@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { usePage, Link } from "@inertiajs/react";
 import { Toaster } from "react-hot-toast";
 import { useTheme } from "@/Context/ThemeSwitcherContext";
-import { useOnlineStatus } from "@/Context/OnlineStatusContext";
+import { useOfflineSync } from "@/Context/OnlineStatusContext";
 import {
     IconHome,
     IconHistory,
@@ -15,6 +15,9 @@ import {
     IconWallet,
     IconArrowsMaximize,
     IconArrowsMinimize,
+    IconRefresh,
+    IconCloudUpload,
+    IconDeviceMobile,
 } from "@tabler/icons-react";
 import Notification from "@/Components/Dashboard/Notification";
 
@@ -24,7 +27,8 @@ export default function POSLayout({ children }) {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const isOnline = useOnlineStatus();
+    const [isSyncingManual, setIsSyncingManual] = useState(false);
+    const { isOnline, pendingCount, syncOfflineTransactions } = useOfflineSync();
 
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
@@ -140,6 +144,14 @@ export default function POSLayout({ children }) {
                             <IconHistory size={18} />
                             <span>Riwayat</span>
                         </Link>
+                        <Link
+                            href={route("transactions.mobile")}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-primary-600 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-950/50 transition-colors"
+                            title="Buka Mode Mobile POS"
+                        >
+                            <IconDeviceMobile size={18} />
+                            <span>Mode Mobile</span>
+                        </Link>
                     </nav>
 
                     {/* Divider */}
@@ -221,8 +233,31 @@ export default function POSLayout({ children }) {
             </header>
 
             {!isOnline && (
-                <div className="bg-amber-500 text-white text-center text-xs font-medium py-1 px-4">
-                    Transaksi disimpan offline — akan dikirim saat online kembali
+                <div className="bg-amber-500 text-white text-center text-xs font-medium py-1.5 px-4 flex items-center justify-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                    <span>Mode Offline: {pendingCount > 0 ? `${pendingCount} transaksi tersimpan lokal — ` : ''}akan dikirim otomatis saat online kembali</span>
+                </div>
+            )}
+
+            {isOnline && pendingCount > 0 && (
+                <div className="bg-primary-600 text-white text-center text-xs font-medium py-1.5 px-4 flex items-center justify-center gap-3 shadow-inner">
+                    <div className="flex items-center gap-1.5">
+                        <IconCloudUpload size={16} className="animate-pulse shrink-0" />
+                        <span>Terdapat <strong>{pendingCount}</strong> transaksi offline menunggu sinkronisasi.</span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={async () => {
+                            setIsSyncingManual(true);
+                            await syncOfflineTransactions();
+                            setIsSyncingManual(false);
+                        }}
+                        disabled={isSyncingManual}
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-white text-primary-700 hover:bg-primary-50 text-xs font-semibold shadow-sm transition-colors disabled:opacity-50"
+                    >
+                        <IconRefresh size={14} className={isSyncingManual ? "animate-spin" : ""} />
+                        {isSyncingManual ? "Menyinkronkan..." : "Sinkronkan Sekarang"}
+                    </button>
                 </div>
             )}
 
@@ -252,6 +287,13 @@ export default function POSLayout({ children }) {
                                 <span className="font-medium">
                                     Riwayat Transaksi
                                 </span>
+                            </Link>
+                            <Link
+                                href={route("transactions.mobile")}
+                                className="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-600 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-950/50 transition-colors font-medium"
+                            >
+                                <IconDeviceMobile size={20} />
+                                <span>Buka Mode Mobile POS</span>
                             </Link>
                             <Link
                                 href={route("profile.edit")}

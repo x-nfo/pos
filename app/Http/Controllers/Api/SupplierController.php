@@ -8,7 +8,6 @@ use App\Http\Traits\ApiResponder;
 use App\Models\Supplier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class SupplierController extends Controller
 {

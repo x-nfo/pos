@@ -34,20 +34,14 @@ function CartItem({ item, onUpdateQty, onRemove, isRemoving }) {
         >
             {/* Product Image */}
             <div className="w-14 h-14 rounded-lg bg-slate-200 dark:bg-slate-700 overflow-hidden flex-shrink-0">
-                {item.product?.image ? (
-                    <img
-                        src={getProductImageUrl(item.product.image)}
-                        alt={item.product.title}
-                        className="w-full h-full object-cover"
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <IconShoppingCart
-                            size={20}
-                            className="text-slate-400"
-                        />
-                    </div>
-                )}
+                <img
+                    src={getProductImageUrl(item.product?.image, true)}
+                    alt={item.product?.title || "Produk"}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                        e.currentTarget.src = "/images/product-placeholder.svg";
+                    }}
+                />
             </div>
 
             {/* Product Info */}

@@ -1,11 +1,15 @@
-import React from "react";
+import React, { useState } from "react";
 import {
     IconShoppingBag,
     IconPhoto,
     IconMinus,
     IconPlus,
+    IconCamera,
+    IconX,
+    IconBarcode,
 } from "@tabler/icons-react";
 import { getProductImageUrl } from "@/Utils/imageUrl";
+import BarcodeScanner from "./BarcodeScanner";
 
 const formatPrice = (value = 0) =>
     Number(value || 0).toLocaleString("id-ID", {
@@ -41,21 +45,15 @@ function ProductCard({ product, onAddToCart, isAdding }) {
         >
             {/* Product Image */}
             <div className="relative aspect-square bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                {product.image ? (
-                    <img
-                        src={getProductImageUrl(product.image)}
-                        alt={product.title}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        loading="lazy"
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <IconPhoto
-                            size={32}
-                            className="text-slate-300 dark:text-slate-600"
-                        />
-                    </div>
-                )}
+                <img
+                    src={getProductImageUrl(product.image, true)}
+                    alt={product.title}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    loading="lazy"
+                    onError={(e) => {
+                        e.currentTarget.src = "/images/product-placeholder.svg";
+                    }}
+                />
 
                 {/* Stock Badge */}
                 {lowStock && (
@@ -140,36 +138,77 @@ function SearchInput({
     value,
     onChange,
     onSearch,
+    onBarcodeScan,
     isSearching,
     placeholder,
     inputRef,
 }) {
+    const [showScanner, setShowScanner] = useState(false);
+
     return (
-        <div className="relative">
-            <input
-                ref={inputRef}
-                type="text"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && onSearch?.()}
-                placeholder={
-                    placeholder ||
-                    "Cari produk atau scan barcode... (/ untuk fokus)"
-                }
-                className="w-full h-12 pl-4 pr-12 rounded-xl border border-slate-200 dark:border-slate-700
-                    bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200
-                    placeholder-slate-400 dark:placeholder-slate-500
-                    focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:focus:border-primary-500
-                    transition-all text-base"
-                disabled={isSearching}
-            />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                {isSearching ? (
-                    <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                    <IconShoppingBag size={20} className="text-slate-400" />
-                )}
+        <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+                <input
+                    ref={inputRef}
+                    type="text"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && onSearch?.()}
+                    placeholder={
+                        placeholder ||
+                        "Cari produk atau scan barcode... (/ untuk fokus)"
+                    }
+                    className="w-full h-12 pl-4 pr-10 rounded-xl border border-slate-200 dark:border-slate-700
+                        bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200
+                        placeholder-slate-400 dark:placeholder-slate-500
+                        focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:focus:border-primary-500
+                        transition-all text-base"
+                    disabled={isSearching}
+                />
+                {value ? (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onChange("");
+                            inputRef?.current?.focus();
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                        title="Hapus teks"
+                    >
+                        <IconX size={18} />
+                    </button>
+                ) : isSearching ? (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                ) : null}
             </div>
+
+            {/* Camera Scan Button */}
+            <button
+                type="button"
+                onClick={() => setShowScanner(true)}
+                className="h-12 px-3.5 sm:px-4 rounded-xl bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-800 hover:bg-primary-100 dark:hover:bg-primary-900/50 flex items-center justify-center gap-1.5 transition-all active:scale-95 flex-shrink-0 shadow-sm"
+                title="Scan Barcode via Kamera"
+            >
+                <IconCamera size={20} />
+                <span className="hidden sm:inline text-xs font-semibold">Scan</span>
+            </button>
+
+            {showScanner && (
+                <BarcodeScanner
+                    onScan={(barcode) => {
+                        setShowScanner(false);
+                        if (onBarcodeScan) {
+                            onBarcodeScan(barcode);
+                        } else {
+                            onChange(barcode);
+                            setTimeout(() => onSearch?.(), 100);
+                        }
+                    }}
+                    onClose={() => setShowScanner(false)}
+                />
+            )}
         </div>
     );
 }
@@ -183,6 +222,7 @@ export default function ProductGrid({
     searchQuery,
     onSearchChange,
     onSearch,
+    onBarcodeScan,
     isSearching,
     onAddToCart,
     addingProductId,
@@ -211,6 +251,7 @@ export default function ProductGrid({
                     value={searchQuery}
                     onChange={onSearchChange}
                     onSearch={onSearch}
+                    onBarcodeScan={onBarcodeScan}
                     isSearching={isSearching}
                     placeholder="Cari produk atau scan barcode... (tekan / untuk fokus)"
                     inputRef={searchInputRef}

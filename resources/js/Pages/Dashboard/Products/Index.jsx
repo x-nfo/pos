@@ -66,22 +66,15 @@ function ProductCard({
                         className="w-5 h-5 rounded border-2 border-white bg-white/80 text-primary-500 focus:ring-primary-500 cursor-pointer shadow-sm"
                     />
                 </div>
-                {product.image ? (
-                    <img
-                        src={getProductImageUrl(product.image)}
-                        alt={product.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <IconPhoto
-                            size={48}
-                            className="text-slate-300 dark:text-slate-600"
-                            strokeWidth={1}
-                        />
-                    </div>
-                )}
+                <img
+                    src={getProductImageUrl(product.image, true)}
+                    alt={product.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                    onError={(e) => {
+                        e.currentTarget.src = "/images/product-placeholder.svg";
+                    }}
+                />
 
                 {/* Stock Badge */}
                 <div className="absolute top-2 right-2">
@@ -409,20 +402,18 @@ export default function Index({ products }) {
                                         <Table.Td>
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden flex-shrink-0">
-                                                    {product.image ? (
-                                                        <img
-                                                            src={getProductImageUrl(product.image)}
-                                                            alt={product.title}
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center">
-                                                            <IconPackage
-                                                                size={16}
-                                                                className="text-slate-400"
-                                                            />
-                                                        </div>
-                                                    )}
+                                                    <img
+                                                        src={getProductImageUrl(
+                                                            product.image,
+                                                            true
+                                                        )}
+                                                        alt={product.title}
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => {
+                                                            e.currentTarget.src =
+                                                                "/images/product-placeholder.svg";
+                                                        }}
+                                                    />
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-medium text-slate-800 dark:text-slate-200">

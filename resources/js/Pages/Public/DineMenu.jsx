@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Head, router } from "@inertiajs/react";
 import { IconShoppingCart, IconMinus, IconPlus } from "@tabler/icons-react";
 import toast from "react-hot-toast";
+import { getProductImageUrl } from "@/Utils/imageUrl";
 
 const fmt = (v) => Number(v || 0).toLocaleString("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 });
 
@@ -125,13 +126,15 @@ export default function DineMenu({ table, categories, products, selfOrderEnabled
                             const qty = getQty(product.id);
                             return (
                                 <div key={product.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                                    {product.image ? (
-                                        <img src={product.image} alt={product.title} className="w-full aspect-square object-cover" loading="lazy" />
-                                    ) : (
-                                        <div className="w-full aspect-square bg-slate-100 flex items-center justify-center">
-                                            <span className="text-slate-300 text-4xl font-bold">{product.title?.[0] ?? "?"}</span>
-                                        </div>
-                                    )}
+                                    <img
+                                        src={getProductImageUrl(product.image, true)}
+                                        alt={product.title}
+                                        className="w-full aspect-square object-cover"
+                                        loading="lazy"
+                                        onError={(e) => {
+                                            e.currentTarget.src = "/images/product-placeholder.svg";
+                                        }}
+                                    />
                                     <div className="p-3">
                                         <h3 className="font-medium text-slate-800 text-sm line-clamp-2">{product.title}</h3>
                                         <p className="text-primary-600 font-semibold text-sm mt-1">{fmt(product.sell_price)}</p>

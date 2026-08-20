@@ -25,6 +25,7 @@ use App\Services\UnitConversionService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -42,9 +43,29 @@ class TransactionController extends Controller
     /**
      * index
      *
-     * @return void
+     * @return \Inertia\Response
      */
     public function index()
+    {
+        return Inertia::render('Dashboard/Transactions/Index', $this->getTransactionPageData());
+    }
+
+    /**
+     * mobile
+     *
+     * @return \Inertia\Response
+     */
+    public function mobile()
+    {
+        return Inertia::render('Dashboard/Transactions/Mobile', $this->getTransactionPageData());
+    }
+
+    /**
+     * getTransactionPageData
+     *
+     * @return array
+     */
+    private function getTransactionPageData(): array
     {
         $userId = auth()->user()->id;
         $activeShift = $this->cashierShiftService->getActiveShiftForUser($userId);
@@ -134,7 +155,7 @@ class TransactionController extends Controller
         // Get active bank accounts for bank transfer
         $bankAccounts = BankAccount::active()->ordered()->get();
 
-        return Inertia::render('Dashboard/Transactions/Index', [
+        return [
             'carts' => $carts,
             'carts_total' => $carts_total,
             'heldCarts' => $heldCarts,
@@ -147,7 +168,7 @@ class TransactionController extends Controller
             'bankAccounts' => $bankAccounts,
             'shiftSummary' => $this->cashierShiftService->summarizeForDisplay($activeShift),
             'loyaltyTierOptions' => $this->loyaltyService->tierOptions(),
-        ]);
+        ];
     }
 
     /**
@@ -292,7 +313,7 @@ class TransactionController extends Controller
             ]);
         }
 
-        return redirect()->route('transactions.index')->with('success', 'Product Added Successfully!.');
+        return redirect()->back()->with('success', 'Product Added Successfully!.');
     }
 
     /**
@@ -308,12 +329,10 @@ class TransactionController extends Controller
         if ($cart) {
             $cart->delete();
 
-            return back();
+            return back()->with('success', 'Item berhasil dihapus');
         } else {
-            // Handle case where no cart is found (e.g., redirect with error message)
-            return back()->withErrors(['message' => 'Cart not found']);
+            return back()->with('error', 'Item keranjang tidak ditemukan');
         }
-
     }
 
     /**
@@ -337,10 +356,14 @@ class TransactionController extends Controller
             ->first();
 
         if (! $cart) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cart item not found',
-            ], 404);
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cart item not found',
+                ], 404);
+            }
+
+            return back()->with('error', 'Item keranjang tidak ditemukan');
         }
 
         // Check stock availability
@@ -349,10 +372,14 @@ class TransactionController extends Controller
             : (int) $cart->product->stock;
 
         if ($availableStock < $request->qty) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Stok tidak mencukupi. Tersedia: '.$availableStock,
-            ], 422);
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Stok tidak mencukupi. Tersedia: '.$availableStock,
+                ], 422);
+            }
+
+            return back()->with('error', 'Stok tidak mencukupi. Tersedia: '.$availableStock);
         }
 
         // Update quantity and price
@@ -360,7 +387,7 @@ class TransactionController extends Controller
         $cart->price = $cart->product->sell_price * $request->qty;
         $cart->save();
 
-        return back()->with('success', 'Quantity updated successfully');
+        return back()->with('success', 'Jumlah berhasil diperbarui');
     }
 
     /**
@@ -382,10 +409,14 @@ class TransactionController extends Controller
             ->get();
 
         if ($activeCarts->isEmpty()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Keranjang kosong, tidak ada yang bisa ditahan',
-            ], 422);
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Keranjang kosong, tidak ada yang bisa ditahan',
+                ], 422);
+            }
+
+            return back()->with('error', 'Keranjang kosong, tidak ada yang bisa ditahan');
         }
 
         // Generate unique hold ID
@@ -420,10 +451,14 @@ class TransactionController extends Controller
             ->count();
 
         if ($activeCarts > 0) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Selesaikan atau tahan transaksi aktif terlebih dahulu',
-            ], 422);
+            if (request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Selesaikan atau tahan transaksi aktif terlebih dahulu',
+                ], 422);
+            }
+
+            return back()->with('error', 'Selesaikan atau tahan transaksi aktif terlebih dahulu');
         }
 
         // Get held carts
@@ -432,10 +467,14 @@ class TransactionController extends Controller
             ->get();
 
         if ($heldCarts->isEmpty()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Transaksi ditahan tidak ditemukan',
-            ], 404);
+            if (request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Transaksi ditahan tidak ditemukan',
+                ], 404);
+            }
+
+            return back()->with('error', 'Transaksi ditahan tidak ditemukan');
         }
 
         // Resume by clearing hold info
@@ -530,225 +569,238 @@ class TransactionController extends Controller
      */
     public function store(Request $request, PaymentGatewayManager $paymentGatewayManager)
     {
-        $isPayLater = $request->boolean('pay_later');
-        $paymentGateway = $isPayLater ? null : $request->input('payment_gateway');
-        if ($paymentGateway) {
-            $paymentGateway = strtolower($paymentGateway);
-        }
-        $paymentSetting = null;
+        $userId = auth()->id();
+        $lock = Cache::lock("checkout_cashier_{$userId}", 10);
 
-        if ($isPayLater && ! $request->filled('due_date')) {
+        if (! $lock->get()) {
             return redirect()
                 ->route('transactions.index')
-                ->with('error', 'Tanggal jatuh tempo wajib diisi untuk nota barang.');
+                ->with('error', 'Transaksi sedang diproses, mohon tunggu sebentar.');
         }
 
-        if ($paymentGateway) {
-            $paymentSetting = PaymentSetting::first();
+        try {
+            $isPayLater = $request->boolean('pay_later');
+            $paymentGateway = $isPayLater ? null : $request->input('payment_gateway');
+            if ($paymentGateway) {
+                $paymentGateway = strtolower($paymentGateway);
+            }
+            $paymentSetting = null;
 
-            if (! $paymentSetting || ! $paymentSetting->isGatewayReady($paymentGateway)) {
+            if ($isPayLater && ! $request->filled('due_date')) {
                 return redirect()
                     ->route('transactions.index')
-                    ->with('error', 'Gateway pembayaran belum dikonfigurasi.');
-            }
-        }
-
-        $length = 10;
-        $random = '';
-        for ($i = 0; $i < $length; $i++) {
-            $random .= rand(0, 1) ? rand(0, 9) : chr(rand(ord('a'), ord('z')));
-        }
-
-        $invoice = 'TRX-'.Str::upper($random);
-        $isCashPayment = empty($paymentGateway) && ! $isPayLater;
-        $manualDiscount = max(0, (int) $request->input('discount', 0));
-        $shippingCost = max(0, (int) $request->input('shipping_cost', 0));
-        $requestedRedeemPoints = max(0, (int) $request->input('redeem_points', 0));
-        $cashAmount = $isCashPayment ? max(0, (int) $request->cash) : 0;
-        $customer = $request->filled('customer_id')
-            ? Customer::find($request->integer('customer_id'))
-            : null;
-        $voucher = $request->filled('customer_voucher_id')
-            ? CustomerVoucher::find($request->integer('customer_voucher_id'))
-            : null;
-
-        $transaction = DB::transaction(function () use (
-            $request,
-            $invoice,
-            $cashAmount,
-            $paymentGateway,
-            $isCashPayment,
-            $isPayLater,
-            $manualDiscount,
-            $shippingCost,
-            $requestedRedeemPoints,
-            $customer,
-            $voucher
-        ) {
-            $activeShift = $this->cashierShiftService->requireActiveShiftForUser(
-                auth()->user()->id,
-                lockForUpdate: true
-            );
-
-            $carts = Cart::with('product')
-                ->where('cashier_id', auth()->user()->id)
-                ->active()
-                ->get();
-
-            if ($carts->isEmpty()) {
-                abort(422, 'Keranjang kosong.');
+                    ->with('error', 'Tanggal jatuh tempo wajib diisi untuk nota barang.');
             }
 
-            $pricingPreview = $this->pricingService->previewCart($carts, $customer);
-            $checkoutPreview = $this->loyaltyService->previewCheckout($pricingPreview, $customer, [
-                'manual_discount' => $manualDiscount,
-                'shipping_cost' => $shippingCost,
-                'redeem_points' => $requestedRedeemPoints,
-                'voucher' => $voucher,
-            ]);
-            $pricingItems = collect($pricingPreview['items']);
-            $subtotalAfterPromo = (int) data_get($pricingPreview, 'summary.subtotal_after_promo', 0);
-            $voucherDiscount = (int) data_get($checkoutPreview, 'summary.voucher_discount_total', 0);
-            $loyaltyDiscount = (int) data_get($checkoutPreview, 'summary.loyalty_discount_total', 0);
-            $appliedManualDiscount = (int) data_get($checkoutPreview, 'summary.manual_discount_total', 0);
-            $grandTotal = (int) data_get($checkoutPreview, 'summary.grand_total', 0);
-            $changeAmount = $isCashPayment ? max(0, $cashAmount - $grandTotal) : 0;
+            if ($paymentGateway) {
+                $paymentSetting = PaymentSetting::first();
 
-            $transaction = Transaction::create([
-                'cashier_id' => auth()->user()->id,
-                'cashier_shift_id' => $activeShift->id,
-                'warehouse_id' => $activeShift->warehouse_id,
-                'customer_id' => $request->customer_id,
-                'invoice' => $invoice,
-                'cash' => $cashAmount,
-                'change' => $changeAmount,
-                'discount' => $appliedManualDiscount,
-                'loyalty_points_redeemed' => (int) data_get($checkoutPreview, 'summary.applied_redeem_points', 0),
-                'loyalty_discount_total' => $loyaltyDiscount,
-                'customer_voucher_discount' => $voucherDiscount,
-                'customer_voucher_code' => data_get($checkoutPreview, 'voucher.code'),
-                'customer_voucher_name' => data_get($checkoutPreview, 'voucher.name'),
-                'shipping_cost' => $shippingCost,
-                'grand_total' => $grandTotal,
-                'payment_method' => $isPayLater ? 'pay_later' : ($paymentGateway ?: 'cash'),
-                'payment_status' => $isCashPayment ? 'paid' : ($isPayLater ? 'unpaid' : 'pending'),
-                'bank_account_id' => $paymentGateway === 'bank_transfer' ? $request->bank_account_id : null,
-                'tax_rate' => data_get($checkoutPreview, 'summary.tax_rate'),
-                'tax_total' => data_get($checkoutPreview, 'summary.tax_total', 0),
-                'customer_npwp' => $request->customer_npwp,
-            ]);
-
-            foreach ($carts as $cart) {
-                $pricingItem = $pricingItems->firstWhere('cart_id', $cart->id);
-                $lineTotal = (int) data_get($pricingItem, 'line_total', $cart->price);
-                $linePromoDiscount = (int) data_get($pricingItem, 'line_discount_total', 0);
-                $baseUnitPrice = (int) data_get($pricingItem, 'base_unit_price', $cart->product->sell_price);
-                $unitPrice = (int) data_get($pricingItem, 'effective_unit_price', $cart->product->sell_price);
-
-                $detail = $transaction->details()->create([
-                    'transaction_id' => $transaction->id,
-                    'product_id' => $cart->product_id,
-                    'unit_id' => $cart->unit_id,
-                    'conversion_factor' => $cart->conversion_factor,
-                    'qty' => $cart->qty,
-                    'base_unit_price' => $baseUnitPrice,
-                    'unit_price' => $unitPrice,
-                    'price' => $lineTotal,
-                    'discount_total' => $linePromoDiscount,
-                    'pricing_rule_id' => data_get($pricingItem, 'pricing_rule.id'),
-                    'pricing_rule_name' => data_get($pricingItem, 'pricing_rule.name'),
-                    'pricing_rule_kind' => data_get($pricingItem, 'pricing_rule.kind'),
-                    'pricing_group_key' => data_get($pricingItem, 'pricing_group_key'),
-                    'pricing_group_label' => data_get($pricingItem, 'pricing_group_label'),
-                ]);
-
-                $total_buy_price = $cart->product->buy_price * $cart->qty;
-                $lineShare = $subtotalAfterPromo > 0 ? $lineTotal / $subtotalAfterPromo : 0;
-                $allocatedManualDiscount = (int) round($appliedManualDiscount * $lineShare);
-                $netSellPrice = max(0, $lineTotal - $allocatedManualDiscount);
-                $profits = $netSellPrice - $total_buy_price;
-
-                $transaction->profits()->create([
-                    'transaction_id' => $transaction->id,
-                    'total' => $profits,
-                ]);
-
-                $product = Product::find($cart->product_id);
-
-                if ($product->is_composite) {
-                    $product->load('components');
-                    foreach ($product->components as $component) {
-                        $componentQty = (int) round((float) $component->pivot->qty * $cart->qty);
-                        ProductWarehouse::where([
-                            'product_id' => $component->id,
-                            'warehouse_id' => $activeShift->warehouse_id,
-                        ])->decrement('stock', $componentQty);
-                        $component->decrement('stock', $componentQty);
-                    }
-                } else {
-                    $baseQty = (int) round($cart->qty * (float) ($cart->conversion_factor ?? 1));
-                    ProductWarehouse::where([
-                        'product_id' => $product->id,
-                        'warehouse_id' => $activeShift->warehouse_id,
-                    ])->decrement('stock', $baseQty);
-                    $product->decrement('stock', $baseQty);
+                if (! $paymentSetting || ! $paymentSetting->isGatewayReady($paymentGateway)) {
+                    return redirect()
+                        ->route('transactions.index')
+                        ->with('error', 'Gateway pembayaran belum dikonfigurasi.');
                 }
             }
 
-            Cart::where('cashier_id', auth()->user()->id)->active()->delete();
-
-            $this->loyaltyService->finalizeTransaction($transaction, $customer, $checkoutPreview);
-
-            if ($isPayLater) {
-                Receivable::create([
-                    'customer_id' => $request->customer_id,
-                    'transaction_id' => $transaction->id,
-                    'invoice' => $invoice,
-                    'total' => $grandTotal,
-                    'paid' => 0,
-                    'due_date' => $request->due_date,
-                    'status' => 'unpaid',
-                ]);
+            $length = 10;
+            $random = '';
+            for ($i = 0; $i < $length; $i++) {
+                $random .= rand(0, 1) ? rand(0, 9) : chr(rand(ord('a'), ord('z')));
             }
 
-            return $transaction->fresh(['customer']);
-        });
+            $invoice = 'TRX-'.Str::upper($random);
+            $isCashPayment = empty($paymentGateway) && ! $isPayLater;
+            $manualDiscount = max(0, (int) $request->input('discount', 0));
+            $shippingCost = max(0, (int) $request->input('shipping_cost', 0));
+            $requestedRedeemPoints = max(0, (int) $request->input('redeem_points', 0));
+            $cashAmount = $isCashPayment ? max(0, (int) $request->cash) : 0;
+            $customer = $request->filled('customer_id')
+                ? Customer::find($request->integer('customer_id'))
+                : null;
+            $voucher = $request->filled('customer_voucher_id')
+                ? CustomerVoucher::find($request->integer('customer_voucher_id'))
+                : null;
 
-        // Check if discount needs approval
-        if ($transaction->discount > 0 && $transaction->needsDiscountApproval()) {
-            $transaction->update([
-                'discount_approval_status' => 'pending',
-                'payment_status' => 'pending_approval',
-            ]);
+            $transaction = DB::transaction(function () use (
+                $request,
+                $invoice,
+                $cashAmount,
+                $paymentGateway,
+                $isCashPayment,
+                $isPayLater,
+                $manualDiscount,
+                $shippingCost,
+                $requestedRedeemPoints,
+                $customer,
+                $voucher
+            ) {
+                $activeShift = $this->cashierShiftService->requireActiveShiftForUser(
+                    auth()->user()->id,
+                    lockForUpdate: true
+                );
 
-            DiscountApprovalLog::create([
-                'transaction_id' => $transaction->id,
-                'cashier_id' => auth()->id(),
-                'requested_discount' => $appliedManualDiscount,
-                'status' => 'pending',
-            ]);
+                $carts = Cart::with('product')
+                    ->where('cashier_id', auth()->user()->id)
+                    ->active()
+                    ->get();
 
-            return redirect()
-                ->route('transactions.print', $transaction->invoice)
-                ->with('info', 'Transaksi menunggu approval supervisor.');
-        }
+                if ($carts->isEmpty()) {
+                    abort(422, 'Keranjang kosong.');
+                }
 
-        if ($paymentGateway) {
-            try {
-                $paymentResponse = $paymentGatewayManager->createPayment($transaction, $paymentGateway, $paymentSetting);
-
-                $transaction->update([
-                    'payment_reference' => $paymentResponse['reference'] ?? null,
-                    'payment_url' => $paymentResponse['payment_url'] ?? null,
+                $pricingPreview = $this->pricingService->previewCart($carts, $customer);
+                $checkoutPreview = $this->loyaltyService->previewCheckout($pricingPreview, $customer, [
+                    'manual_discount' => $manualDiscount,
+                    'shipping_cost' => $shippingCost,
+                    'redeem_points' => $requestedRedeemPoints,
+                    'voucher' => $voucher,
                 ]);
-            } catch (PaymentGatewayException $exception) {
+                $pricingItems = collect($pricingPreview['items']);
+                $subtotalAfterPromo = (int) data_get($pricingPreview, 'summary.subtotal_after_promo', 0);
+                $voucherDiscount = (int) data_get($checkoutPreview, 'summary.voucher_discount_total', 0);
+                $loyaltyDiscount = (int) data_get($checkoutPreview, 'summary.loyalty_discount_total', 0);
+                $appliedManualDiscount = (int) data_get($checkoutPreview, 'summary.manual_discount_total', 0);
+                $grandTotal = (int) data_get($checkoutPreview, 'summary.grand_total', 0);
+                $changeAmount = $isCashPayment ? max(0, $cashAmount - $grandTotal) : 0;
+
+                $transaction = Transaction::create([
+                    'cashier_id' => auth()->user()->id,
+                    'cashier_shift_id' => $activeShift->id,
+                    'warehouse_id' => $activeShift->warehouse_id,
+                    'customer_id' => $request->customer_id,
+                    'invoice' => $invoice,
+                    'cash' => $cashAmount,
+                    'change' => $changeAmount,
+                    'discount' => $appliedManualDiscount,
+                    'loyalty_points_redeemed' => (int) data_get($checkoutPreview, 'summary.applied_redeem_points', 0),
+                    'loyalty_discount_total' => $loyaltyDiscount,
+                    'customer_voucher_discount' => $voucherDiscount,
+                    'customer_voucher_code' => data_get($checkoutPreview, 'voucher.code'),
+                    'customer_voucher_name' => data_get($checkoutPreview, 'voucher.name'),
+                    'shipping_cost' => $shippingCost,
+                    'grand_total' => $grandTotal,
+                    'payment_method' => $isPayLater ? 'pay_later' : ($paymentGateway ?: 'cash'),
+                    'payment_status' => $isCashPayment ? 'paid' : ($isPayLater ? 'unpaid' : 'pending'),
+                    'bank_account_id' => $paymentGateway === 'bank_transfer' ? $request->bank_account_id : null,
+                    'tax_rate' => data_get($checkoutPreview, 'summary.tax_rate'),
+                    'tax_total' => data_get($checkoutPreview, 'summary.tax_total', 0),
+                    'customer_npwp' => $request->customer_npwp,
+                ]);
+
+                foreach ($carts as $cart) {
+                    $pricingItem = $pricingItems->firstWhere('cart_id', $cart->id);
+                    $lineTotal = (int) data_get($pricingItem, 'line_total', $cart->price);
+                    $linePromoDiscount = (int) data_get($pricingItem, 'line_discount_total', 0);
+                    $baseUnitPrice = (int) data_get($pricingItem, 'base_unit_price', $cart->product->sell_price);
+                    $unitPrice = (int) data_get($pricingItem, 'effective_unit_price', $cart->product->sell_price);
+
+                    $detail = $transaction->details()->create([
+                        'transaction_id' => $transaction->id,
+                        'product_id' => $cart->product_id,
+                        'unit_id' => $cart->unit_id,
+                        'conversion_factor' => $cart->conversion_factor,
+                        'qty' => $cart->qty,
+                        'base_unit_price' => $baseUnitPrice,
+                        'unit_price' => $unitPrice,
+                        'price' => $lineTotal,
+                        'discount_total' => $linePromoDiscount,
+                        'pricing_rule_id' => data_get($pricingItem, 'pricing_rule.id'),
+                        'pricing_rule_name' => data_get($pricingItem, 'pricing_rule.name'),
+                        'pricing_rule_kind' => data_get($pricingItem, 'pricing_rule.kind'),
+                        'pricing_group_key' => data_get($pricingItem, 'pricing_group_key'),
+                        'pricing_group_label' => data_get($pricingItem, 'pricing_group_label'),
+                    ]);
+
+                    $total_buy_price = $cart->product->buy_price * $cart->qty;
+                    $lineShare = $subtotalAfterPromo > 0 ? $lineTotal / $subtotalAfterPromo : 0;
+                    $allocatedManualDiscount = (int) round($appliedManualDiscount * $lineShare);
+                    $netSellPrice = max(0, $lineTotal - $allocatedManualDiscount);
+                    $profits = $netSellPrice - $total_buy_price;
+
+                    $transaction->profits()->create([
+                        'transaction_id' => $transaction->id,
+                        'total' => $profits,
+                    ]);
+
+                    $product = Product::find($cart->product_id);
+
+                    if ($product->is_composite) {
+                        $product->load('components');
+                        foreach ($product->components as $component) {
+                            $componentQty = (int) round((float) $component->pivot->qty * $cart->qty);
+                            ProductWarehouse::where([
+                                'product_id' => $component->id,
+                                'warehouse_id' => $activeShift->warehouse_id,
+                            ])->decrement('stock', $componentQty);
+                            $component->decrement('stock', $componentQty);
+                        }
+                    } else {
+                        $baseQty = (int) round($cart->qty * (float) ($cart->conversion_factor ?? 1));
+                        ProductWarehouse::where([
+                            'product_id' => $product->id,
+                            'warehouse_id' => $activeShift->warehouse_id,
+                        ])->decrement('stock', $baseQty);
+                        $product->decrement('stock', $baseQty);
+                    }
+                }
+
+                Cart::where('cashier_id', auth()->user()->id)->active()->delete();
+
+                $this->loyaltyService->finalizeTransaction($transaction, $customer, $checkoutPreview);
+
+                if ($isPayLater) {
+                    Receivable::create([
+                        'customer_id' => $request->customer_id,
+                        'transaction_id' => $transaction->id,
+                        'invoice' => $invoice,
+                        'total' => $grandTotal,
+                        'paid' => 0,
+                        'due_date' => $request->due_date,
+                        'status' => 'unpaid',
+                    ]);
+                }
+
+                return $transaction->fresh(['customer']);
+            });
+
+            // Check if discount needs approval
+            if ($transaction->discount > 0 && $transaction->needsDiscountApproval()) {
+                $transaction->update([
+                    'discount_approval_status' => 'pending',
+                    'payment_status' => 'pending_approval',
+                ]);
+
+                DiscountApprovalLog::create([
+                    'transaction_id' => $transaction->id,
+                    'cashier_id' => auth()->id(),
+                    'requested_discount' => $appliedManualDiscount,
+                    'status' => 'pending',
+                ]);
+
                 return redirect()
                     ->route('transactions.print', $transaction->invoice)
-                    ->with('error', $exception->getMessage());
+                    ->with('info', 'Transaksi menunggu approval supervisor.');
             }
-        }
 
-        return to_route('transactions.print', $transaction->invoice);
+            if ($paymentGateway) {
+                try {
+                    $paymentResponse = $paymentGatewayManager->createPayment($transaction, $paymentGateway, $paymentSetting);
+
+                    $transaction->update([
+                        'payment_reference' => $paymentResponse['reference'] ?? null,
+                        'payment_url' => $paymentResponse['payment_url'] ?? null,
+                    ]);
+                } catch (PaymentGatewayException $exception) {
+                    return redirect()
+                        ->route('transactions.print', $transaction->invoice)
+                        ->with('error', $exception->getMessage());
+                }
+            }
+
+            return to_route('transactions.print', $transaction->invoice);
+        } finally {
+            $lock->release();
+        }
     }
 
     public function print($invoice)

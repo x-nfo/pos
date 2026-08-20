@@ -3,8 +3,8 @@
 namespace App\Http\Traits;
 
 use App\Http\Responses\ApiResponse;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
  * Convenience trait for API controllers.

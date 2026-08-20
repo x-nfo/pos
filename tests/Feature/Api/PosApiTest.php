@@ -13,8 +13,6 @@ use App\Models\Warehouse;
 use App\Services\CashierShiftService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class PosApiTest extends TestCase
@@ -22,8 +20,11 @@ class PosApiTest extends TestCase
     use RefreshDatabase;
 
     private User $cashier;
+
     private Warehouse $warehouse;
+
     private Category $category;
+
     private Product $product;
 
     protected function setUp(): void
@@ -298,9 +299,9 @@ class PosApiTest extends TestCase
             ->assertJsonPath('meta.total', 1)
             ->assertJsonPath('data.0.payment_method', 'cash');
 
-        $invoice = \App\Models\Transaction::first()->invoice;
+        $invoice = Transaction::first()->invoice;
 
-        $transaction = \App\Models\Transaction::first();
+        $transaction = Transaction::first();
 
         $this->getJson("/api/v1/pos/transactions/{$transaction->id}")
             ->assertOk()

@@ -108,6 +108,51 @@ class TransactionFlowTest extends TestCase
         $this->assertSame($product->stock - $quantity, $product->fresh()->stock);
     }
 
+    public function test_cashier_can_complete_transaction_for_default_walk_in_customer(): void
+    {
+        $cashier = $this->createCashier();
+        $shift = $this->openShiftFor($cashier);
+        $product = $this->createProduct();
+
+        $quantity = 1;
+        $cart = Cart::create([
+            'cashier_id' => $cashier->id,
+            'product_id' => $product->id,
+            'qty' => $quantity,
+            'price' => $product->sell_price * $quantity,
+        ]);
+
+        $grandTotal = $cart->price;
+        $cashPaid = 100000;
+
+        $response = $this
+            ->actingAs($cashier)
+            ->post(route('transactions.store'), [
+                'customer_id' => null,
+                'discount' => 0,
+                'grand_total' => $grandTotal,
+                'cash' => $cashPaid,
+                'change' => $cashPaid - $grandTotal,
+            ]);
+
+        $transaction = Transaction::with(['details', 'profits', 'customer'])->latest('id')->first();
+
+        $this->assertNotNull($transaction, 'Transaction record should exist after checkout.');
+        $response->assertRedirect(route('transactions.print', $transaction->invoice));
+        $this->assertNull($transaction->customer_id);
+        $this->assertNull($transaction->customer);
+        $this->assertSame($grandTotal, (int) $transaction->grand_total);
+        $this->assertSame($cashPaid, (int) $transaction->cash);
+        $this->assertSame('paid', $transaction->payment_status);
+
+        // Verify print view renders "Umum" for null customer
+        $printResponse = $this
+            ->actingAs($cashier)
+            ->get(route('transactions.print', $transaction->invoice));
+
+        $printResponse->assertOk();
+    }
+
     public function test_cashier_can_view_invoice_page_after_transaction(): void
     {
         $cashier = $this->createCashier();
@@ -288,6 +333,25 @@ class TransactionFlowTest extends TestCase
         $response->assertRedirect(route('transactions.index'));
         $response->assertSessionHas('error', 'Shift kasir belum dibuka.');
         $this->assertDatabaseCount('transactions', 0);
+    }
+
+    public function test_cashier_can_access_mobile_pos_page(): void
+    {
+        $cashier = $this->createCashier();
+        $this->openShiftFor($cashier);
+        $product = $this->createProduct();
+
+        $response = $this
+            ->actingAs($cashier)
+            ->get(route('transactions.mobile'));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('Dashboard/Transactions/Mobile')
+            ->has('products')
+            ->has('categories')
+            ->has('carts')
+        );
     }
 
     protected function openShiftFor(User $cashier)

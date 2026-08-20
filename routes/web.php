@@ -20,6 +20,7 @@ use App\Http\Controllers\Apps\PayableController;
 use App\Http\Controllers\Apps\PaymentSettingController;
 use App\Http\Controllers\Apps\PriceListController;
 use App\Http\Controllers\Apps\PricingRuleController;
+use App\Http\Controllers\Apps\ProductCatalogController;
 use App\Http\Controllers\Apps\ProductController;
 use App\Http\Controllers\Apps\PurchaseOrderController;
 use App\Http\Controllers\Apps\ReceivableController;
@@ -31,6 +32,7 @@ use App\Http\Controllers\Apps\StockTransferController;
 use App\Http\Controllers\Apps\SupplierController;
 use App\Http\Controllers\Apps\SupplierReturnController;
 use App\Http\Controllers\Apps\TransactionController;
+use App\Http\Controllers\Apps\TransactionSyncController;
 use App\Http\Controllers\Apps\WarehouseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DineMenuController;
@@ -116,6 +118,12 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
         ->middlewareFor(['create', 'store'], 'permission:products-create')
         ->middlewareFor(['edit', 'update'], 'permission:products-edit')
         ->middlewareFor('destroy', 'permission:products-delete');
+    Route::get('/catalog/lookup', [ProductCatalogController::class, 'lookup'])
+        ->middleware('permission:products-access|transactions-access')
+        ->name('products.lookup-catalog');
+    Route::post('/products/quick-store', [ProductController::class, 'quickStore'])
+        ->middleware('permission:products-create|transactions-access')
+        ->name('products.quick-store');
 
     // import/export
     Route::get('/export/products', [ImportExportController::class, 'exportProducts'])->middleware('permission:products-export')->name('export.products');
@@ -209,6 +217,7 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
 
     // route transaction
     Route::get('/transactions', [TransactionController::class, 'index'])->middleware('permission:transactions-access')->name('transactions.index');
+    Route::get('/transactions/mobile', [TransactionController::class, 'mobile'])->middleware('permission:transactions-access')->name('transactions.mobile');
 
     // route transaction searchProduct
     Route::post('/transactions/searchProduct', [TransactionController::class, 'searchProduct'])->middleware(['permission:transactions-access', 'active_shift'])->name('transactions.searchProduct');
@@ -231,6 +240,7 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
 
     // route transaction store
     Route::post('/transactions/store', [TransactionController::class, 'store'])->middleware(['permission:transactions-access', 'active_shift'])->name('transactions.store');
+    Route::post('/transactions/sync-offline', [TransactionSyncController::class, 'sync'])->middleware(['permission:transactions-access', 'active_shift'])->name('transactions.sync-offline');
     Route::get('/transactions/{invoice}/print', [TransactionController::class, 'print'])->middleware('permission:transactions-access')->name('transactions.print');
     Route::get('/transactions/history', [TransactionController::class, 'history'])->middleware('permission:transactions-access')->name('transactions.history');
     Route::post('/transactions/{transaction}/share-campaign', [CrmCampaignController::class, 'shareTransaction'])->middleware('permission:crm-campaigns-create')->name('transactions.share-campaign');

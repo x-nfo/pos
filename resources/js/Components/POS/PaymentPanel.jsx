@@ -141,7 +141,6 @@ export default function PaymentPanel({
     // Validation
     const canSubmit =
         hasItems &&
-        selectedCustomer &&
         (isCashPayment ? cash >= payable : true) &&
         (isBankTransfer ? selectedBankAccount !== null : true) &&
         !isSubmitting;
@@ -149,11 +148,10 @@ export default function PaymentPanel({
     // Submit label
     const submitLabel = useMemo(() => {
         if (!hasItems) return "Keranjang Kosong";
-        if (!selectedCustomer) return "Pilih Pelanggan";
         if (isCashPayment && remaining > 0)
             return `Kurang ${formatPrice(remaining)}`;
         return "Selesaikan Transaksi";
-    }, [hasItems, selectedCustomer, isCashPayment, remaining]);
+    }, [hasItems, isCashPayment, remaining]);
 
     return (
         <div className={`flex flex-col h-full ${className}`}>

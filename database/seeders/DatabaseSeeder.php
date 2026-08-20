@@ -46,7 +46,7 @@ class DatabaseSeeder extends Seeder
         // Migrate existing stock to pivot
         DB::statement("
             INSERT INTO product_warehouse (product_id, warehouse_id, stock, created_at, updated_at)
-            SELECT id, {$pusat->id}, stock, NOW(), NOW() FROM products
+            SELECT id, {$pusat->id}, stock, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP FROM products
         ");
     }
 }

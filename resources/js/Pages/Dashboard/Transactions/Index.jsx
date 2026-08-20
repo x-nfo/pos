@@ -12,15 +12,18 @@ import POSLayout from "@/Layouts/POSLayout";
 import ProductGrid from "@/Components/POS/ProductGrid";
 import CartPanel from "@/Components/POS/CartPanel";
 import PaymentPanel from "@/Components/POS/PaymentPanel";
-import CustomerSelect from "@/Components/POS/CustomerSelect";
+import CustomerSelect, {
+    WALK_IN_CUSTOMER,
+} from "@/Components/POS/CustomerSelect";
 import NumpadModal from "@/Components/POS/NumpadModal";
 import HeldTransactions, {
     HoldButton,
 } from "@/Components/POS/HeldTransactions";
+import QuickAddProductModal from "@/Components/POS/QuickAddProductModal";
 import useBarcodeScanner from "@/Hooks/useBarcodeScanner";
 import { getProductImageUrl } from "@/Utils/imageUrl";
 import { useAuthorization } from "@/Utils/authorization";
-import { queueTransaction } from "@/Utils/offlineDb";
+import { queueTransaction, cacheProducts, cacheCustomers, getCachedProducts, getCachedCustomers } from "@/Utils/offlineDb";
 import {
     IconUser,
     IconShoppingCart,
@@ -71,7 +74,7 @@ export default function Index({
     const [isSearching, setIsSearching] = useState(false);
     const [addingProductId, setAddingProductId] = useState(null);
     const [removingItemId, setRemovingItemId] = useState(null);
-    const [selectedCustomer, setSelectedCustomer] = useState(null);
+    const [selectedCustomer, setSelectedCustomer] = useState(WALK_IN_CUSTOMER);
     const [pricingPreview, setPricingPreview] = useState(initialPricingPreview);
     const [isLoadingPricing, setIsLoadingPricing] = useState(false);
     const [discountInput, setDiscountInput] = useState("");
@@ -91,6 +94,42 @@ export default function Index({
     const [selectedVoucherId, setSelectedVoucherId] = useState("");
     const [openingCashInput, setOpeningCashInput] = useState("");
     const [shiftNotesInput, setShiftNotesInput] = useState("");
+    const [productList, setProductList] = useState(products);
+    const [customerList, setCustomerList] = useState(customers);
+    const [activeCarts, setActiveCarts] = useState(carts);
+    const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
+    const [quickAddInitialData, setQuickAddInitialData] = useState({});
+
+    useEffect(() => {
+        setProductList(products);
+    }, [products]);
+
+    useEffect(() => {
+        setCustomerList(customers);
+    }, [customers]);
+
+    useEffect(() => {
+        setActiveCarts(carts);
+    }, [carts]);
+
+    // Offline fallback: load cached products/customers from IndexedDB if props are empty
+    useEffect(() => {
+        if (!products || products.length === 0) {
+            getCachedProducts().then((cached) => {
+                if (cached && cached.length > 0) {
+                    setProductList(cached);
+                }
+            }).catch(() => {});
+        }
+        if (!customers || customers.length === 0) {
+            getCachedCustomers().then((cached) => {
+                if (cached && cached.length > 0) {
+                    setCustomerList(cached);
+                }
+            }).catch(() => {});
+        }
+    }, [products, customers]);
+
     const normalizedSelectedCategory =
         selectedCategory === null ? null : Number(selectedCategory);
     const pricingItemsByCartId = useMemo(() => {
@@ -121,31 +160,15 @@ export default function Index({
         if (flash?.success) toast.success(flash.success);
     }, [flash]);
 
-    // Barcode scanner integration
-    const handleBarcodeScan = useCallback(
-        (barcode) => {
-            const product = products.find(
-                (p) => p.barcode?.toLowerCase() === barcode.toLowerCase()
-            );
-
-            if (product) {
-                if (product.stock > 0) {
-                    handleAddToCart(product);
-                    toast.success(`${product.title} ditambahkan (barcode)`);
-                } else {
-                    toast.error(`${product.title} stok habis`);
-                }
-            } else {
-                toast.error(`Produk tidak ditemukan: ${barcode}`);
-            }
-        },
-        [products]
-    );
-
-    const { isScanning } = useBarcodeScanner(handleBarcodeScan, {
-        enabled: true,
-        minLength: 3,
-    });
+    // Cache products and customers for offline POS capability
+    useEffect(() => {
+        if (products && products.length > 0) {
+            cacheProducts(products).catch(() => {});
+        }
+        if (customers && customers.length > 0) {
+            cacheCustomers(customers).catch(() => {});
+        }
+    }, [products, customers]);
 
     const LowStockAlerts = () => null;
 
@@ -159,8 +182,8 @@ export default function Index({
         [shippingInput]
     );
     const baseSubtotal = useMemo(
-        () => Number(pricingPreview?.summary?.base_subtotal ?? carts_total ?? 0),
-        [pricingPreview, carts_total]
+        () => Number(pricingPreview?.summary?.base_subtotal ?? (activeCarts.reduce((acc, c) => acc + Number(c.price || 0), 0)) ?? 0),
+        [pricingPreview, activeCarts]
     );
     const promoDiscount = useMemo(
         () => Number(pricingPreview?.summary?.promo_discount_total ?? 0),
@@ -192,16 +215,16 @@ export default function Index({
         [cashInput, isCashPayment, payable]
     );
     const cartCount = useMemo(
-        () => carts.reduce((total, item) => total + Number(item.qty), 0),
-        [carts]
+        () => activeCarts.reduce((total, item) => total + Number(item.qty || 1), 0),
+        [activeCarts]
     );
     const pricingDependency = useMemo(
-        () => carts.map((item) => `${item.id}:${item.qty}`).join("|"),
-        [carts]
+        () => activeCarts.map((item) => `${item.id || item.cart_id}:${item.qty}:${item.price}`).join("|"),
+        [activeCarts]
     );
 
     useEffect(() => {
-        if (carts.length === 0) {
+        if (activeCarts.length === 0) {
             setPricingPreview({
                 items: [],
                 summary: {
@@ -217,6 +240,32 @@ export default function Index({
                 },
             });
 
+            return;
+        }
+
+        // Calculate locally when offline to avoid network failure
+        if (!navigator.onLine) {
+            const localSubtotal = activeCarts.reduce((acc, c) => acc + (Number(c.price) || 0), 0);
+            setPricingPreview({
+                items: activeCarts.map((c) => ({
+                    cart_id: c.id || c.cart_id,
+                    base_unit_price: Number(c.unit_price || c.product?.sell_price || 0),
+                    effective_unit_price: Number(c.unit_price || c.product?.sell_price || 0),
+                    line_total: Number(c.price || 0),
+                    line_discount_total: 0,
+                })),
+                summary: {
+                    base_subtotal: localSubtotal,
+                    promo_discount_total: 0,
+                    subtotal_after_promo: localSubtotal,
+                    voucher_discount_total: 0,
+                    loyalty_discount_total: 0,
+                    manual_discount_total: discount,
+                    shipping_cost: shipping,
+                    tax_total: 0,
+                    grand_total: Math.max(0, localSubtotal - discount + shipping),
+                },
+            });
             return;
         }
 
@@ -238,7 +287,28 @@ export default function Index({
             })
             .catch(() => {
                 if (!cancelled) {
-                    toast.error("Gagal memuat promo aktif");
+                    // Fallback to local calculation on error
+                    const localSubtotal = activeCarts.reduce((acc, c) => acc + (Number(c.price) || 0), 0);
+                    setPricingPreview({
+                        items: activeCarts.map((c) => ({
+                            cart_id: c.id || c.cart_id,
+                            base_unit_price: Number(c.unit_price || c.product?.sell_price || 0),
+                            effective_unit_price: Number(c.unit_price || c.product?.sell_price || 0),
+                            line_total: Number(c.price || 0),
+                            line_discount_total: 0,
+                        })),
+                        summary: {
+                            base_subtotal: localSubtotal,
+                            promo_discount_total: 0,
+                            subtotal_after_promo: localSubtotal,
+                            voucher_discount_total: 0,
+                            loyalty_discount_total: 0,
+                            manual_discount_total: discount,
+                            shipping_cost: shipping,
+                            tax_total: 0,
+                            grand_total: Math.max(0, localSubtotal - discount + shipping),
+                        },
+                    });
                 }
             })
             .finally(() => {
@@ -257,6 +327,7 @@ export default function Index({
         shipping,
         redeemPointsInput,
         selectedVoucherId,
+        activeCarts,
     ]);
 
     useEffect(() => {
@@ -314,7 +385,40 @@ export default function Index({
 
     // Handle add product to cart
     const handleAddToCart = async (product) => {
-        if (!product?.id) return;
+        if (!product?.id || addingProductId) return;
+
+        if (!navigator.onLine) {
+            const existingIndex = activeCarts.findIndex((c) => c.product_id === product.id);
+            let updated;
+            if (existingIndex > -1) {
+                updated = [...activeCarts];
+                const current = updated[existingIndex];
+                const newQty = (current.qty || 1) + 1;
+                const unitPrice = Number(current.unit_price || product.sell_price || 0);
+                updated[existingIndex] = {
+                    ...current,
+                    qty: newQty,
+                    price: unitPrice * newQty,
+                };
+            } else {
+                const unitPrice = Number(product.sell_price || 0);
+                const newCart = {
+                    id: "local-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+                    cart_id: "local-" + Date.now(),
+                    product_id: product.id,
+                    product: product,
+                    qty: 1,
+                    unit_id: product.unit_id || null,
+                    conversion_factor: 1,
+                    unit_price: unitPrice,
+                    price: unitPrice,
+                };
+                updated = [newCart, ...activeCarts];
+            }
+            setActiveCarts(updated);
+            toast.success(`${product.title} ditambahkan`);
+            return;
+        }
 
         setAddingProductId(product.id);
 
@@ -332,11 +436,122 @@ export default function Index({
                     setAddingProductId(null);
                 },
                 onError: () => {
-                    toast.error("Gagal menambahkan produk");
+                    // Fallback to local cart on network error
+                    const existingIndex = activeCarts.findIndex((c) => c.product_id === product.id);
+                    let updated;
+                    if (existingIndex > -1) {
+                        updated = [...activeCarts];
+                        const current = updated[existingIndex];
+                        const newQty = (current.qty || 1) + 1;
+                        const unitPrice = Number(current.unit_price || product.sell_price || 0);
+                        updated[existingIndex] = {
+                            ...current,
+                            qty: newQty,
+                            price: unitPrice * newQty,
+                        };
+                    } else {
+                        const unitPrice = Number(product.sell_price || 0);
+                        const newCart = {
+                            id: "local-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+                            cart_id: "local-" + Date.now(),
+                            product_id: product.id,
+                            product: product,
+                            qty: 1,
+                            unit_id: product.unit_id || null,
+                            conversion_factor: 1,
+                            unit_price: unitPrice,
+                            price: unitPrice,
+                        };
+                        updated = [newCart, ...activeCarts];
+                    }
+                    setActiveCarts(updated);
+                    toast.success(`${product.title} ditambahkan (offline)`);
                     setAddingProductId(null);
                 },
             }
         );
+    };
+
+    // Barcode scanner integration with Reference Catalog lookup
+    const handleBarcodeScan = useCallback(
+        async (barcode) => {
+            if (!barcode) return;
+            const cleanBarcode = String(barcode).trim();
+            const product = productList.find(
+                (p) => p.barcode?.toLowerCase() === cleanBarcode.toLowerCase()
+            );
+
+            if (product) {
+                if (product.stock > 0 || !navigator.onLine) {
+                    handleAddToCart(product);
+                } else {
+                    toast.error(`${product.title} stok habis`);
+                }
+                return;
+            }
+
+            if (!navigator.onLine) {
+                toast.error(`Produk barcode "${cleanBarcode}" tidak ditemukan di database lokal`);
+                return;
+            }
+
+            // Product not in store: lookup in Reference Catalog
+            const lookupToast = toast.loading(`Mencari "${cleanBarcode}" di katalog referensi...`);
+            try {
+                const response = await axios.get(route("products.lookup-catalog"), {
+                    params: { barcode: cleanBarcode },
+                });
+                toast.dismiss(lookupToast);
+
+                if (response.data?.success && response.data?.data) {
+                    const item = response.data.data;
+                    setQuickAddInitialData({
+                        barcode: cleanBarcode,
+                        title: item.title || "",
+                        category_id: item.category_id || "",
+                        buy_price: item.buy_price || 0,
+                        sell_price: item.sell_price || "",
+                        stock: 10,
+                        description: item.description || item.title || "",
+                        image: item.image || "",
+                        fromCatalog: true,
+                    });
+                    setQuickAddModalOpen(true);
+                } else {
+                    setQuickAddInitialData({
+                        barcode: cleanBarcode,
+                        title: "",
+                        stock: 10,
+                        fromCatalog: false,
+                    });
+                    setQuickAddModalOpen(true);
+                }
+            } catch (err) {
+                toast.dismiss(lookupToast);
+                setQuickAddInitialData({
+                    barcode: cleanBarcode,
+                    title: "",
+                    stock: 10,
+                    fromCatalog: false,
+                });
+                setQuickAddModalOpen(true);
+            }
+        },
+        [productList, handleAddToCart]
+    );
+
+    const { isScanning } = useBarcodeScanner(handleBarcodeScan, {
+        enabled: true,
+        minLength: 3,
+    });
+
+    const handleQuickAddSuccess = (newProduct) => {
+        setProductList((prev) => {
+            const exists = prev.some((p) => p.id === newProduct.id);
+            if (exists) return prev;
+            return [newProduct, ...prev];
+        });
+        handleAddToCart(newProduct);
     };
 
     // Handle update cart quantity
@@ -344,6 +559,23 @@ export default function Index({
 
     const handleUpdateQty = (cartId, newQty) => {
         if (newQty < 1) return;
+
+        if (!navigator.onLine) {
+            const updated = activeCarts.map((c) => {
+                if (c.id === cartId || c.cart_id === cartId) {
+                    const unitPrice = Number(c.unit_price || c.product?.sell_price || Math.round(c.price / (c.qty || 1)));
+                    return {
+                        ...c,
+                        qty: newQty,
+                        price: unitPrice * newQty,
+                    };
+                }
+                return c;
+            });
+            setActiveCarts(updated);
+            return;
+        }
+
         setUpdatingCartId(cartId);
 
         router.patch(
@@ -355,7 +587,18 @@ export default function Index({
                     setUpdatingCartId(null);
                 },
                 onError: (errors) => {
-                    toast.error(errors?.message || "Gagal update quantity");
+                    const updated = activeCarts.map((c) => {
+                        if (c.id === cartId || c.cart_id === cartId) {
+                            const unitPrice = Number(c.unit_price || c.product?.sell_price || Math.round(c.price / (c.qty || 1)));
+                            return {
+                                ...c,
+                                qty: newQty,
+                                price: unitPrice * newQty,
+                            };
+                        }
+                        return c;
+                    });
+                    setActiveCarts(updated);
                     setUpdatingCartId(null);
                 },
             }
@@ -371,8 +614,15 @@ export default function Index({
     const [isHolding, setIsHolding] = useState(false);
 
     const handleHoldCart = async (label = null) => {
-        if (carts.length === 0) {
+        if (isHolding) return;
+
+        if (activeCarts.length === 0) {
             toast.error("Keranjang kosong");
+            return;
+        }
+
+        if (!navigator.onLine) {
+            toast.error("Fitur tahan transaksi memerlukan koneksi online");
             return;
         }
 
@@ -398,7 +648,6 @@ export default function Index({
     // Keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e) => {
-            // Don't trigger if user is typing in an input
             if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")
                 return;
 
@@ -406,7 +655,6 @@ export default function Index({
                 case "/":
                 case "F5":
                     e.preventDefault();
-                    // Focus search input
                     if (searchInputRef.current) {
                         searchInputRef.current.focus();
                     }
@@ -417,7 +665,7 @@ export default function Index({
                     break;
                 case "F2":
                     e.preventDefault();
-                    if (carts.length > 0 && selectedCustomer)
+                    if (activeCarts.length > 0 && !isSubmitting)
                         handleSubmitTransaction();
                     break;
                 case "F3":
@@ -440,10 +688,17 @@ export default function Index({
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [carts, selectedCustomer, mobileView, showShortcuts]);
+    }, [activeCarts, selectedCustomer, mobileView, showShortcuts, isSubmitting]);
 
     // Handle remove from cart
     const handleRemoveFromCart = (cartId) => {
+        if (!navigator.onLine) {
+            const updated = activeCarts.filter((c) => c.id !== cartId && c.cart_id !== cartId);
+            setActiveCarts(updated);
+            toast.success("Item dihapus dari keranjang");
+            return;
+        }
+
         setRemovingItemId(cartId);
 
         router.delete(route("transactions.destroyCart", cartId), {
@@ -453,7 +708,9 @@ export default function Index({
                 setRemovingItemId(null);
             },
             onError: () => {
-                toast.error("Gagal menghapus item");
+                const updated = activeCarts.filter((c) => c.id !== cartId && c.cart_id !== cartId);
+                setActiveCarts(updated);
+                toast.success("Item dihapus dari keranjang");
                 setRemovingItemId(null);
             },
         });
@@ -461,13 +718,15 @@ export default function Index({
 
     // Handle submit transaction
     const handleSubmitTransaction = () => {
-        if (carts.length === 0) {
+        if (isSubmitting) return;
+
+        if (activeCarts.length === 0) {
             toast.error("Keranjang masih kosong");
             return;
         }
 
-        if (!selectedCustomer?.id) {
-            toast.error("Pilih pelanggan terlebih dahulu");
+        if (payLater && !selectedCustomer?.id) {
+            toast.error("Pilih pelanggan terdaftar untuk nota barang / piutang");
             return;
         }
 
@@ -491,11 +750,21 @@ export default function Index({
         setIsSubmitting(true);
 
         if (!navigator.onLine) {
+            const items = activeCarts.map((cart) => ({
+                product_id: cart.product_id,
+                qty: cart.qty,
+                unit_id: cart.unit_id || null,
+                conversion_factor: cart.conversion_factor || 1,
+                unit_price: cart.unit_price || (cart.product ? cart.product.sell_price : Math.round(cart.price / (cart.qty || 1))),
+                price: cart.price,
+                discount_total: cart.discount_total || 0,
+            }));
+
             const payload = {
-                customer_id: selectedCustomer.id,
+                customer_id: selectedCustomer?.id ?? null,
                 discount,
                 redeem_points: Number(redeemPointsInput || 0),
-                customer_voucher_id: selectedVoucherId || null,
+                customer_voucher_id: selectedCustomer?.id ? (selectedVoucherId || null) : null,
                 shipping_cost: shipping,
                 grand_total: payable,
                 cash: isCashPayment ? cash : payable,
@@ -503,11 +772,20 @@ export default function Index({
                 pay_later: payLater,
                 due_date: payLater ? dueDate : null,
                 bank_account_id: isBankTransfer ? selectedBankAccount : null,
+                customer_npwp: selectedCustomer?.npwp || null,
+                items,
             };
+
             queueTransaction(payload).then(() => {
-                setCarts([]);
+                setActiveCarts([]);
+                setDiscountInput("");
+                setRedeemPointsInput("");
+                setCashInput("");
+                setShippingInput("");
+                setSelectedCustomer(WALK_IN_CUSTOMER);
                 setPricingPreview(initialPricingPreview);
-                toast.success("Transaksi disimpan offline. Akan dikirim saat online.");
+                window.dispatchEvent(new CustomEvent("pos:sync-change"));
+                toast.success("Transaksi disimpan offline. Akan dikirim otomatis saat online.");
             });
             setIsSubmitting(false);
             return;
@@ -516,10 +794,10 @@ export default function Index({
         router.post(
             route("transactions.store"),
             {
-                customer_id: selectedCustomer.id,
+                customer_id: selectedCustomer?.id ?? null,
                 discount,
                 redeem_points: Number(redeemPointsInput || 0),
-                customer_voucher_id: selectedVoucherId || null,
+                customer_voucher_id: selectedCustomer?.id ? (selectedVoucherId || null) : null,
                 shipping_cost: shipping,
                 grand_total: payable,
                 cash: isCashPayment ? cash : payable,
@@ -537,7 +815,7 @@ export default function Index({
                     setRedeemPointsInput("");
                     setCashInput("");
                     setShippingInput("");
-                    setSelectedCustomer(null);
+                    setSelectedCustomer(WALK_IN_CUSTOMER);
                     setSelectedBankAccount(null);
                     setSelectedVoucherId("");
                     setPaymentMethod(defaultPaymentGateway ?? "cash");
@@ -556,7 +834,7 @@ export default function Index({
 
     // Filter products including out of stock
     const allProducts = useMemo(() => {
-        return products.filter((product) => {
+        return productList.filter((product) => {
             const matchesCategory =
                 normalizedSelectedCategory === null ||
                 Number(product.category_id) === normalizedSelectedCategory;
@@ -570,7 +848,7 @@ export default function Index({
                     .includes(searchQuery.toLowerCase());
             return matchesCategory && matchesSearch;
         });
-    }, [products, normalizedSelectedCategory, searchQuery]);
+    }, [productList, normalizedSelectedCategory, searchQuery]);
 
     if (!activeCashierShift) {
         return (
@@ -702,6 +980,7 @@ export default function Index({
                         }
                         searchQuery={searchQuery}
                         onSearchChange={setSearchQuery}
+                        onBarcodeScan={handleBarcodeScan}
                         isSearching={isSearching}
                         onAddToCart={handleAddToCart}
                         addingProductId={addingProductId}
@@ -719,7 +998,7 @@ export default function Index({
                     {/* Customer Select - Fixed */}
                     <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
                         <CustomerSelect
-                            customers={customers}
+                            customers={customerList}
                             selected={selectedCustomer}
                             onSelect={setSelectedCustomer}
                             placeholder="Pilih pelanggan..."
@@ -734,7 +1013,7 @@ export default function Index({
                         <div className="p-3 border-b border-slate-200 dark:border-slate-800">
                             <HeldTransactions
                                 heldCarts={heldCarts}
-                                hasActiveCart={carts.length > 0}
+                                hasActiveCart={activeCarts.length > 0}
                             />
                         </div>
                     )}
@@ -742,10 +1021,10 @@ export default function Index({
                     {/* Cart Items - Scrollable */}
                     <div className="flex-1 overflow-y-auto min-h-0">
                         {/* Hold Button - at top of cart section */}
-                        {carts.length > 0 && (
+                        {activeCarts.length > 0 && (
                             <div className="p-3 border-b border-slate-200 dark:border-slate-800">
                                 <HoldButton
-                                    hasItems={carts.length > 0}
+                                    hasItems={activeCarts.length > 0}
                                     onHold={handleHoldCart}
                                     isHolding={isHolding}
                                 />
@@ -758,16 +1037,16 @@ export default function Index({
                                     <IconShoppingCart size={16} />
                                     Keranjang
                                 </h3>
-                                {carts.length > 0 && (
+                                {activeCarts.length > 0 && (
                                     <span className="px-2.5 py-0.5 text-xs font-bold bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300 rounded-full whitespace-nowrap">
                                         {cartCount} item
                                     </span>
                                 )}
                             </div>
 
-                            {carts.length > 0 ? (
+                            {activeCarts.length > 0 ? (
                                 <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-                                    {carts.map((item) => (
+                                    {activeCarts.map((item) => (
                                         (() => {
                                             const pricingItem =
                                                 pricingItemsByCartId[item.id];
@@ -800,22 +1079,18 @@ export default function Index({
                                             className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 group"
                                         >
                                             <div className="w-10 h-10 rounded-lg bg-slate-200 dark:bg-slate-700 overflow-hidden flex-shrink-0">
-                                                {item.product?.image ? (
-                                                    <img
-                                                        src={getProductImageUrl(
-                                                            item.product.image
-                                                        )}
-                                                        alt={item.product.title}
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center">
-                                                        <IconShoppingCart
-                                                            size={14}
-                                                            className="text-slate-400"
-                                                        />
-                                                    </div>
-                                                )}
+                                                <img
+                                                    src={getProductImageUrl(
+                                                        item.product?.image,
+                                                        true
+                                                    )}
+                                                    alt={item.product?.title || "Item"}
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        e.currentTarget.src =
+                                                            "/images/product-placeholder.svg";
+                                                    }}
+                                                />
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
@@ -1440,8 +1715,8 @@ export default function Index({
                         <button
                             onClick={handleSubmitTransaction}
                             disabled={
-                                !carts.length ||
-                                !selectedCustomer ||
+                                !activeCarts.length ||
+                                (payLater && !selectedCustomer?.id) ||
                                 (!payLater &&
                                     paymentMethod === "cash" &&
                                     cash < payable) ||
@@ -1449,10 +1724,10 @@ export default function Index({
                                 isSubmitting
                             }
                             className={`w-full h-12 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all ${
-                                carts.length &&
-                                selectedCustomer &&
-                                (paymentMethod !== "cash" || cash >= payable)
-                                    && !isLoadingPricing
+                                activeCarts.length &&
+                                (!payLater || selectedCustomer?.id) &&
+                                (paymentMethod !== "cash" || cash >= payable) &&
+                                !isLoadingPricing
                                     ? "bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white shadow-lg shadow-primary-500/30"
                                     : "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
                             }`}
@@ -1463,10 +1738,10 @@ export default function Index({
                                 <>
                                     <IconReceipt size={18} />
                                     <span>
-                                        {!carts.length
+                                        {!activeCarts.length
                                             ? "Keranjang Kosong"
-                                            : !selectedCustomer
-                                            ? "Pilih Pelanggan"
+                                            : payLater && !selectedCustomer?.id
+                                            ? "Pilih Pelanggan Terdaftar"
                                             : paymentMethod === "cash" &&
                                               cash < payable
                                             ? `Kurang ${formatPrice(
@@ -1535,6 +1810,14 @@ export default function Index({
                     </div>
                 </div>
             )}
+            {/* Quick Add Product Modal */}
+            <QuickAddProductModal
+                isOpen={quickAddModalOpen}
+                onClose={() => setQuickAddModalOpen(false)}
+                onSuccess={handleQuickAddSuccess}
+                initialData={quickAddInitialData}
+                categories={categories}
+            />
         </>
     );
 }

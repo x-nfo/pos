@@ -9,7 +9,6 @@ use App\Models\Setting;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\PricingService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -40,7 +39,7 @@ class DineOrderController extends Controller
         $products = Product::whereIn('id', $productIds)->get();
         $products = $this->pricingService->previewProducts($products);
 
-        $priceMap = $products->keyBy('id')->map(fn($p) => $p->sell_price);
+        $priceMap = $products->keyBy('id')->map(fn ($p) => $p->sell_price);
 
         $subtotal = 0;
         $orderItems = [];
@@ -150,7 +149,7 @@ class DineOrderController extends Controller
             return false;
         }
 
-        $hashString = $orderId . $status . $serverKey;
+        $hashString = $orderId.$status.$serverKey;
         $expectedSignature = hash('sha512', $hashString);
 
         return hash_equals($expectedSignature, $signatureKey);
