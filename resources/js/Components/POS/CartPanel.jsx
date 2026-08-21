@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
     IconTrash,
     IconMinus,
@@ -16,6 +16,9 @@ const formatPrice = (value = 0) =>
 
 // Single Cart Item
 function CartItem({ item, onUpdateQty, onRemove, isRemoving }) {
+    const [editingQty, setEditingQty] = useState(false);
+    const [tempQty, setTempQty] = useState("");
+
     // Note: item.price from backend is already the total (sell_price * qty)
     const quantity = Number(item.qty || 0);
     const itemPrice = Number(item.price || 0);
@@ -61,6 +64,7 @@ function CartItem({ item, onUpdateQty, onRemove, isRemoving }) {
             <div className="flex flex-col items-end justify-between">
                 {/* Remove Button */}
                 <button
+                    type="button"
                     onClick={() => onRemove(item.id)}
                     disabled={isRemoving}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-950/50 transition-colors opacity-0 group-hover:opacity-100"
@@ -68,25 +72,60 @@ function CartItem({ item, onUpdateQty, onRemove, isRemoving }) {
                     <IconTrash size={16} />
                 </button>
 
-                {/* Qty Stepper */}
-                <div className="flex items-center gap-1">
+                {/* Qty Stepper with Direct Keyboard Numeric Input */}
+                <div className="flex items-center bg-slate-200/80 dark:bg-slate-700/80 rounded-lg p-0.5 border border-slate-300/80 dark:border-slate-600/80">
                     <button
+                        type="button"
                         onClick={() =>
                             onUpdateQty(item.id, Math.max(1, item.qty - 1))
                         }
                         disabled={item.qty <= 1}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="w-6 h-6 rounded-md bg-white dark:bg-slate-600 text-slate-700 dark:text-slate-200 flex items-center justify-center disabled:opacity-30 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-500 active:scale-95 transition-all"
+                        title="Kurangi kuantitas"
                     >
-                        <IconMinus size={14} />
+                        <IconMinus size={12} strokeWidth={2.5} />
                     </button>
-                    <span className="w-8 text-center text-sm font-medium text-slate-700 dark:text-slate-300">
-                        {item.qty}
-                    </span>
+                    <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={editingQty ? tempQty : item.qty}
+                        onFocus={(e) => {
+                            setEditingQty(true);
+                            setTempQty(String(item.qty));
+                            e.target.select();
+                        }}
+                        onChange={(e) => {
+                            const val = e.target.value.replace(/[^\d]/g, "");
+                            setTempQty(val);
+                        }}
+                        onBlur={() => {
+                            const finalVal = parseInt(tempQty, 10);
+                            if (!isNaN(finalVal) && finalVal >= 1) {
+                                onUpdateQty(item.id, finalVal);
+                            }
+                            setEditingQty(false);
+                            setTempQty("");
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.target.blur();
+                            } else if (e.key === "Escape") {
+                                setEditingQty(false);
+                                setTempQty("");
+                                e.target.blur();
+                            }
+                        }}
+                        className="w-9 h-6 text-center text-xs font-bold text-slate-900 dark:text-white bg-transparent border-0 focus:ring-1 focus:ring-primary-500 rounded p-0"
+                        title="Ketik jumlah langsung"
+                    />
                     <button
+                        type="button"
                         onClick={() => onUpdateQty(item.id, item.qty + 1)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                        className="w-6 h-6 rounded-md bg-white dark:bg-slate-600 text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-xs hover:bg-slate-50 dark:hover:bg-slate-500 active:scale-95 transition-all"
+                        title="Tambah kuantitas"
                     >
-                        <IconPlus size={14} />
+                        <IconPlus size={12} strokeWidth={2.5} />
                     </button>
                 </div>
             </div>

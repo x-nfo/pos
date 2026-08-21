@@ -75,7 +75,7 @@ export default function MobilePaymentSheet({
                     type="button"
                     onClick={handleFormSubmit}
                     disabled={!isReadyToSubmit}
-                    className={`w-full h-13 rounded-2xl text-sm font-bold tracking-wide flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] ${
+                    className={`w-full h-14 py-3.5 px-4 rounded-2xl text-sm sm:text-base font-bold tracking-wide flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] ${
                         isReadyToSubmit
                             ? "bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white shadow-primary-500/25"
                             : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed shadow-none"

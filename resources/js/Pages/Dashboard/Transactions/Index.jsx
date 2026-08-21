@@ -31,6 +31,8 @@ import {
     IconKeyboard,
     IconBarcode,
     IconTrash,
+    IconMinus,
+    IconPlus,
     IconCash,
     IconCreditCard,
     IconBuildingBank,
@@ -97,6 +99,8 @@ export default function Index({
     const [productList, setProductList] = useState(products);
     const [customerList, setCustomerList] = useState(customers);
     const [activeCarts, setActiveCarts] = useState(carts);
+    const [editingQtyId, setEditingQtyId] = useState(null);
+    const [tempQtyInput, setTempQtyInput] = useState("");
     const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
     const [quickAddInitialData, setQuickAddInitialData] = useState({});
 
@@ -571,10 +575,28 @@ export default function Index({
     const handleUpdateQty = (cartId, newQty) => {
         if (newQty < 1) return;
 
+        const targetCart = activeCarts.find(
+            (c) => c.id === cartId || c.cart_id === cartId
+        );
+
+        if (targetCart?.product) {
+            const availableStock = Number(targetCart.product.stock || 0);
+            if (availableStock > 0 && newQty > availableStock) {
+                toast.error(
+                    `Stok tidak mencukupi. Tersedia: ${availableStock}`
+                );
+                return;
+            }
+        }
+
         if (!navigator.onLine) {
             const updated = activeCarts.map((c) => {
                 if (c.id === cartId || c.cart_id === cartId) {
-                    const unitPrice = Number(c.unit_price || c.product?.sell_price || Math.round(c.price / (c.qty || 1)));
+                    const unitPrice = Number(
+                        c.unit_price ||
+                            c.product?.sell_price ||
+                            Math.round(c.price / (c.qty || 1))
+                    );
                     return {
                         ...c,
                         qty: newQty,
@@ -598,18 +620,9 @@ export default function Index({
                     setUpdatingCartId(null);
                 },
                 onError: (errors) => {
-                    const updated = activeCarts.map((c) => {
-                        if (c.id === cartId || c.cart_id === cartId) {
-                            const unitPrice = Number(c.unit_price || c.product?.sell_price || Math.round(c.price / (c.qty || 1)));
-                            return {
-                                ...c,
-                                qty: newQty,
-                                price: unitPrice * newQty,
-                            };
-                        }
-                        return c;
-                    });
-                    setActiveCarts(updated);
+                    if (errors?.message) toast.error(errors.message);
+                    else if (errors?.qty) toast.error(errors.qty);
+                    else toast.error("Gagal mengubah kuantitas");
                     setUpdatingCartId(null);
                 },
             }
@@ -1132,8 +1145,10 @@ export default function Index({
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-1">
+                                            {/* Stepper with Direct Numeric Input */}
+                                            <div className="flex items-center bg-slate-200/80 dark:bg-slate-700/80 rounded-lg p-0.5 border border-slate-300/80 dark:border-slate-600/80">
                                                 <button
+                                                    type="button"
                                                     onClick={() =>
                                                         handleUpdateQty(
                                                             item.id,
@@ -1144,35 +1159,75 @@ export default function Index({
                                                         )
                                                     }
                                                     disabled={item.qty <= 1}
-                                                    className="w-6 h-6 rounded flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 disabled:opacity-50 text-xs"
+                                                    className="w-6 h-6 rounded-md bg-white dark:bg-slate-600 text-slate-700 dark:text-slate-200 flex items-center justify-center disabled:opacity-30 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-500 active:scale-95 transition-all"
+                                                    title="Kurangi kuantitas"
                                                 >
-                                                    -
+                                                    <IconMinus size={12} strokeWidth={2.5} />
                                                 </button>
-                                                <span className="w-6 text-center text-xs font-medium">
-                                                    {item.qty}
-                                                </span>
+                                                <input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
+                                                    value={
+                                                        editingQtyId === item.id
+                                                            ? tempQtyInput
+                                                            : item.qty
+                                                    }
+                                                    onFocus={(e) => {
+                                                        setEditingQtyId(item.id);
+                                                        setTempQtyInput(String(item.qty));
+                                                        e.target.select();
+                                                    }}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value.replace(/[^\d]/g, "");
+                                                        setTempQtyInput(val);
+                                                    }}
+                                                    onBlur={() => {
+                                                        const finalVal = parseInt(tempQtyInput, 10);
+                                                        if (!isNaN(finalVal) && finalVal >= 1) {
+                                                            handleUpdateQty(item.id, finalVal);
+                                                        }
+                                                        setEditingQtyId(null);
+                                                        setTempQtyInput("");
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter") {
+                                                            e.target.blur();
+                                                        } else if (e.key === "Escape") {
+                                                            setEditingQtyId(null);
+                                                            setTempQtyInput("");
+                                                            e.target.blur();
+                                                        }
+                                                    }}
+                                                    className="w-9 h-6 text-center text-xs font-bold text-slate-900 dark:text-white bg-transparent border-0 focus:ring-1 focus:ring-primary-500 rounded p-0"
+                                                    title="Ketik jumlah langsung"
+                                                />
                                                 <button
+                                                    type="button"
                                                     onClick={() =>
                                                         handleUpdateQty(
                                                             item.id,
                                                             item.qty + 1
                                                         )
                                                     }
-                                                    className="w-6 h-6 rounded flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 text-xs"
+                                                    className="w-6 h-6 rounded-md bg-white dark:bg-slate-600 text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-xs hover:bg-slate-50 dark:hover:bg-slate-500 active:scale-95 transition-all"
+                                                    title="Tambah kuantitas"
                                                 >
-                                                    +
-                                                </button>
-                                                <button
-                                                    onClick={() =>
-                                                        handleRemoveFromCart(
-                                                            item.id
-                                                        )
-                                                    }
-                                                    className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-950/50 ml-1"
-                                                >
-                                                    <IconTrash size={12} />
+                                                    <IconPlus size={12} strokeWidth={2.5} />
                                                 </button>
                                             </div>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    handleRemoveFromCart(
+                                                        item.id
+                                                    )
+                                                }
+                                                className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-950/50 transition-colors"
+                                                title="Hapus dari keranjang"
+                                            >
+                                                <IconTrash size={14} />
+                                            </button>
                                             <p className="text-xs font-semibold text-primary-600 dark:text-primary-400 w-16 text-right">
                                                 {formatPrice(
                                                     effectiveLineTotal
