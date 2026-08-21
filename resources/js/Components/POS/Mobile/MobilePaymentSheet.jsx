@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
     IconX,
     IconCash,
@@ -6,6 +6,7 @@ import {
     IconCreditCard,
     IconClock,
     IconCheck,
+    IconQrcode,
 } from "@tabler/icons-react";
 import MobileBottomSheet from "@/Components/Mobile/MobileBottomSheet";
 import MobileNumpad from "@/Components/Mobile/MobileNumpad";
@@ -24,6 +25,7 @@ export default function MobilePaymentSheet({
     payable = 0,
     paymentMethod = "cash",
     onPaymentMethodChange,
+    paymentGateways = [],
     bankAccounts = [],
     selectedBankAccount = null,
     onSelectBankAccount,
@@ -40,17 +42,39 @@ export default function MobilePaymentSheet({
 }) {
     const { triggerHaptic } = useHaptic();
 
-    if (!isOpen) return null;
-
     const cash = Number(cashInput || 0);
     const change = Math.max(0, cash - payable);
     const isCashSufficient = cash >= payable;
 
-    const paymentOptions = [
-        { value: "cash", label: "Tunai", icon: IconCash },
-        { value: "bank_transfer", label: "Transfer", icon: IconBuildingBank },
-        { value: "gateway", label: "QRIS / EDC", icon: IconCreditCard },
-    ];
+    const getGatewayIcon = (val) => {
+        if (val === "cash") return IconCash;
+        if (val === "bank_transfer") return IconBuildingBank;
+        if (val === "qrisly") return IconQrcode;
+        return IconCreditCard;
+    };
+
+    const paymentOptions = useMemo(() => {
+        if (Array.isArray(paymentGateways) && paymentGateways.length > 0) {
+            const nonCash = paymentGateways
+                .filter((gw) => gw?.value && gw.value.toLowerCase() !== "cash")
+                .map((gw) => ({
+                    value: gw.value,
+                    label: gw.value === "qrisly" ? "QRIS" : gw.label,
+                    icon: getGatewayIcon(gw.value),
+                }));
+            return [
+                { value: "cash", label: "Tunai", icon: IconCash },
+                ...nonCash,
+            ];
+        }
+        return [
+            { value: "cash", label: "Tunai", icon: IconCash },
+            { value: "bank_transfer", label: "Transfer", icon: IconBuildingBank },
+            { value: "qrisly", label: "QRIS", icon: IconQrcode },
+        ];
+    }, [paymentGateways]);
+
+    if (!isOpen) return null;
 
     const isReadyToSubmit =
         !isSubmitting &&

@@ -803,6 +803,7 @@ export default function Mobile({
                     payable={payable}
                     paymentMethod={paymentMethod}
                     onPaymentMethodChange={setPaymentMethod}
+                    paymentGateways={paymentGateways}
                     bankAccounts={bankAccounts}
                     selectedBankAccount={selectedBankAccount}
                     onSelectBankAccount={setSelectedBankAccount}
