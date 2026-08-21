@@ -123,12 +123,11 @@ export function ProductImage({
             alt={title}
             className={`rounded-lg ${sizes[size]} ${className}`}
             fallback={
-                <div className="w-full h-full flex items-center justify-center">
-                    <IconPhoto
-                        size={size === "sm" ? 16 : 24}
-                        className="text-slate-400"
-                    />
-                </div>
+                <img
+                    src="/images/product-placeholder.svg"
+                    alt={title}
+                    className="w-full h-full object-cover"
+                />
             }
         />
     );

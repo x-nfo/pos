@@ -1,53 +1,83 @@
-<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
   <defs>
-    <linearGradient id="bgGrad" x1="0" y1="0" x2="400" y2="400" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#F8FAFC"/>
-      <stop offset="100%" stop-color="#E2E8F0"/>
-    </linearGradient>
-    <linearGradient id="boxGrad" x1="140" y1="110" x2="260" y2="230" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#6366F1"/>
-      <stop offset="100%" stop-color="#4F46E5"/>
-    </linearGradient>
-    <filter id="dropShadow" x="120" y="100" width="160" height="150" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
-      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-      <feOffset dy="8"/>
-      <feGaussianBlur stdDeviation="12"/>
-      <feComposite in2="hardAlpha" operator="out"/>
-      <feColorMatrix type="matrix" values="0 0 0 0 0.388 0 0 0 0 0.4 0 0 0 0 0.945 0 0 0 0.25 0"/>
-      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
-      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
-    </filter>
+    <style>
+      .box-stroke {
+        stroke: #94a3b8;
+        stroke-width: 8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .box-fill-top {
+        fill: #f8fafc;
+      }
+      .box-fill-left {
+        fill: #f1f5f9;
+      }
+      .box-fill-right {
+        fill: #e2e8f0;
+      }
+      .tape-fill {
+        fill: #94a3b8;
+      }
+      .placeholder-text {
+        fill: #94a3b8;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .box-stroke {
+          stroke: #64748b;
+        }
+        .box-fill-top {
+          fill: #1e293b;
+        }
+        .box-fill-left {
+          fill: #0f172a;
+        }
+        .box-fill-right {
+          fill: #1e293b;
+        }
+        .tape-fill {
+          fill: #64748b;
+        }
+        .placeholder-text {
+          fill: #64748b;
+        }
+      }
+    </style>
   </defs>
 
-  <!-- Background Canvas -->
-  <rect width="400" height="400" rx="32" fill="url(#bgGrad)"/>
+  <!-- 3D Box Faces -->
+  <!-- Top Face -->
+  <polygon points="200,95 260,130 200,165 140,130" class="box-fill-top" />
   
-  <!-- Subtle Background Rings -->
-  <circle cx="200" cy="170" r="105" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="6 6" opacity="0.6"/>
-  <circle cx="200" cy="170" r="75" fill="#EEF2FF" opacity="0.8"/>
-
-  <!-- Isometric Product Box Illustration -->
-  <g filter="url(#dropShadow)">
-    <!-- Top Face -->
-    <path d="M200 115L245 138L200 161L155 138L200 115Z" fill="#818CF8"/>
-    <!-- Left Face -->
-    <path d="M155 138L200 161V218L155 195V138Z" fill="#4F46E5"/>
-    <!-- Right Face -->
-    <path d="M200 161L245 138V195L200 218V161Z" fill="#6366F1"/>
-    <!-- Tape / Ribbon Detail -->
-    <path d="M185 122.5L200 130L215 122.5L200 115L185 122.5Z" fill="#C7D2FE" opacity="0.9"/>
-    <path d="M193 126.5L200 130V218H193V126.5Z" fill="#4338CA" opacity="0.3"/>
-  </g>
-
-  <!-- Badge / Tags -->
-  <rect x="135" y="260" width="130" height="28" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
-  <circle cx="151" cy="274" r="4" fill="#94A3B8"/>
-  <text x="163" y="279" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#64748B" letter-spacing="0.2">
-    NO PICTURE
-  </text>
+  <!-- Left Face -->
+  <polygon points="140,130 200,165 200,235 140,200" class="box-fill-left" />
   
-  <text x="200" y="315" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="500" fill="#94A3B8" text-anchor="middle">
-    Foto belum tersedia
+  <!-- Right Face -->
+  <polygon points="200,165 260,130 260,200 200,235" class="box-fill-right" />
+
+  <!-- Tape Tab on Front-Right Face (Solid Grey) -->
+  <polygon points="222,152 238,143 238,165 222,174" class="tape-fill" />
+
+  <!-- Outer Hexagon Outline -->
+  <polygon points="200,95 260,130 260,200 200,235 140,200 140,130" class="box-stroke" fill="none" />
+
+  <!-- Internal 3-Axis Meeting at Center -->
+  <line x1="200" y1="165" x2="200" y2="235" class="box-stroke" />
+  <line x1="200" y1="165" x2="140" y2="130" class="box-stroke" />
+  <line x1="200" y1="165" x2="260" y2="130" class="box-stroke" />
+
+  <!-- Tape Seam Lines across Top Face -->
+  <line x1="162" y1="117" x2="222" y2="152" class="box-stroke" />
+  <line x1="178" y1="108" x2="238" y2="143" class="box-stroke" />
+
+  <!-- Label Text -->
+  <text x="200" y="278" text-anchor="middle" class="placeholder-text">
+    No Image
   </text>
 </svg>
