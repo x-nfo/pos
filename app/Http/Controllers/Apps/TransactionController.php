@@ -821,6 +821,29 @@ class TransactionController extends Controller
         ]);
     }
 
+    public function retryQrisly(string $invoice, PaymentGatewayManager $paymentGatewayManager)
+    {
+        $transaction = Transaction::where('invoice', $invoice)->firstOrFail();
+        $paymentSetting = PaymentSetting::first();
+
+        if (! $paymentSetting || ! $paymentSetting->isGatewayReady(PaymentSetting::GATEWAY_QRISLY)) {
+            return back()->with('error', 'Gateway QRISLY belum dikonfigurasi atau belum aktif.');
+        }
+
+        try {
+            $paymentResponse = $paymentGatewayManager->createPayment($transaction, PaymentSetting::GATEWAY_QRISLY, $paymentSetting);
+
+            $transaction->update([
+                'payment_reference' => $paymentResponse['reference'] ?? null,
+                'payment_url' => $paymentResponse['payment_url'] ?? null,
+            ]);
+
+            return back()->with('success', 'QRIS berhasil dibuat!');
+        } catch (PaymentGatewayException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+    }
+
     /**
      * Display transaction history.
      */

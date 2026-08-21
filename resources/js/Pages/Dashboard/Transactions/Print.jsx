@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import {
     IconArrowLeft,
@@ -11,20 +11,63 @@ import {
     IconCheck,
     IconAlertCircle,
     IconShare,
+    IconQrcode,
+    IconRefresh,
 } from "@tabler/icons-react";
+import QRCode from "qrcode";
 import ThermalReceipt, {
     ThermalReceipt58mm,
 } from "@/Components/Receipt/ThermalReceipt";
 import ShippingLabel from "@/Components/Receipt/ShippingLabel";
 import { useAuthorization } from "@/Utils/authorization";
+import toast from "react-hot-toast";
+
+function QrisCode({ value, size = 180 }) {
+    const [dataUrl, setDataUrl] = useState("");
+
+    useEffect(() => {
+        if (!value) return;
+        QRCode.toDataURL(value, { width: size, margin: 1 })
+            .then((url) => setDataUrl(url))
+            .catch((err) => console.error("Error generating QR code:", err));
+    }, [value, size]);
+
+    if (!dataUrl) {
+        return (
+            <div
+                style={{ width: size, height: size }}
+                className="flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-400"
+            >
+                Membuat QRIS...
+            </div>
+        );
+    }
+
+    return (
+        <img
+            src={dataUrl}
+            alt="Dynamic QRIS"
+            width={size}
+            height={size}
+            className="rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 bg-white p-1.5"
+        />
+    );
+}
 
 export default function Print({ transaction }) {
-    const { storeProfile } = usePage().props;
+    const { storeProfile, flash } = usePage().props;
     const { can } = useAuthorization();
     const [printMode, setPrintMode] = useState("invoice"); // 'invoice' | 'thermal80' | 'thermal58'
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [isConfirming, setIsConfirming] = useState(false);
+    const [isRetryingQris, setIsRetryingQris] = useState(false);
     const canConfirmPayment = can("transactions-confirm-payment");
+
+    useEffect(() => {
+        if (flash?.success) toast.success(flash.success);
+        if (flash?.error) toast.error(flash.error, { duration: 6000 });
+        if (flash?.info) toast(flash.info);
+    }, [flash]);
 
     const formatPrice = (price = 0) =>
         Number(price || 0).toLocaleString("id-ID", {
@@ -83,6 +126,7 @@ export default function Print({ transaction }) {
         bank_transfer: "Transfer Bank",
         midtrans: "Midtrans",
         xendit: "Xendit",
+        qrisly: "QRIS (QRISLY)",
         pay_later: "Piutang",
     };
     const paymentMethodKey = (
@@ -119,7 +163,7 @@ export default function Print({ transaction }) {
         statusColors[paymentStatusKey] ?? statusColors.paid;
 
     const isNonCash = paymentMethodKey !== "cash";
-    const showPaymentLink = isNonCash && transaction.payment_url;
+    const showPaymentLink = isNonCash && transaction.payment_url && /^https?:\/\//i.test(transaction.payment_url);
 
     const handlePrint = () => {
         window.print();
@@ -537,6 +581,93 @@ export default function Print({ transaction }) {
                                         </p>
                                     </div>
                                 )}
+
+                            {/* QRISLY Dynamic QR Code Info */}
+                            {paymentMethodKey === "qrisly" &&
+                                (transaction.payment_url ? (
+                                    <div className="mx-6 mb-6 p-5 rounded-2xl bg-teal-50/70 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-900/60 flex flex-col sm:flex-row items-center gap-5">
+                                        <div className="flex-shrink-0">
+                                            <QrisCode value={transaction.payment_url} size={160} />
+                                        </div>
+                                        <div className="flex-1 text-center sm:text-left space-y-1.5">
+                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300">
+                                                <IconQrcode size={14} />
+                                                QRIS Dinamis (QRISLY)
+                                            </div>
+                                            <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                                                Scan QRIS untuk Membayar
+                                            </h4>
+                                            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                                                Buka aplikasi m-Banking (BCA, Mandiri, BRI, BNI) atau E-Wallet (DANA, GoPay, OVO, ShopeePay) lalu pindai QRIS di samping.
+                                            </p>
+                                            <div className="pt-1 flex items-center justify-center sm:justify-start gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => router.reload({ only: ['transaction'] })}
+                                                    className="inline-flex items-center gap-1 text-xs font-medium text-teal-700 dark:text-teal-400 hover:underline"
+                                                >
+                                                    <IconRefresh size={14} /> Cek Status Pembayaran
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setIsRetryingQris(true);
+                                                        router.post(
+                                                            route("transactions.qrisly-retry", transaction.invoice),
+                                                            {},
+                                                            {
+                                                                preserveScroll: true,
+                                                                onFinish: () => setIsRetryingQris(false),
+                                                            }
+                                                        );
+                                                    }}
+                                                    disabled={isRetryingQris}
+                                                    className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 hover:underline disabled:opacity-50"
+                                                >
+                                                    <IconRefresh size={14} className={isRetryingQris ? "animate-spin" : ""} />
+                                                    Generate Ulang
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : transaction.payment_status === "pending" ? (
+                                    <div className="mx-6 mb-6 p-5 rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 flex flex-col sm:flex-row items-center gap-4">
+                                        <div className="p-3 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-2xl">
+                                            <IconAlertCircle size={28} />
+                                        </div>
+                                        <div className="flex-1 text-center sm:text-left">
+                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 mb-1">
+                                                <IconQrcode size={14} />
+                                                QRIS Gagal Dibuat
+                                            </div>
+                                            <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                                                QR Code Belum Tersedia
+                                            </h4>
+                                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                                                Permintaan generate QRIS ke server QRISLY mengalami kendala (misalnya saldo QRISLY / Komerce belum mencukupi atau koneksi terputus).
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsRetryingQris(true);
+                                                router.post(
+                                                    route("transactions.qrisly-retry", transaction.invoice),
+                                                    {},
+                                                    {
+                                                        preserveScroll: true,
+                                                        onFinish: () => setIsRetryingQris(false),
+                                                    }
+                                                );
+                                            }}
+                                            disabled={isRetryingQris}
+                                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-sm transition-colors disabled:opacity-50 whitespace-nowrap"
+                                        >
+                                            <IconRefresh size={16} className={isRetryingQris ? "animate-spin" : ""} />
+                                            {isRetryingQris ? "Membuat QRIS..." : "Generate Ulang QRIS"}
+                                        </button>
+                                    </div>
+                                ) : null)}
 
                             {/* Items Table */}
                             <div className="px-4 sm:px-6 py-6">

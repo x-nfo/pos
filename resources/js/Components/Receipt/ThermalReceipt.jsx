@@ -1,4 +1,25 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import QRCode from "qrcode";
+
+function ThermalQrisCode({ value, size = 120 }) {
+    const [dataUrl, setDataUrl] = useState("");
+
+    useEffect(() => {
+        if (!value) return;
+        QRCode.toDataURL(value, { width: size, margin: 1 })
+            .then((url) => setDataUrl(url))
+            .catch((err) => console.error("Error generating QR code:", err));
+    }, [value, size]);
+
+    if (!dataUrl) return null;
+
+    return (
+        <div className="flex flex-col items-center justify-center my-2 text-center">
+            <p className="text-[10px] font-bold mb-1">SCAN QRIS UNTUK BAYAR</p>
+            <img src={dataUrl} alt="QRIS" width={size} height={size} className="mx-auto" />
+        </div>
+    );
+}
 
 /**
  * ThermalReceipt - Receipt template optimized for thermal printers (58mm/80mm)
@@ -59,11 +80,15 @@ export default function ThermalReceipt({
 
     const paymentLabels = {
         cash: "TUNAI",
+        bank_transfer: "TRANSFER BANK",
         midtrans: "MIDTRANS",
         xendit: "XENDIT",
+        qrisly: "QRIS",
+        pay_later: "PIUTANG",
     };
+    const paymentMethodKey = transaction?.payment_method?.toLowerCase();
     const paymentMethod =
-        paymentLabels[transaction?.payment_method?.toLowerCase()] || "TUNAI";
+        paymentLabels[paymentMethodKey] || "TUNAI";
 
     // Line separator
     const line = "=".repeat(32);
@@ -230,6 +255,11 @@ export default function ThermalReceipt({
                 )}
             </div>
 
+            {/* QRIS Code on Thermal Receipt */}
+            {paymentMethodKey === "qrisly" && transaction?.payment_url && (
+                <ThermalQrisCode value={transaction.payment_url} size={140} />
+            )}
+
             <pre className="whitespace-pre-wrap">{line}</pre>
 
             {/* Footer */}
@@ -292,6 +322,7 @@ export function ThermalReceipt58mm({
     const voucherDiscount = Number(
         transaction?.customer_voucher_discount || 0
     );
+    const paymentMethodKey = transaction?.payment_method?.toLowerCase();
     const line = "-".repeat(24);
 
     const SimpleBarcode = ({ value }) => {
@@ -421,6 +452,12 @@ export function ThermalReceipt58mm({
                 <span>Kembali</span>
                 <span>{formatPrice(transaction?.change)}</span>
             </div>
+
+            {/* QRIS Code on 58mm Thermal */}
+            {paymentMethodKey === "qrisly" && transaction?.payment_url && (
+                <ThermalQrisCode value={transaction.payment_url} size={110} />
+            )}
+
             <pre>{line}</pre>
             <p className="text-center">Terima kasih!</p>
             <SimpleBarcode value={transaction?.invoice} />

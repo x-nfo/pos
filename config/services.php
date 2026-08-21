@@ -41,6 +41,11 @@ return [
         'server_key' => env('MIDTRANS_SERVER_KEY'),
     ],
 
+    'qrisly' => [
+        'api_key' => env('QRISLY_API_KEY'),
+        'qris_id' => env('QRISLY_QRIS_ID'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

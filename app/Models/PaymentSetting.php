@@ -13,12 +13,15 @@ class PaymentSetting extends Model
 
     public const GATEWAY_XENDIT = 'xendit';
 
+    public const GATEWAY_QRISLY = 'qrisly';
+
     public const GATEWAY_BANK_TRANSFER = 'bank_transfer';
 
     public const SECRET_FIELDS = [
         'midtrans_server_key',
         'xendit_secret_key',
         'xendit_callback_token',
+        'qrisly_api_key',
     ];
 
     protected $fillable = [
@@ -33,6 +36,11 @@ class PaymentSetting extends Model
         'xendit_public_key',
         'xendit_callback_token',
         'xendit_production',
+        'qrisly_enabled',
+        'qrisly_api_key',
+        'qrisly_qris_id',
+        'qrisly_production',
+        'qrisly_use_unique_amount',
     ];
 
     protected $casts = [
@@ -41,9 +49,13 @@ class PaymentSetting extends Model
         'midtrans_production' => 'boolean',
         'xendit_enabled' => 'boolean',
         'xendit_production' => 'boolean',
+        'qrisly_enabled' => 'boolean',
+        'qrisly_production' => 'boolean',
+        'qrisly_use_unique_amount' => 'boolean',
         'midtrans_server_key' => 'encrypted',
         'xendit_secret_key' => 'encrypted',
         'xendit_callback_token' => 'encrypted',
+        'qrisly_api_key' => 'encrypted',
     ];
 
     public function enabledGateways(): array
@@ -75,6 +87,14 @@ class PaymentSetting extends Model
             ];
         }
 
+        if ($this->isGatewayReady(self::GATEWAY_QRISLY)) {
+            $gateways[] = [
+                'value' => self::GATEWAY_QRISLY,
+                'label' => 'QRIS (QRISLY)',
+                'description' => 'Pembayaran QRIS dinamis otomatis via QRISLY RajaOngkir.',
+            ];
+        }
+
         return $gateways;
     }
 
@@ -96,6 +116,9 @@ class PaymentSetting extends Model
             self::GATEWAY_XENDIT => $this->xendit_enabled
             && filled($this->resolvedSecret('xendit_secret_key'))
             && filled($this->xendit_public_key),
+            self::GATEWAY_QRISLY => $this->qrisly_enabled
+            && filled($this->resolvedSecret('qrisly_api_key'))
+            && filled($this->resolvedQrislyQrisId()),
             default => false,
         };
     }
@@ -119,6 +142,28 @@ class PaymentSetting extends Model
             'callback_token' => $this->resolvedSecret('xendit_callback_token'),
             'is_production' => $this->xendit_production,
         ];
+    }
+
+    public function qrislyConfig(): array
+    {
+        return [
+            'enabled' => $this->isGatewayReady(self::GATEWAY_QRISLY),
+            'api_key' => $this->resolvedSecret('qrisly_api_key'),
+            'qris_id' => $this->resolvedQrislyQrisId(),
+            'use_unique_amount' => (bool) $this->qrisly_use_unique_amount,
+            'is_production' => (bool) $this->qrisly_production,
+        ];
+    }
+
+    public function resolvedQrislyQrisId(): ?string
+    {
+        $envValue = config('services.qrisly.qris_id');
+
+        if (filled($envValue)) {
+            return (string) $envValue;
+        }
+
+        return $this->qrisly_qris_id ? (string) $this->qrisly_qris_id : null;
     }
 
     public function resolvedSecret(string $field): ?string
@@ -178,6 +223,7 @@ class PaymentSetting extends Model
             'midtrans_server_key' => $this->secretMetadata('midtrans_server_key'),
             'xendit_secret_key' => $this->secretMetadata('xendit_secret_key'),
             'xendit_callback_token' => $this->secretMetadata('xendit_callback_token'),
+            'qrisly_api_key' => $this->secretMetadata('qrisly_api_key'),
         ];
     }
 
@@ -197,6 +243,7 @@ class PaymentSetting extends Model
             'midtrans_server_key' => config('services.midtrans.server_key'),
             'xendit_secret_key' => config('services.xendit.secret_key'),
             'xendit_callback_token' => config('services.xendit.callback_token'),
+            'qrisly_api_key' => config('services.qrisly.api_key'),
             default => null,
         };
     }

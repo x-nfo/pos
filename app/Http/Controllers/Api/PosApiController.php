@@ -500,7 +500,7 @@ class PosApiController extends Controller
             'shipping_cost' => ['nullable', 'integer', 'min:0'],
             'redeem_points' => ['nullable', 'integer', 'min:0'],
             'cash' => ['nullable', 'numeric', 'min:0'],
-            'payment_method' => ['nullable', 'in:cash,bank_transfer,midtrans,xendit,pay_later'],
+            'payment_method' => ['nullable', 'in:cash,bank_transfer,midtrans,xendit,qrisly,pay_later'],
             'bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
             'due_date' => ['nullable', 'date', 'required_if:payment_method,pay_later'],
             'customer_npwp' => ['nullable', 'string', 'max:50'],

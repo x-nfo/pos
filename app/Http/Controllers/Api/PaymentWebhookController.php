@@ -184,6 +184,108 @@ class PaymentWebhookController extends Controller
     }
 
     /**
+     * Handle QRISLY notification webhook
+     * URL: POST /api/webhooks/qrisly
+     */
+    public function qrisly(Request $request)
+    {
+        try {
+            $paymentSetting = PaymentSetting::first();
+
+            if (! $paymentSetting || ! $paymentSetting->qrisly_enabled) {
+                return response()->json(['success' => false, 'message' => 'QRISLY not configured'], 400);
+            }
+
+            $event = $request->input('event');
+            $data = $request->input('data', []);
+            $historyId = $data['qris_history_id'] ?? $request->input('qris_history_id');
+            $status = $data['status'] ?? $request->input('status');
+
+            if (blank($historyId) && blank($event)) {
+                return response()->json(['success' => false, 'message' => 'Invalid payload'], 422);
+            }
+
+            // Find transaction by payment_reference (history_id)
+            $transaction = Transaction::where('payment_reference', (string) $historyId)->first();
+
+            // Fallback match by original amount for recent pending QRISLY transactions
+            if (! $transaction && ! empty($data['original_amount'])) {
+                $transaction = Transaction::where('payment_method', PaymentSetting::GATEWAY_QRISLY)
+                    ->where('payment_status', 'pending')
+                    ->where('grand_total', (int) $data['original_amount'])
+                    ->latest()
+                    ->first();
+            }
+
+            if (! $transaction) {
+                Log::warning('QRISLY Webhook: Transaction not found', [
+                    'provider' => 'qrisly',
+                    'history_id' => $historyId,
+                    'event' => $event,
+                    'verification_result' => 'valid',
+                    'error_category' => 'transaction_not_found',
+                ]);
+
+                return response()->json(['success' => false, 'message' => 'Transaction not found'], 404);
+            }
+
+            $newStatus = $this->mapQrislyStatus($event, $status);
+
+            $transaction->update([
+                'payment_status' => $newStatus,
+                'payment_reference' => $historyId ? (string) $historyId : $transaction->payment_reference,
+            ]);
+
+            Log::info('QRISLY Webhook: Transaction updated', [
+                'provider' => 'qrisly',
+                'history_id' => $historyId,
+                'invoice' => $transaction->invoice,
+                'event' => $event,
+                'normalized_status' => $newStatus,
+                'verification_result' => 'valid',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Webhook received and processed',
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('QRISLY Webhook Error', [
+                'provider' => 'qrisly',
+                'history_id' => $request->input('data.qris_history_id'),
+                'verification_result' => 'unknown',
+                'error_category' => 'exception',
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Map QRISLY event and status to our payment status
+     */
+    private function mapQrislyStatus(?string $event, ?string $status): string
+    {
+        if ($event === 'payment.success' || strtolower((string) $status) === 'paid') {
+            return 'paid';
+        }
+
+        if ($event === 'payment.expired' || strtolower((string) $status) === 'expired') {
+            return 'expired';
+        }
+
+        return match (strtolower((string) $status)) {
+            'paid' => 'paid',
+            'unpaid' => 'pending',
+            'expired' => 'expired',
+            'cancelled', 'failed' => 'failed',
+            default => 'pending',
+        };
+    }
+
+    /**
      * Map Midtrans transaction status to our payment status
      */
     private function mapMidtransStatus(string $transactionStatus, ?string $fraudStatus = null): string

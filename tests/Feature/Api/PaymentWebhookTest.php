@@ -139,6 +139,67 @@ class PaymentWebhookTest extends TestCase
         });
     }
 
+    public function test_qrisly_webhook_updates_transaction_status_on_payment_success(): void
+    {
+        PaymentSetting::create([
+            'default_gateway' => 'qrisly',
+            'qrisly_enabled' => true,
+            'qrisly_api_key' => 'qrisly-secret-key',
+            'qrisly_qris_id' => 'qris-test-123',
+        ]);
+
+        $transaction = $this->createPendingTransaction('qrisly');
+        $transaction->update(['payment_reference' => '1778']);
+
+        $response = $this->postJson(route('webhooks.qrisly'), [
+            'event' => 'payment.success',
+            'timestamp' => '2026-08-20T12:00:00Z',
+            'data' => [
+                'qris_history_id' => 1778,
+                'qris_id' => 'qris-test-123',
+                'amount' => 150002,
+                'original_amount' => 150000,
+                'status' => 'paid',
+                'paid_at' => '2026-08-20T12:00:00Z',
+                'payment_method' => 'QRIS',
+                'payment_provider' => 'BCA',
+            ],
+        ]);
+
+        $response->assertOk()->assertJson(['success' => true, 'message' => 'Webhook received and processed']);
+        $transaction->refresh();
+
+        $this->assertSame('paid', $transaction->payment_status);
+        $this->assertSame('1778', $transaction->payment_reference);
+    }
+
+    public function test_qrisly_webhook_handles_expired_event(): void
+    {
+        PaymentSetting::create([
+            'default_gateway' => 'qrisly',
+            'qrisly_enabled' => true,
+            'qrisly_api_key' => 'qrisly-secret-key',
+            'qrisly_qris_id' => 'qris-test-123',
+        ]);
+
+        $transaction = $this->createPendingTransaction('qrisly');
+        $transaction->update(['payment_reference' => '1779']);
+
+        $response = $this->postJson(route('webhooks.qrisly'), [
+            'event' => 'payment.expired',
+            'timestamp' => '2026-08-20T12:00:00Z',
+            'data' => [
+                'qris_history_id' => 1779,
+                'status' => 'expired',
+            ],
+        ]);
+
+        $response->assertOk()->assertJson(['success' => true]);
+        $transaction->refresh();
+
+        $this->assertSame('expired', $transaction->payment_status);
+    }
+
     private function createPendingTransaction(string $paymentMethod): Transaction
     {
         return Transaction::create([
