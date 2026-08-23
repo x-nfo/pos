@@ -399,39 +399,48 @@ export default function Index({
     };
 
     // Handle add product to cart
-    const handleAddToCart = async (product) => {
+    const handleAddToCart = async (product, selectedUnit = null) => {
         if (!product?.id || addingProductId) return;
 
+        const unitObj = selectedUnit || product.units?.find((u) => u.is_base) || product.units?.[0] || null;
+        const targetUnitId = unitObj?.id || product.unit_id || null;
+        const targetSellPrice = Number(unitObj?.sell_price || product.sell_price || 0);
+        const targetConversion = Number(unitObj?.conversion_factor || 1);
+        const unitLabel = unitObj?.symbol || unitObj?.code || "";
+
         if (!navigator.onLine) {
-            const existingIndex = activeCarts.findIndex((c) => c.product_id === product.id);
+            const existingIndex = activeCarts.findIndex(
+                (c) => c.product_id === product.id && (targetUnitId ? c.unit_id === targetUnitId : true)
+            );
             let updated;
             if (existingIndex > -1) {
                 updated = [...activeCarts];
                 const current = updated[existingIndex];
                 const newQty = (current.qty || 1) + 1;
-                const unitPrice = Number(current.unit_price || product.sell_price || 0);
+                const unitPrice = Number(current.unit_price || targetSellPrice);
                 updated[existingIndex] = {
                     ...current,
                     qty: newQty,
                     price: unitPrice * newQty,
                 };
             } else {
-                const unitPrice = Number(product.sell_price || 0);
+                const unitPrice = targetSellPrice;
                 const newCart = {
                     id: "local-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
                     cart_id: "local-" + Date.now(),
                     product_id: product.id,
                     product: product,
                     qty: 1,
-                    unit_id: product.unit_id || null,
-                    conversion_factor: 1,
+                    unit_id: targetUnitId,
+                    unit: unitObj ? { id: unitObj.id, code: unitObj.code, name: unitObj.name, symbol: unitObj.symbol } : null,
+                    conversion_factor: targetConversion,
                     unit_price: unitPrice,
                     price: unitPrice,
                 };
                 updated = [newCart, ...activeCarts];
             }
             setActiveCarts(updated);
-            toast.success(`${product.title} ditambahkan`);
+            toast.success(`${product.title} ${unitLabel ? `(${unitLabel})` : ""} ditambahkan`);
             return;
         }
 
@@ -441,46 +450,50 @@ export default function Index({
             route("transactions.addToCart"),
             {
                 product_id: product.id,
-                sell_price: product.sell_price,
+                unit_id: targetUnitId,
+                sell_price: targetSellPrice,
                 qty: 1,
             },
             {
                 preserveScroll: true,
                 onSuccess: () => {
-                    toast.success(`${product.title} ditambahkan`);
+                    toast.success(`${product.title} ${unitLabel ? `(${unitLabel})` : ""} ditambahkan`);
                     setAddingProductId(null);
                 },
                 onError: () => {
                     // Fallback to local cart on network error
-                    const existingIndex = activeCarts.findIndex((c) => c.product_id === product.id);
+                    const existingIndex = activeCarts.findIndex(
+                        (c) => c.product_id === product.id && (targetUnitId ? c.unit_id === targetUnitId : true)
+                    );
                     let updated;
                     if (existingIndex > -1) {
                         updated = [...activeCarts];
                         const current = updated[existingIndex];
                         const newQty = (current.qty || 1) + 1;
-                        const unitPrice = Number(current.unit_price || product.sell_price || 0);
+                        const unitPrice = Number(current.unit_price || targetSellPrice);
                         updated[existingIndex] = {
                             ...current,
                             qty: newQty,
                             price: unitPrice * newQty,
                         };
                     } else {
-                        const unitPrice = Number(product.sell_price || 0);
+                        const unitPrice = targetSellPrice;
                         const newCart = {
                             id: "local-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
                             cart_id: "local-" + Date.now(),
                             product_id: product.id,
                             product: product,
                             qty: 1,
-                            unit_id: product.unit_id || null,
-                            conversion_factor: 1,
+                            unit_id: targetUnitId,
+                            unit: unitObj ? { id: unitObj.id, code: unitObj.code, name: unitObj.name, symbol: unitObj.symbol } : null,
+                            conversion_factor: targetConversion,
                             unit_price: unitPrice,
                             price: unitPrice,
                         };
                         updated = [newCart, ...activeCarts];
                     }
                     setActiveCarts(updated);
-                    toast.success(`${product.title} ditambahkan (offline)`);
+                    toast.success(`${product.title} ${unitLabel ? `(${unitLabel})` : ""} ditambahkan (offline)`);
                     setAddingProductId(null);
                 },
             }
@@ -493,12 +506,17 @@ export default function Index({
             if (!barcode) return;
             const cleanBarcode = String(barcode).trim();
             const product = productList.find(
-                (p) => p.barcode?.toLowerCase() === cleanBarcode.toLowerCase()
+                (p) =>
+                    p.barcode?.toLowerCase() === cleanBarcode.toLowerCase() ||
+                    p.units?.some((u) => u.barcode?.toLowerCase() === cleanBarcode.toLowerCase())
             );
 
             if (product) {
                 if (product.stock > 0 || !navigator.onLine) {
-                    handleAddToCart(product);
+                    const matchedUnit = product.units?.find(
+                        (u) => u.barcode?.toLowerCase() === cleanBarcode.toLowerCase()
+                    );
+                    handleAddToCart(product, matchedUnit || null);
                 } else {
                     toast.error(`${product.title} stok habis`);
                 }
@@ -1079,20 +1097,24 @@ export default function Index({
                                                     item.price ??
                                                     0
                                             );
-                                            const effectiveLineTotal = Number(
-                                                pricingItem?.line_total ??
-                                                    item.price ??
+                                            const itemQty = Number(item.qty || 1);
+                                            const itemPrice = Number(item.price || 0);
+                                            const fallbackUnitPrice = Number(
+                                                item.unit_price ||
+                                                    (itemQty > 0 ? itemPrice / itemQty : item.product?.sell_price) ||
                                                     0
                                             );
-                                            const effectiveUnitPrice = Number(
-                                                pricingItem?.effective_unit_price ??
-                                                    item.product?.sell_price ??
-                                                    0
+                                            const effectiveLineTotal = Number(
+                                                pricingItem?.line_total ??
+                                                    itemPrice
                                             );
                                             const baseUnitPrice = Number(
                                                 pricingItem?.base_unit_price ??
-                                                    item.product?.sell_price ??
-                                                    0
+                                                    fallbackUnitPrice
+                                            );
+                                            const effectiveUnitPrice = Number(
+                                                pricingItem?.effective_unit_price ??
+                                                    baseUnitPrice
                                             );
                                             const pricingRule =
                                                 pricingItem?.pricing_rule;
@@ -1117,10 +1139,17 @@ export default function Index({
                                                 />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
-                                                    {item.product?.title ||
-                                                        "Produk"}
-                                                </p>
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
+                                                        {item.product?.title ||
+                                                            "Produk"}
+                                                    </p>
+                                                    {(item.unit?.symbol || item.unit?.code) && (
+                                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/50 flex-shrink-0">
+                                                            {item.unit.symbol || item.unit.code}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <div className="text-xs text-slate-500">
                                                     {pricingRule &&
                                                         effectiveUnitPrice <

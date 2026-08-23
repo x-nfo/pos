@@ -11,6 +11,8 @@ import {
 import { getProductImageUrl } from "@/Utils/imageUrl";
 import BarcodeScanner from "./BarcodeScanner";
 
+import ProductUnitModal from "./ProductUnitModal";
+
 const formatPrice = (value = 0) =>
     Number(value || 0).toLocaleString("id-ID", {
         style: "currency",
@@ -19,7 +21,7 @@ const formatPrice = (value = 0) =>
     });
 
 // Single Product Card
-function ProductCard({ product, onAddToCart, isAdding }) {
+function ProductCard({ product, onAddToCart, onSelectUnit, isAdding }) {
     const hasStock = product.stock > 0;
     const lowStock = product.stock > 0 && product.stock <= 5;
     const promoBadge = product.pricing_badge;
@@ -27,15 +29,25 @@ function ProductCard({ product, onAddToCart, isAdding }) {
     const basePrice = Number(promoBadge?.base_price || product.sell_price || 0);
     const showPromo = promoBadge && promoPrice > 0 && promoPrice < basePrice;
     const showBadge = Boolean(promoBadge?.label);
+    const hasMultiUnits = Array.isArray(product.units) && product.units.length > 1;
+
+    const handleClick = () => {
+        if (!hasStock) return;
+        if (hasMultiUnits && onSelectUnit) {
+            onSelectUnit(product);
+        } else {
+            onAddToCart(product, product.units?.[0] || null);
+        }
+    };
 
     return (
         <button
-            onClick={() => hasStock && onAddToCart(product)}
+            onClick={handleClick}
             disabled={!hasStock || isAdding}
             className={`
                 group relative flex flex-col bg-white dark:bg-slate-900
                 rounded-2xl border border-slate-200 dark:border-slate-800
-                overflow-hidden transition-all duration-200
+                overflow-hidden transition-all duration-200 text-left
                 ${
                     hasStock
                         ? "hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer"
@@ -68,6 +80,13 @@ function ProductCard({ product, onAddToCart, isAdding }) {
                     </span>
                 )}
 
+                {/* Multi-Unit Badge */}
+                {hasMultiUnits && (
+                    <span className="absolute bottom-2 left-2 px-2 py-0.5 text-[10px] font-extrabold bg-blue-600/90 text-white rounded-lg shadow-md backdrop-blur-xs">
+                        {product.units.length} Satuan
+                    </span>
+                )}
+
                 {/* Out of Stock Overlay */}
                 {!hasStock && (
                     <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center">
@@ -81,7 +100,7 @@ function ProductCard({ product, onAddToCart, isAdding }) {
                 {hasStock && (
                     <div className="absolute inset-0 bg-primary-500/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-center justify-center">
                         <div className="bg-primary-500 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
-                            + Tambah
+                            {hasMultiUnits ? "Pilih Satuan" : "+ Tambah"}
                         </div>
                     </div>
                 )}
@@ -89,18 +108,27 @@ function ProductCard({ product, onAddToCart, isAdding }) {
 
             {/* Product Info */}
             <div className="flex-1 p-3 flex flex-col justify-between min-h-[80px]">
-                <h3 className="text-sm font-medium text-slate-800 dark:text-slate-200 line-clamp-2 leading-tight">
-                    {product.title}
-                </h3>
+                <div>
+                    <h3 className="text-sm font-medium text-slate-800 dark:text-slate-200 line-clamp-2 leading-tight">
+                        {product.title}
+                    </h3>
+                </div>
                 <div className="mt-2">
                     {showPromo && (
                         <p className="text-xs text-slate-400 line-through">
                             {formatPrice(basePrice)}
                         </p>
                     )}
-                    <p className="text-base font-bold text-primary-600 dark:text-primary-400">
-                        {formatPrice(showPromo ? promoPrice : product.sell_price)}
-                    </p>
+                    <div className="flex items-baseline justify-between">
+                        <p className="text-base font-bold text-primary-600 dark:text-primary-400">
+                            {formatPrice(showPromo ? promoPrice : product.sell_price)}
+                        </p>
+                        {hasMultiUnits && (
+                            <span className="text-[10px] text-slate-400 font-semibold">
+                                / {product.units.find(u => u.is_base)?.symbol || "pcs"}
+                            </span>
+                        )}
+                    </div>
                     {showBadge && !showPromo && (
                         <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                             Promo tersedia
@@ -228,6 +256,8 @@ export default function ProductGrid({
     addingProductId,
     searchInputRef,
 }) {
+    const [selectedUnitProduct, setSelectedUnitProduct] = useState(null);
+
     const normalizedSelectedCategory =
         selectedCategory === null ? null : Number(selectedCategory);
 
@@ -289,6 +319,7 @@ export default function ProductGrid({
                                 key={product.id}
                                 product={product}
                                 onAddToCart={onAddToCart}
+                                onSelectUnit={(prod) => setSelectedUnitProduct(prod)}
                                 isAdding={addingProductId === product.id}
                             />
                         ))}
@@ -308,6 +339,18 @@ export default function ProductGrid({
                     </div>
                 )}
             </div>
+
+            {/* Product Unit Selection Modal */}
+            <ProductUnitModal
+                isOpen={Boolean(selectedUnitProduct)}
+                product={selectedUnitProduct}
+                onClose={() => setSelectedUnitProduct(null)}
+                onSelectUnit={(prod, unit) => {
+                    onAddToCart(prod, unit);
+                    setSelectedUnitProduct(null);
+                }}
+                isAdding={addingProductId === selectedUnitProduct?.id}
+            />
         </div>
     );
 }

@@ -246,9 +246,16 @@ export default function Mobile({
                             cart_id: item.id,
                             line_base_total: item.price,
                             line_total: item.price,
-                            effective_unit_price:
-                                item.product?.sell_price || 0,
-                            base_unit_price: item.product?.sell_price || 0,
+                            effective_unit_price: Number(
+                                item.unit_price ||
+                                    (item.qty ? item.price / item.qty : item.product?.sell_price) ||
+                                    0
+                            ),
+                            base_unit_price: Number(
+                                item.unit_price ||
+                                    (item.qty ? item.price / item.qty : item.product?.sell_price) ||
+                                    0
+                            ),
                         })),
                         summary: {
                             base_subtotal: localSubtotal,
@@ -289,19 +296,26 @@ export default function Mobile({
     ]);
 
     // Handle add to cart
-    const handleAddToCart = async (product) => {
+    const handleAddToCart = async (product, selectedUnit = null) => {
         if (!product?.id || addingProductId) return;
 
+        const unitObj = selectedUnit || product.units?.find((u) => u.is_base) || product.units?.[0] || null;
+        const targetUnitId = unitObj?.id || product.unit_id || null;
+        const targetSellPrice = Number(unitObj?.sell_price || product.sell_price || 0);
+        const targetConversion = Number(unitObj?.conversion_factor || 1);
+        const unitLabel = unitObj?.symbol || unitObj?.code || "";
+
         const existingItem = activeCarts.find(
-            (c) => c.product_id === product.id
+            (c) => c.product_id === product.id && (targetUnitId ? c.unit_id === targetUnitId : true)
         );
         const currentQty = existingItem ? Number(existingItem.qty || 0) : 0;
         const availableStock = Number(product.stock || 0);
+        const neededBaseStock = (currentQty + 1) * targetConversion;
 
-        if (availableStock > 0 && currentQty + 1 > availableStock) {
+        if (availableStock > 0 && neededBaseStock > availableStock) {
             triggerHaptic("warning");
             toast.error(
-                `Stok ${product.title} tidak mencukupi. Tersedia: ${availableStock}`
+                `Stok ${product.title} tidak mencukupi. Tersedia: ${availableStock} (dasar)`
             );
             return;
         }
@@ -310,7 +324,7 @@ export default function Mobile({
 
         if (!navigator.onLine) {
             const existingIndex = activeCarts.findIndex(
-                (c) => c.product_id === product.id
+                (c) => c.product_id === product.id && (targetUnitId ? c.unit_id === targetUnitId : true)
             );
             let updated;
             if (existingIndex > -1) {
@@ -318,7 +332,7 @@ export default function Mobile({
                 const current = updated[existingIndex];
                 const newQty = (current.qty || 1) + 1;
                 const unitPrice = Number(
-                    current.unit_price || product.sell_price || 0
+                    current.unit_price || targetSellPrice
                 );
                 updated[existingIndex] = {
                     ...current,
@@ -326,22 +340,23 @@ export default function Mobile({
                     price: unitPrice * newQty,
                 };
             } else {
-                const unitPrice = Number(product.sell_price || 0);
+                const unitPrice = targetSellPrice;
                 const newCart = {
                     id: "local-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
                     cart_id: "local-" + Date.now(),
                     product_id: product.id,
                     product: product,
                     qty: 1,
-                    unit_id: product.unit_id || null,
-                    conversion_factor: 1,
+                    unit_id: targetUnitId,
+                    unit: unitObj ? { id: unitObj.id, code: unitObj.code, name: unitObj.name, symbol: unitObj.symbol } : null,
+                    conversion_factor: targetConversion,
                     unit_price: unitPrice,
                     price: unitPrice,
                 };
                 updated = [newCart, ...activeCarts];
             }
             setActiveCarts(updated);
-            toast.success(`${product.title} ditambahkan`);
+            toast.success(`${product.title} ${unitLabel ? `(${unitLabel})` : ""} ditambahkan`);
             return;
         }
 
@@ -351,14 +366,15 @@ export default function Mobile({
             route("transactions.addToCart"),
             {
                 product_id: product.id,
-                sell_price: product.sell_price,
+                unit_id: targetUnitId,
+                sell_price: targetSellPrice,
                 qty: 1,
             },
             {
                 preserveScroll: true,
                 onSuccess: () => {
                     triggerHaptic("tap");
-                    toast.success(`${product.title} ditambahkan`);
+                    toast.success(`${product.title} ${unitLabel ? `(${unitLabel})` : ""} ditambahkan`);
                     setAddingProductId(null);
                 },
                 onError: (err) => {
@@ -454,13 +470,18 @@ export default function Mobile({
             if (!barcode) return;
             const clean = String(barcode).trim();
             const product = productList.find(
-                (p) => p.barcode?.toLowerCase() === clean.toLowerCase()
+                (p) =>
+                    p.barcode?.toLowerCase() === clean.toLowerCase() ||
+                    p.units?.some((u) => u.barcode?.toLowerCase() === clean.toLowerCase())
             );
 
             if (product) {
                 triggerHaptic("scan");
                 if (product.stock > 0 || !navigator.onLine) {
-                    handleAddToCart(product);
+                    const matchedUnit = product.units?.find(
+                        (u) => u.barcode?.toLowerCase() === clean.toLowerCase()
+                    );
+                    handleAddToCart(product, matchedUnit || null);
                 } else {
                     toast.error(`${product.title} stok habis`);
                 }

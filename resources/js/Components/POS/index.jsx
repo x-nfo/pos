@@ -5,3 +5,4 @@ export { default as PaymentPanel } from "./PaymentPanel";
 export { default as SearchBar } from "./SearchBar";
 export { default as CustomerSelect } from "./CustomerSelect";
 export { default as NumpadModal } from "./NumpadModal";
+export { default as ProductUnitModal } from "./ProductUnitModal";

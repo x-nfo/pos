@@ -156,18 +156,21 @@ export default function MobileCartSheet({
                     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
                         {carts.map((item) => {
                             const pricingItem = pricingItemsByCartId[item.id];
-                            const effectiveUnitPrice = Number(
-                                pricingItem?.effective_unit_price ??
-                                    item.product?.sell_price ??
+                            const itemQty = Number(item.qty || 1);
+                            const itemPrice = Number(item.price || 0);
+                            const fallbackUnitPrice = Number(
+                                item.unit_price ||
+                                    (itemQty > 0 ? itemPrice / itemQty : item.product?.sell_price) ||
                                     0
-                            );
-                            const effectiveLineTotal = Number(
-                                pricingItem?.line_total ?? item.price ?? 0
                             );
                             const baseUnitPrice = Number(
-                                pricingItem?.base_unit_price ??
-                                    item.product?.sell_price ??
-                                    0
+                                pricingItem?.base_unit_price ?? fallbackUnitPrice
+                            );
+                            const effectiveUnitPrice = Number(
+                                pricingItem?.effective_unit_price ?? baseUnitPrice
+                            );
+                            const effectiveLineTotal = Number(
+                                pricingItem?.line_total ?? itemPrice
                             );
                             const pricingRule = pricingItem?.pricing_rule;
 
@@ -192,9 +195,16 @@ export default function MobileCartSheet({
 
                                         {/* Product Details */}
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-bold text-slate-900 dark:text-white line-clamp-2 leading-tight">
-                                                {item.product?.title || "Produk"}
-                                            </p>
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                <p className="text-xs font-bold text-slate-900 dark:text-white line-clamp-2 leading-tight">
+                                                    {item.product?.title || "Produk"}
+                                                </p>
+                                                {(item.unit?.symbol || item.unit?.code) && (
+                                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/50 flex-shrink-0">
+                                                        {item.unit.symbol || item.unit.code}
+                                                    </span>
+                                                )}
+                                            </div>
                                             <div className="flex items-center gap-1.5 mt-0.5">
                                                 {pricingRule &&
                                                     effectiveUnitPrice < baseUnitPrice && (
@@ -203,7 +213,7 @@ export default function MobileCartSheet({
                                                         </span>
                                                     )}
                                                 <span className="text-xs font-bold text-primary-600 dark:text-primary-400">
-                                                    {formatPrice(effectiveUnitPrice)}
+                                                    {formatPrice(effectiveUnitPrice)} {item.unit?.symbol ? `/${item.unit.symbol}` : ""}
                                                 </span>
                                             </div>
                                             {pricingRule && (

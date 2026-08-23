@@ -155,12 +155,16 @@ class PricingService
 
     private function buildPreview(Collection $carts, ?Customer $customer, Collection $rules): array
     {
-        $items = $carts->map(function (Cart $cart) {
-            $baseUnitPrice = (int) $cart->product->sell_price;
+        $unitConversion = app(UnitConversionService::class);
+        $items = $carts->map(function (Cart $cart) use ($unitConversion) {
+            $baseUnitPrice = $cart->unit_id && $cart->product
+                ? $unitConversion->getSellPrice($cart->product, $cart->unit_id)
+                : (int) ($cart->qty > 0 && $cart->price > 0 ? round($cart->price / $cart->qty) : ($cart->product?->sell_price ?? 0));
 
             return [
                 'cart_id' => $cart->id,
                 'product_id' => $cart->product_id,
+                'unit_id' => $cart->unit_id,
                 'product_title' => $cart->product?->title,
                 'qty' => (int) $cart->qty,
                 'base_unit_price' => $baseUnitPrice,
@@ -217,7 +221,7 @@ class PricingService
                     PricingRule::KIND_QTY_BREAK,
                     PricingRule::KIND_STANDARD_DISCOUNT,
                 ], true))
-                ->map(fn (PricingRule $rule) => $this->calculateLineCandidate($rule, $cartProduct, $remainingQty))
+                ->map(fn (PricingRule $rule) => $this->calculateLineCandidate($rule, $cartProduct, $remainingQty, (int) $item['base_unit_price']))
                 ->filter()
                 ->sortBy([
                     ['rule.priority', 'desc'],
@@ -507,13 +511,13 @@ class PricingService
         return $allocated;
     }
 
-    private function calculateLineCandidate(PricingRule $rule, Product $product, int $quantity): ?array
+    private function calculateLineCandidate(PricingRule $rule, Product $product, int $quantity, ?int $customUnitPrice = null): ?array
     {
         if (! $this->matchesTarget($rule, $product)) {
             return null;
         }
 
-        $baseUnitPrice = (int) $product->sell_price;
+        $baseUnitPrice = $customUnitPrice ?? (int) $product->sell_price;
         $lineBaseTotal = $baseUnitPrice * $quantity;
 
         if ($rule->kind === PricingRule::KIND_QTY_BREAK) {

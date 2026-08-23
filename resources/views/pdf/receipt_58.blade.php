@@ -63,7 +63,7 @@
                 </div>
             @endif
             <div style="display:flex; justify-content:space-between;">
-                <span>{{ $qty }}x @ {{ $formatPrice($unit) }}</span>
+                <span>{{ $qty }} {{ $item->unit?->symbol ?? '' }}x @ {{ $formatPrice($unit) }}</span>
                 <span>{{ $formatPrice($total) }}</span>
             </div>
         @endforeach

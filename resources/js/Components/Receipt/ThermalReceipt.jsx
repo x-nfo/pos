@@ -180,7 +180,7 @@ export default function ThermalReceipt({
                                 )}
                             <div className="flex justify-between">
                                 <span>
-                                    {qty}x @ {formatPrice(unitPrice)}
+                                    {qty} {item.unit?.symbol || ""}x @ {formatPrice(unitPrice)}
                                 </span>
                                 <span>{formatPrice(itemTotal)}</span>
                             </div>
@@ -381,7 +381,7 @@ export function ThermalReceipt58mm({
                             )}
                         <div className="flex justify-between">
                             <span>
-                                {item.qty}x @ {formatPrice(unitPrice)}
+                                {item.qty} {item.unit?.symbol || ""}x @ {formatPrice(unitPrice)}
                             </span>
                             <span>{formatPrice(item.price)}</span>
                         </div>

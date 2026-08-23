@@ -593,8 +593,9 @@ class PosApiController extends Controller
                     $pricingItem = $pricingItems->firstWhere('cart_id', $cart->id);
                     $lineTotal = (int) data_get($pricingItem, 'line_total', $cart->price);
                     $linePromoDiscount = (int) data_get($pricingItem, 'line_discount_total', 0);
-                    $baseUnitPrice = (int) data_get($pricingItem, 'base_unit_price', $cart->product->sell_price);
-                    $unitPrice = (int) data_get($pricingItem, 'effective_unit_price', $cart->product->sell_price);
+                    $fallbackUnitSellPrice = $cart->unit_price ?: ($cart->qty > 0 ? (int) round($cart->price / $cart->qty) : (int) $cart->product->sell_price);
+                    $baseUnitPrice = (int) data_get($pricingItem, 'base_unit_price', $fallbackUnitSellPrice);
+                    $unitPrice = (int) data_get($pricingItem, 'effective_unit_price', $baseUnitPrice);
 
                     $transaction->details()->create([
                         'transaction_id' => $transaction->id,
@@ -613,7 +614,11 @@ class PosApiController extends Controller
                         'pricing_group_label' => data_get($pricingItem, 'pricing_group_label'),
                     ]);
 
-                    $totalBuyPrice = $cart->product->buy_price * $cart->qty;
+                    $unitConversion = app(UnitConversionService::class);
+                    $unitBuyPrice = $cart->unit_id && $cart->product
+                        ? $unitConversion->getBuyPrice($cart->product, $cart->unit_id)
+                        : (int) ($cart->product->buy_price * ($cart->conversion_factor ?: 1));
+                    $totalBuyPrice = $unitBuyPrice * $cart->qty;
                     $lineShare = $subtotalAfterPromo > 0 ? $lineTotal / $subtotalAfterPromo : 0;
                     $allocatedManualDiscount = (int) round($appliedManualDiscount * $lineShare);
                     $netSellPrice = max(0, $lineTotal - $allocatedManualDiscount);

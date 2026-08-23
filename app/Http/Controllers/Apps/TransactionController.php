@@ -78,7 +78,7 @@ class TransactionController extends Controller
         $warehouseId = $activeShift?->warehouse_id;
 
         // Get active cart items (not held)
-        $carts = Cart::with('product')
+        $carts = Cart::with(['product.category', 'unit'])
             ->where('cashier_id', $userId)
             ->active()
             ->latest()
@@ -111,7 +111,7 @@ class TransactionController extends Controller
         $customers = Customer::latest()->get();
 
         // get products with stock > 0 in active warehouse
-        $products = Product::with('category:id,name')
+        $products = Product::with(['category:id,name', 'units'])
             ->select('id', 'barcode', 'title', 'description', 'image', 'buy_price', 'sell_price', 'stock', 'category_id')
             ->when($warehouseId, function ($q) use ($warehouseId) {
                 $q->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $warehouseId)
@@ -125,8 +125,21 @@ class TransactionController extends Controller
         $products = $products->map(function (Product $product) use ($pricingBadges) {
             $pricing = $pricingBadges->get($product->id);
 
+            $units = $product->units->map(fn ($u) => [
+                'id' => $u->id,
+                'code' => $u->code,
+                'name' => $u->name,
+                'symbol' => $u->symbol,
+                'is_base' => (bool) ($u->pivot->is_base ?? false),
+                'conversion_factor' => (float) ($u->pivot->conversion_factor ?? 1),
+                'buy_price' => (int) ($u->pivot->buy_price ?? $u->buy_price),
+                'sell_price' => (int) ($u->pivot->sell_price ?? $u->sell_price),
+                'barcode' => $u->pivot->barcode ?? null,
+            ])->values()->toArray();
+
             return [
                 ...$product->toArray(),
+                'units' => $units,
                 'pricing_badge' => $pricing && ! empty($pricing['pricing_rule']) ? [
                     'label' => $pricing['pricing_rule']['label'],
                     'promo_price' => $pricing['pricing_rule']['price_context']
@@ -227,7 +240,7 @@ class TransactionController extends Controller
             ? CustomerVoucher::find($validated['customer_voucher_id'])
             : null;
 
-        $carts = Cart::with('product.category')
+        $carts = Cart::with(['product.category', 'unit'])
             ->where('cashier_id', $request->user()->id)
             ->active()
             ->latest()
@@ -299,6 +312,7 @@ class TransactionController extends Controller
 
         $cart = Cart::with('product')
             ->where('product_id', $request->product_id)
+            ->where('unit_id', $unitId)
             ->where('cashier_id', auth()->user()->id)
             ->active()
             ->first();
@@ -372,12 +386,16 @@ class TransactionController extends Controller
             return back()->with('error', 'Item keranjang tidak ditemukan');
         }
 
+        $unitConversion = app(UnitConversionService::class);
+        $unitId = (int) ($cart->unit_id ?: $cart->product->baseUnit()?->id ?: 1);
+        $baseQty = $unitConversion->toBaseUnit($cart->product, $unitId, $request->qty);
+
         // Check stock availability
         $availableStock = $warehouseId
             ? (int) ($cart->product->warehouses()->where('warehouse_id', $warehouseId)->first()?->pivot->stock ?? 0)
             : (int) $cart->product->stock;
 
-        if ($availableStock < $request->qty) {
+        if ($availableStock < $baseQty) {
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
@@ -389,8 +407,9 @@ class TransactionController extends Controller
         }
 
         // Update quantity and price
+        $sellPrice = $unitConversion->getSellPrice($cart->product, $unitId);
         $cart->qty = $request->qty;
-        $cart->price = $cart->product->sell_price * $request->qty;
+        $cart->price = $sellPrice * $request->qty;
         $cart->save();
 
         return back()->with('success', 'Jumlah berhasil diperbarui');
@@ -697,8 +716,9 @@ class TransactionController extends Controller
                     $pricingItem = $pricingItems->firstWhere('cart_id', $cart->id);
                     $lineTotal = (int) data_get($pricingItem, 'line_total', $cart->price);
                     $linePromoDiscount = (int) data_get($pricingItem, 'line_discount_total', 0);
-                    $baseUnitPrice = (int) data_get($pricingItem, 'base_unit_price', $cart->product->sell_price);
-                    $unitPrice = (int) data_get($pricingItem, 'effective_unit_price', $cart->product->sell_price);
+                    $fallbackUnitSellPrice = $cart->unit_price ?: ($cart->qty > 0 ? (int) round($cart->price / $cart->qty) : (int) $cart->product->sell_price);
+                    $baseUnitPrice = (int) data_get($pricingItem, 'base_unit_price', $fallbackUnitSellPrice);
+                    $unitPrice = (int) data_get($pricingItem, 'effective_unit_price', $baseUnitPrice);
 
                     $detail = $transaction->details()->create([
                         'transaction_id' => $transaction->id,
@@ -717,7 +737,11 @@ class TransactionController extends Controller
                         'pricing_group_label' => data_get($pricingItem, 'pricing_group_label'),
                     ]);
 
-                    $total_buy_price = $cart->product->buy_price * $cart->qty;
+                    $unitConversion = app(UnitConversionService::class);
+                    $unitBuyPrice = $cart->unit_id && $cart->product
+                        ? $unitConversion->getBuyPrice($cart->product, $cart->unit_id)
+                        : (int) ($cart->product->buy_price * ($cart->conversion_factor ?: 1));
+                    $total_buy_price = $unitBuyPrice * $cart->qty;
                     $lineShare = $subtotalAfterPromo > 0 ? $lineTotal / $subtotalAfterPromo : 0;
                     $allocatedManualDiscount = (int) round($appliedManualDiscount * $lineShare);
                     $netSellPrice = max(0, $lineTotal - $allocatedManualDiscount);
@@ -812,7 +836,7 @@ class TransactionController extends Controller
     public function print($invoice)
     {
         // get transaction
-        $transaction = Transaction::with('details.product', 'details.pricingRule', 'cashier', 'customer', 'receivable', 'bankAccount')
+        $transaction = Transaction::with('details.product', 'details.unit', 'details.pricingRule', 'cashier', 'customer', 'receivable', 'bankAccount')
             ->where('invoice', $invoice)
             ->firstOrFail();
 

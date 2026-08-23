@@ -21,11 +21,13 @@ function CartItem({ item, pricingItem, onUpdateQty, onRemove, isRemoving }) {
 
     const quantity = Number(item.qty || 0);
     const itemPrice = Number(item.price || 0);
-    const baseUnitPrice = Number(
-        pricingItem?.base_unit_price ??
-            item.product?.sell_price ??
-            itemPrice / quantity ??
+    const fallbackUnitPrice = Number(
+        item.unit_price ||
+            (quantity > 0 ? itemPrice / quantity : item.product?.sell_price) ||
             0
+    );
+    const baseUnitPrice = Number(
+        pricingItem?.base_unit_price ?? fallbackUnitPrice
     );
     const effectiveUnitPrice = Number(
         pricingItem?.effective_unit_price ?? baseUnitPrice
@@ -58,9 +60,16 @@ function CartItem({ item, pricingItem, onUpdateQty, onRemove, isRemoving }) {
 
             {/* Product Info */}
             <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
-                    {item.product?.title || "Produk"}
-                </h4>
+                <div className="flex items-center gap-1.5 min-w-0">
+                    <h4 className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
+                        {item.product?.title || "Produk"}
+                    </h4>
+                    {(item.unit?.symbol || item.unit?.code) && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/50 flex-shrink-0">
+                            {item.unit.symbol || item.unit.code}
+                        </span>
+                    )}
+                </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     {pricingRule && effectiveUnitPrice < baseUnitPrice && (
                         <span className="line-through text-slate-400 mr-1.5">
@@ -68,7 +77,7 @@ function CartItem({ item, pricingItem, onUpdateQty, onRemove, isRemoving }) {
                         </span>
                     )}
                     <span>
-                        {formatPrice(effectiveUnitPrice)} × {item.qty}
+                        {formatPrice(effectiveUnitPrice)} × {item.qty} {item.unit?.symbol ? item.unit.symbol : ""}
                     </span>
                 </div>
                 {pricingRule && (

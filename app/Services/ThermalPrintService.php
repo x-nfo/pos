@@ -33,7 +33,8 @@ class ThermalPrintService
         foreach ($transaction->details as $detail) {
             $title = mb_substr($detail->product?->title ?? 'Produk', 0, $maxWidth - 10);
             $linePrice = number_format((int) $detail->price, 0, ',', '.');
-            $lineTotal = "{$detail->qty}x @ ".number_format((int) ($detail->unit_price ?: $detail->price / max(1, $detail->qty)), 0, ',', '.');
+            $unitSymbol = $detail->unit?->symbol ? ' '.$detail->unit->symbol : '';
+            $lineTotal = "{$detail->qty}{$unitSymbol}x @ ".number_format((int) ($detail->unit_price ?: $detail->price / max(1, $detail->qty)), 0, ',', '.');
             $lines[] = $this->left($title, $maxWidth);
             $lines[] = $this->leftRight($lineTotal, $linePrice, $maxWidth);
         }

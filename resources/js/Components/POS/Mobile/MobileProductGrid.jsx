@@ -10,6 +10,8 @@ import {
 import { getProductImageUrl } from "@/Utils/imageUrl";
 import BarcodeScanner from "../BarcodeScanner";
 
+import ProductUnitModal from "../ProductUnitModal";
+
 const formatPrice = (value = 0) =>
     Number(value || 0).toLocaleString("id-ID", {
         style: "currency",
@@ -17,7 +19,7 @@ const formatPrice = (value = 0) =>
         minimumFractionDigits: 0,
     });
 
-function MobileProductCard({ product, onAddToCart, isAdding }) {
+function MobileProductCard({ product, onAddToCart, onSelectUnit, isAdding }) {
     const hasStock = product.stock > 0;
     const lowStock = product.stock > 0 && product.stock <= 5;
     const promoBadge = product.pricing_badge;
@@ -25,10 +27,20 @@ function MobileProductCard({ product, onAddToCart, isAdding }) {
     const basePrice = Number(promoBadge?.base_price || product.sell_price || 0);
     const showPromo = promoBadge && promoPrice > 0 && promoPrice < basePrice;
     const showBadge = Boolean(promoBadge?.label);
+    const hasMultiUnits = Array.isArray(product.units) && product.units.length > 1;
+
+    const handleClick = () => {
+        if (!hasStock) return;
+        if (hasMultiUnits && onSelectUnit) {
+            onSelectUnit(product);
+        } else {
+            onAddToCart(product, product.units?.[0] || null);
+        }
+    };
 
     return (
         <div
-            onClick={() => hasStock && onAddToCart(product)}
+            onClick={handleClick}
             className={`
                 group relative flex flex-col bg-white dark:bg-slate-900
                 rounded-2xl border border-slate-200/80 dark:border-slate-800
@@ -59,6 +71,13 @@ function MobileProductCard({ product, onAddToCart, isAdding }) {
                     </span>
                 )}
 
+                {/* Multi-Unit Badge */}
+                {hasMultiUnits && (
+                    <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 text-[9px] font-black bg-blue-600/90 text-white rounded-md shadow-sm backdrop-blur-xs">
+                        {product.units.length} Satuan
+                    </span>
+                )}
+
                 {/* Low Stock Badge */}
                 {lowStock && (
                     <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-extrabold bg-amber-500 text-white rounded-md shadow-sm">
@@ -81,13 +100,15 @@ function MobileProductCard({ product, onAddToCart, isAdding }) {
                         type="button"
                         onClick={(e) => {
                             e.stopPropagation();
-                            onAddToCart(product);
+                            handleClick();
                         }}
                         disabled={isAdding}
-                        className="absolute bottom-1.5 right-1.5 w-7 h-7 rounded-lg bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white flex items-center justify-center shadow-md active:scale-90 transition-transform"
+                        className="absolute bottom-1.5 right-1.5 h-7 px-2 rounded-lg bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white flex items-center justify-center shadow-md active:scale-90 transition-transform text-[10px] font-bold gap-0.5"
                     >
                         {isAdding ? (
                             <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : hasMultiUnits ? (
+                            <span>Pilih</span>
                         ) : (
                             <IconPlus size={16} strokeWidth={2.5} />
                         )}
@@ -115,9 +136,16 @@ function MobileProductCard({ product, onAddToCart, isAdding }) {
                                 {formatPrice(basePrice)}
                             </p>
                         )}
-                        <p className="text-xs font-black text-primary-600 dark:text-primary-400 leading-tight">
-                            {formatPrice(showPromo ? promoPrice : product.sell_price)}
-                        </p>
+                        <div className="flex items-baseline gap-1">
+                            <p className="text-xs font-black text-primary-600 dark:text-primary-400 leading-tight">
+                                {formatPrice(showPromo ? promoPrice : product.sell_price)}
+                            </p>
+                            {hasMultiUnits && (
+                                <span className="text-[9px] text-slate-400 font-semibold">
+                                    /{product.units.find(u => u.is_base)?.symbol || "pcs"}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -139,6 +167,7 @@ export default function MobileProductGrid({
     searchInputRef,
 }) {
     const [showScanner, setShowScanner] = useState(false);
+    const [selectedUnitProduct, setSelectedUnitProduct] = useState(null);
 
     const normalizedSelectedCategory =
         selectedCategory === null ? null : Number(selectedCategory);
@@ -245,6 +274,7 @@ export default function MobileProductGrid({
                                 key={product.id}
                                 product={product}
                                 onAddToCart={onAddToCart}
+                                onSelectUnit={(prod) => setSelectedUnitProduct(prod)}
                                 isAdding={addingProductId === product.id}
                             />
                         ))}
@@ -258,6 +288,18 @@ export default function MobileProductGrid({
                     </div>
                 )}
             </div>
+
+            {/* Product Unit Selection Modal */}
+            <ProductUnitModal
+                isOpen={Boolean(selectedUnitProduct)}
+                product={selectedUnitProduct}
+                onClose={() => setSelectedUnitProduct(null)}
+                onSelectUnit={(prod, unit) => {
+                    onAddToCart(prod, unit);
+                    setSelectedUnitProduct(null);
+                }}
+                isAdding={addingProductId === selectedUnitProduct?.id}
+            />
 
             {/* Fullscreen Camera Barcode Scanner */}
             {showScanner && (

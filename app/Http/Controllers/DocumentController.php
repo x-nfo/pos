@@ -64,7 +64,7 @@ class DocumentController extends Controller
     {
         $this->ensureFontDirectory();
 
-        $transaction = Transaction::with(['details.product', 'cashier', 'customer'])
+        $transaction = Transaction::with(['details.product', 'details.unit', 'cashier', 'customer'])
             ->where('invoice', $invoice)
             ->firstOrFail();
 
@@ -89,7 +89,7 @@ class DocumentController extends Controller
     {
         $this->ensureFontDirectory();
 
-        $transaction = Transaction::with(['details.product', 'cashier', 'customer'])
+        $transaction = Transaction::with(['details.product', 'details.unit', 'cashier', 'customer'])
             ->where('invoice', $invoice)
             ->firstOrFail();
 
@@ -108,7 +108,7 @@ class DocumentController extends Controller
     {
         $this->ensureFontDirectory();
 
-        $transaction = Transaction::with(['details.product', 'customer', 'cashier'])
+        $transaction = Transaction::with(['details.product', 'details.unit', 'customer', 'cashier'])
             ->where('invoice', $invoice)
             ->firstOrFail();
 
@@ -127,7 +127,7 @@ class DocumentController extends Controller
 
     public function thermalPrint(string $invoice)
     {
-        $transaction = Transaction::with(['details.product', 'cashier', 'customer'])
+        $transaction = Transaction::with(['details.product', 'details.unit', 'cashier', 'customer'])
             ->where('invoice', $invoice)
             ->firstOrFail();
 

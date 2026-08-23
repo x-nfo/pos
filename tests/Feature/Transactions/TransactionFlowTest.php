@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\PaymentSetting;
 use App\Models\Product;
 use App\Models\Transaction;
+use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -352,6 +353,71 @@ class TransactionFlowTest extends TestCase
             ->has('categories')
             ->has('carts')
         );
+    }
+
+    public function test_cashier_can_add_and_checkout_multi_unit_product(): void
+    {
+        $cashier = $this->createCashier();
+        $this->openShiftFor($cashier);
+        $product = $this->createProduct();
+
+        $boxUnit = Unit::firstOrCreate(
+            ['code' => 'BOX'],
+            [
+                'name' => 'Box',
+                'symbol' => 'box',
+                'is_active' => true,
+            ]
+        );
+
+        $product->units()->attach($boxUnit->id, [
+            'is_base' => false,
+            'conversion_factor' => 10,
+            'buy_price' => 400000,
+            'sell_price' => 550000,
+        ]);
+
+        // Add 1 BOX to cart
+        $response = $this
+            ->actingAs($cashier)
+            ->post(route('transactions.addToCart'), [
+                'product_id' => $product->id,
+                'unit_id' => $boxUnit->id,
+                'sell_price' => 550000,
+                'qty' => 1,
+            ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('carts', [
+            'cashier_id' => $cashier->id,
+            'product_id' => $product->id,
+            'unit_id' => $boxUnit->id,
+            'qty' => 1,
+            'price' => 550000,
+            'conversion_factor' => 10,
+        ]);
+
+        // Complete transaction
+        $checkoutResponse = $this
+            ->actingAs($cashier)
+            ->post(route('transactions.store'), [
+                'customer_id' => null,
+                'discount' => 0,
+                'grand_total' => 550000,
+                'cash' => 600000,
+                'change' => 50000,
+            ]);
+
+        $checkoutResponse->assertRedirect();
+
+        // Check stock deducted correctly: 25 - (1 * 10) = 15
+        $this->assertEquals(15, $product->fresh()->stock);
+
+        $transaction = Transaction::with('details')->latest('id')->first();
+        $this->assertNotNull($transaction);
+        $this->assertEquals(1, $transaction->details->count());
+        $this->assertEquals($boxUnit->id, $transaction->details->first()->unit_id);
+        $this->assertEquals(10, $transaction->details->first()->conversion_factor);
     }
 
     protected function openShiftFor(User $cashier)

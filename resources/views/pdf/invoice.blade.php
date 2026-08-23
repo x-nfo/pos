@@ -250,7 +250,7 @@
                             </div>
                         @endif
                     </td>
-                    <td class="qty">{{ $detail->qty }}</td>
+                    <td class="qty">{{ $detail->qty }} {{ $detail->unit?->symbol ?? '' }}</td>
                     <td class="right">
                         @if ($detail->discount_total > 0 && $detail->base_unit_price > $detail->unit_price)
                             <div style="font-size:11px;color:#94a3b8;text-decoration:line-through;">
