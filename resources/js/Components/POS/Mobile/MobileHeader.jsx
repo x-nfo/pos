@@ -11,10 +11,16 @@ import {
     IconArrowLeft,
     IconDotsVertical,
     IconUser,
+    IconShoppingCart,
 } from "@tabler/icons-react";
 import { useHaptic } from "@/Hooks/useHaptic";
 
-export default function MobileHeader({ activeShift, onOpenShiftModal }) {
+export default function MobileHeader({
+    activeShift,
+    onOpenShiftModal,
+    cartCount = 0,
+    onOpenCart,
+}) {
     const { auth, storeProfile } = usePage().props;
     const { darkMode, themeSwitcher } = useTheme();
     const { triggerHaptic } = useHaptic();
@@ -34,9 +40,9 @@ export default function MobileHeader({ activeShift, onOpenShiftModal }) {
     };
 
     return (
-        <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-3 py-2 pt-safe flex items-center justify-between flex-shrink-0 shadow-xs transition-all">
+        <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-3.5 sm:px-4 py-2 sm:py-2.5 pt-safe min-h-[3.5rem] sm:min-h-[4rem] h-14 sm:h-16 flex items-center justify-between flex-shrink-0 shadow-xs transition-all">
             {/* Left: Brand & Shift Status Pill */}
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0">
                 <Link
                     href={route("dashboard")}
                     onClick={() => triggerHaptic("tap")}
@@ -46,7 +52,7 @@ export default function MobileHeader({ activeShift, onOpenShiftModal }) {
                         <img
                             src={storeProfile.logo}
                             alt="Logo"
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover rounded-xl"
                         />
                     ) : (
                         (storeProfile?.name || "K").charAt(0).toUpperCase()
@@ -75,11 +81,14 @@ export default function MobileHeader({ activeShift, onOpenShiftModal }) {
                             </button>
                         )}
                     </div>
+                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate block leading-none mt-0.5">
+                        Katalog Kasir
+                    </span>
                 </div>
             </div>
 
             {/* Right: Offline status, Theme & Menu */}
-            <div className="flex items-center gap-1 flex-shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                 {/* Offline Status */}
                 {!isOnline ? (
                     <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-bold flex items-center gap-1 border border-amber-200 dark:border-amber-800">
@@ -101,6 +110,27 @@ export default function MobileHeader({ activeShift, onOpenShiftModal }) {
                     </button>
                 ) : null}
 
+                {/* Cart Button */}
+                {onOpenCart && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            triggerHaptic("tap");
+                            onOpenCart();
+                        }}
+                        className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-primary-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-primary-400 dark:hover:bg-slate-800 active:scale-95 transition-all"
+                        aria-label="Keranjang"
+                        title="Keranjang Belanja"
+                    >
+                        <IconShoppingCart size={18} />
+                        {cartCount > 0 && (
+                            <span className="absolute -top-1 -right-1 px-1 min-w-[16px] h-4 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-xs">
+                                {cartCount > 99 ? "99+" : cartCount}
+                            </span>
+                        )}
+                    </button>
+                )}
+
                 {/* Theme Toggle */}
                 <button
                     type="button"
@@ -108,13 +138,13 @@ export default function MobileHeader({ activeShift, onOpenShiftModal }) {
                         triggerHaptic("tap");
                         themeSwitcher();
                     }}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:scale-90"
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800 active:scale-95 transition-all"
                     aria-label="Toggle Theme"
                 >
                     {darkMode ? (
-                        <IconSun size={16} className="text-amber-400" />
+                        <IconSun size={18} className="text-amber-400" />
                     ) : (
-                        <IconMoon size={16} />
+                        <IconMoon size={18} />
                     )}
                 </button>
 
@@ -126,10 +156,10 @@ export default function MobileHeader({ activeShift, onOpenShiftModal }) {
                             triggerHaptic("tap");
                             setMenuOpen(!menuOpen);
                         }}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:scale-90"
+                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all"
                         aria-label="Menu"
                     >
-                        <IconDotsVertical size={17} />
+                        <IconDotsVertical size={18} />
                     </button>
 
                     {menuOpen && (

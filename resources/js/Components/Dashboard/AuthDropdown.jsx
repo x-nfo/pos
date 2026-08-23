@@ -60,15 +60,15 @@ export default function AuthDropdown({ auth, isMobile }) {
         <>
             {isMobile === false ? (
                 <Menu className="relative z-10" as="div">
-                    <Menu.Button className="flex items-center rounded-full">
+                    <Menu.Button className="flex items-center rounded-xl overflow-hidden focus:outline-none active:scale-95 transition-all">
                         {avatarUrl ? (
                             <img
                                 src={avatarUrl}
                                 alt={auth.user.name}
-                                className="w-10 h-10 rounded-full object-cover"
+                                className="w-9 h-9 rounded-xl object-cover"
                             />
                         ) : (
-                            <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold">
+                            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary-600 to-primary-700 text-white flex items-center justify-center font-black text-xs shadow-xs">
                                 {userInitial}
                             </div>
                         )}
@@ -81,21 +81,24 @@ export default function AuthDropdown({ auth, isMobile }) {
                         leaveFrom="transform scale-100 opacity-100"
                         leaveTo="transform scale-95 opacity-0"
                     >
-                        <Menu.Items className="absolute rounded-lg w-48 border mt-2 py-2 right-0 z-[100] bg-white dark:bg-gray-950 dark:border-gray-900">
-                            <div className="flex flex-col gap-1.5 divide-y divide-gray-100 dark:divide-gray-900">
-                                {/* <Menu.Item>
-                                    <Link href="/apps/profile" className='px-3 py-1.5 text-sm flex items-center gap-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'>
-                                        <IconUserCog strokeWidth={'1.5'} size={'20'} /> Profile
-                                    </Link>
-                                </Menu.Item> */}
+                        <Menu.Items className="absolute rounded-2xl w-48 border mt-2 py-1.5 right-0 z-[100] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xl">
+                            <div className="flex flex-col gap-1 px-1">
+                                <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
+                                    <p className="text-xs font-bold text-slate-800 dark:text-white truncate">
+                                        {auth.user.name}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                                        {auth.user.email}
+                                    </p>
+                                </div>
                                 <Menu.Item>
                                     <button
                                         onClick={logout}
-                                        className="px-3 py-1.5 text-sm flex items-center gap-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+                                        className="w-full px-3 py-2 text-xs font-semibold flex items-center gap-2 text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 rounded-xl transition-colors"
                                     >
                                         <IconLogout
-                                            strokeWidth={"1.5"}
-                                            size={"20"}
+                                            strokeWidth={1.8}
+                                            size={16}
                                         />
                                         Logout
                                     </button>
@@ -106,19 +109,23 @@ export default function AuthDropdown({ auth, isMobile }) {
                 </Menu>
             ) : (
                 <div ref={dropdownRef}>
-                    <div className="flex items-center">
+                    <Link
+                        href={route("dashboard.menu")}
+                        className="flex items-center rounded-xl overflow-hidden active:scale-95 transition-all"
+                        title="Menu Pengguna"
+                    >
                         {avatarUrl ? (
                             <img
                                 src={avatarUrl}
                                 alt={auth.user.name}
-                                className="w-10 h-10 rounded-full object-cover"
+                                className="w-8 h-8 rounded-xl object-cover"
                             />
                         ) : (
-                            <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold">
+                            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary-600 to-primary-700 text-white flex items-center justify-center font-black text-xs shadow-xs">
                                 {userInitial}
                             </div>
                         )}
-                    </div>
+                    </Link>
                 </div>
             )}
         </>

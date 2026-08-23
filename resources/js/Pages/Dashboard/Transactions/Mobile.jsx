@@ -9,7 +9,6 @@ import { Head, router, usePage } from "@inertiajs/react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import MobileHeader from "@/Components/POS/Mobile/MobileHeader";
-import MobileBottomNav from "@/Components/POS/Mobile/MobileBottomNav";
 import MobileProductGrid from "@/Components/POS/Mobile/MobileProductGrid";
 import MobileFloatingCartBar from "@/Components/POS/Mobile/MobileFloatingCartBar";
 import MobileCartSheet from "@/Components/POS/Mobile/MobileCartSheet";
@@ -713,6 +712,8 @@ export default function Mobile({
                 <MobileHeader
                     activeShift={activeCashierShift}
                     onOpenShiftModal={() => setShiftModalOpen(true)}
+                    cartCount={cartCount}
+                    onOpenCart={() => setCurrentTab("cart")}
                 />
 
                 {/* Shift Warning Banner */}
@@ -788,13 +789,7 @@ export default function Mobile({
                     )}
                 </main>
 
-                {/* Persistent Bottom Navigation Bar */}
-                <MobileBottomNav
-                    currentTab={currentTab}
-                    onTabChange={setCurrentTab}
-                    cartCount={cartCount}
-                    onOpenShiftModal={() => setShiftModalOpen(true)}
-                />
+
 
                 {/* Payment Sheet */}
                 <MobilePaymentSheet

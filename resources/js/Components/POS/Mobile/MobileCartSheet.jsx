@@ -124,7 +124,7 @@ export default function MobileCartSheet({
             </div>
 
             {/* Scrollable Items & Controls */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3 pb-36">
+            <div className="flex-1 overflow-y-auto p-3 space-y-3 pb-24">
                 {/* Customer Selector Card */}
                 <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs">
                     <div className="mb-1.5 flex items-center justify-between">
@@ -505,7 +505,7 @@ export default function MobileCartSheet({
 
             {/* Sticky Bottom Action */}
             {carts.length > 0 && (
-                <div className="fixed bottom-16 inset-x-0 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 shadow-lg z-30">
+                <div className="fixed bottom-0 inset-x-0 p-3 pb-safe bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 shadow-lg z-30">
                     <div className="max-w-md mx-auto flex items-center justify-between gap-3">
                         <div className="min-w-0">
                             <p className="text-[10px] text-slate-500 font-semibold uppercase">

@@ -158,14 +158,16 @@ export default function Notification() {
         <>
             {isMobile === false ? (
                 <Menu className="relative z-50" as="div">
-                    <Menu.Button className="flex items-center rounded-2xl group px-3 py-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow transition">
-                        <div className="absolute text-[11px] font-semibold border border-rose-500/40 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 top-0 -right-2 rounded-md px-2 py-0.5 group-hover:scale-110 duration-200 ease-in">
-                            {badgeCount}
-                        </div>
+                    <Menu.Button className="w-9 h-9 rounded-xl flex items-center justify-center relative text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800 active:scale-95 transition-all">
+                        {badgeCount > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center shadow-xs">
+                                {badgeCount > 99 ? "99+" : badgeCount}
+                            </span>
+                        )}
                         <IconBell
-                            strokeWidth={1.5}
-                            size={22}
-                            className="text-gray-700 dark:text-gray-400"
+                            strokeWidth={1.8}
+                            size={19}
+                            className="text-slate-500 dark:text-slate-400"
                         />
                     </Menu.Button>
                     <Transition
@@ -202,13 +204,16 @@ export default function Notification() {
             ) : (
                 <div ref={notificationRef}>
                     <button
-                        className="flex items-center rounded-xl group p-2 relative border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                        className="w-8 h-8 rounded-xl flex items-center justify-center relative text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800 active:scale-95 transition-all"
                         onClick={() => setIsOpen(!isOpen)}
+                        aria-label="Notifikasi"
                     >
-                        <div className="absolute text-[10px] font-semibold border border-rose-500/40 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 top-0 -right-2 rounded-md px-1.5 py-0.5 group-hover:scale-110 duration-200 ease-in">
-                            {badgeCount}
-                        </div>
-                        <IconBell strokeWidth={1.5} size={20} className="text-gray-500 dark:text-gray-400" />
+                        {badgeCount > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 bg-rose-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center shadow-xs">
+                                {badgeCount > 99 ? "99+" : badgeCount}
+                            </span>
+                        )}
+                        <IconBell strokeWidth={1.8} size={18} className="text-slate-500 dark:text-slate-400" />
                     </button>
                     <div
                         className={`${

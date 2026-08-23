@@ -522,14 +522,14 @@ export default function MenuIndex() {
 
             <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5">
                 {/* 1. Header Profile Card (App Style) */}
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 via-primary-700 to-indigo-800 text-white p-5 sm:p-6 shadow-xl shadow-primary-950/20">
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 via-primary-700 to-indigo-800 text-white p-4 sm:p-6 shadow-xl shadow-primary-950/20">
                     <div className="absolute top-0 right-0 -mr-8 -mt-8 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
                     <div className="absolute bottom-0 left-1/3 -mb-10 w-48 h-48 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
 
-                    <div className="relative flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="relative flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
                             {/* Avatar */}
-                            <div className="relative w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white font-black text-xl shadow-md flex-shrink-0">
+                            <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white font-black text-lg sm:text-xl shadow-md flex-shrink-0">
                                 {user?.avatar ? (
                                     <img
                                         src={user.avatar}
@@ -539,22 +539,28 @@ export default function MenuIndex() {
                                 ) : (
                                     userInitial
                                 )}
-                                <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-400 border-2 border-white dark:border-slate-900 rounded-full" />
+                                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 border-2 border-white dark:border-slate-900 rounded-full" />
                             </div>
 
                             {/* User details */}
-                            <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <h1 className="text-base sm:text-lg font-black truncate">
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <h1 className="text-sm sm:text-base font-black truncate leading-tight">
                                         {user?.name || "Pengguna"}
                                     </h1>
-                                    <span className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-white">
+                                    <span className="px-2 py-0.5 rounded-md bg-white/20 backdrop-blur-md text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white whitespace-nowrap leading-none flex-shrink-0">
                                         {roleName}
                                     </span>
                                 </div>
-                                <p className="text-xs text-white/80 truncate mt-0.5">
-                                    {storeProfile?.name || "Point of Sales"} • {user?.email}
-                                </p>
+                                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-white/80 mt-1 min-w-0">
+                                    <span className="font-semibold truncate">
+                                        {storeProfile?.name || "Point of Sales"}
+                                    </span>
+                                    <span className="text-white/40 flex-shrink-0">•</span>
+                                    <span className="text-white/70 truncate">
+                                        {user?.email}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -562,10 +568,10 @@ export default function MenuIndex() {
                         <Link
                             href={resolveRoute("users.edit", user?.id)}
                             onClick={() => triggerHaptic("tap")}
-                            className="p-2.5 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 text-white transition-all flex-shrink-0"
+                            className="w-10 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 text-white transition-all flex items-center justify-center flex-shrink-0"
                             title="Edit Profil"
                         >
-                            <IconUserCog size={22} strokeWidth={2} />
+                            <IconUserCog size={20} strokeWidth={2} />
                         </Link>
                     </div>
 

@@ -19,7 +19,7 @@ export default function MobileFloatingCartBar({
     if (cartCount <= 0) return null;
 
     return (
-        <div className="fixed bottom-16 inset-x-0 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 shadow-lg z-30 animate-slide-up">
+        <div className="fixed bottom-0 inset-x-0 p-3 pb-safe bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 shadow-lg z-30 animate-slide-up">
             <div className="max-w-md mx-auto flex items-center justify-between gap-3">
                 <div className="min-w-0 flex items-center gap-3">
                     <div className="relative w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-950/60 text-primary-600 dark:text-primary-400 flex items-center justify-center flex-shrink-0">

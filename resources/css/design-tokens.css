@@ -312,10 +312,10 @@ body {
 
 /* Safe Area Utility Classes */
 .pt-safe {
-  padding-top: var(--sat);
+  padding-top: max(var(--sat), 0.25rem);
 }
 .pb-safe {
-  padding-bottom: var(--sab);
+  padding-bottom: max(var(--sab), 0.25rem);
 }
 .pl-safe {
   padding-left: var(--sal);
@@ -327,7 +327,7 @@ body {
   margin-bottom: var(--sab);
 }
 .mt-safe {
-  margin-top: var(--sat);
+  margin-top: max(var(--sat), 0.25rem);
 }
 .bottom-safe {
   bottom: var(--sab);
