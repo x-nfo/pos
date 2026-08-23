@@ -90,13 +90,16 @@ class ProductController extends Controller
             'units.*.barcode' => 'nullable|string|max:100',
             'units.*.sku_suffix' => 'nullable|string|max:20',
         ]);
-        // upload image
-        $image = $request->file('image');
-        $image->storeAs('public/products', $image->hashName());
+        $imageName = '';
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $image->storeAs('public/products', $image->hashName());
+            $imageName = $image->hashName();
+        }
 
         // create product
         $product = Product::create([
-            'image' => $image->hashName(),
+            'image' => $imageName,
             'barcode' => $request->barcode,
             'sku' => $request->sku,
             'title' => $request->title,
