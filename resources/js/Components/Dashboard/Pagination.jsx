@@ -66,7 +66,7 @@ export default function Pagination({ links }) {
     return (
         <nav
             aria-label="Pagination Navigation"
-            className="mt-5 w-full select-none"
+            className="mt-5 mb-6 sm:mb-0 w-full select-none"
         >
             {/* 1. Mobile-Native Pagination Controller (< 640px) */}
             <div className="sm:hidden space-y-2.5">

@@ -54,7 +54,7 @@ export default function AppLayout({ children }) {
         auth?.super === true && securityWarnings.length > 0;
 
     return (
-        <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-950 transition-colors duration-200 touch-action-manipulation">
+        <div className="flex h-screen h-[100dvh] overflow-hidden bg-slate-100 dark:bg-slate-950 transition-colors duration-200 touch-action-manipulation">
             {/* Desktop Sidebar (>= 768px) */}
             <Sidebar sidebarOpen={sidebarOpen} />
 
@@ -71,7 +71,7 @@ export default function AppLayout({ children }) {
                     darkMode={darkMode}
                 />
                 <main className="dashboard-scrollbar flex-1 overflow-y-auto overscroll-contain">
-                    <div className="w-full py-6 px-4 md:px-6 lg:px-8 pb-28 md:pb-6">
+                    <div className="w-full py-6 px-4 md:px-6 lg:px-8 pb-36 sm:pb-32 md:pb-8">
                         {showSecurityWarnings && (
                             <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
                                 <p className="text-sm font-semibold">
