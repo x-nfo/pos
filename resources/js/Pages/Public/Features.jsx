@@ -1,4 +1,4 @@
-import { Head } from "@inertiajs/react";
+import { Head, Link, usePage } from "@inertiajs/react";
 import PublicLayout from "@/Layouts/PublicLayout";
 import {
     IconShoppingCart,
@@ -13,13 +13,11 @@ import {
     IconArrowRight,
 } from "@tabler/icons-react";
 
-const GITHUB_URL = "https://github.com/aryadwiputra/point-of-sales";
-
-const modules = [
+const getModules = (appName) => [
     {
         icon: IconShoppingCart,
         title: "POS & Transaksi",
-        desc: "Inti dari Dikasir — kasir yang cepat, fleksibel, dan bisa diandalkan setiap hari.",
+        desc: `Inti dari ${appName} — kasir yang cepat, fleksibel, dan bisa diandalkan setiap hari.`,
         screenshot: "/screenshots/02-pos-checkout.png",
         features: [
             "Pencarian produk via barcode / keyword",
@@ -136,9 +134,13 @@ const modules = [
 ];
 
 export default function Features() {
+    const { branding } = usePage().props;
+    const appName = branding?.appName || "Rekasir";
+    const modules = getModules(appName);
+
     return (
         <PublicLayout active="/fitur">
-            <Head title="Fitur Lengkap — Dikasir" />
+            <Head title={`Fitur Lengkap — ${appName}`} />
 
             {/* Header */}
             <section className="pt-20 pb-14 px-6 bg-gradient-to-b from-primary-50 dark:from-primary-950/40 to-transparent">
@@ -148,7 +150,7 @@ export default function Features() {
                     </h1>
                     <p className="mt-5 text-lg text-slate-600 dark:text-slate-400 max-w-3xl mx-auto">
                         44+ modul terintegrasi dalam 8 area — dari kasir harian sampai analitik
-                        lanjutan, semua gratis dan open source.
+                        lanjutan, siap mendukung pertumbuhan bisnis Anda.
                     </p>
                     <div className="mt-8 flex flex-wrap justify-center gap-3">
                         {modules.map((m) => (
@@ -222,21 +224,18 @@ export default function Features() {
                 <div className="max-w-3xl mx-auto text-center">
                     <div className="bg-slate-900 dark:bg-slate-800 rounded-3xl p-10">
                         <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
-                            Ada fitur yang kamu butuhkan?
+                            Siap Mengembangkan Bisnis Anda?
                         </h2>
                         <p className="text-slate-400 mb-6">
-                            Karena open source, fitur baru bisa datang dari siapa saja —
-                            termasuk kamu.
+                            Gunakan seluruh modul terintegrasi untuk meningkatkan efisiensi dan laba operasional toko Anda.
                         </p>
-                        <a
-                            href={`${GITHUB_URL}/issues`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        <Link
+                            href="/login"
                             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl hover:from-primary-600 hover:to-primary-700 transition-all"
                         >
-                            Ajukan ide fitur di GitHub
+                            Coba Demo Sekarang
                             <IconArrowRight size={16} />
-                        </a>
+                        </Link>
                     </div>
                 </div>
             </section>

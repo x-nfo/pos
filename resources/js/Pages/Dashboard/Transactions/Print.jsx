@@ -55,7 +55,7 @@ function QrisCode({ value, size = 180 }) {
 }
 
 export default function Print({ transaction }) {
-    const { storeProfile, flash } = usePage().props;
+    const { storeProfile, branding, flash } = usePage().props;
     const { can } = useAuthorization();
     const [printMode, setPrintMode] = useState("invoice"); // 'invoice' | 'thermal80' | 'thermal58'
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -111,14 +111,14 @@ export default function Print({ transaction }) {
 
     const store = useMemo(
         () => ({
-            name: storeProfile?.name || "Toko Anda",
-            logo: storeProfile?.logo || null,
+            name: storeProfile?.name || branding?.appName || "Rekasir",
+            logo: storeProfile?.logo || branding?.logoLight || null,
             address: storeProfile?.address || "",
             phone: storeProfile?.phone || "",
             email: storeProfile?.email || "",
             website: storeProfile?.website || "",
         }),
-        [storeProfile]
+        [storeProfile, branding]
     );
 
     const paymentLabels = {

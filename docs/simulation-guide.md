@@ -80,7 +80,7 @@ cd whatsapp-service && npm install && npm start   # Terminal 3: Port 3001
 ### 2. Login Superadmin Pertama Kali
 - Buka browser ke `http://localhost:8000`
 - Akun Default Superadmin:
-  - **Email**: `arya@gmail.com`
+  - **Email**: `admin@mail.com`
   - **Password**: `password`
 
 ### 3. Konfigurasi Profil Toko & Legalitas

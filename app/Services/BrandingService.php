@@ -10,7 +10,7 @@ class BrandingService
     /**
      * Default branding configuration
      */
-    public const DEFAULT_APP_NAME = 'Point of Sales';
+    public const DEFAULT_APP_NAME = 'Rekasir';
 
     public const DEFAULT_TAGLINE = 'Sistem Kasir & Manajemen Toko Modern';
 
@@ -71,7 +71,7 @@ class BrandingService
             'app_favicon' => Setting::get('app_favicon', ''),
             'theme_primary_color' => Setting::get('theme_primary_color', self::DEFAULT_PRIMARY_COLOR),
             'theme_accent_color' => Setting::get('theme_accent_color', self::DEFAULT_ACCENT_COLOR),
-            'app_footer_text' => Setting::get('app_footer_text', '© '.date('Y').' Point of Sales. All rights reserved.'),
+            'app_footer_text' => Setting::get('app_footer_text', '© '.date('Y').' '.self::DEFAULT_APP_NAME.'. All rights reserved.'),
             'app_powered_by_show' => (bool) Setting::get('app_powered_by_show', false),
             'app_powered_by_text' => Setting::get('app_powered_by_text', ''),
             'app_powered_by_url' => Setting::get('app_powered_by_url', ''),
@@ -143,7 +143,7 @@ class BrandingService
                 'primary' => self::DEFAULT_PRIMARY_COLOR,
                 'accent' => self::DEFAULT_ACCENT_COLOR,
             ],
-            'footerText' => '© '.date('Y').' Point of Sales. All rights reserved.',
+            'footerText' => '© '.date('Y').' '.self::DEFAULT_APP_NAME.'. All rights reserved.',
             'poweredBy' => [
                 'show' => false,
                 'text' => '',

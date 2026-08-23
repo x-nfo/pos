@@ -1,87 +1,86 @@
-import { Head } from "@inertiajs/react";
+import { Head, Link, usePage } from "@inertiajs/react";
 import PublicLayout from "@/Layouts/PublicLayout";
-import { IconBook2, IconArrowRight, IconBrandGithub } from "@tabler/icons-react";
-
-const GITHUB_URL = "https://github.com/aryadwiputra/point-of-sales";
-const DOCS_BASE = `${GITHUB_URL}/blob/main/docs`;
+import { IconBook2, IconArrowRight, IconSparkles, IconDeviceMobile } from "@tabler/icons-react";
 
 const categories = [
     {
-        title: "Mulai Cepat",
+        title: "Panduan Memulai",
         docs: [
-            { file: "getting-started.md", title: "Getting Started", desc: "Panduan setup lengkap dari nol sampai bisa login & mengakses dashboard." },
-            { file: "configuration.md", title: "Konfigurasi", desc: "Environment, payment gateway, pajak, printer thermal, dan WhatsApp." },
-            { file: "architecture-overview.md", title: "Arsitektur", desc: "Struktur kode, service layer, middleware, dan Node service." },
-            { file: "feature-index.md", title: "Indeks Fitur", desc: "Daftar semua 44+ modul dan statusnya." },
+            { title: "Pengaturan Awal & Profil Toko", desc: "Panduan setup identitas bisnis, logo struk, alamat, dan nomor kontak toko." },
+            { title: "Konfigurasi Sistem & Gateway", desc: "Pengaturan metode pembayaran, printer thermal, PPN, dan integrasi WhatsApp." },
+            { title: "Arsitektur & Keamanan", desc: "Struktur data aman, otorisasi RBAC berjenjang, dan perlindungan audit log." },
+            { title: "Daftar Modul & Fitur", desc: "Daftar lengkap 44+ fitur terintegrasi yang siap digunakan." },
         ],
     },
     {
         title: "POS & Transaksi",
         docs: [
-            { file: "features/pos-transactions.md", title: "Transaksi POS", desc: "Alur cart, checkout, hold/resume, dan multi-payment." },
-            { file: "features/cashier-shifts.md", title: "Shift Kasir", desc: "Buka/tutup shift dan rekap kas per shift." },
-            { file: "features/sales-returns.md", title: "Retur Penjualan", desc: "Proses retur dari transaksi yang sudah jadi." },
-            { file: "features/mobile-pos.md", title: "Mobile POS (PWA)", desc: "Gunakan kasir dari HP — installable dan offline-ready." },
-            { file: "features/thermal-printer.md", title: "Printer Thermal", desc: "Cetak struk 58/80mm via WebUSB." },
+            { title: "Operasional Kasir (POS)", desc: "Alur keranjang belanja, checkout cepat, hold & resume bill, dan multi-payment." },
+            { title: "Manajemen Shift Kasir", desc: "Buka/tutup shift kasir, input kas awal, dan rekonsiliasi kas harian." },
+            { title: "Retur Penjualan", desc: "Proses retur barang dari transaksi pelanggan secara akurat." },
+            { title: "Mobile POS (PWA)", desc: "Akses kasir langsung dari smartphone atau tablet dengan dukungan offline mode." },
+            { title: "Printer Thermal Struk", desc: "Cetak struk ukuran 58mm/80mm via WebUSB dan Bluetooth printer." },
         ],
     },
     {
-        title: "Inventory & Warehouse",
+        title: "Inventory & Gudang",
         docs: [
-            { file: "features/inventory-stock.md", title: "Inventory & Stok", desc: "Produk, kategori, stock opname, dan mutasi stok." },
-            { file: "features/multi-warehouse.md", title: "Multi-Warehouse", desc: "Stok per gudang dan transfer antar gudang." },
-            { file: "features/unit-conversion.md", title: "Multi-Satuan", desc: "Konversi satuan produk (pcs, box, kg, karton)." },
+            { title: "Katalog Produk & Stok", desc: "Kelola master produk, kategori, stok minimum, dan mutasi stok barang." },
+            { title: "Multi-Warehouse / Cabang", desc: "Manajemen stok terpisah per gudang dan transfer stok antar cabang." },
+            { title: "Multi-Satuan (UOM)", desc: "Konversi satuan bertingkat (pcs, box, renteng, karton) secara otomatis." },
         ],
     },
     {
-        title: "Purchasing & Finance",
+        title: "Pembelian & Keuangan",
         docs: [
-            { file: "features/purchasing-chain.md", title: "Rantai Pengadaan", desc: "Purchase order, goods receiving, dan supplier return." },
-            { file: "features/payables-suppliers.md", title: "Supplier & Payables", desc: "Kelola supplier dan hutang." },
-            { file: "features/receivables.md", title: "Receivables", desc: "Piutang pelanggan dan pembayaran parsial." },
-            { file: "features/tax-management.md", title: "Manajemen Pajak", desc: "PPN, NPWP, dan NIB." },
-            { file: "features/customer-portal.md", title: "Customer Portal", desc: "Portal self-service: lihat invoice & bayar online." },
+            { title: "Rantai Pengadaan (Purchasing)", desc: "Purchase order (PO), penerimaan barang (GR), dan retur ke supplier." },
+            { title: "Hutang Supplier (Payables)", desc: "Monitoring tagihan hutang supplier beserta jadwal jatuh tempo." },
+            { title: "Piutang Pelanggan (Receivables)", desc: "Pengelolaan piutang, pelunasan parsial, dan analisis penuaan piutang (aging)." },
+            { title: "Manajemen Pajak (PPN)", desc: "Perhitungan PPN otomatis, invoice pajak, dan pencatatan NPWP pelanggan." },
+            { title: "Customer Portal & Self Payment", desc: "Halaman struk/invoice digital mandiri untuk pelanggan menyelesaikan tagihan." },
         ],
     },
     {
-        title: "CRM & Loyalty",
+        title: "CRM, Promosi & Loyalty",
         docs: [
-            { file: "features/crm-segments.md", title: "Segmen & Campaign", desc: "Segmentasi otomatis dan campaign marketing." },
-            { file: "features/member-management.md", title: "Member Management", desc: "Tier member dan poin loyalty." },
-            { file: "features/promotions-loyalty.md", title: "Promo & Loyalty", desc: "Pricing rules, voucher, dan program loyalty." },
+            { title: "Segmentasi & Campaign Pelanggan", desc: "Pengelompokan pelanggan otomatis dan pengiriman promo WhatsApp tertarget." },
+            { title: "Keanggotaan Member & Poin", desc: "Sistem tiering member, reward poin belanja, dan benefit pelanggan setia." },
+            { title: "Aturan Harga & Voucher", desc: "Diskon bertingkat, harga grosir, bundle promo, dan voucher diskon." },
         ],
     },
     {
-        title: "Admin & Tools",
+        title: "Administrasi & Pengaturan",
         docs: [
-            { file: "features/rbac-users-roles.md", title: "RBAC", desc: "User, role, dan permission." },
-            { file: "features/audit-logs.md", title: "Audit Log", desc: "Jejak perubahan before/after." },
-            { file: "features/settings-payments.md", title: "Payment Settings", desc: "Midtrans, Xendit, dan bank accounts." },
-            { file: "features/import-export.md", title: "Import/Export", desc: "Produk & customer via Excel." },
-            { file: "features/reports-documents.md", title: "Reports & Documents", desc: "Laporan dan dokumen PDF." },
-            { file: "features/whatsapp-gateway.md", title: "WhatsApp Gateway", desc: "Integrasi whatsapp-web.js." },
+            { title: "Hak Akses & Role (RBAC)", desc: "Pembatasan hak akses kasir, supervisor, dan administrator secara presisi." },
+            { title: "Audit Log & Jejak Aktivitas", desc: "Pencatatan riwayat setiap perubahan data penting dalam sistem." },
+            { title: "Pengaturan Pembayaran & Bank", desc: "Aktivasi QRIS Dinamis, akun rekening transfer bank, dan payment gateway." },
+            { title: "Import & Export Data Excel", desc: "Migrasi cepat produk dan data pelanggan massal via format spreadsheet." },
+            { title: "Laporan & Dokumen PDF", desc: "Unduh laporan penjualan, laba rugi, dan analitik performa dalam format PDF." },
+            { title: "WhatsApp Gateway", desc: "Otomatisasi pengiriman struk belanja, reminder piutang, dan pesan notifikasi." },
         ],
     },
 ];
 
 export default function Documentation() {
+    const { branding } = usePage().props;
+    const appName = branding?.appName || "Rekasir";
+
     return (
         <PublicLayout active="/dokumentasi">
-            <Head title="Dokumentasi — Dikasir" />
+            <Head title={`Dokumentasi — ${appName}`} />
 
             {/* Header */}
             <section className="pt-20 pb-14 px-6 bg-gradient-to-b from-primary-50 dark:from-primary-950/40 to-transparent">
                 <div className="max-w-4xl mx-auto text-center">
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-50 dark:bg-primary-950/50 text-primary-600 dark:text-primary-400 text-sm font-medium mb-5 border border-primary-100 dark:border-primary-900">
                         <IconBook2 size={16} />
-                        Dokumentasi
+                        Pusat Panduan
                     </div>
                     <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white">
-                        Dokumentasi Lengkap
+                        Panduan &amp; Dokumentasi Fitur
                     </h1>
                     <p className="mt-5 text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-                        Semua panduan tersedia di repository GitHub — selalu terbaru, ikut
-                        berkembang bersama kode.
+                        Pelajari cara kerja setiap modul untuk memaksimalkan potensi bisnis dan efisiensi operasional toko Anda.
                     </p>
                 </div>
             </section>
@@ -96,24 +95,21 @@ export default function Documentation() {
                                 {cat.title}
                             </h2>
                             <div className="grid sm:grid-cols-2 gap-4">
-                                {cat.docs.map((doc) => (
-                                    <a
-                                        key={doc.file}
-                                        href={`${DOCS_BASE}/${doc.file}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="group p-5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-md transition-all"
+                                {cat.docs.map((doc, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="group p-5 rounded-2xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-md transition-all"
                                     >
                                         <div className="flex items-center justify-between mb-2">
                                             <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                                                 {doc.title}
                                             </h3>
-                                            <IconArrowRight size={16} className="text-slate-400 group-hover:text-primary-500 group-hover:translate-x-0.5 transition-all" />
+                                            <IconSparkles size={16} className="text-primary-400 opacity-60 group-hover:opacity-100 transition-opacity" />
                                         </div>
-                                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                                             {doc.desc}
                                         </p>
-                                    </a>
+                                    </div>
                                 ))}
                             </div>
                         </div>
@@ -124,32 +120,28 @@ export default function Documentation() {
             {/* CTA */}
             <section className="pb-20 px-6">
                 <div className="max-w-3xl mx-auto">
-                    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-8 text-center">
-                        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-                            Dokumentasi kurang jelas?
+                    <div className="rounded-3xl bg-slate-900 dark:bg-slate-800 p-8 sm:p-10 text-center text-white">
+                        <h2 className="text-2xl md:text-3xl font-bold mb-3">
+                            Siap Mengoptimalkan Toko Anda?
                         </h2>
-                        <p className="text-slate-600 dark:text-slate-400 mb-6">
-                            Dokumentasi juga open source — perbaiki dan buat PR, atau tanya di
-                            GitHub Discussions.
+                        <p className="text-slate-400 mb-8 max-w-xl mx-auto">
+                            Eksplorasi langsung antarmuka kasir dan fitur lengkap {appName} dengan akun demo siap pakai.
                         </p>
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                            <a
-                                href={`${GITHUB_URL}/blob/main/docs/README.md`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl hover:from-primary-600 hover:to-primary-700 transition-all"
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                            <Link
+                                href="/login"
+                                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-2xl hover:from-primary-600 hover:to-primary-700 shadow-lg shadow-primary-500/25 transition-all"
                             >
-                                <IconBrandGithub size={18} />
-                                Lihat semua docs di GitHub
-                            </a>
-                            <a
-                                href={`${GITHUB_URL}/discussions`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-primary-300 transition-colors"
+                                <IconDeviceMobile size={18} />
+                                Coba Demo Sekarang
+                                <IconArrowRight size={16} />
+                            </Link>
+                            <Link
+                                href="/fitur"
+                                className="inline-flex items-center gap-2 px-6 py-4 text-sm font-semibold text-slate-300 border border-slate-700 rounded-2xl hover:border-primary-400 hover:text-primary-400 transition-colors"
                             >
-                                Tanya di Discussions
-                            </a>
+                                Jelajahi Daftar Fitur
+                            </Link>
                         </div>
                     </div>
                 </div>

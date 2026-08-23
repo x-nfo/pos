@@ -107,7 +107,7 @@ npm install && npm start
 
 ## Default Login
 
-- Admin: `arya@gmail.com` / `password`
+- Admin: `admin@mail.com` / `password`
 - Kasir: `cashier@gmail.com` / `password`
 
 ## Dokumentasi Detail
@@ -121,7 +121,7 @@ npm install && npm start
 
 ## REST API (OpenAPI)
 
-Dikasir menyediakan REST API untuk integrasi mobile app / pihak ketiga. Dokumentasi interaktif otomatis (Scramble) tersedia di:
+Rekasir menyediakan REST API untuk integrasi mobile app / pihak ketiga. Dokumentasi interaktif otomatis (Scramble) tersedia di:
 
 - **UI docs:** `/docs/api` — coba endpoint langsung dari browser (Try It)
 - **OpenAPI spec:** `/docs/api.json` — untuk generate client (Postman, OpenAPI Generator, Swagger Codegen)
@@ -130,13 +130,13 @@ Semua endpoint (kecuali `auth/login`, `auth/register`, webhooks) memerlukan **Be
 
 ```bash
 # 1. Login → dapat token
-curl -X POST https://dikasir.web.id/api/v1/auth/login \
+curl -X POST https://rekasir.com/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"password"}'
+  -d '{"email":"admin@mail.com","password":"password"}'
 # → {"token": "1|abc123...", "user": {...}}
 
 # 2. Panggil API dengan token
-curl https://dikasir.web.id/api/v1/products \
+curl https://rekasir.com/api/v1/products \
   -H "Authorization: Bearer 1|abc123..."
 ```
 
@@ -152,7 +152,7 @@ curl https://dikasir.web.id/api/v1/products \
 | Supplier | `suppliers` | CRUD |
 | POS | `pos/shift`, `pos/products`, `pos/cart`, `pos/hold`, `pos/checkout`, `pos/transactions` | Alur kasir lengkap (mobile) |
 
-Base URL: `https://dikasir.web.id/api/v1` (dev: `http://localhost:8000/api/v1`)
+Base URL: `https://rekasir.com/api/v1` (dev: `http://localhost:8000/api/v1`)
 
 ### Per Modul
 

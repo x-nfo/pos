@@ -23,7 +23,7 @@ class WarehouseTest extends TestCase
         parent::setUp();
 
         $this->seed([PermissionSeeder::class, RoleSeeder::class, UserSeeder::class]);
-        $this->admin = User::role('super-admin')->first() ?? User::where('email', 'arya@gmail.com')->first() ?? User::first();
+        $this->admin = User::role('super-admin')->first() ?? User::where('email', 'admin@mail.com')->first() ?? User::first();
         $this->admin->markEmailAsVerified();
         $this->actingAs($this->admin);
         $this->withSession($this->recentlyConfirmedSession());

@@ -51,12 +51,12 @@ return [
         /*
          * Description rendered on the home page of the API documentation (`/docs/api`).
          */
-        'description' => 'REST API untuk Dikasir — sistem kasir (POS) open source untuk UMKM Indonesia. '
+        'description' => 'REST API untuk Rekasir — sistem kasir (POS) modern untuk UMKM dan bisnis retail. '
             .'Semua endpoint (kecuali login/register/webhooks) memerlukan Bearer token dari POST /api/v1/auth/login.',
     ],
 
     'ui' => [
-        'title' => 'Dikasir API Documentation',
+        'title' => 'Rekasir API Documentation',
     ],
 
     'renderer' => 'elements',

@@ -1,4 +1,4 @@
-import { Head } from "@inertiajs/react";
+import { Head, Link, usePage } from "@inertiajs/react";
 import PublicLayout from "@/Layouts/PublicLayout";
 import {
     IconHeart,
@@ -7,13 +7,11 @@ import {
     IconListCheck,
     IconTerminal2,
     IconArrowRight,
-    IconBrandGithub,
     IconShieldCheck,
+    IconDeviceMobile,
 } from "@tabler/icons-react";
 
-const GITHUB_URL = "https://github.com/aryadwiputra/point-of-sales";
-
-const setupCommands = `git clone https://github.com/aryadwiputra/point-of-sales
+const setupCommands = `git clone <repository-url>
 cd point-of-sales
 cp .env.example .env
 composer install && npm install
@@ -34,9 +32,12 @@ const checklist = [
 ];
 
 export default function Contributing() {
+    const { branding } = usePage().props;
+    const appName = branding?.appName || "Rekasir";
+
     return (
         <PublicLayout active="/kontribusi">
-            <Head title="Kontribusi — Dikasir" />
+            <Head title={`Kontribusi — ${appName}`} />
 
             {/* Header */}
             <section className="pt-20 pb-14 px-6 bg-gradient-to-b from-primary-50 dark:from-primary-950/40 to-transparent">
@@ -46,7 +47,7 @@ export default function Contributing() {
                         Kontribusi
                     </div>
                     <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white">
-                        Bantu Dikasir Tumbuh
+                        Bantu {appName} Tumbuh
                     </h1>
                     <p className="mt-5 text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
                         Open source hidup dari kontributor — laporan bug, perbaikan kode,
@@ -116,7 +117,7 @@ export default function Contributing() {
                     <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
                         Data contoh (produk, transaksi, user) sudah termasuk via{" "}
                         <code className="font-mono text-primary-600 dark:text-primary-400">migrate --seed</code>.
-                        Akun default: <code className="font-mono">arya@gmail.com</code> (admin) dan{" "}
+                        Akun default: <code className="font-mono">admin@mail.com</code> (admin) dan{" "}
                         <code className="font-mono">cashier@gmail.com</code> (kasir), password:{" "}
                         <code className="font-mono">password</code>.
                     </p>
@@ -175,31 +176,26 @@ export default function Contributing() {
                 <div className="max-w-3xl mx-auto">
                     <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-3xl p-10 text-center text-white">
                         <h2 className="text-2xl md:text-3xl font-bold mb-3">
-                            Siap Berkontribusi?
+                            Ingin Mencoba Sistem Sekarang?
                         </h2>
-                        <p className="opacity-90 mb-7">
-                            Mulai dari issue berlabel "good first issue" — atau baca panduan
-                            lengkap di CONTRIBUTING.md.
+                        <p className="opacity-90 mb-7 max-w-xl mx-auto">
+                            Akses demo aplikasi untuk melihat arsitektur modul dan fungsionalitas kasir secara langsung.
                         </p>
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                            <a
-                                href={`${GITHUB_URL}/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 px-6 py-3 bg-white text-primary-600 font-semibold rounded-xl hover:bg-slate-50 transition-colors"
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                            <Link
+                                href="/login"
+                                className="inline-flex items-center gap-2 px-8 py-4 bg-white text-primary-700 font-bold rounded-2xl hover:bg-slate-50 transition-colors shadow-lg"
                             >
-                                Cari Good First Issue
-                            </a>
-                            <a
-                                href={`${GITHUB_URL}/blob/main/CONTRIBUTING.md`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 px-6 py-3 border border-white/40 text-white font-semibold rounded-xl hover:bg-white/10 transition-colors"
-                            >
-                                <IconBrandGithub size={18} />
-                                Baca CONTRIBUTING.md
+                                <IconDeviceMobile size={18} />
+                                Coba Demo Sekarang
                                 <IconArrowRight size={16} />
-                            </a>
+                            </Link>
+                            <Link
+                                href="/fitur"
+                                className="inline-flex items-center gap-2 px-6 py-4 border border-white/40 text-white font-semibold rounded-2xl hover:bg-white/10 transition-colors"
+                            >
+                                Jelajahi Modul &amp; Fitur
+                            </Link>
                         </div>
                     </div>
                 </div>

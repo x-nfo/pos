@@ -55,7 +55,7 @@ export default function Register({ botGuard }) {
                         </p>
                         <div className="mt-8 space-y-3">
                             {[
-                                "Gratis untuk memulai",
+                                "Mudah untuk memulai",
                                 "Setup dalam 5 menit",
                                 "Dukungan penuh",
                             ].map((feature, i) => (

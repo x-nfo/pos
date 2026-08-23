@@ -9,7 +9,7 @@ import { ThemeSwitcherProvider } from './Context/ThemeSwitcherContext';
 import { OnlineStatusProvider } from './Context/OnlineStatusContext';
 import { applyThemeColors } from './Utils/brandingTheme';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'Rekasir';
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

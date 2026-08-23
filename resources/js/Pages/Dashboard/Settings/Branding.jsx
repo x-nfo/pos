@@ -41,7 +41,7 @@ const PRESET_ACCENT_COLORS = [
 
 export default function Branding({ settings, branding }) {
     const { data, setData, post, processing, errors, reset } = useForm({
-        app_name: settings.app_name || "Point of Sales",
+        app_name: settings.app_name || "Rekasir",
         app_tagline: settings.app_tagline || "Sistem Kasir & Manajemen Toko Modern",
         app_logo_light: null,
         app_logo_dark: null,

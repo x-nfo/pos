@@ -1,16 +1,14 @@
-import { Head, Link } from "@inertiajs/react";
+import { Head, Link, usePage } from "@inertiajs/react";
 import PublicLayout from "@/Layouts/PublicLayout";
 import {
     IconRoute,
     IconRocket,
     IconSparkles,
     IconArrowRight,
-    IconBrandGithub,
     IconCheck,
     IconBulb,
+    IconDeviceMobile,
 } from "@tabler/icons-react";
-
-const GITHUB_URL = "https://github.com/aryadwiputra/point-of-sales";
 
 const releases = [
     {
@@ -85,9 +83,12 @@ const directions = [
 ];
 
 export default function Roadmap() {
+    const { branding } = usePage().props;
+    const appName = branding?.appName || "Rekasir";
+
     return (
         <PublicLayout active="/roadmap">
-            <Head title="Roadmap — Dikasir" />
+            <Head title={`Roadmap — ${appName}`} />
 
             {/* Header */}
             <section className="pt-20 pb-14 px-6 bg-gradient-to-b from-primary-50 dark:from-primary-950/40 to-transparent">
@@ -97,7 +98,7 @@ export default function Roadmap() {
                         Roadmap
                     </div>
                     <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white">
-                        Perjalanan Dikasir
+                        Perjalanan {appName}
                     </h1>
                     <p className="mt-5 text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
                         Dari kasir sederhana menjadi ekosistem POS lengkap — dan masih terus
@@ -171,33 +172,30 @@ export default function Roadmap() {
                 </div>
             </section>
 
-            {/* Community CTA */}
+            {/* CTA */}
             <section className="py-20 px-6">
                 <div className="max-w-3xl mx-auto">
-                    <div className="bg-slate-900 dark:bg-slate-800 rounded-3xl p-10 text-center">
-                        <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
-                            Roadmap dibentuk oleh komunitas
+                    <div className="bg-slate-900 dark:bg-slate-800 rounded-3xl p-10 text-center text-white">
+                        <h2 className="text-2xl md:text-3xl font-bold mb-3">
+                            Inovasi Berkelanjutan untuk Toko Anda
                         </h2>
-                        <p className="text-slate-400 mb-7">
-                            Punya ide fitur? Laporkan bug? Atau ingin mengerjakan salah satu arah
-                            di atas? Semua dimulai dari GitHub.
+                        <p className="text-slate-400 mb-8 max-w-xl mx-auto">
+                            Kami terus mengembangkan modul dan performa sistem untuk memastikan bisnis Anda selalu selangkah di depan.
                         </p>
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                            <a
-                                href={`${GITHUB_URL}/issues`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl hover:from-primary-600 hover:to-primary-700 transition-all"
-                            >
-                                <IconBrandGithub size={18} />
-                                Buat Issue / Ide
-                            </a>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             <Link
-                                href="/kontribusi"
-                                className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-slate-300 border border-slate-600 rounded-xl hover:border-primary-400 hover:text-primary-400 transition-colors"
+                                href="/login"
+                                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-2xl hover:from-primary-600 hover:to-primary-700 shadow-lg shadow-primary-500/25 transition-all"
                             >
-                                Mulai berkontribusi
+                                <IconDeviceMobile size={18} />
+                                Coba Demo Sekarang
                                 <IconArrowRight size={16} />
+                            </Link>
+                            <Link
+                                href="/fitur"
+                                className="inline-flex items-center gap-2 px-6 py-4 text-sm font-semibold text-slate-300 border border-slate-700 rounded-2xl hover:border-primary-400 hover:text-primary-400 transition-colors"
+                            >
+                                Lihat Semua Fitur
                             </Link>
                         </div>
                     </div>

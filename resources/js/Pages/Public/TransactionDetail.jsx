@@ -11,23 +11,25 @@ const statusBadge = (status) => {
 };
 
 export default function TransactionDetail({ transaction, token }) {
-    const { storeProfile } = usePage().props;
+    const { storeProfile, branding } = usePage().props;
+    const storeName = storeProfile?.name || branding?.appName || "STRUK PEMBELIAN";
+    const logoSrc = storeProfile?.logo || branding?.logoLight || null;
 
     return (
         <>
-            <Head title={`Invoice ${transaction.invoice}`} />
+            <Head title={`Invoice ${transaction.invoice} - ${storeName}`} />
             <div className="min-h-screen bg-slate-100 dark:bg-slate-950 py-6 sm:py-10 px-4 flex items-center justify-center">
                 <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200/80 dark:border-slate-800 overflow-hidden">
                     {/* Header with Store Branding */}
                     <div className="bg-gradient-to-br from-primary-600 to-primary-800 px-6 py-6 text-white text-center">
-                        {storeProfile?.logo ? (
+                        {logoSrc ? (
                             <img
-                                src={storeProfile.logo}
+                                src={logoSrc}
                                 alt="Store Logo"
                                 className="w-14 h-14 object-contain mx-auto mb-2 bg-white rounded-2xl p-1.5 shadow-md"
                             />
                         ) : null}
-                        <h2 className="text-lg font-black tracking-tight">{storeProfile?.name || "STRUK PEMBELIAN"}</h2>
+                        <h2 className="text-lg font-black tracking-tight">{storeName}</h2>
                         {storeProfile?.address && (
                             <p className="text-xs text-white/80 mt-0.5 max-w-xs mx-auto truncate">{storeProfile.address}</p>
                         )}
@@ -131,7 +133,7 @@ export default function TransactionDetail({ transaction, token }) {
                     </div>
 
                     <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 text-center text-xs text-slate-400 dark:text-slate-500">
-                        Terima kasih telah berbelanja di {storeProfile?.name || "toko kami"}! 🙏
+                        Terima kasih telah berbelanja di {storeName}! 🙏
                     </div>
                 </div>
             </div>

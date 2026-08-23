@@ -22,7 +22,9 @@ class DocumentController extends Controller
 
     private function storeProfile(): array
     {
-        $logo = Setting::get('store_logo');
+        $appName = Setting::get('app_name', 'Rekasir');
+        $storeName = Setting::get('store_name', $appName);
+        $logo = Setting::get('store_logo') ?: Setting::get('logo_light');
         if ($logo && ! str_starts_with($logo, 'http') && ! str_starts_with($logo, '/storage')) {
             $logo = asset('storage/'.ltrim($logo, '/'));
         }
@@ -42,7 +44,7 @@ class DocumentController extends Controller
         }
 
         return [
-            'name' => Setting::get('store_name', 'Toko Anda'),
+            'name' => $storeName,
             'logo' => $logo,
             'logo_data' => $logoData,
             'address' => Setting::get('store_address', ''),

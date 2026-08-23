@@ -19,9 +19,9 @@ class UserSeeder extends Seeder
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $admin = User::updateOrCreate(
-            ['email' => 'testing@mail.com'],
+            ['email' => 'admin@mail.com'],
             [
-                'name' => 'Arya Dwi Putra',
+                'name' => 'Sanda Rusly',
                 'email_verified_at' => now(),
                 'password' => Hash::make('password'),
             ]

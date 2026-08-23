@@ -1,24 +1,18 @@
 import { Link, usePage } from "@inertiajs/react";
 import {
     IconShoppingCart,
-    IconBrandGithub,
-    IconStar,
     IconArrowRight,
 } from "@tabler/icons-react";
-
-const GITHUB_URL = "https://github.com/aryadwiputra/point-of-sales";
-const DOCS_URL = `${GITHUB_URL}/blob/main/docs/getting-started.md`;
 
 export const NAV_LINKS = [
     { label: "Fitur", href: "/fitur" },
     { label: "Dokumentasi", href: "/dokumentasi" },
     { label: "Roadmap", href: "/roadmap" },
-    { label: "Kontribusi", href: "/kontribusi" },
 ];
 
 export default function PublicLayout({ children, active = "" }) {
     const { branding } = usePage().props;
-    const appName = branding?.appName || "Point of Sales";
+    const appName = branding?.appName || "Rekasir";
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
