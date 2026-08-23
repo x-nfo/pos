@@ -44,8 +44,8 @@ export default function Notification() {
                 ...n,
                 id: `stock-${n.id}`,
                 originalId: n.id,
-                title: `Stok habis: ${n.title}`,
-                subtitle: `Stok: ${n.stock}`,
+                title: n.stock === 0 ? `Stok habis: ${n.title}` : `Stok menipis: ${n.title}`,
+                subtitle: `Tersisa: ${n.stock} ${n.min_stock ? `(Batas min: ${n.min_stock})` : ''}`,
                 type: "stock",
             }))
         ),

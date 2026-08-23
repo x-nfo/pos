@@ -142,6 +142,8 @@ class ProductController extends Controller
             'buy_price' => 'required|numeric|min:0',
             'sell_price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
+            'min_stock' => 'nullable|integer|min:0',
+            'max_stock' => 'nullable|integer|min:0',
             'description' => 'nullable|string',
             'image' => 'nullable|string',
         ]);
@@ -162,8 +164,8 @@ class ProductController extends Controller
             'buy_price' => (int) $validated['buy_price'],
             'sell_price' => (int) $validated['sell_price'],
             'stock' => (int) $validated['stock'],
-            'min_stock' => 0,
-            'max_stock' => 0,
+            'min_stock' => (int) ($validated['min_stock'] ?? 0),
+            'max_stock' => (int) ($validated['max_stock'] ?? 0),
         ]);
 
         $this->stockMutationService->recordInitialStock($product, $request->user()?->id);
@@ -412,6 +414,8 @@ class ProductController extends Controller
             'buy_price',
             'sell_price',
             'stock',
+            'min_stock',
+            'max_stock',
             'category_id',
         ]);
     }

@@ -44,6 +44,8 @@ export default function Edit({ categories, product, units = [] }) {
         description: product.description,
         buy_price: product.buy_price,
         sell_price: product.sell_price,
+        min_stock: product.min_stock ?? 0,
+        max_stock: product.max_stock ?? 0,
         units: initialUnits,
         _method: "PUT",
     });
@@ -245,6 +247,40 @@ export default function Edit({ categories, product, units = [] }) {
                                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                                     Perubahan stok dilakukan melalui transaksi atau stock opname.
                                 </p>
+                            </div>
+
+                            {/* Batas Stok Minimal & Maksimal */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                <div>
+                                    <Input
+                                        type="number"
+                                        label="Stok Minimum (Peringatan)"
+                                        value={data.min_stock}
+                                        onChange={(e) =>
+                                            setData("min_stock", e.target.value)
+                                        }
+                                        errors={errors.min_stock}
+                                        placeholder="0"
+                                    />
+                                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                        Batas peringatan stok menipis di dashboard (0 = tanpa batas).
+                                    </p>
+                                </div>
+                                <div>
+                                    <Input
+                                        type="number"
+                                        label="Stok Maksimal (Target Reorder)"
+                                        value={data.max_stock}
+                                        onChange={(e) =>
+                                            setData("max_stock", e.target.value)
+                                        }
+                                        errors={errors.max_stock}
+                                        placeholder="0"
+                                    />
+                                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                        Target kapasitas stok saat rekomendasi restock PO (0 = tanpa batas).
+                                    </p>
+                                </div>
                             </div>
 
                             {/* Profit Estimation */}

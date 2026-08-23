@@ -116,7 +116,11 @@ class Product extends Model
 
     public function stockTotal(): int
     {
-        return (int) $this->warehouses()->sum('product_warehouse.stock');
+        $warehouseStock = (int) $this->warehouses()->sum('product_warehouse.stock');
+
+        return $warehouseStock > 0 || $this->warehouses()->exists()
+            ? $warehouseStock
+            : (int) ($this->stock ?? 0);
     }
 
     public function isLowStock(?int $warehouseId = null): bool

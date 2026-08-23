@@ -44,8 +44,9 @@ function ProductCard({
     canUpdate,
     canDelete,
 }) {
-    const rowNumber = index + 1 + (currentPage - 1) * perPage;
-    const lowStock = product.stock > 0 && product.stock <= 5;
+    const lowStock = product.min_stock > 0
+        ? product.stock > 0 && product.stock <= product.min_stock
+        : product.stock > 0 && product.stock <= 5;
     const outOfStock = product.stock === 0;
 
     return (
@@ -380,7 +381,9 @@ export default function Index({ products }) {
                         {/* Mobile Cards View (< 768px) */}
                         <div className="md:hidden space-y-3">
                             {products.data.map((product) => {
-                                const lowStock = product.stock > 0 && product.stock <= 5;
+                                const lowStock = product.min_stock > 0
+                                    ? product.stock > 0 && product.stock <= product.min_stock
+                                    : product.stock > 0 && product.stock <= 5;
                                 const outOfStock = product.stock === 0;
 
                                 return (
@@ -511,17 +514,24 @@ export default function Index({ products }) {
                                                     {formatCurrency(product.sell_price)}
                                                 </Table.Td>
                                                 <Table.Td>
-                                                    <span
-                                                        className={`px-2 py-0.5 text-xs font-medium rounded ${
-                                                            product.stock === 0
-                                                                ? "bg-danger-100 text-danger-700 dark:bg-danger-900/50 dark:text-danger-400"
-                                                                : product.stock <= 5
-                                                                ? "bg-warning-100 text-warning-700 dark:bg-warning-900/50 dark:text-warning-400"
-                                                                : "bg-success-100 text-success-700 dark:bg-success-900/50 dark:text-success-400"
-                                                        }`}
-                                                    >
-                                                        {product.stock}
-                                                    </span>
+                                                    <div>
+                                                        <span
+                                                            className={`px-2 py-0.5 text-xs font-medium rounded ${
+                                                                product.stock === 0
+                                                                    ? "bg-danger-100 text-danger-700 dark:bg-danger-900/50 dark:text-danger-400"
+                                                                    : (product.min_stock > 0 ? product.stock <= product.min_stock : product.stock <= 5)
+                                                                    ? "bg-warning-100 text-warning-700 dark:bg-warning-900/50 dark:text-warning-400"
+                                                                    : "bg-success-100 text-success-700 dark:bg-success-900/50 dark:text-success-400"
+                                                            }`}
+                                                        >
+                                                            {product.stock}
+                                                        </span>
+                                                        {product.min_stock > 0 && (
+                                                            <span className="block text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 whitespace-nowrap">
+                                                                Min: {product.min_stock}{product.max_stock > 0 ? ` / Max: ${product.max_stock}` : ''}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </Table.Td>
                                                 <Table.Td>
                                                     <div className="flex gap-2">
