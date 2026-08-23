@@ -239,7 +239,7 @@ export default function QuickAddProductModal({
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
-                                Harga Beli (Modal)
+                                Harga Modal
                             </label>
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
