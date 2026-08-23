@@ -10,25 +10,37 @@ import {
     IconBuildingWarehouse,
     IconBarcode,
     IconToolsKitchen2,
+    IconTable,
+    IconReceipt2,
+    IconReceiptRefund,
     IconHistory,
     IconClockHour6,
     IconPercentage,
+    IconTag,
     IconFileDescription,
     IconTruckDelivery,
     IconClipboardCheck,
     IconArrowsLeftRight,
+    IconTruck,
     IconTruckReturn,
     IconChartBar,
     IconChartInfographic,
+    IconChartPie,
     IconWallet,
+    IconClockExclamation,
     IconBuildingStore,
     IconCreditCard,
     IconCrown,
     IconGift,
+    IconUsers,
     IconBrandWhatsapp,
+    IconBell,
     IconUserShield,
     IconShieldLock,
+    IconKey,
     IconSettings,
+    IconPrinter,
+    IconTarget,
     IconListDetails,
     IconUserCog,
     IconLogout,
@@ -40,7 +52,7 @@ import { useAuthorization } from "@/Utils/authorization";
 import { useHaptic } from "@/Hooks/useHaptic";
 import Swal from "sweetalert2";
 
-// Static Menu Definition with Verified Route Names
+// Static Menu Definition with Verified Route Names & Permissions
 const MENU_SECTIONS = [
     {
         category: "Master Data",
@@ -48,7 +60,7 @@ const MENU_SECTIONS = [
         items: [
             {
                 title: "Produk",
-                desc: "Kelola katalog produk & harga",
+                desc: "Kelola katalog produk, harga & stok",
                 routeName: "products.index",
                 icon: IconBox,
                 color: "text-blue-500 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400",
@@ -64,7 +76,7 @@ const MENU_SECTIONS = [
             },
             {
                 title: "Pelanggan",
-                desc: "Data member & riwayat belanja",
+                desc: "Data kontak & profil pelanggan",
                 routeName: "customers.index",
                 icon: IconUsersPlus,
                 color: "text-sky-500 bg-sky-50 dark:bg-sky-950/60 dark:text-sky-400",
@@ -72,7 +84,7 @@ const MENU_SECTIONS = [
             },
             {
                 title: "Supplier",
-                desc: "Pemasok & kontak vendor",
+                desc: "Pemasok & kontak vendor barang",
                 routeName: "suppliers.index",
                 icon: IconBuildingWarehouse,
                 color: "text-amber-500 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-400",
@@ -80,7 +92,7 @@ const MENU_SECTIONS = [
             },
             {
                 title: "Cetak Barcode",
-                desc: "Generate & print label barcode",
+                desc: "Generate & print label barcode produk",
                 routeName: "products.index",
                 routeParams: { view: "barcode" },
                 icon: IconBarcode,
@@ -95,7 +107,7 @@ const MENU_SECTIONS = [
         items: [
             {
                 title: "Kasir POS",
-                desc: "Point of Sale transaksi kilat",
+                desc: "Point of Sale transaksi kasir kilat",
                 routeName: "transactions.mobile",
                 icon: IconShoppingCart,
                 color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-400",
@@ -103,20 +115,20 @@ const MENU_SECTIONS = [
                 highlight: true,
             },
             {
-                title: "Meja & Dine-In",
-                desc: "Pengaturan meja & area resto",
-                routeName: "dine-areas.index",
-                icon: IconToolsKitchen2,
-                color: "text-orange-500 bg-orange-50 dark:bg-orange-950/60 dark:text-orange-400",
-                permissions: ["dine-orders-access"],
-            },
-            {
                 title: "Riwayat Transaksi",
-                desc: "Daftar invoice & pembayaran",
+                desc: "Daftar invoice, struk & pembayaran",
                 routeName: "transactions.history",
                 icon: IconHistory,
                 color: "text-teal-500 bg-teal-50 dark:bg-teal-950/60 dark:text-teal-400",
                 permissions: ["transactions-access"],
+            },
+            {
+                title: "Retur Penjualan",
+                desc: "Retur transaksi & pengembalian dana",
+                routeName: "sales-returns.index",
+                icon: IconReceiptRefund,
+                color: "text-rose-500 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-400",
+                permissions: ["sales-returns-access"],
             },
             {
                 title: "Shift Kasir",
@@ -128,21 +140,51 @@ const MENU_SECTIONS = [
             },
             {
                 title: "Approval Diskon",
-                desc: "Persetujuan diskon kasir",
+                desc: "Persetujuan diskon khusus kasir",
                 routeName: "discount-approvals.pending",
                 icon: IconPercentage,
-                color: "text-rose-500 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-400",
+                color: "text-amber-500 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-400",
                 permissions: ["discounts-approve"],
             },
         ],
     },
     {
-        category: "Stok & Inventori",
+        category: "Resto & Dine-In",
+        badgeBg: "bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400",
+        items: [
+            {
+                title: "Area Meja",
+                desc: "Pengaturan lantai & area meja resto",
+                routeName: "dine-areas.index",
+                icon: IconToolsKitchen2,
+                color: "text-orange-500 bg-orange-50 dark:bg-orange-950/60 dark:text-orange-400",
+                permissions: ["dine-tables-access", "dine-orders-access"],
+            },
+            {
+                title: "Daftar Meja",
+                desc: "Status meja & cetak QR menu",
+                routeName: "dine-tables.index",
+                icon: IconTable,
+                color: "text-amber-500 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-400",
+                permissions: ["dine-tables-access"],
+            },
+            {
+                title: "Pesanan Dine-In",
+                desc: "Pesanan masuk dari scan QR meja",
+                routeName: "dine-orders.index",
+                icon: IconReceipt2,
+                color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-400",
+                permissions: ["dine-orders-access"],
+            },
+        ],
+    },
+    {
+        category: "Stok & Pengadaan",
         badgeBg: "bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400",
         items: [
             {
                 title: "Purchase Order",
-                desc: "Pesanan pembelian barang",
+                desc: "Pesanan pembelian barang ke vendor",
                 routeName: "purchase-orders.index",
                 icon: IconFileDescription,
                 color: "text-amber-500 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-400",
@@ -158,7 +200,7 @@ const MENU_SECTIONS = [
             },
             {
                 title: "Stok Opname",
-                desc: "Penyesuaian fisik & sistem",
+                desc: "Penyesuaian fisik & sistem berkala",
                 routeName: "stock-opnames.index",
                 icon: IconClipboardCheck,
                 color: "text-purple-500 bg-purple-50 dark:bg-purple-950/60 dark:text-purple-400",
@@ -166,19 +208,97 @@ const MENU_SECTIONS = [
             },
             {
                 title: "Mutasi Stok",
-                desc: "Perpindahan stok gudang",
+                desc: "Histori pergerakan stok gudang",
                 routeName: "stock-mutations.index",
                 icon: IconArrowsLeftRight,
                 color: "text-indigo-500 bg-indigo-50 dark:bg-indigo-950/60 dark:text-indigo-400",
                 permissions: ["stock-mutations-access"],
             },
             {
+                title: "Transfer Stok",
+                desc: "Kirim & terima stok antar gudang",
+                routeName: "stock-transfers.index",
+                icon: IconTruck,
+                color: "text-sky-500 bg-sky-50 dark:bg-sky-950/60 dark:text-sky-400",
+                permissions: ["stock-transfers-access"],
+            },
+            {
                 title: "Retur Supplier",
-                desc: "Pengembalian barang cacat/rusak",
+                desc: "Pengembalian barang rusak ke pemasok",
                 routeName: "supplier-returns.index",
                 icon: IconTruckReturn,
                 color: "text-rose-500 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-400",
                 permissions: ["supplier-returns-access"],
+            },
+        ],
+    },
+    {
+        category: "Harga, Promo & CRM",
+        badgeBg: "bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400",
+        items: [
+            {
+                title: "Promo Harga",
+                desc: "Aturan diskon, grosir, bundle & BXGY",
+                routeName: "pricing-rules.index",
+                icon: IconTag,
+                color: "text-rose-500 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-400",
+                permissions: ["pricing-rules-access"],
+            },
+            {
+                title: "Daftar Harga",
+                desc: "Katalog harga tier, reseller & cabang",
+                routeName: "price-lists.index",
+                icon: IconListDetails,
+                color: "text-indigo-500 bg-indigo-50 dark:bg-indigo-950/60 dark:text-indigo-400",
+                permissions: ["price-lists-access"],
+            },
+            {
+                title: "Voucher Diskon",
+                desc: "Kupon promo & potongan belanja",
+                routeName: "customer-vouchers.index",
+                icon: IconGift,
+                color: "text-pink-500 bg-pink-50 dark:bg-pink-950/60 dark:text-pink-400",
+                permissions: ["customer-vouchers-access"],
+            },
+            {
+                title: "Member & Loyalitas",
+                desc: "Data member tier, poin & saldo belanja",
+                routeName: "members.index",
+                icon: IconCrown,
+                color: "text-amber-500 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-400",
+                permissions: ["customers-access"],
+            },
+            {
+                title: "Segmentasi Pelanggan",
+                desc: "Pengelompokan & target konsumen",
+                routeName: "customer-segments.index",
+                icon: IconUsers,
+                color: "text-blue-500 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400",
+                permissions: ["customer-segments-access"],
+            },
+            {
+                title: "WhatsApp CRM",
+                desc: "Broadcast promo & blast pesan WA",
+                routeName: "crm-campaigns.index",
+                icon: IconBrandWhatsapp,
+                color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-400",
+                permissions: ["crm-campaigns-access"],
+            },
+            {
+                title: "Pengingat CRM",
+                desc: "Otomasi reminder ultah & follow-up",
+                routeName: "crm-reminders.index",
+                icon: IconBell,
+                color: "text-teal-500 bg-teal-50 dark:bg-teal-950/60 dark:text-teal-400",
+                permissions: ["crm-reminders-access"],
+            },
+            {
+                title: "Program Loyalitas",
+                desc: "Konfigurasi tier & rasio poin",
+                routeName: "settings.loyalty",
+                icon: IconCrown,
+                color: "text-purple-500 bg-purple-50 dark:bg-purple-950/60 dark:text-purple-400",
+                permissions: ["dashboard-access"],
             },
         ],
     },
@@ -192,27 +312,43 @@ const MENU_SECTIONS = [
                 routeName: "reports.sales.index",
                 icon: IconChartBar,
                 color: "text-purple-500 bg-purple-50 dark:bg-purple-950/60 dark:text-purple-400",
-                permissions: ["sales-reports-access"],
+                permissions: ["reports-access", "sales-reports-access"],
             },
             {
                 title: "Laporan Laba Rugi",
-                desc: "Margin kotor & laba bersih",
+                desc: "Margin kotor, HPP & laba bersih",
                 routeName: "reports.profits.index",
                 icon: IconChartInfographic,
                 color: "text-pink-500 bg-pink-50 dark:bg-pink-950/60 dark:text-pink-400",
-                permissions: ["profit-reports-access"],
+                permissions: ["profits-access", "profit-reports-access"],
+            },
+            {
+                title: "Analitik Lanjutan",
+                desc: "Wawasan tren produk & performa toko",
+                routeName: "reports.insights.index",
+                icon: IconChartPie,
+                color: "text-indigo-500 bg-indigo-50 dark:bg-indigo-950/60 dark:text-indigo-400",
+                permissions: ["reports-access"],
             },
             {
                 title: "Piutang Pelanggan",
-                desc: "Tagihan kredit & jatuh tempo",
+                desc: "Tagihan kredit & jatuh tempo nota",
                 routeName: "receivables.index",
                 icon: IconWallet,
                 color: "text-amber-500 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-400",
                 permissions: ["receivables-access"],
             },
             {
+                title: "Pengingat Jatuh Tempo",
+                desc: "Aging piutang & jadwal tagihan",
+                routeName: "aging.index",
+                icon: IconClockExclamation,
+                color: "text-rose-500 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-400",
+                permissions: ["receivables-access"],
+            },
+            {
                 title: "Hutang Supplier",
-                desc: "Kewajiban bayar tempo supplier",
+                desc: "Kewajiban bayar tempo ke supplier",
                 routeName: "payables.index",
                 icon: IconBuildingStore,
                 color: "text-rose-500 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-400",
@@ -220,41 +356,11 @@ const MENU_SECTIONS = [
             },
             {
                 title: "Rekening Bank",
-                desc: "Akun bank & transfer qris",
+                desc: "Akun bank & transfer QRIS",
                 routeName: "settings.bank-accounts.index",
                 icon: IconBuildingBank,
                 color: "text-blue-500 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400",
                 permissions: ["payment-settings-access"],
-            },
-        ],
-    },
-    {
-        category: "Marketing & Loyalitas",
-        badgeBg: "bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400",
-        items: [
-            {
-                title: "Program Loyalitas",
-                desc: "Tier member & poin belanja",
-                routeName: "settings.loyalty",
-                icon: IconCrown,
-                color: "text-amber-500 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-400",
-                permissions: ["dashboard-access"],
-            },
-            {
-                title: "Voucher Diskon",
-                desc: "Kupon promo & potongan harga",
-                routeName: "customer-vouchers.index",
-                icon: IconGift,
-                color: "text-rose-500 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-400",
-                permissions: ["customer-vouchers-access"],
-            },
-            {
-                title: "WhatsApp CRM",
-                desc: "Broadcast promo & blast otomatis",
-                routeName: "crm-campaigns.index",
-                icon: IconBrandWhatsapp,
-                color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-400",
-                permissions: ["crm-campaigns-access"],
             },
         ],
     },
@@ -279,6 +385,14 @@ const MENU_SECTIONS = [
                 permissions: ["roles-access"],
             },
             {
+                title: "Hak Akses (Permissions)",
+                desc: "Daftar granular permission sistem",
+                routeName: "permissions.index",
+                icon: IconKey,
+                color: "text-cyan-500 bg-cyan-50 dark:bg-cyan-950/60 dark:text-cyan-400",
+                permissions: ["permissions-access"],
+            },
+            {
                 title: "Payment Gateway",
                 desc: "Midtrans & Xendit QRIS otomatis",
                 routeName: "settings.payments.edit",
@@ -301,6 +415,30 @@ const MENU_SECTIONS = [
                 icon: IconPalette,
                 color: "text-purple-500 bg-purple-50 dark:bg-purple-950/60 dark:text-purple-400",
                 permissions: ["dashboard-access"],
+            },
+            {
+                title: "Pengaturan Printer",
+                desc: "Koneksi printer thermal Bluetooth/ESC",
+                routeName: "settings.printer",
+                icon: IconPrinter,
+                color: "text-amber-500 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-400",
+                permissions: ["dashboard-access"],
+            },
+            {
+                title: "Target Penjualan",
+                desc: "Target omzet harian & bulanan",
+                routeName: "settings.target",
+                icon: IconTarget,
+                color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-400",
+                permissions: ["dashboard-access"],
+            },
+            {
+                title: "Gudang & Cabang",
+                desc: "Multi-warehouse & lokasi stok",
+                routeName: "settings.warehouses.index",
+                icon: IconBuildingWarehouse,
+                color: "text-sky-500 bg-sky-50 dark:bg-sky-950/60 dark:text-sky-400",
+                permissions: ["warehouses-access"],
             },
             {
                 title: "Pengaturan WhatsApp",
@@ -422,7 +560,7 @@ export default function MenuIndex() {
 
                         {/* Quick Profile Link */}
                         <Link
-                            href={resolveRoute("profile.edit")}
+                            href={resolveRoute("users.edit", user?.id)}
                             onClick={() => triggerHaptic("tap")}
                             className="p-2.5 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 text-white transition-all flex-shrink-0"
                             title="Edit Profil"
@@ -489,7 +627,7 @@ export default function MenuIndex() {
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Cari menu, laporan, master data, fitur..."
+                        placeholder="Cari promo, harga, laporan, master data, fitur..."
                         className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500 shadow-xs transition-all"
                     />
                     {search && (

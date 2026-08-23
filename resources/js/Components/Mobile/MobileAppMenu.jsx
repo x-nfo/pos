@@ -382,7 +382,7 @@ export default function MobileAppMenu({ isOpen, onClose }) {
                 <div className="flex gap-2">
                     {/* Profile Link */}
                     <Link
-                        href={route("profile.edit")}
+                        href={auth?.user?.id ? route("users.edit", auth.user.id) : "#"}
                         onClick={() => {
                             triggerHaptic("tap");
                             onClose();
