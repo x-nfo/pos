@@ -56,6 +56,12 @@
     </style>
 
     <style>
+        html,
+        body {
+            overflow-x: hidden;
+            max-width: 100vw;
+        }
+
         body.dark {
             background-color: rgb(2 6 23);
         }
@@ -66,7 +72,7 @@
     </style>
 </head>
 
-<body class="font-sans antialiased bg-slate-50 transition-colors duration-200" onload="setInitialTheme()">
+<body class="font-sans antialiased bg-slate-50 transition-colors duration-200 overflow-x-hidden" onload="setInitialTheme()">
 
     @inertia
     <script>
