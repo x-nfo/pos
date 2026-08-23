@@ -452,4 +452,53 @@ class TransactionFlowTest extends TestCase
             'tax_rate' => 0,
         ]);
     }
+
+    public function test_transaction_tax_respects_store_profile_default_rate(): void
+    {
+        $cashier = $this->createCashier();
+        $this->openShiftFor($cashier);
+        
+        \App\Models\Setting::set('tax_default_rate', '0.00');
+
+        $category = Category::create([
+            'name' => 'Food',
+            'description' => 'Food Category',
+            'image' => 'food.png',
+        ]);
+        $product = Product::create([
+            'category_id' => $category->id,
+            'image' => 'food.png',
+            'barcode' => 'BRCD-TEST-TAX-0',
+            'title' => 'Product Food',
+            'description' => 'Product with default tax.',
+            'buy_price' => 10000,
+            'sell_price' => 20000,
+            'stock' => 10,
+            'tax_rate' => null,
+        ]);
+
+        Cart::create([
+            'cashier_id' => $cashier->id,
+            'product_id' => $product->id,
+            'qty' => 1,
+            'price' => $product->sell_price,
+        ]);
+
+        $response = $this
+            ->actingAs($cashier)
+            ->post(route('transactions.store'), [
+                'customer_id' => null,
+                'discount' => 0,
+                'grand_total' => 20000,
+                'cash' => 20000,
+                'change' => 0,
+            ]);
+
+        $transaction = Transaction::latest('id')->first();
+        $this->assertNotNull($transaction);
+        $this->assertEquals(0, (float) $transaction->tax_total);
+        $this->assertEquals(0, (float) $transaction->tax_rate);
+
+        \App\Models\Setting::set('tax_default_rate', '11.00');
+    }
 }

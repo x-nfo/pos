@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Product;
+use App\Services\TaxService;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -33,7 +34,7 @@ class ProductsExport implements FromCollection, ShouldAutoSize, WithHeadings, Wi
             (int) ($product->min_stock ?? 0),
             (int) ($product->max_stock ?? 0),
             $product->tax_type ?? 'exclusive',
-            (float) ($product->tax_rate ?? 11.00),
+            (float) ($product->tax_rate ?? app(TaxService::class)->getDefaultRate()),
         ];
     }
 }

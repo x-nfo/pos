@@ -81,11 +81,15 @@ export default function ShippingLabel({ transaction, store = {} }) {
                             border-radius: 0 !important;
                         }
                     }
+                    .shipping-label-container {
+                        color: #0f172a !important;
+                        background-color: #ffffff !important;
+                    }
                 `}
             </style>
 
             <div
-                className="shipping-label-container bg-white border-2 border-slate-300 rounded-2xl p-6 shadow-sm relative overflow-hidden flex flex-col justify-between"
+                className="shipping-label-container bg-white text-slate-900 border-2 border-slate-300 rounded-2xl p-6 shadow-sm relative overflow-hidden flex flex-col justify-between"
                 style={{
                     width: "150mm",
                     minHeight: "100mm",

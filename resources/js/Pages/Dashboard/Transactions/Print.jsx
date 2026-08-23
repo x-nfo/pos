@@ -398,7 +398,7 @@ export default function Print({ transaction }) {
                     {/* Thermal Receipt Preview */}
                     {(printMode === "thermal80" || printMode === "thermal58") && (
                         <div className="flex justify-center print:block">
-                            <div className="bg-white rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl p-4 print:shadow-none print:border-0 print:p-0 print:rounded-none">
+                            <div className="bg-white text-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl p-4 print:shadow-none print:border-0 print:p-0 print:rounded-none">
                                 {printMode === "thermal80" ? (
                                     <ThermalReceipt
                                         transaction={transaction}

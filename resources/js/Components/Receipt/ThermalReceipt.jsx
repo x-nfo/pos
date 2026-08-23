@@ -115,7 +115,7 @@ export default function ThermalReceipt({
 
     return (
         <div
-            className="thermal-receipt font-mono text-xs leading-tight"
+            className="thermal-receipt font-mono text-xs leading-tight text-slate-900 bg-white"
             style={{ width: "80mm", padding: "4mm" }}
         >
             {/* Store Header */}
@@ -273,12 +273,27 @@ export default function ThermalReceipt({
 
             {/* Print-specific styles */}
             <style>{`
+                .thermal-receipt {
+                    color: #0f172a !important;
+                    background-color: #ffffff !important;
+                }
+                .thermal-receipt * {
+                    color: inherit;
+                }
+                .thermal-receipt .text-slate-500 {
+                    color: #64748b !important;
+                }
                 @media print {
                     .thermal-receipt {
                         width: 80mm !important;
                         margin: 0 !important;
                         padding: 2mm !important;
                         font-size: 10pt !important;
+                        color: #000000 !important;
+                        background-color: #ffffff !important;
+                    }
+                    .thermal-receipt * {
+                        color: inherit;
                     }
                     @page {
                         size: 80mm auto;
@@ -346,7 +361,7 @@ export function ThermalReceipt58mm({
 
     return (
         <div
-            className="thermal-receipt-58 font-mono text-xs"
+            className="thermal-receipt-58 font-mono text-xs text-slate-900 bg-white"
             style={{ width: "58mm", padding: "2mm" }}
         >
             <div className="text-center">
@@ -463,10 +478,25 @@ export function ThermalReceipt58mm({
             <SimpleBarcode value={transaction?.invoice} />
 
             <style>{`
+                .thermal-receipt-58 {
+                    color: #0f172a !important;
+                    background-color: #ffffff !important;
+                }
+                .thermal-receipt-58 * {
+                    color: inherit;
+                }
+                .thermal-receipt-58 .text-slate-500 {
+                    color: #64748b !important;
+                }
                 @media print {
                     .thermal-receipt-58 {
                         width: 58mm !important;
                         font-size: 9pt !important;
+                        color: #000000 !important;
+                        background-color: #ffffff !important;
+                    }
+                    .thermal-receipt-58 * {
+                        color: inherit;
                     }
                     @page { size: 58mm auto; margin: 0; }
                 }

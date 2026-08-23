@@ -38,7 +38,7 @@ class ProductsImport implements ToModel, WithBatchInserts, WithChunkReading, Wit
                 'min_stock' => (int) ($row['min_stok'] ?? 0),
                 'max_stock' => (int) ($row['max_stok'] ?? 0),
                 'tax_type' => $row['tipe_pajak'] ?? 'exclusive',
-                'tax_rate' => (float) ($row['tarif_pajak'] ?? 11.00),
+                'tax_rate' => isset($row['tarif_pajak']) ? (float) $row['tarif_pajak'] : null,
             ]
         );
     }
