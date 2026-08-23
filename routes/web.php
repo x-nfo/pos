@@ -94,6 +94,7 @@ Route::post('/language/switch', [LanguageController::class, 'switch'])->name('la
 
 Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], function () {
     Route::get('/', [DashboardController::class, 'index'])->middleware(['auth', 'verified', 'permission:dashboard-access'])->name('dashboard');
+    Route::get('/menu', fn () => Inertia::render('Dashboard/Menu/Index'))->middleware(['auth', 'verified'])->name('dashboard.menu');
     Route::get('/permissions', [PermissionController::class, 'index'])->middleware('permission:permissions-access')->name('permissions.index');
     // roles route
     Route::resource('/roles', RoleController::class)

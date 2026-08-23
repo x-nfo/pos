@@ -5,11 +5,11 @@ import {
     IconShoppingCart,
     IconBox,
     IconChartBar,
-    IconMenu2,
+    IconGridDots,
 } from "@tabler/icons-react";
 import { useHaptic } from "@/Hooks/useHaptic";
 
-export default function DashboardBottomNav({ toggleSidebar, sidebarOpen }) {
+export default function DashboardBottomNav() {
     const { url } = usePage();
     const { triggerHaptic } = useHaptic();
 
@@ -17,6 +17,7 @@ export default function DashboardBottomNav({ toggleSidebar, sidebarOpen }) {
     const isPOS = url.startsWith("/transactions/mobile") || url.startsWith("/transactions");
     const isProducts = url.startsWith("/dashboard/products") || url.startsWith("/dashboard/categories");
     const isReports = url.startsWith("/dashboard/reports") || url.startsWith("/dashboard/sales-reports");
+    const isMenu = url.startsWith("/dashboard/menu");
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 pb-safe shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
@@ -92,22 +93,24 @@ export default function DashboardBottomNav({ toggleSidebar, sidebarOpen }) {
                     <span className="text-[10px] mt-1 tracking-tight">Laporan</span>
                 </Link>
 
-                {/* 5. Menu / Lainnya Drawer */}
-                <button
-                    type="button"
-                    onClick={() => {
-                        triggerHaptic("tap");
-                        toggleSidebar();
-                    }}
+                {/* 5. Menu Halaman Aplikasi */}
+                <Link
+                    href={route("dashboard.menu")}
+                    onClick={() => triggerHaptic("tap")}
                     className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all active:scale-95 ${
-                        sidebarOpen
+                        isMenu
                             ? "text-primary-600 dark:text-primary-400 font-bold"
                             : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                     }`}
                 >
-                    <IconMenu2 size={22} strokeWidth={sidebarOpen ? 2.2 : 1.7} />
+                    <div className="relative">
+                        <IconGridDots size={22} strokeWidth={isMenu ? 2.2 : 1.7} />
+                        {isMenu && (
+                            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary-600 dark:bg-primary-400" />
+                        )}
+                    </div>
                     <span className="text-[10px] mt-1 tracking-tight">Menu</span>
-                </button>
+                </Link>
             </div>
         </nav>
     );
