@@ -2,7 +2,7 @@ import React from "react";
 import { Link, usePage } from "@inertiajs/react";
 import {
     IconHome,
-    IconDeviceMobile,
+    IconShoppingCart,
     IconBox,
     IconChartBar,
     IconMenu2,
@@ -40,21 +40,7 @@ export default function DashboardBottomNav({ toggleSidebar, sidebarOpen }) {
                     <span className="text-[10px] mt-1 tracking-tight">Beranda</span>
                 </Link>
 
-                {/* 2. Kasir POS */}
-                <Link
-                    href={route("transactions.mobile")}
-                    onClick={() => triggerHaptic("tap")}
-                    className="flex flex-col items-center justify-center flex-1 py-1 px-1 transition-all active:scale-95 group"
-                >
-                    <div className="w-10 h-10 -mt-5 rounded-2xl bg-gradient-to-tr from-primary-600 to-primary-700 text-white flex items-center justify-center shadow-lg shadow-primary-500/30 group-active:scale-90 transition-transform">
-                        <IconDeviceMobile size={22} strokeWidth={2} />
-                    </div>
-                    <span className="text-[10px] font-bold text-primary-600 dark:text-primary-400 mt-0.5 tracking-tight">
-                        Kasir
-                    </span>
-                </Link>
-
-                {/* 3. Produk */}
+                {/* 2. Produk */}
                 <Link
                     href={route("products.index")}
                     onClick={() => triggerHaptic("tap")}
@@ -71,6 +57,20 @@ export default function DashboardBottomNav({ toggleSidebar, sidebarOpen }) {
                         )}
                     </div>
                     <span className="text-[10px] mt-1 tracking-tight">Produk</span>
+                </Link>
+
+                {/* 3. Kasir POS (Center Action) */}
+                <Link
+                    href={route("transactions.mobile")}
+                    onClick={() => triggerHaptic("tap")}
+                    className="flex flex-col items-center justify-center flex-1 py-1 px-1 transition-all active:scale-95 group"
+                >
+                    <div className="w-10 h-10 -mt-5 rounded-2xl bg-gradient-to-tr from-primary-600 to-primary-700 text-white flex items-center justify-center shadow-lg shadow-primary-500/30 group-active:scale-90 transition-transform">
+                        <IconShoppingCart size={22} strokeWidth={2} />
+                    </div>
+                    <span className="text-[10px] font-bold text-primary-600 dark:text-primary-400 mt-0.5 tracking-tight">
+                        Kasir
+                    </span>
                 </Link>
 
                 {/* 4. Laporan / Riwayat */}

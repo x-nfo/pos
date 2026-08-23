@@ -11,7 +11,7 @@ import axios from "axios";
 import {
     IconPackage,
     IconDeviceFloppy,
-    IconArrowLeft,
+    IconChevronLeft,
     IconPhoto,
     IconBarcode,
     IconCurrencyDollar,
@@ -156,9 +156,9 @@ export default function Create({ categories, units = [] }) {
                 <div>
                     <Link
                         href={route("products.index")}
-                        className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-primary-600 mb-2"
+                        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-primary-600 mb-2 transition-colors"
                     >
-                        <IconArrowLeft size={16} />
+                        <IconChevronLeft size={18} strokeWidth={2.2} />
                         Kembali ke Produk
                     </Link>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">

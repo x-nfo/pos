@@ -19,37 +19,35 @@ export default function MobileFloatingCartBar({
     if (cartCount <= 0) return null;
 
     return (
-        <div className="fixed bottom-16 inset-x-0 px-3 z-30 pointer-events-none mb-safe animate-slide-up">
-            <div className="max-w-md mx-auto pointer-events-auto">
+        <div className="fixed bottom-16 inset-x-0 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 shadow-lg z-30 animate-slide-up">
+            <div className="max-w-md mx-auto flex items-center justify-between gap-3">
+                <div className="min-w-0 flex items-center gap-3">
+                    <div className="relative w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-950/60 text-primary-600 dark:text-primary-400 flex items-center justify-center flex-shrink-0">
+                        <IconShoppingCart size={20} strokeWidth={2.2} />
+                        <span className="absolute -top-1.5 -right-1.5 px-1.5 min-w-[18px] h-[18px] bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-sm animate-cart-add">
+                            {cartCount > 99 ? "99+" : cartCount}
+                        </span>
+                    </div>
+                    <div className="min-w-0 text-left">
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase">
+                            {cartCount} Item di Keranjang
+                        </p>
+                        <p className="text-base font-black text-slate-900 dark:text-white truncate font-mono">
+                            {formatPrice(totalPayable)}
+                        </p>
+                    </div>
+                </div>
+
                 <button
                     type="button"
                     onClick={() => {
                         triggerHaptic("tap");
                         onOpenCart();
                     }}
-                    className="w-full h-14 bg-gradient-to-r from-slate-900 to-slate-800 dark:from-primary-600 dark:to-primary-800 text-white rounded-2xl p-2.5 px-4 shadow-2xl shadow-slate-900/30 dark:shadow-primary-950/70 flex items-center justify-between active:scale-[0.98] transition-transform border border-white/10"
+                    className="h-12 px-5 rounded-xl bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm active:scale-95 transition-transform flex-shrink-0"
                 >
-                    <div className="flex items-center gap-3">
-                        <div className="relative w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
-                            <IconShoppingCart size={20} className="text-white" />
-                            <span className="absolute -top-1.5 -right-1.5 px-1.5 min-w-[18px] h-[18px] bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-md animate-cart-add">
-                                {cartCount}
-                            </span>
-                        </div>
-                        <div className="text-left">
-                            <p className="text-[11px] text-white/80 font-medium leading-tight">
-                                {cartCount} item dalam keranjang
-                            </p>
-                            <p className="text-sm font-black text-white leading-tight font-mono">
-                                {formatPrice(totalPayable)}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white transition-colors">
-                        <span>Keranjang</span>
-                        <IconArrowRight size={16} />
-                    </div>
+                    <span>Keranjang</span>
+                    <IconArrowRight size={18} strokeWidth={2.5} />
                 </button>
             </div>
         </div>

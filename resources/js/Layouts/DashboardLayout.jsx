@@ -53,6 +53,11 @@ export default function AppLayout({ children }) {
     const showSecurityWarnings =
         auth?.super === true && securityWarnings.length > 0;
 
+    const isDashboard =
+        typeof route === "function" && route().current
+            ? route().current("dashboard")
+            : url === "/dashboard" || url.startsWith("/dashboard?");
+
     return (
         <div className="flex h-screen h-[100dvh] overflow-hidden bg-slate-100 dark:bg-slate-950 transition-colors duration-200 touch-action-manipulation">
             {/* Desktop Sidebar (>= 768px) */}
@@ -69,6 +74,7 @@ export default function AppLayout({ children }) {
                     toggleSidebar={toggleSidebar}
                     themeSwitcher={themeSwitcher}
                     darkMode={darkMode}
+                    isDashboard={isDashboard}
                 />
                 <main className="dashboard-scrollbar flex-1 overflow-y-auto overscroll-contain">
                     <div className="w-full py-6 px-4 md:px-6 lg:px-8 pb-36 sm:pb-32 md:pb-8">
