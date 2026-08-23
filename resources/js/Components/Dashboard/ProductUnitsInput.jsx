@@ -206,7 +206,7 @@ export default function ProductUnitsInput({
                                 </select>
                             </div>
                             <div className="text-xs text-slate-500 dark:text-slate-400 pb-2">
-                                Faktor konversi: <strong className="text-slate-700 dark:text-slate-200">1.0</strong> (Harga beli & jual default mengikuti form harga dasar di atas).
+                                Faktor konversi: <strong className="text-slate-700 dark:text-slate-200">1</strong> (Harga beli & jual default mengikuti form harga dasar di atas).
                             </div>
                         </div>
                     </div>

@@ -25,7 +25,10 @@ export default function Edit({ categories, product, units = [] }) {
     const initialUnits = (product.units || []).map((u) => ({
         unit_id: u.id,
         is_base: Boolean(u.pivot?.is_base),
-        conversion_factor: u.pivot?.conversion_factor || 1,
+        conversion_factor:
+            u.pivot?.conversion_factor != null
+                ? Number(u.pivot.conversion_factor) || 1
+                : 1,
         buy_price: u.pivot?.buy_price ?? product.buy_price,
         sell_price: u.pivot?.sell_price ?? product.sell_price,
         barcode: u.pivot?.barcode || "",

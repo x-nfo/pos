@@ -695,14 +695,14 @@ class TransactionController extends Controller
                         $c->product->load('components');
                         foreach ($c->product->components as $component) {
                             $componentQty = (int) round((float) $component->pivot->qty * $c->qty);
-                            if (!isset($productRequests[$component->id])) {
+                            if (! isset($productRequests[$component->id])) {
                                 $productRequests[$component->id] = 0;
                             }
                             $productRequests[$component->id] += $componentQty;
                         }
                     } else {
                         $baseQty = (int) round($c->qty * (float) ($c->conversion_factor ?? 1));
-                        if (!isset($productRequests[$c->product_id])) {
+                        if (! isset($productRequests[$c->product_id])) {
                             $productRequests[$c->product_id] = 0;
                         }
                         $productRequests[$c->product_id] += $baseQty;
@@ -715,7 +715,7 @@ class TransactionController extends Controller
                         $availableStock = $activeShift->warehouse_id
                             ? (int) ($product->warehouses()->where('warehouse_id', $activeShift->warehouse_id)->lockForUpdate()->first()?->pivot->stock ?? 0)
                             : (int) $product->stock;
-                        
+
                         if ($availableStock < $totalBaseQty) {
                             abort(422, "Stok untuk produk {$product->title} tidak mencukupi. Tersedia: {$availableStock}");
                         }

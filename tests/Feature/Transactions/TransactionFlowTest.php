@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\PaymentSetting;
 use App\Models\Product;
+use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\Unit;
 use App\Models\User;
@@ -452,7 +453,7 @@ class TransactionFlowTest extends TestCase
                 'qty' => 2,
             ]);
         $response->assertRedirect();
-        
+
         // Add 1 BOX (10 pcs) more to cart -> Total in cart would be 30 pcs. DB has 25. Should be blocked.
         $response2 = $this
             ->actingAs($cashier)
@@ -462,7 +463,7 @@ class TransactionFlowTest extends TestCase
                 'sell_price' => 550000,
                 'qty' => 1,
             ]);
-        
+
         $response2->assertSessionHas('error', 'Stok tidak mencukupi.');
     }
 
@@ -535,8 +536,8 @@ class TransactionFlowTest extends TestCase
     {
         $cashier = $this->createCashier();
         $this->openShiftFor($cashier);
-        
-        \App\Models\Setting::set('tax_default_rate', '0.00');
+
+        Setting::set('tax_default_rate', '0.00');
 
         $category = Category::create([
             'name' => 'Food',
@@ -577,6 +578,6 @@ class TransactionFlowTest extends TestCase
         $this->assertEquals(0, (float) $transaction->tax_total);
         $this->assertEquals(0, (float) $transaction->tax_rate);
 
-        \App\Models\Setting::set('tax_default_rate', '11.00');
+        Setting::set('tax_default_rate', '11.00');
     }
 }
