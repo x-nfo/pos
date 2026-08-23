@@ -74,7 +74,7 @@ export default function POSLayout({ children }) {
     return (
         <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
             {/* Top Navigation Bar */}
-            <header className="sticky top-0 z-50 h-14 lg:h-16 flex items-center justify-between px-3 lg:px-6 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 shadow-xs pt-safe">
+            <header className="relative lg:sticky lg:top-0 z-50 h-14 lg:h-16 flex items-center justify-between px-3 lg:px-6 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 shadow-xs pt-safe">
                 {/* Left Section - Logo & Time */}
                 <div className="flex items-center gap-4 lg:gap-6">
                     {/* Mobile Menu Toggle */}

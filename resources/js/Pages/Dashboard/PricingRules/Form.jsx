@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Head, useForm } from "@inertiajs/react";
 import axios from "axios";
+import toast from "react-hot-toast";
 import Button from "@/Components/Dashboard/Button";
 import {
     IconArrowLeft,
@@ -52,7 +53,7 @@ function CardSection({ title, description, children }) {
     );
 }
 
-export default function Form({
+export default function PricingRuleForm({
     mode = "create",
     rule = null,
     products = [],
@@ -61,7 +62,7 @@ export default function Form({
     kindOptions = [],
 }) {
     const isEdit = mode === "edit";
-    const { data, setData, post, put, processing, errors } = useForm({
+    const { data, setData, post, put, transform, processing, errors } = useForm({
         name: rule?.name ?? "",
         kind: rule?.kind ?? "standard_discount",
         is_active: Boolean(rule?.is_active ?? true),
@@ -119,15 +120,54 @@ export default function Form({
         data: null,
     });
 
+    const cleanPayload = (formData) => {
+        const payload = { ...formData };
+
+        if (payload.target_type !== "product") {
+            payload.product_id = null;
+        }
+        if (payload.target_type !== "category") {
+            payload.category_id = null;
+        }
+        if (payload.customer_scope !== "member") {
+            payload.eligible_loyalty_tiers = [];
+        }
+
+        if (payload.kind === "standard_discount") {
+            delete payload.qty_breaks;
+            delete payload.bundle_items;
+            delete payload.buy_get_items;
+        } else if (payload.kind === "qty_break") {
+            delete payload.bundle_items;
+            delete payload.buy_get_items;
+        } else if (payload.kind === "bundle_price") {
+            delete payload.qty_breaks;
+            delete payload.buy_get_items;
+            payload.discount_type = "fixed_price";
+        } else if (payload.kind === "buy_x_get_y") {
+            delete payload.qty_breaks;
+            delete payload.bundle_items;
+            payload.discount_type = "fixed_amount";
+            payload.discount_value = 0;
+        }
+
+        return payload;
+    };
+
     const submit = (event) => {
         event.preventDefault();
+        transform((raw) => cleanPayload(raw));
 
         if (isEdit) {
-            put(route("pricing-rules.update", rule.id));
+            put(route("pricing-rules.update", rule.id), {
+                onError: () => toast.error("Gagal menyimpan, periksa kembali input formulir."),
+            });
             return;
         }
 
-        post(route("pricing-rules.store"));
+        post(route("pricing-rules.store"), {
+            onError: () => toast.error("Gagal menyimpan, periksa kembali input formulir."),
+        });
     };
 
     const updateArrayRow = (key, index, field, value) => {
@@ -151,10 +191,21 @@ export default function Form({
         setPreviewState({ loading: true, data: null });
 
         try {
-            const response = await axios.post(route("pricing-rules.preview"), data);
+            const payload = cleanPayload(data);
+            const response = await axios.post(route("pricing-rules.preview"), payload);
             setPreviewState({ loading: false, data: response.data?.data ?? null });
-        } catch {
+            toast.success("Preview promo berhasil dimuat.");
+        } catch (error) {
             setPreviewState({ loading: false, data: null });
+            if (error.response?.data?.errors) {
+                const errorEntries = Object.entries(error.response.data.errors);
+                const firstErrorMessage = Array.isArray(errorEntries[0][1])
+                    ? errorEntries[0][1][0]
+                    : String(errorEntries[0][1]);
+                toast.error(`Validasi gagal: ${firstErrorMessage}`);
+            } else {
+                toast.error(error.response?.data?.message || "Gagal memuat preview promo.");
+            }
         }
     };
 

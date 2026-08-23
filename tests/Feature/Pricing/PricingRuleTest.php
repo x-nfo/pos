@@ -364,6 +364,75 @@ class PricingRuleTest extends TestCase
         $this->assertSame(23, $product->fresh()->stock);
     }
 
+    public function test_pricing_rule_preview_draft_endpoint(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'pricing-rules-access',
+            'pricing-rules-create',
+        ]);
+        $product = $this->createProduct('Produk Draft');
+
+        $response = $this
+            ->actingAs($user)
+            ->postJson(route('pricing-rules.preview'), [
+                'name' => 'Draft Rule Test',
+                'kind' => PricingRule::KIND_STANDARD_DISCOUNT,
+                'is_active' => true,
+                'priority' => 100,
+                'target_type' => 'product',
+                'product_id' => $product->id,
+                'customer_scope' => 'all',
+                'discount_type' => 'percentage',
+                'discount_value' => 15,
+            ]);
+
+        $response->assertOk();
+        $this->assertTrue(data_get($response->json(), 'success'));
+        $this->assertSame(60000, (int) data_get($response->json(), 'data.summary.base_subtotal'));
+        $this->assertSame(9000, (int) data_get($response->json(), 'data.summary.promo_discount_total'));
+        $this->assertSame(51000, (int) data_get($response->json(), 'data.summary.subtotal_after_promo'));
+
+        // Category Target preview
+        $responseCategory = $this
+            ->actingAs($user)
+            ->postJson(route('pricing-rules.preview'), [
+                'name' => 'Draft Category Discount',
+                'kind' => PricingRule::KIND_STANDARD_DISCOUNT,
+                'is_active' => true,
+                'priority' => 100,
+                'target_type' => 'category',
+                'category_id' => $product->category_id,
+                'customer_scope' => 'all',
+                'discount_type' => 'percentage',
+                'discount_value' => 10,
+            ]);
+
+        $responseCategory->assertOk();
+        $this->assertSame(6000, (int) data_get($responseCategory->json(), 'data.summary.promo_discount_total'));
+
+        // Qty break preview
+        $responseQtyBreak = $this
+            ->actingAs($user)
+            ->postJson(route('pricing-rules.preview'), [
+                'name' => 'Draft Wholesale',
+                'kind' => PricingRule::KIND_QTY_BREAK,
+                'is_active' => true,
+                'priority' => 100,
+                'target_type' => 'product',
+                'product_id' => $product->id,
+                'customer_scope' => 'all',
+                'discount_type' => 'fixed_price',
+                'discount_value' => 50000,
+                'preview_quantity_multiplier' => 3,
+                'qty_breaks' => [
+                    ['min_qty' => 3, 'discount_type' => 'fixed_price', 'discount_value' => 50000, 'sort_order' => 0],
+                ],
+            ]);
+
+        $responseQtyBreak->assertOk();
+        $this->assertSame(30000, (int) data_get($responseQtyBreak->json(), 'data.summary.promo_discount_total'));
+    }
+
     private function createUserWithPermissions(array $permissions): User
     {
         $user = User::factory()->create();

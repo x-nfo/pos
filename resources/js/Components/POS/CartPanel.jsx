@@ -15,16 +15,25 @@ const formatPrice = (value = 0) =>
     });
 
 // Single Cart Item
-function CartItem({ item, onUpdateQty, onRemove, isRemoving }) {
+function CartItem({ item, pricingItem, onUpdateQty, onRemove, isRemoving }) {
     const [editingQty, setEditingQty] = useState(false);
     const [tempQty, setTempQty] = useState("");
 
-    // Note: item.price from backend is already the total (sell_price * qty)
     const quantity = Number(item.qty || 0);
     const itemPrice = Number(item.price || 0);
-    const unitPrice =
-        Number(item.product?.sell_price || 0) || itemPrice / quantity || 0;
-    const subtotal = itemPrice; // Already calculated total from backend
+    const baseUnitPrice = Number(
+        pricingItem?.base_unit_price ??
+            item.product?.sell_price ??
+            itemPrice / quantity ??
+            0
+    );
+    const effectiveUnitPrice = Number(
+        pricingItem?.effective_unit_price ?? baseUnitPrice
+    );
+    const effectiveLineTotal = Number(
+        pricingItem?.line_total ?? itemPrice
+    );
+    const pricingRule = pricingItem?.pricing_rule;
 
     return (
         <div
@@ -52,11 +61,23 @@ function CartItem({ item, onUpdateQty, onRemove, isRemoving }) {
                 <h4 className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
                     {item.product?.title || "Produk"}
                 </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {formatPrice(unitPrice)} × {item.qty}
-                </p>
+                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {pricingRule && effectiveUnitPrice < baseUnitPrice && (
+                        <span className="line-through text-slate-400 mr-1.5">
+                            {formatPrice(baseUnitPrice)} × {item.qty}
+                        </span>
+                    )}
+                    <span>
+                        {formatPrice(effectiveUnitPrice)} × {item.qty}
+                    </span>
+                </div>
+                {pricingRule && (
+                    <span className="inline-block mt-0.5 text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded">
+                        {pricingRule.name}
+                    </span>
+                )}
                 <p className="text-sm font-semibold text-primary-600 dark:text-primary-400 mt-1">
-                    {formatPrice(subtotal)}
+                    {formatPrice(effectiveLineTotal)}
                 </p>
             </div>
 
@@ -156,14 +177,17 @@ function EmptyCart() {
 // Main CartPanel Component
 export default function CartPanel({
     items = [],
+    pricingItemsByCartId = {},
     onUpdateQty,
     onRemove,
     removingItemId,
     className = "",
 }) {
     const totalItems = items.reduce((sum, item) => sum + Number(item.qty || 0), 0);
-    // Note: item.price from backend is already sell_price * qty
-    const subtotal = items.reduce((sum, item) => sum + Number(item.price || 0), 0);
+    const subtotal = items.reduce((sum, item) => {
+        const pricingItem = pricingItemsByCartId[item.id];
+        return sum + Number(pricingItem?.line_total ?? item.price ?? 0);
+    }, 0);
 
     return (
         <div className={`flex flex-col h-full ${className}`}>
@@ -195,6 +219,7 @@ export default function CartPanel({
                         <CartItem
                             key={item.id}
                             item={item}
+                            pricingItem={pricingItemsByCartId[item.id]}
                             onUpdateQty={onUpdateQty}
                             onRemove={onRemove}
                             isRemoving={removingItemId === item.id}

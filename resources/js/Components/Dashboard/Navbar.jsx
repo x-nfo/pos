@@ -44,7 +44,7 @@ export default function Navbar({ toggleSidebar, themeSwitcher, darkMode, isDashb
 
     return (
         <header
-            className="sticky top-0 z-30 h-14 md:h-16 flex items-center justify-between px-3.5 sm:px-4 md:px-6
+            className="relative md:sticky md:top-0 z-30 h-14 md:h-16 flex items-center justify-between px-3.5 sm:px-4 md:px-6
             bg-transparent md:bg-white/95 md:dark:bg-slate-900/95 md:backdrop-blur-md
             border-b border-transparent md:border-slate-200/80 md:dark:border-slate-800
             pt-safe transition-all duration-200"

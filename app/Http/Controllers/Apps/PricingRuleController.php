@@ -217,12 +217,38 @@ class PricingRuleController extends Controller
         $sampleCarts = $this->buildPreviewCarts($rule);
         $customer = $request->filled('preview_customer_id')
             ? Customer::find($request->integer('preview_customer_id'))
-            : null;
+            : $this->buildPreviewCustomer($rule);
 
         return response()->json([
             'success' => true,
             'data' => $this->pricingService->previewCartWithRules($sampleCarts, $customer, collect([$rule])),
         ]);
+    }
+
+    private function buildPreviewCustomer(PricingRule $rule): ?Customer
+    {
+        if ($rule->customer_scope === PricingRule::SCOPE_REGISTERED) {
+            return new Customer([
+                'id' => -1,
+                'name' => 'Sample Registered Customer',
+                'no_telp' => '081234567890',
+                'is_loyalty_member' => false,
+            ]);
+        }
+
+        if ($rule->customer_scope === PricingRule::SCOPE_MEMBER) {
+            $tier = collect($rule->eligible_loyalty_tiers)->filter()->first() ?? 'regular';
+
+            return new Customer([
+                'id' => -1,
+                'name' => 'Sample Member ('.ucfirst($tier).')',
+                'no_telp' => '081234567890',
+                'is_loyalty_member' => true,
+                'loyalty_tier' => $tier,
+            ]);
+        }
+
+        return null;
     }
 
     private function formPayload(): array
@@ -242,7 +268,9 @@ class PricingRuleController extends Controller
 
     private function validateRule(Request $request): array
     {
-        $validated = $request->validate([
+        $kind = $request->input('kind');
+
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'kind' => ['required', Rule::in([
                 PricingRule::KIND_STANDARD_DISCOUNT,
@@ -267,38 +295,64 @@ class PricingRuleController extends Controller
             ])],
             'eligible_loyalty_tiers' => ['nullable', 'array'],
             'eligible_loyalty_tiers.*' => ['string', Rule::in(array_keys($this->loyaltyService->tiers()))],
-            'discount_type' => ['required', Rule::in([
-                PricingRule::TYPE_PERCENTAGE,
-                PricingRule::TYPE_FIXED_AMOUNT,
-                PricingRule::TYPE_FIXED_PRICE,
-            ])],
-            'discount_value' => ['required', 'numeric', 'min:0.01'],
             'preview_quantity_multiplier' => ['nullable', 'integer', 'min:1'],
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'notes' => ['nullable', 'string', 'max:1000'],
-            'qty_breaks' => ['nullable', 'array'],
-            'qty_breaks.*.min_qty' => ['required_with:qty_breaks', 'integer', 'min:1'],
-            'qty_breaks.*.discount_type' => ['required_with:qty_breaks', Rule::in([
+        ];
+
+        if ($kind === PricingRule::KIND_BUY_X_GET_Y) {
+            $rules['discount_type'] = ['nullable', Rule::in([
                 PricingRule::TYPE_PERCENTAGE,
                 PricingRule::TYPE_FIXED_AMOUNT,
                 PricingRule::TYPE_FIXED_PRICE,
-            ])],
-            'qty_breaks.*.discount_value' => ['required_with:qty_breaks', 'numeric', 'min:0.01'],
-            'qty_breaks.*.sort_order' => ['nullable', 'integer', 'min:0'],
-            'bundle_items' => ['nullable', 'array'],
-            'bundle_items.*.product_id' => ['required_with:bundle_items', 'integer', 'exists:products,id'],
-            'bundle_items.*.quantity' => ['required_with:bundle_items', 'integer', 'min:1'],
-            'bundle_items.*.sort_order' => ['nullable', 'integer', 'min:0'],
-            'buy_get_items' => ['nullable', 'array'],
-            'buy_get_items.*.product_id' => ['required_with:buy_get_items', 'integer', 'exists:products,id'],
-            'buy_get_items.*.role' => ['required_with:buy_get_items', Rule::in([
+            ])];
+            $rules['discount_value'] = ['nullable', 'numeric'];
+            $rules['buy_get_items'] = ['required', 'array', 'min:2'];
+            $rules['buy_get_items.*.product_id'] = ['required', 'integer', 'exists:products,id'];
+            $rules['buy_get_items.*.role'] = ['required', Rule::in([
                 PricingRuleBuyGetItem::ROLE_BUY,
                 PricingRuleBuyGetItem::ROLE_GET,
-            ])],
-            'buy_get_items.*.quantity' => ['required_with:buy_get_items', 'integer', 'min:1'],
-            'buy_get_items.*.sort_order' => ['nullable', 'integer', 'min:0'],
-        ]);
+            ])];
+            $rules['buy_get_items.*.quantity'] = ['required', 'integer', 'min:1'];
+            $rules['buy_get_items.*.sort_order'] = ['nullable', 'integer', 'min:0'];
+        } elseif ($kind === PricingRule::KIND_BUNDLE_PRICE) {
+            $rules['discount_type'] = ['nullable', Rule::in([
+                PricingRule::TYPE_PERCENTAGE,
+                PricingRule::TYPE_FIXED_AMOUNT,
+                PricingRule::TYPE_FIXED_PRICE,
+            ])];
+            $rules['discount_value'] = ['required', 'numeric', 'min:0.01'];
+            $rules['bundle_items'] = ['required', 'array', 'min:2'];
+            $rules['bundle_items.*.product_id'] = ['required', 'integer', 'exists:products,id'];
+            $rules['bundle_items.*.quantity'] = ['required', 'integer', 'min:1'];
+            $rules['bundle_items.*.sort_order'] = ['nullable', 'integer', 'min:0'];
+        } elseif ($kind === PricingRule::KIND_QTY_BREAK) {
+            $rules['discount_type'] = ['required', Rule::in([
+                PricingRule::TYPE_PERCENTAGE,
+                PricingRule::TYPE_FIXED_AMOUNT,
+                PricingRule::TYPE_FIXED_PRICE,
+            ])];
+            $rules['discount_value'] = ['required', 'numeric', 'min:0.01'];
+            $rules['qty_breaks'] = ['required', 'array', 'min:1'];
+            $rules['qty_breaks.*.min_qty'] = ['required', 'integer', 'min:1'];
+            $rules['qty_breaks.*.discount_type'] = ['required', Rule::in([
+                PricingRule::TYPE_PERCENTAGE,
+                PricingRule::TYPE_FIXED_AMOUNT,
+                PricingRule::TYPE_FIXED_PRICE,
+            ])];
+            $rules['qty_breaks.*.discount_value'] = ['required', 'numeric', 'min:0.01'];
+            $rules['qty_breaks.*.sort_order'] = ['nullable', 'integer', 'min:0'];
+        } else {
+            $rules['discount_type'] = ['required', Rule::in([
+                PricingRule::TYPE_PERCENTAGE,
+                PricingRule::TYPE_FIXED_AMOUNT,
+                PricingRule::TYPE_FIXED_PRICE,
+            ])];
+            $rules['discount_value'] = ['required', 'numeric', 'min:0.01'];
+        }
+
+        $validated = $request->validate($rules);
 
         if ($validated['target_type'] === PricingRule::TARGET_PRODUCT && empty($validated['product_id'])) {
             $request->validate(['product_id' => ['required']]);
@@ -306,14 +360,6 @@ class PricingRuleController extends Controller
 
         if ($validated['target_type'] === PricingRule::TARGET_CATEGORY && empty($validated['category_id'])) {
             $request->validate(['category_id' => ['required']]);
-        }
-
-        if ($validated['kind'] === PricingRule::KIND_QTY_BREAK && empty($validated['qty_breaks'])) {
-            $request->validate(['qty_breaks' => ['required', 'array', 'min:1']]);
-        }
-
-        if ($validated['kind'] === PricingRule::KIND_BUNDLE_PRICE && count($validated['bundle_items'] ?? []) < 2) {
-            $request->validate(['bundle_items' => ['required', 'array', 'min:2']]);
         }
 
         if ($validated['kind'] === PricingRule::KIND_BUY_X_GET_Y) {
@@ -334,8 +380,9 @@ class PricingRuleController extends Controller
         }
 
         if (
-            $validated['discount_type'] === PricingRule::TYPE_PERCENTAGE
-            && (float) $validated['discount_value'] > 100
+            $validated['kind'] !== PricingRule::KIND_BUNDLE_PRICE
+            && ($validated['discount_type'] ?? null) === PricingRule::TYPE_PERCENTAGE
+            && (float) ($validated['discount_value'] ?? 0) > 100
         ) {
             $request->validate(['discount_value' => ['max:100']]);
         }
@@ -359,31 +406,30 @@ class PricingRuleController extends Controller
                 ->all();
         }
 
-        $validated['bundle_items'] = collect($validated['bundle_items'] ?? [])
-            ->map(fn (array $item, int $index) => [
-                'product_id' => (int) $item['product_id'],
-                'quantity' => (int) $item['quantity'],
-                'sort_order' => (int) ($item['sort_order'] ?? $index),
-            ])
-            ->values()
-            ->all();
-        $validated['buy_get_items'] = collect($validated['buy_get_items'] ?? [])
-            ->map(fn (array $item, int $index) => [
-                'product_id' => (int) $item['product_id'],
-                'role' => $item['role'],
-                'quantity' => (int) $item['quantity'],
-                'sort_order' => (int) ($item['sort_order'] ?? $index),
-            ])
-            ->values()
-            ->all();
-
         if ($validated['kind'] === PricingRule::KIND_BUNDLE_PRICE) {
             $validated['discount_type'] = PricingRule::TYPE_FIXED_PRICE;
+            $validated['bundle_items'] = collect($validated['bundle_items'] ?? [])
+                ->map(fn (array $item, int $index) => [
+                    'product_id' => (int) $item['product_id'],
+                    'quantity' => (int) $item['quantity'],
+                    'sort_order' => (int) ($item['sort_order'] ?? $index),
+                ])
+                ->values()
+                ->all();
         }
 
         if ($validated['kind'] === PricingRule::KIND_BUY_X_GET_Y) {
             $validated['discount_type'] = PricingRule::TYPE_FIXED_AMOUNT;
             $validated['discount_value'] = 0;
+            $validated['buy_get_items'] = collect($validated['buy_get_items'] ?? [])
+                ->map(fn (array $item, int $index) => [
+                    'product_id' => (int) $item['product_id'],
+                    'role' => $item['role'],
+                    'quantity' => (int) $item['quantity'],
+                    'sort_order' => (int) ($item['sort_order'] ?? $index),
+                ])
+                ->values()
+                ->all();
         }
 
         return [
@@ -458,34 +504,34 @@ class PricingRuleController extends Controller
 
     private function buildPreviewCarts(PricingRule $rule): Collection
     {
-        $products = match ($rule->kind) {
-            PricingRule::KIND_BUNDLE_PRICE => Product::query()
-                ->whereIn('id', $rule->bundleItems->pluck('product_id'))
-                ->get(),
-            PricingRule::KIND_BUY_X_GET_Y => Product::query()
-                ->whereIn('id', $rule->buyGetItems->pluck('product_id'))
-                ->get(),
-            PricingRule::TARGET_PRODUCT => Product::query()
-                ->whereKey($rule->product_id)
-                ->get(),
-            PricingRule::TARGET_CATEGORY => Product::query()
+        if ($rule->kind === PricingRule::KIND_BUNDLE_PRICE) {
+            $productIds = $rule->bundleItems->pluck('product_id')->filter()->all();
+            $products = Product::query()->whereIn('id', $productIds)->get();
+        } elseif ($rule->kind === PricingRule::KIND_BUY_X_GET_Y) {
+            $productIds = $rule->buyGetItems->pluck('product_id')->filter()->all();
+            $products = Product::query()->whereIn('id', $productIds)->get();
+        } elseif ($rule->target_type === PricingRule::TARGET_PRODUCT && $rule->product_id) {
+            $products = Product::query()->whereKey($rule->product_id)->get();
+        } elseif ($rule->target_type === PricingRule::TARGET_CATEGORY && $rule->category_id) {
+            $products = Product::query()
                 ->where('category_id', $rule->category_id)
                 ->orderBy('title')
                 ->limit(3)
-                ->get(),
-            default => Product::query()->orderBy('title')->limit(3)->get(),
-        };
+                ->get();
+        } else {
+            $products = Product::query()->orderBy('title')->limit(3)->get();
+        }
 
         return $products
             ->values()
             ->map(function (Product $product, int $index) use ($rule) {
                 $qty = $this->previewQuantityForRule($rule, $product);
                 $cart = new Cart([
-                    'id' => -($index + 1),
                     'product_id' => $product->id,
                     'qty' => $qty,
                     'price' => (int) $product->sell_price * $qty,
                 ]);
+                $cart->id = -($index + 1);
                 $cart->setRelation('product', $product);
 
                 return $cart;
