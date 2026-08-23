@@ -420,6 +420,84 @@ class TransactionFlowTest extends TestCase
         $this->assertEquals(10, $transaction->details->first()->conversion_factor);
     }
 
+    public function test_cashier_cannot_add_more_than_available_stock_cumulatively(): void
+    {
+        $cashier = $this->createCashier();
+        $this->openShiftFor($cashier);
+        $product = $this->createProduct(); // stock = 25
+
+        $boxUnit = Unit::firstOrCreate(
+            ['code' => 'BOX'],
+            [
+                'name' => 'Box',
+                'symbol' => 'box',
+                'is_active' => true,
+            ]
+        );
+
+        $product->units()->attach($boxUnit->id, [
+            'is_base' => false,
+            'conversion_factor' => 10,
+            'buy_price' => 400000,
+            'sell_price' => 550000,
+        ]);
+
+        // Add 2 BOX (20 pcs) to cart -> Allowed (20 <= 25)
+        $response = $this
+            ->actingAs($cashier)
+            ->post(route('transactions.addToCart'), [
+                'product_id' => $product->id,
+                'unit_id' => $boxUnit->id,
+                'sell_price' => 550000,
+                'qty' => 2,
+            ]);
+        $response->assertRedirect();
+        
+        // Add 1 BOX (10 pcs) more to cart -> Total in cart would be 30 pcs. DB has 25. Should be blocked.
+        $response2 = $this
+            ->actingAs($cashier)
+            ->post(route('transactions.addToCart'), [
+                'product_id' => $product->id,
+                'unit_id' => $boxUnit->id,
+                'sell_price' => 550000,
+                'qty' => 1,
+            ]);
+        
+        $response2->assertSessionHas('error', 'Stok tidak mencukupi.');
+    }
+
+    public function test_checkout_validates_stock_availability(): void
+    {
+        $cashier = $this->createCashier();
+        $activeShift = $this->openShiftFor($cashier);
+        $product = $this->createProduct(); // stock = 25
+
+        // Add 20 pcs to cart
+        $response = $this
+            ->actingAs($cashier)
+            ->post(route('transactions.addToCart'), [
+                'product_id' => $product->id,
+                'qty' => 20,
+            ]);
+        $response->assertRedirect();
+
+        // Simulate another cashier/system updating DB stock to 15
+        $product->update(['stock' => 15]);
+
+        // Checkout the cart which has 20 pcs -> DB only has 15. Should fail at checkout.
+        $checkoutResponse = $this
+            ->actingAs($cashier)
+            ->post(route('transactions.store'), [
+                'customer_id' => null,
+                'discount' => 0,
+                'grand_total' => 1200000,
+                'cash' => 1200000,
+                'change' => 0,
+            ]);
+
+        $checkoutResponse->assertStatus(422);
+    }
+
     protected function openShiftFor(User $cashier)
     {
         return CashierShift::create([

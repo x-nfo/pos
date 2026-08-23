@@ -289,16 +289,23 @@ class TransactionController extends Controller
             }
             // Composite price = sum component prices
             $sellPrice = (int) $product->components->sum(fn ($c) => $c->sell_price * (float) $c->pivot->qty);
+            $unitId = (int) ($product->baseUnit()?->id ?: 1);
         } else {
             $unitId = (int) ($request->unit_id ?: $product->baseUnit()?->id ?: 1);
             $unitConversion = app(UnitConversionService::class);
             $baseQty = $unitConversion->toBaseUnit($product, $unitId, $request->qty);
 
+            $alreadyInCartBaseQty = Cart::where('cashier_id', auth()->user()->id)
+                ->where('product_id', $product->id)
+                ->active()
+                ->get()
+                ->sum(fn ($c) => $unitConversion->toBaseUnit($product, $c->unit_id, $c->qty));
+
             $availableStock = $warehouseId
                 ? (int) ($product->warehouses()->where('warehouse_id', $warehouseId)->first()?->pivot->stock ?? 0)
                 : (int) $product->stock;
 
-            if ($availableStock < $baseQty) {
+            if ($availableStock < ($alreadyInCartBaseQty + $baseQty)) {
                 return redirect()->back()->with('error', 'Stok tidak mencukupi.');
             }
 
@@ -395,7 +402,14 @@ class TransactionController extends Controller
             ? (int) ($cart->product->warehouses()->where('warehouse_id', $warehouseId)->first()?->pivot->stock ?? 0)
             : (int) $cart->product->stock;
 
-        if ($availableStock < $baseQty) {
+        $otherCartItemsBaseQty = Cart::where('cashier_id', auth()->user()->id)
+            ->where('product_id', $cart->product_id)
+            ->where('id', '!=', $cart->id)
+            ->active()
+            ->get()
+            ->sum(fn ($c) => $unitConversion->toBaseUnit($cart->product, $c->unit_id, $c->qty));
+
+        if ($availableStock < ($otherCartItemsBaseQty + $baseQty)) {
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
@@ -671,6 +685,41 @@ class TransactionController extends Controller
 
                 if ($carts->isEmpty()) {
                     abort(422, 'Keranjang kosong.');
+                }
+
+                // Validate stock availability for all products in the cart using lockForUpdate
+                $productRequests = [];
+                $unitConversion = app(UnitConversionService::class);
+                foreach ($carts as $c) {
+                    if ($c->product->is_composite) {
+                        $c->product->load('components');
+                        foreach ($c->product->components as $component) {
+                            $componentQty = (int) round((float) $component->pivot->qty * $c->qty);
+                            if (!isset($productRequests[$component->id])) {
+                                $productRequests[$component->id] = 0;
+                            }
+                            $productRequests[$component->id] += $componentQty;
+                        }
+                    } else {
+                        $baseQty = (int) round($c->qty * (float) ($c->conversion_factor ?? 1));
+                        if (!isset($productRequests[$c->product_id])) {
+                            $productRequests[$c->product_id] = 0;
+                        }
+                        $productRequests[$c->product_id] += $baseQty;
+                    }
+                }
+
+                foreach ($productRequests as $productId => $totalBaseQty) {
+                    $product = Product::where('id', $productId)->lockForUpdate()->first();
+                    if ($product) {
+                        $availableStock = $activeShift->warehouse_id
+                            ? (int) ($product->warehouses()->where('warehouse_id', $activeShift->warehouse_id)->lockForUpdate()->first()?->pivot->stock ?? 0)
+                            : (int) $product->stock;
+                        
+                        if ($availableStock < $totalBaseQty) {
+                            abort(422, "Stok untuk produk {$product->title} tidak mencukupi. Tersedia: {$availableStock}");
+                        }
+                    }
                 }
 
                 $pricingPreview = $this->pricingService->previewCart($carts, $customer);
