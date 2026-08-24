@@ -1,21 +1,30 @@
-import React from "react";
-import { usePage, useForm } from "@inertiajs/react";
+import React, { useState } from "react";
+import { usePage, router } from "@inertiajs/react";
 import { IconLanguage } from "@tabler/icons-react";
 import { Menu, Transition } from "@headlessui/react";
+import i18n from "@/i18n";
 
 export default function LanguageSwitcher() {
     const { locale } = usePage().props;
-    const { post, processing } = useForm({
-        locale: locale?.current || "id",
-    });
+    const [processing, setProcessing] = useState(false);
 
-    const handleChange = (e) => {
-        post(route("language.switch", { locale: e }), {
-            preserveScroll: true,
-            onSuccess: () => {
-                window.location.reload();
-            },
-        });
+    const handleChange = (langCode) => {
+        if (processing || langCode === locale?.current) return;
+        setProcessing(true);
+        i18n.changeLanguage(langCode);
+        localStorage.setItem("i18nextLng", langCode);
+
+        router.post(
+            route("language.switch"),
+            { locale: langCode },
+            {
+                preserveScroll: true,
+                onFinish: () => setProcessing(false),
+                onSuccess: () => {
+                    window.location.reload();
+                },
+            }
+        );
     };
 
     const languages = [

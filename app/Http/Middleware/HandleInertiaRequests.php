@@ -52,10 +52,10 @@ class HandleInertiaRequests extends Middleware
             }
 
             $lowStockNotifications = Product::where(function ($query) {
-                    $query->where('min_stock', '>', 0)
-                        ->whereColumn('stock', '<=', 'min_stock')
-                        ->orWhere('stock', '<=', 0);
-                })
+                $query->where('min_stock', '>', 0)
+                    ->whereColumn('stock', '<=', 'min_stock')
+                    ->orWhere('stock', '<=', 0);
+            })
                 ->whereNotExists(function ($query) use ($userId) {
                     $query->selectRaw('1')
                         ->from('product_notification_reads as pr')
