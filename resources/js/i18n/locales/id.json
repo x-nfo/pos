@@ -202,7 +202,9 @@
             "salesTarget": "Target Penjualan",
             "priceLists": "Price List",
             "warehouses": "Gudang / Cabang",
-            "whatsApp": "WhatsApp"
+            "whatsApp": "WhatsApp",
+            "printers": "Pengaturan Printer",
+            "branding": "Branding & Tampilan"
         },
         "menu": {
             "overview": "Overview",
@@ -257,7 +259,9 @@
             "salesTarget": "Target Penjualan",
             "warehouses": "Gudang / Cabang",
             "whatsapp": "WhatsApp",
-            "printers": "Printer",
+            "printers": "Pengaturan Printer",
+            "branding": "Branding & Tampilan",
+            "priceLists": "Daftar Harga",
             "taxSettings": "Pajak"
         }
     },

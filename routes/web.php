@@ -253,6 +253,7 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::post('/transactions/store', [TransactionController::class, 'store'])->middleware(['permission:transactions-access', 'active_shift'])->name('transactions.store');
     Route::post('/transactions/sync-offline', [TransactionSyncController::class, 'sync'])->middleware(['permission:transactions-access', 'active_shift'])->name('transactions.sync-offline');
     Route::get('/transactions/{invoice}/print', [TransactionController::class, 'print'])->middleware('permission:transactions-access')->name('transactions.print');
+    Route::post('/transactions/{invoice}/print/direct', [TransactionController::class, 'directPrint'])->middleware('permission:transactions-access')->name('transactions.print.direct');
     Route::post('/transactions/{invoice}/qrisly-retry', [TransactionController::class, 'retryQrisly'])->middleware('permission:transactions-access')->name('transactions.qrisly-retry');
     Route::get('/transactions/history', [TransactionController::class, 'history'])->middleware('permission:transactions-access')->name('transactions.history');
     Route::post('/transactions/{transaction}/share-campaign', [CrmCampaignController::class, 'shareTransaction'])->middleware('permission:crm-campaigns-create')->name('transactions.share-campaign');

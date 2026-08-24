@@ -362,7 +362,7 @@ export function ThermalReceipt58mm({
     return (
         <div
             className="thermal-receipt-58 font-mono text-xs text-slate-900 bg-white"
-            style={{ width: "58mm", padding: "2mm" }}
+            style={{ width: "48mm", maxWidth: "48mm", padding: "1mm", margin: "0 auto", boxSizing: "border-box" }}
         >
             <div className="text-center">
                 <p className="font-bold">{storeName}</p>
@@ -489,16 +489,31 @@ export function ThermalReceipt58mm({
                     color: #64748b !important;
                 }
                 @media print {
+                    html, body {
+                        width: 48mm !important;
+                        max-width: 48mm !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: #ffffff !important;
+                    }
                     .thermal-receipt-58 {
-                        width: 58mm !important;
-                        font-size: 9pt !important;
+                        width: 48mm !important;
+                        max-width: 48mm !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        font-family: 'Courier New', Courier, monospace !important;
+                        font-size: 11pt !important;
+                        line-height: 1.3 !important;
                         color: #000000 !important;
                         background-color: #ffffff !important;
                     }
                     .thermal-receipt-58 * {
                         color: inherit;
                     }
-                    @page { size: 58mm auto; margin: 0; }
+                    @page {
+                        size: 58mm auto;
+                        margin: 0mm;
+                    }
                 }
             `}</style>
         </div>

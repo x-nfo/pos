@@ -14,6 +14,7 @@ use App\Models\PaymentSetting;
 use App\Models\Product;
 use App\Models\ProductWarehouse;
 use App\Models\Receivable;
+use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\Warehouse;
 use App\Services\AuditLogService;
@@ -21,6 +22,7 @@ use App\Services\CashierShiftService;
 use App\Services\LoyaltyService;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\PricingService;
+use App\Services\ThermalPrintService;
 use App\Services\UnitConversionService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -876,6 +878,15 @@ class TransactionController extends Controller
                 }
             }
 
+            if (Setting::getBool('printer_auto_print', false) && $transaction->payment_status === 'paid') {
+                try {
+                    $thermalPrintService = app(ThermalPrintService::class);
+                    $thermalPrintService->printDirectToCups($transaction);
+                } catch (\Throwable $e) {
+                    \Log::warning("Auto print failed for {$transaction->invoice}: {$e->getMessage()}");
+                }
+            }
+
             return to_route('transactions.print', $transaction->invoice);
         } finally {
             $lock->release();
@@ -889,9 +900,35 @@ class TransactionController extends Controller
             ->where('invoice', $invoice)
             ->firstOrFail();
 
+        $defaultPaperSize = Setting::get('printer_paper_size', '58mm');
+        $autoPrint = Setting::getBool('printer_auto_print', false);
+
         return Inertia::render('Dashboard/Transactions/Print', [
             'transaction' => $transaction,
+            'defaultPaperSize' => $defaultPaperSize,
+            'autoPrint' => $autoPrint,
         ]);
+    }
+
+    public function directPrint(string $invoice, ThermalPrintService $thermalPrintService)
+    {
+        $transaction = Transaction::with(['details.product', 'details.unit', 'cashier', 'customer'])
+            ->where('invoice', $invoice)
+            ->firstOrFail();
+
+        $success = $thermalPrintService->printDirectToCups($transaction);
+
+        if ($success) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Struk berhasil dicetak langsung ke printer EPPOS!',
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Gagal mencetak struk langsung. Pastikan printer terhubung.',
+        ], 500);
     }
 
     public function retryQrisly(string $invoice, PaymentGatewayManager $paymentGatewayManager)
@@ -1039,6 +1076,16 @@ class TransactionController extends Controller
                 'bank_account_id' => $transaction->bank_account_id,
             ],
         );
+
+        if (Setting::getBool('printer_auto_print', false)) {
+            try {
+                $transaction->loadMissing(['details.product', 'details.unit', 'cashier', 'customer']);
+                $thermalPrintService = app(ThermalPrintService::class);
+                $thermalPrintService->printDirectToCups($transaction);
+            } catch (\Throwable $e) {
+                \Log::warning("Auto print on payment confirmed failed for {$transaction->invoice}: {$e->getMessage()}");
+            }
+        }
 
         return redirect()
             ->back()

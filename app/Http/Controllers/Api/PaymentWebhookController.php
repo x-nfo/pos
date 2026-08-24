@@ -4,12 +4,25 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\PaymentSetting;
+use App\Models\Setting;
 use App\Models\Transaction;
+use App\Services\ThermalPrintService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class PaymentWebhookController extends Controller
 {
+    private function autoPrintIfEnabled(Transaction $transaction): void
+    {
+        if (Setting::getBool('printer_auto_print', false)) {
+            try {
+                $transaction->loadMissing(['details.product', 'details.unit', 'cashier', 'customer']);
+                app(ThermalPrintService::class)->printDirectToCups($transaction);
+            } catch (\Throwable $e) {
+                Log::warning("Auto print on webhook paid failed for {$transaction->invoice}: {$e->getMessage()}");
+            }
+        }
+    }
     /**
      * Handle Midtrans notification webhook
      * URL: POST /api/webhooks/midtrans
@@ -68,6 +81,10 @@ class PaymentWebhookController extends Controller
                 'payment_status' => $newStatus,
                 'payment_reference' => $request->input('transaction_id') ?: $transaction->payment_reference,
             ]);
+
+            if ($newStatus === 'paid') {
+                $this->autoPrintIfEnabled($transaction);
+            }
 
             Log::info('Midtrans Webhook: Transaction updated', [
                 'provider' => 'midtrans',
@@ -160,6 +177,10 @@ class PaymentWebhookController extends Controller
                 'payment_reference' => $paymentId ?: $transaction->payment_reference,
             ]);
 
+            if ($newStatus === 'paid') {
+                $this->autoPrintIfEnabled($transaction);
+            }
+
             Log::info('Xendit Webhook: Transaction updated', [
                 'provider' => 'xendit',
                 'external_id' => $externalId,
@@ -235,6 +256,10 @@ class PaymentWebhookController extends Controller
                 'payment_status' => $newStatus,
                 'payment_reference' => $historyId ? (string) $historyId : $transaction->payment_reference,
             ]);
+
+            if ($newStatus === 'paid') {
+                $this->autoPrintIfEnabled($transaction);
+            }
 
             Log::info('QRISLY Webhook: Transaction updated', [
                 'provider' => 'qrisly',

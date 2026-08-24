@@ -580,4 +580,36 @@ class TransactionFlowTest extends TestCase
 
         Setting::set('tax_default_rate', '11.00');
     }
+
+    public function test_transaction_print_passes_auto_print_setting(): void
+    {
+        $cashier = $this->createCashier();
+        $this->openShiftFor($cashier);
+        $transaction = Transaction::create([
+            'cashier_id' => $cashier->id,
+            'customer_id' => null,
+            'invoice' => 'TRX-TEST-AUTOPRINT-1',
+            'cash' => 20000,
+            'change' => 0,
+            'discount' => 0,
+            'grand_total' => 20000,
+            'payment_method' => 'cash',
+            'payment_status' => 'paid',
+        ]);
+
+        Setting::set('printer_auto_print', '1');
+
+        $response = $this
+            ->actingAs($cashier)
+            ->get(route('transactions.print', $transaction->invoice));
+
+        $response
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Dashboard/Transactions/Print')
+                    ->where('autoPrint', true)
+                    ->where('defaultPaperSize', '58mm')
+            );
+    }
 }

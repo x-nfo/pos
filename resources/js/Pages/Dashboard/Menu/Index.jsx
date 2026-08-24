@@ -42,7 +42,6 @@ import {
     IconPrinter,
     IconTarget,
     IconListDetails,
-    IconUserCog,
     IconLogout,
     IconChevronRight,
     IconBuildingBank,
@@ -563,16 +562,6 @@ export default function MenuIndex() {
                                 </div>
                             </div>
                         </div>
-
-                        {/* Quick Profile Link */}
-                        <Link
-                            href={resolveRoute("users.edit", user?.id)}
-                            onClick={() => triggerHaptic("tap")}
-                            className="w-10 h-10 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 text-white transition-all flex items-center justify-center flex-shrink-0"
-                            title="Edit Profil"
-                        >
-                            <IconUserCog size={20} strokeWidth={2} />
-                        </Link>
                     </div>
 
                     {/* Quick Navigation Pills */}

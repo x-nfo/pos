@@ -127,14 +127,15 @@ class DocumentController extends Controller
         return $pdf->stream("shipping-{$transaction->invoice}.pdf");
     }
 
-    public function thermalPrint(string $invoice)
+    public function thermalPrint(string $invoice, \Illuminate\Http\Request $request)
     {
         $transaction = Transaction::with(['details.product', 'details.unit', 'cashier', 'customer'])
             ->where('invoice', $invoice)
             ->firstOrFail();
 
+        $size = $request->query('size', Setting::get('printer_paper_size', '58mm'));
         $service = app(ThermalPrintService::class);
-        $html = $service->generateReceiptHtml($transaction);
+        $html = $service->generateReceiptHtml($transaction, $size);
 
         return response($html)->header('Content-Type', 'text/html; charset=utf-8');
     }

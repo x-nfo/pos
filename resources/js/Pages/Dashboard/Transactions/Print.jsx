@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import {
     IconArrowLeft,
@@ -13,6 +13,8 @@ import {
     IconShare,
     IconQrcode,
     IconRefresh,
+    IconUsb,
+    IconBolt,
 } from "@tabler/icons-react";
 import QRCode from "qrcode";
 import ThermalReceipt, {
@@ -20,7 +22,9 @@ import ThermalReceipt, {
 } from "@/Components/Receipt/ThermalReceipt";
 import ShippingLabel from "@/Components/Receipt/ShippingLabel";
 import { useAuthorization } from "@/Utils/authorization";
+import { printViaWebUsb } from "@/Utils/webUsbPrinter";
 import toast from "react-hot-toast";
+import axios from "axios";
 
 function QrisCode({ value, size = 180 }) {
     const [dataUrl, setDataUrl] = useState("");
@@ -54,14 +58,45 @@ function QrisCode({ value, size = 180 }) {
     );
 }
 
-export default function Print({ transaction }) {
+export default function Print({ transaction, defaultPaperSize = "58mm", autoPrint = false }) {
     const { storeProfile, branding, flash } = usePage().props;
     const { can } = useAuthorization();
-    const [printMode, setPrintMode] = useState("invoice"); // 'invoice' | 'thermal80' | 'thermal58'
+    const initialMode = defaultPaperSize === "58mm" ? "thermal58" : defaultPaperSize === "80mm" ? "thermal80" : "invoice";
+    const [printMode, setPrintMode] = useState(initialMode);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [isConfirming, setIsConfirming] = useState(false);
     const [isRetryingQris, setIsRetryingQris] = useState(false);
+    const [isDirectPrinting, setIsDirectPrinting] = useState(false);
+    const [isWebUsbPrinting, setIsWebUsbPrinting] = useState(false);
+    const hasAutoPrinted = useRef(false);
     const canConfirmPayment = can("transactions-confirm-payment");
+
+    const handleDirectPrint = async () => {
+        setIsDirectPrinting(true);
+        try {
+            const res = await axios.post(route("transactions.print.direct", transaction.invoice));
+            if (res.data?.success) {
+                toast.success(res.data.message || "Struk berhasil dicetak langsung ke printer!");
+            }
+        } catch (e) {
+            toast.error(e.response?.data?.message || "Gagal mencetak struk langsung. Pastikan printer terhubung.");
+        } finally {
+            setIsDirectPrinting(false);
+        }
+    };
+
+    const handleWebUsbPrint = async () => {
+        setIsWebUsbPrinting(true);
+        try {
+            const paperSize = printMode === "thermal58" ? "58mm" : "80mm";
+            await printViaWebUsb(transaction, store, paperSize);
+            toast.success("Struk berhasil dikirim ke printer WebUSB!");
+        } catch (e) {
+            toast.error(e.message || "Gagal mencetak via WebUSB. Pastikan printer USB terhubung.");
+        } finally {
+            setIsWebUsbPrinting(false);
+        }
+    };
 
     useEffect(() => {
         if (flash?.success) toast.success(flash.success);
@@ -169,6 +204,20 @@ export default function Print({ transaction }) {
         window.print();
     };
 
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const shouldAutoPrint = autoPrint || urlParams.get("auto_print") === "1" || urlParams.get("autoprint") === "1";
+
+        if (shouldAutoPrint && paymentStatusKey === "paid" && !hasAutoPrinted.current) {
+            hasAutoPrinted.current = true;
+            const timer = setTimeout(() => {
+                toast.success("Cetak otomatis dipicu");
+                window.print();
+            }, 600);
+            return () => clearTimeout(timer);
+        }
+    }, [autoPrint, paymentStatusKey]);
+
     const SimpleBarcode = ({ value }) => {
         const bars = useMemo(() => {
             const data = value || "";
@@ -198,8 +247,39 @@ export default function Print({ transaction }) {
         <>
             <Head title="Invoice Penjualan" />
 
-            <div className="min-h-screen bg-slate-100 dark:bg-slate-950 py-8 px-4 print:bg-white print:p-0">
-                <div className="max-w-4xl mx-auto space-y-6">
+            <div className="min-h-screen bg-slate-100 dark:bg-slate-950 py-8 px-4 print:bg-white print:p-0 print:m-0 print:min-h-0">
+                <div className="max-w-4xl mx-auto space-y-6 print:max-w-none print:m-0 print:p-0 print:space-y-0">
+                    {/* Auto-Print Active Banner */}
+                    {autoPrint && (
+                        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-300 print:hidden shadow-sm">
+                            <div className="flex items-center gap-2.5">
+                                <IconBolt className="w-5 h-5 text-amber-500 shrink-0 animate-pulse" />
+                                <div>
+                                    <p className="font-bold text-sm text-slate-900 dark:text-white">Auto-Print Aktif</p>
+                                    <p className="text-slate-600 dark:text-slate-400">Struk otomatis dipicu untuk transaksi lunas saat halaman dibuka.</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => handlePrint()}
+                                    className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white font-semibold transition-all shadow-sm flex items-center gap-1"
+                                >
+                                    <IconPrinter size={14} />
+                                    Cetak Browser
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleWebUsbPrint}
+                                    disabled={isWebUsbPrinting}
+                                    className="px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-transparent hover:bg-amber-100/60 dark:hover:bg-amber-900/40 text-amber-900 dark:text-amber-200 font-semibold transition-all flex items-center gap-1 disabled:opacity-50"
+                                >
+                                    <IconUsb size={14} />
+                                    {isWebUsbPrinting ? "Mengirim..." : "WebUSB"}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     {/* Action Bar */}
                     <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
                         <Link
@@ -270,25 +350,6 @@ export default function Print({ transaction }) {
                                     Resi
                                 </button>
                             </div>
-
-                            <button
-                                type="button"
-                                onClick={async () => {
-                                    try {
-                                        const res = await fetch(route("pdf.transactions.thermal", transaction.invoice));
-                                        const html = await res.text();
-                                        const blob = new Blob([html], { type: "text/html" });
-                                        const url = URL.createObjectURL(blob);
-                                        window.open(url, "_blank", "width=400,height=600");
-                                    } catch (e) {
-                                        alert("Gagal cetak thermal: " + e.message);
-                                    }
-                                }}
-                                className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto"
-                            >
-                                <IconPrinter size={18} />
-                                Thermal
-                            </button>
 
                             {showPaymentLink && (
                                 <a
@@ -367,18 +428,40 @@ export default function Print({ transaction }) {
                             )}
 
                             {(printMode === "thermal80" || printMode === "thermal58") && (
-                                <a
-                                    href={route("pdf.transactions.receipt", {
-                                        invoice: transaction.invoice,
-                                        size: printMode === "thermal58" ? "58" : "80",
-                                    })}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-sm font-semibold text-white transition-colors w-full sm:w-auto"
-                                >
-                                    <IconPrinter size={18} />
-                                    PDF Struk {printMode === "thermal58" ? "58mm" : "80mm"}
-                                </a>
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={handleWebUsbPrint}
+                                        disabled={isWebUsbPrinting}
+                                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold transition-all shadow-sm w-full sm:w-auto disabled:opacity-50"
+                                        title="Cetak Struk Langsung via WebUSB ESC/POS (USB Thermal Printer)"
+                                    >
+                                        <IconUsb size={18} className="text-blue-500" />
+                                        {isWebUsbPrinting ? "Mengirim..." : "WebUSB"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleDirectPrint}
+                                        disabled={isDirectPrinting}
+                                        className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto disabled:opacity-50"
+                                        title="Cetak Struk via Server Spooler CUPS / LPR"
+                                    >
+                                        <IconPrinter size={18} />
+                                        {isDirectPrinting ? "Mencetak..." : "Server Thermal"}
+                                    </button>
+                                    <a
+                                        href={route("pdf.transactions.receipt", {
+                                            invoice: transaction.invoice,
+                                            size: printMode === "thermal58" ? "58" : "80",
+                                        })}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-sm font-semibold text-white transition-colors w-full sm:w-auto"
+                                    >
+                                        <IconPrinter size={18} />
+                                        PDF Struk {printMode === "thermal58" ? "58mm" : "80mm"}
+                                    </a>
+                                </>
                             )}
 
                             {printMode === "shipping" && (

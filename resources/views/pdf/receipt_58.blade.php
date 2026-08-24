@@ -1,6 +1,6 @@
 @php
-    $line = str_repeat('=', 32);
-    $dash = str_repeat('-', 32);
+    $line = str_repeat('=', 30);
+    $dash = str_repeat('-', 30);
     $formatPrice = fn($v) => 'Rp ' . number_format($v ?? 0, 0, ',', '.');
 @endphp
 <!DOCTYPE html>
@@ -9,11 +9,11 @@
     <meta charset="UTF-8">
     <style>
         @page { margin: 0; }
-        body { font-family: 'Inter','Helvetica','Arial',sans-serif; width: 58mm; margin: 0; padding: 6px; font-size: 11px; line-height: 1.4; }
+        body { font-family: 'Inter','Helvetica','Arial',sans-serif; width: 48mm; max-width: 48mm; margin: 0 auto; padding: 2px; font-size: 10px; line-height: 1.3; box-sizing: border-box; }
         .center { text-align: center; }
         .bold { font-weight: 700; }
-        .barcode img { height: 24px; }
-        .section { margin: 5px 0; }
+        .barcode img { height: 22px; max-width: 100%; }
+        .section { margin: 4px 0; }
     </style>
 </head>
 <body>

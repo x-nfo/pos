@@ -202,7 +202,9 @@
             "salesTarget": "Sales Target",
             "priceLists": "Price Lists",
             "warehouses": "Warehouses / Branches",
-            "whatsApp": "WhatsApp"
+            "whatsApp": "WhatsApp",
+            "printers": "Printer Settings",
+            "branding": "Branding & Appearance"
         },
         "menu": {
             "overview": "Overview",
@@ -257,7 +259,9 @@
             "salesTarget": "Sales Target",
             "warehouses": "Warehouses",
             "whatsapp": "WhatsApp",
-            "printers": "Printers",
+            "printers": "Printer Settings",
+            "branding": "Branding & Appearance",
+            "priceLists": "Price Lists",
             "taxSettings": "Tax"
         }
     },
