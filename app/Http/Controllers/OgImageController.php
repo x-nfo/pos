@@ -59,9 +59,9 @@ class OgImageController extends Controller
             $logoLoaded = $this->drawCustomLogo($img, $logoPath, 90, 160, 200, 200);
         }
 
-        // Fallback: draw clean POS Cashier / Store icon if no custom logo loaded
+        // Fallback: draw clean Shopping Cart icon if no custom logo loaded
         if (! $logoLoaded) {
-            $this->drawPosIcon($img, 100, 160, 200, 200, $white);
+            $this->drawCartIcon($img, 100, 160, 200, 200, $white);
         }
 
         // Font discovery
@@ -147,46 +147,29 @@ class OgImageController extends Controller
         return true;
     }
 
-    private function drawPosIcon($canvas, int $x, int $y, int $w, int $h, int $color)
+    private function drawCartIcon($canvas, int $x, int $y, int $w, int $h, int $color)
     {
         imagesetthickness($canvas, 8);
 
-        // Store Front Roof / Canopy
+        // Cart Handle
+        imageline($canvas, (int)($x + $w * 0.12), (int)($y + $h * 0.22), (int)($x + $w * 0.26), (int)($y + $h * 0.22), $color);
+        imageline($canvas, (int)($x + $w * 0.26), (int)($y + $h * 0.22), (int)($x + $w * 0.33), (int)($y + $h * 0.58), $color);
+
+        // Cart Basket
         imagepolygon($canvas, [
-            $x + (int)($w * 0.1), $y + (int)($h * 0.4),
-            $x + (int)($w * 0.5), $y + (int)($h * 0.15),
-            $x + (int)($w * 0.9), $y + (int)($h * 0.4),
-        ], 3, $color);
+            (int)($x + $w * 0.28), (int)($y + $h * 0.28),
+            (int)($x + $w * 0.88), (int)($y + $h * 0.28),
+            (int)($x + $w * 0.76), (int)($y + $h * 0.58),
+            (int)($x + $w * 0.33), (int)($y + $h * 0.58),
+        ], 4, $color);
 
-        // Cash register body
-        imagerectangle(
-            $canvas,
-            $x + (int)($w * 0.15),
-            $y + (int)($h * 0.45),
-            $x + (int)($w * 0.85),
-            $y + (int)($h * 0.85),
-            $color
-        );
+        // Basket Inner Grid Lines
+        imageline($canvas, (int)($x + $w * 0.30), (int)($y + $h * 0.43), (int)($x + $w * 0.82), (int)($y + $h * 0.43), $color);
+        imageline($canvas, (int)($x + $w * 0.58), (int)($y + $h * 0.28), (int)($x + $w * 0.54), (int)($y + $h * 0.58), $color);
 
-        // Screen
-        imagerectangle(
-            $canvas,
-            $x + (int)($w * 0.25),
-            $y + (int)($h * 0.52),
-            $x + (int)($w * 0.75),
-            $y + (int)($h * 0.68),
-            $color
-        );
-
-        // Cash drawer line
-        imageline(
-            $canvas,
-            $x + (int)($w * 0.15),
-            $y + (int)($h * 0.75),
-            $x + (int)($w * 0.85),
-            $y + (int)($h * 0.75),
-            $color
-        );
+        // Wheels
+        imagefilledellipse($canvas, (int)($x + $w * 0.42), (int)($y + $h * 0.72), 26, 26, $color);
+        imagefilledellipse($canvas, (int)($x + $w * 0.70), (int)($y + $h * 0.72), 26, 26, $color);
     }
 
     private function findFont(array $candidates): ?string
