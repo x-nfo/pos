@@ -64,10 +64,14 @@ export default function MobileHeader({
                             {storeProfile?.name || "POS Kasir"}
                         </h1>
                         {activeShift ? (
-                            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded-full border border-emerald-200/50 dark:border-emerald-800/50 flex-shrink-0">
+                            <Link
+                                href={route("cashier-shifts.show", activeShift.id)}
+                                onClick={() => triggerHaptic("tap")}
+                                className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded-full border border-emerald-200/50 dark:border-emerald-800/50 flex-shrink-0 active:scale-95 transition-transform hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
+                            >
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                 Shift #{activeShift.id}
-                            </span>
+                            </Link>
                         ) : (
                             <button
                                 type="button"
@@ -195,17 +199,17 @@ export default function MobileHeader({
                                 </Link>
 
                                 {activeShift && (
-                                    <button
-                                        type="button"
+                                    <Link
+                                        href={route("cashier-shifts.show", activeShift.id)}
                                         onClick={() => {
+                                            triggerHaptic("tap");
                                             setMenuOpen(false);
-                                            onOpenShiftModal();
                                         }}
                                         className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                                     >
                                         <IconUser size={15} />
                                         <span>Detail / Tutup Shift</span>
-                                    </button>
+                                    </Link>
                                 )}
                             </div>
                         </>
