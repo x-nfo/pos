@@ -82,6 +82,7 @@ Route::get('/dashboard/access', function () {
 })->middleware(['auth', 'verified'])->name('dashboard.access');
 
 // Public share routes (no login)
+Route::get('/og-image.png', [\App\Http\Controllers\OgImageController::class, 'show'])->name('og.image');
 Route::get('/share/transactions/{invoice}', [DocumentController::class, 'publicInvoice'])
     ->name('transactions.public');
 

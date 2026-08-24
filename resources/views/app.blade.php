@@ -19,13 +19,13 @@
     <meta property="og:description" content="{{ $branding['appName'] }} — {{ $branding['tagline'] }}">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ config('app.url') }}/">
-    <meta property="og:image" content="{{ $branding['logoLight'] ?: config('app.url').'/images/og-image.png' }}">
+    <meta property="og:image" content="{{ route('og.image') }}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ $branding['appName'] }} — {{ $branding['tagline'] }}">
     <meta name="twitter:description" content="{{ $branding['appName'] }} — {{ $branding['tagline'] }}">
-    <meta name="twitter:image" content="{{ $branding['logoLight'] ?: config('app.url').'/images/og-image.png' }}">
+    <meta name="twitter:image" content="{{ route('og.image') }}">
     
     @if($branding['favicon'])
         <link rel="icon" type="image/x-icon" href="{{ $branding['favicon'] }}">
