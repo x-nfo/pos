@@ -22,6 +22,7 @@ use App\Services\CashierShiftService;
 use App\Services\LoyaltyService;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\PricingService;
+use App\Services\StockMutationService;
 use App\Services\ThermalPrintService;
 use App\Services\UnitConversionService;
 use Illuminate\Database\Eloquent\Builder;
@@ -40,7 +41,8 @@ class TransactionController extends Controller
         private readonly CashierShiftService $cashierShiftService,
         private readonly AuditLogService $auditLogService,
         private readonly PricingService $pricingService,
-        private readonly LoyaltyService $loyaltyService
+        private readonly LoyaltyService $loyaltyService,
+        private readonly StockMutationService $stockMutationService
     ) {}
 
     /**
@@ -809,19 +811,47 @@ class TransactionController extends Controller
                         $product->load('components');
                         foreach ($product->components as $component) {
                             $componentQty = (int) round((float) $component->pivot->qty * $cart->qty);
+                            $stockBefore = (int) $component->stock;
+                            $stockAfter = $stockBefore - $componentQty;
+
                             ProductWarehouse::where([
                                 'product_id' => $component->id,
                                 'warehouse_id' => $activeShift->warehouse_id,
                             ])->decrement('stock', $componentQty);
                             $component->decrement('stock', $componentQty);
+
+                            $this->stockMutationService->recordSaleOut(
+                                product: $component,
+                                transaction: $transaction,
+                                qty: $componentQty,
+                                stockBefore: $stockBefore,
+                                stockAfter: $stockAfter,
+                                warehouseId: $activeShift->warehouse_id,
+                                notes: 'Komponen '.$component->title.' untuk bundle '.$product->title.' pada transaksi '.$transaction->invoice,
+                                userId: auth()->id()
+                            );
                         }
                     } else {
                         $baseQty = (int) round($cart->qty * (float) ($cart->conversion_factor ?? 1));
+                        $stockBefore = (int) $product->stock;
+                        $stockAfter = $stockBefore - $baseQty;
+
                         ProductWarehouse::where([
                             'product_id' => $product->id,
                             'warehouse_id' => $activeShift->warehouse_id,
                         ])->decrement('stock', $baseQty);
                         $product->decrement('stock', $baseQty);
+
+                        $this->stockMutationService->recordSaleOut(
+                            product: $product,
+                            transaction: $transaction,
+                            qty: $baseQty,
+                            stockBefore: $stockBefore,
+                            stockAfter: $stockAfter,
+                            warehouseId: $activeShift->warehouse_id,
+                            notes: 'Penjualan transaksi '.$transaction->invoice,
+                            userId: auth()->id()
+                        );
                     }
                 }
 

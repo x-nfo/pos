@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Models\Transaction;
 use App\Services\ThermalPrintService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
 use Picqer\Barcode\BarcodeGeneratorPNG;
 
 class DocumentController extends Controller
@@ -127,7 +128,7 @@ class DocumentController extends Controller
         return $pdf->stream("shipping-{$transaction->invoice}.pdf");
     }
 
-    public function thermalPrint(string $invoice, \Illuminate\Http\Request $request)
+    public function thermalPrint(string $invoice, Request $request)
     {
         $transaction = Transaction::with(['details.product', 'details.unit', 'cashier', 'customer'])
             ->where('invoice', $invoice)

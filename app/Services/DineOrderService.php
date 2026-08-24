@@ -10,6 +10,7 @@ class DineOrderService
 {
     public function __construct(
         private PricingService $pricingService,
+        private StockMutationService $stockMutationService,
     ) {}
 
     public function accept(DineOrder $order): void
@@ -31,16 +32,46 @@ class DineOrderService
             if ($product->is_composite) {
                 foreach ($product->components as $component) {
                     $componentProduct = $component->componentProduct;
-                    $componentProduct->decrement('stock', $item->qty * $component->qty);
+                    $qtyOut = (int) ($item->qty * $component->qty);
+                    $stockBefore = (int) $componentProduct->stock;
+                    $stockAfter = $stockBefore - $qtyOut;
+
+                    $componentProduct->decrement('stock', $qtyOut);
                     ProductWarehouse::where('product_id', $componentProduct->id)
                         ->where('warehouse_id', $warehouseId)
-                        ->decrement('stock', $item->qty * $component->qty);
+                        ->decrement('stock', $qtyOut);
+
+                    $this->stockMutationService->recordDineOrderOut(
+                        product: $componentProduct,
+                        order: $order,
+                        qty: $qtyOut,
+                        stockBefore: $stockBefore,
+                        stockAfter: $stockAfter,
+                        warehouseId: $warehouseId,
+                        notes: 'Komponen '.$componentProduct->title.' pesanan dine-in order #'.$order->id,
+                        userId: $cashierId
+                    );
                 }
             } else {
-                $product->decrement('stock', $item->qty);
+                $qtyOut = (int) $item->qty;
+                $stockBefore = (int) $product->stock;
+                $stockAfter = $stockBefore - $qtyOut;
+
+                $product->decrement('stock', $qtyOut);
                 ProductWarehouse::where('product_id', $product->id)
                     ->where('warehouse_id', $warehouseId)
-                    ->decrement('stock', $item->qty);
+                    ->decrement('stock', $qtyOut);
+
+                $this->stockMutationService->recordDineOrderOut(
+                    product: $product,
+                    order: $order,
+                    qty: $qtyOut,
+                    stockBefore: $stockBefore,
+                    stockAfter: $stockAfter,
+                    warehouseId: $warehouseId,
+                    notes: 'Pesanan dine-in order #'.$order->id,
+                    userId: $cashierId
+                );
             }
         }
     }

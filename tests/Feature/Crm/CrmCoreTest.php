@@ -7,8 +7,10 @@ use App\Models\CustomerCampaign;
 use App\Models\CustomerCampaignLog;
 use App\Models\CustomerSegment;
 use App\Models\Receivable;
+use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\WhatsAppService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -227,6 +229,80 @@ class CrmCoreTest extends TestCase
                 ->where('transaction_id', $transaction->id)
                 ->count()
         );
+    }
+
+    public function test_crm_generate_reminders_uses_custom_template_and_replaces_placeholders(): void
+    {
+        $today = now()->startOfDay();
+        Setting::set('store_name', 'Toko Berkah POS');
+        Setting::set(
+            'wa_template_due_soon',
+            'Halo {{customer_name}}, tagihan {{invoice}} sebesar Rp {{remaining}} di {{store_name}} jatuh tempo pada {{due_date}}.'
+        );
+
+        $customer = $this->createCustomer([
+            'name' => 'Ahmad Subagyo',
+            'no_telp' => '628123456789',
+        ]);
+
+        $receivable = Receivable::create([
+            'customer_id' => $customer->id,
+            'invoice' => 'RCV-TPL-001',
+            'total' => 350000,
+            'paid' => 100000,
+            'due_date' => $today->copy()->addDays(2),
+            'status' => 'partial',
+        ]);
+
+        $this->artisan('crm:generate-reminders')->assertExitCode(0);
+
+        $log = CustomerCampaignLog::query()
+            ->where('receivable_id', $receivable->id)
+            ->firstOrFail();
+
+        $expectedMessage = 'Halo Ahmad Subagyo, tagihan RCV-TPL-001 sebesar Rp 250.000 di Toko Berkah POS jatuh tempo pada '.$today->copy()->addDays(2)->format('d/m/Y').'.';
+        $this->assertEquals($expectedMessage, $log->payload['message']);
+        $this->assertEquals(CustomerCampaignLog::STATUS_READY_TO_SEND, $log->status);
+    }
+
+    public function test_crm_generate_reminders_auto_dispatches_via_whatsapp_gateway_when_enabled(): void
+    {
+        $today = now()->startOfDay();
+        Setting::set('wa_service_url', 'http://localhost:3001');
+        Setting::set('wa_enabled', '1');
+        Setting::set('wa_receivable_reminder_mode', 'auto');
+        Setting::set('wa_auto_reminder', '1');
+
+        $mockWhatsApp = \Mockery::mock(WhatsAppService::class);
+        $mockWhatsApp->shouldReceive('status')->andReturn(['connected' => true, 'phone' => '628123456789']);
+        $mockWhatsApp->shouldReceive('send')
+            ->once()
+            ->with('6281999888777', \Mockery::type('string'))
+            ->andReturn(true);
+        $this->app->instance(WhatsAppService::class, $mockWhatsApp);
+
+        $customer = $this->createCustomer([
+            'name' => 'Dewi Lestari',
+            'no_telp' => '6281999888777',
+        ]);
+
+        $receivable = Receivable::create([
+            'customer_id' => $customer->id,
+            'invoice' => 'RCV-AUTO-001',
+            'total' => 200000,
+            'paid' => 0,
+            'due_date' => $today->copy()->addDays(1),
+            'status' => 'unpaid',
+        ]);
+
+        $this->artisan('crm:generate-reminders')->assertExitCode(0);
+
+        $log = CustomerCampaignLog::query()
+            ->where('receivable_id', $receivable->id)
+            ->firstOrFail();
+
+        $this->assertEquals(CustomerCampaignLog::STATUS_SENT, $log->status);
+        $this->assertNotNull($log->sent_at);
     }
 
     private function createUserWithPermissions(array $permissions): User

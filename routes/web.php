@@ -41,6 +41,7 @@ use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\LanguageController;
 use App\Http\Controllers\ManifestController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OgImageController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicPortalController;
@@ -82,7 +83,7 @@ Route::get('/dashboard/access', function () {
 })->middleware(['auth', 'verified'])->name('dashboard.access');
 
 // Public share routes (no login)
-Route::get('/og-image.png', [\App\Http\Controllers\OgImageController::class, 'show'])->name('og.image');
+Route::get('/og-image.png', [OgImageController::class, 'show'])->name('og.image');
 Route::get('/share/transactions/{invoice}', [DocumentController::class, 'publicInvoice'])
     ->name('transactions.public');
 

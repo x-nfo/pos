@@ -13,6 +13,7 @@ use App\Models\Transaction;
 use App\Services\CashierShiftService;
 use App\Services\LoyaltyService;
 use App\Services\PricingService;
+use App\Services\StockMutationService;
 use App\Services\UnitConversionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,7 +26,8 @@ class TransactionSyncController extends Controller
         protected CashierShiftService $cashierShiftService,
         protected PricingService $pricingService,
         protected LoyaltyService $loyaltyService,
-        protected UnitConversionService $unitConversionService
+        protected UnitConversionService $unitConversionService,
+        protected StockMutationService $stockMutationService
     ) {}
 
     /**
@@ -207,19 +209,47 @@ class TransactionSyncController extends Controller
                     $product->load('components');
                     foreach ($product->components as $component) {
                         $componentQty = (int) round((float) $component->pivot->qty * $lineItem['qty']);
+                        $stockBefore = (int) $component->stock;
+                        $stockAfter = $stockBefore - $componentQty;
+
                         ProductWarehouse::where([
                             'product_id' => $component->id,
                             'warehouse_id' => $activeShift->warehouse_id,
                         ])->decrement('stock', $componentQty);
                         $component->decrement('stock', $componentQty);
+
+                        $this->stockMutationService->recordSaleOut(
+                            product: $component,
+                            transaction: $transaction,
+                            qty: $componentQty,
+                            stockBefore: $stockBefore,
+                            stockAfter: $stockAfter,
+                            warehouseId: $activeShift->warehouse_id,
+                            notes: 'Komponen '.$component->title.' untuk bundle '.$product->title.' pada sync transaksi '.$transaction->invoice,
+                            userId: auth()->id()
+                        );
                     }
                 } else {
                     $baseQty = (int) round($lineItem['qty'] * (float) $lineItem['conversion_factor']);
+                    $stockBefore = (int) $product->stock;
+                    $stockAfter = $stockBefore - $baseQty;
+
                     ProductWarehouse::where([
                         'product_id' => $product->id,
                         'warehouse_id' => $activeShift->warehouse_id,
                     ])->decrement('stock', $baseQty);
                     $product->decrement('stock', $baseQty);
+
+                    $this->stockMutationService->recordSaleOut(
+                        product: $product,
+                        transaction: $transaction,
+                        qty: $baseQty,
+                        stockBefore: $stockBefore,
+                        stockAfter: $stockAfter,
+                        warehouseId: $activeShift->warehouse_id,
+                        notes: 'Sync offline penjualan transaksi '.$transaction->invoice,
+                        userId: auth()->id()
+                    );
                 }
             }
 

@@ -106,6 +106,7 @@ class OgImageController extends Controller
         if (str_contains($url, '/storage/')) {
             $relativePath = ltrim(parse_url($url, PHP_URL_PATH), '/');
             $relativePath = preg_replace('#^storage/#', '', $relativePath);
+
             return storage_path('app/public/'.$relativePath);
         }
 
@@ -152,24 +153,24 @@ class OgImageController extends Controller
         imagesetthickness($canvas, 8);
 
         // Cart Handle
-        imageline($canvas, (int)($x + $w * 0.12), (int)($y + $h * 0.22), (int)($x + $w * 0.26), (int)($y + $h * 0.22), $color);
-        imageline($canvas, (int)($x + $w * 0.26), (int)($y + $h * 0.22), (int)($x + $w * 0.33), (int)($y + $h * 0.58), $color);
+        imageline($canvas, (int) ($x + $w * 0.12), (int) ($y + $h * 0.22), (int) ($x + $w * 0.26), (int) ($y + $h * 0.22), $color);
+        imageline($canvas, (int) ($x + $w * 0.26), (int) ($y + $h * 0.22), (int) ($x + $w * 0.33), (int) ($y + $h * 0.58), $color);
 
         // Cart Basket
         imagepolygon($canvas, [
-            (int)($x + $w * 0.28), (int)($y + $h * 0.28),
-            (int)($x + $w * 0.88), (int)($y + $h * 0.28),
-            (int)($x + $w * 0.76), (int)($y + $h * 0.58),
-            (int)($x + $w * 0.33), (int)($y + $h * 0.58),
+            (int) ($x + $w * 0.28), (int) ($y + $h * 0.28),
+            (int) ($x + $w * 0.88), (int) ($y + $h * 0.28),
+            (int) ($x + $w * 0.76), (int) ($y + $h * 0.58),
+            (int) ($x + $w * 0.33), (int) ($y + $h * 0.58),
         ], 4, $color);
 
         // Basket Inner Grid Lines
-        imageline($canvas, (int)($x + $w * 0.30), (int)($y + $h * 0.43), (int)($x + $w * 0.82), (int)($y + $h * 0.43), $color);
-        imageline($canvas, (int)($x + $w * 0.58), (int)($y + $h * 0.28), (int)($x + $w * 0.54), (int)($y + $h * 0.58), $color);
+        imageline($canvas, (int) ($x + $w * 0.30), (int) ($y + $h * 0.43), (int) ($x + $w * 0.82), (int) ($y + $h * 0.43), $color);
+        imageline($canvas, (int) ($x + $w * 0.58), (int) ($y + $h * 0.28), (int) ($x + $w * 0.54), (int) ($y + $h * 0.58), $color);
 
         // Wheels
-        imagefilledellipse($canvas, (int)($x + $w * 0.42), (int)($y + $h * 0.72), 26, 26, $color);
-        imagefilledellipse($canvas, (int)($x + $w * 0.70), (int)($y + $h * 0.72), 26, 26, $color);
+        imagefilledellipse($canvas, (int) ($x + $w * 0.42), (int) ($y + $h * 0.72), 26, 26, $color);
+        imagefilledellipse($canvas, (int) ($x + $w * 0.70), (int) ($y + $h * 0.72), 26, 26, $color);
     }
 
     private function findFont(array $candidates): ?string

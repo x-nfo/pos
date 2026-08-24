@@ -309,6 +309,11 @@ class CrmAutomationService
     private function generateDueSoonCampaign(CarbonInterface $at): void
     {
         $contextKey = 'due-soon-'.$at->toDateString();
+        $template = Setting::get(
+            'wa_template_due_soon',
+            'Halo {{customer_name}}, ini pengingat tagihan invoice {{invoice}} sebesar Rp {{remaining}} akan jatuh tempo pada {{due_date}}. Mohon dapat melakukan pembayaran sebelum jatuh tempo. Terima kasih.'
+        );
+
         $campaign = CustomerCampaign::query()->firstOrCreate(
             ['context_key' => $contextKey],
             [
@@ -317,7 +322,7 @@ class CrmAutomationService
                 'status' => CustomerCampaign::STATUS_READY,
                 'channel' => CustomerCampaign::CHANNEL_INTERNAL,
                 'audience_filters' => ['receivable_status' => 'due_soon'],
-                'message_template' => 'Pengingat: invoice {{invoice}} jatuh tempo {{due_date}}',
+                'message_template' => $template,
                 'processed_at' => $at,
             ]
         );
@@ -329,13 +334,18 @@ class CrmAutomationService
                 ->whereBetween('due_date', [$at->copy()->startOfDay(), $at->copy()->addDays(3)->endOfDay()])
                 ->get();
 
-            $this->fillReceivableReminderLogs($campaign, $receivables, 'jatuh tempo');
+            $this->fillReceivableReminderLogs($campaign, $receivables, 'jatuh tempo', $template);
         }
     }
 
     private function generateOverdueCampaign(CarbonInterface $at): void
     {
         $contextKey = 'overdue-'.$at->toDateString();
+        $template = Setting::get(
+            'wa_template_overdue',
+            'Halo {{customer_name}}, tagihan invoice {{invoice}} sebesar Rp {{remaining}} telah melewati jatuh tempo ({{due_date}}). Mohon segera melakukan konfirmasi dan pelunasan pembayaran. Terima kasih.'
+        );
+
         $campaign = CustomerCampaign::query()->firstOrCreate(
             ['context_key' => $contextKey],
             [
@@ -344,7 +354,7 @@ class CrmAutomationService
                 'status' => CustomerCampaign::STATUS_READY,
                 'channel' => CustomerCampaign::CHANNEL_INTERNAL,
                 'audience_filters' => ['receivable_status' => 'overdue'],
-                'message_template' => 'Piutang {{invoice}} telah overdue sejak {{due_date}}',
+                'message_template' => $template,
                 'processed_at' => $at,
             ]
         );
@@ -356,7 +366,7 @@ class CrmAutomationService
                 ->whereDate('due_date', '<', $at->toDateString())
                 ->get();
 
-            $this->fillReceivableReminderLogs($campaign, $receivables, 'overdue');
+            $this->fillReceivableReminderLogs($campaign, $receivables, 'overdue', $template);
         }
     }
 
@@ -411,18 +421,40 @@ class CrmAutomationService
         }
     }
 
-    private function fillReceivableReminderLogs(CustomerCampaign $campaign, Collection $receivables, string $reason): void
+    private function fillReceivableReminderLogs(CustomerCampaign $campaign, Collection $receivables, string $reason, ?string $template = null): void
     {
-        foreach ($receivables as $receivable) {
-            $message = sprintf(
-                'Pengingat %s untuk invoice %s. Sisa tagihan Rp %s. Jatuh tempo %s.',
-                $reason,
-                $receivable->invoice,
-                number_format($receivable->remaining, 0, ',', '.'),
-                optional($receivable->due_date)?->format('d/m/Y') ?? '-'
-            );
+        $storeName = Setting::get('store_name', config('app.name', 'Point of Sales'));
+        $mode = Setting::get('wa_receivable_reminder_mode', 'manual');
+        $isAutoDispatch = $mode === 'auto' || Setting::getBool('wa_auto_reminder', false);
 
-            $campaign->logs()->create([
+        $waAvailable = $isAutoDispatch
+            && Setting::getBool('wa_enabled', false)
+            && Setting::get('wa_service_url')
+            && ($this->whatsAppService?->status()['connected'] ?? false);
+
+        foreach ($receivables as $receivable) {
+            $customerName = $receivable->customer?->name ?? 'Pelanggan';
+            $remaining = number_format($receivable->remaining, 0, ',', '.');
+            $total = number_format($receivable->total, 0, ',', '.');
+            $dueDate = optional($receivable->due_date)?->format('d/m/Y') ?? '-';
+
+            if ($template) {
+                $message = str_replace(
+                    ['{{customer_name}}', '{{name}}', '{{invoice}}', '{{remaining}}', '{{total}}', '{{due_date}}', '{{store_name}}', '{{reason}}'],
+                    [$customerName, $customerName, $receivable->invoice, $remaining, $total, $dueDate, $storeName, $reason],
+                    $template
+                );
+            } else {
+                $message = sprintf(
+                    'Pengingat %s untuk invoice %s. Sisa tagihan Rp %s. Jatuh tempo %s.',
+                    $reason,
+                    $receivable->invoice,
+                    $remaining,
+                    $dueDate
+                );
+            }
+
+            $log = $campaign->logs()->create([
                 'customer_id' => $receivable->customer_id,
                 'receivable_id' => $receivable->id,
                 'channel' => CustomerCampaign::CHANNEL_WHATSAPP_LINK,
@@ -434,6 +466,13 @@ class CrmAutomationService
                     'invoice' => $receivable->invoice,
                 ],
             ]);
+
+            if ($waAvailable && $receivable->customer?->no_telp) {
+                $sent = $this->whatsAppService->send($receivable->customer->no_telp, $message);
+                if ($sent) {
+                    $this->markLog($log, CustomerCampaignLog::STATUS_SENT);
+                }
+            }
         }
 
         $campaign->update([

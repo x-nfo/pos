@@ -20,19 +20,20 @@ Cetak receipt ke printer thermal (ESC/POS protocol) langsung dari browser via We
 
 ### Printer Settings
 - Paper size: 80mm / 58mm
-- Auto-print toggle (cetak otomatis setelah transaksi)
+- Auto-print toggle & driver pilihan (Browser Print, WebUSB Direct, WebBluetooth PWA)
 - WebUSB: koneksi printer thermal via USB langsung dari browser
+- WebBluetooth: koneksi printer thermal Bluetooth BLE langsung dari browser/PWA
 
-### WebUSB Print Button
-- Tombol "Thermal" di halaman print transaksi
-- Fetch HTML receipt → buka tab baru siap print
-- Dapat dikoneksikan ke printer thermal USB via WebUSB API
+### Thermal Print Options
+- Tombol "Print Browser", "WebUSB", dan "Bluetooth" di halaman print transaksi
+- Auto-print langsung berjalan otomatis saat checkout kasir selesai sesuai setting driver
 
 ## Route
 
 | Route | Method | Fungsi |
 |-------|--------|--------|
-| `pdf.transactions.thermal` | GET | HTML receipt thermal |
+| `transactions.print` | GET | Halaman cetak transaksi multi-driver (Browser, USB, Bluetooth) |
+| `pdf.transactions.thermal` | GET | HTML receipt thermal monospace |
 | `settings.printer` | GET | Halaman settings printer |
 | `settings.printer.update` | POST | Simpan settings printer |
 
@@ -65,6 +66,6 @@ Kembali              11.150
 
 ## Catatan
 
-- Untuk auto-print via USB: browser Chrome/Edge dengan WebUSB support
-- Untuk print via jaringan: gunakan `NetworkPrintConnector` atau `WindowsPrintConnector`
-- Setting auto-print belum terintegrasi penuh dengan checkout flow
+- Untuk direct print via USB: browser Chrome/Edge dengan WebUSB API support
+- Untuk direct print via Bluetooth: browser Chrome Android/Desktop dengan Web Bluetooth API support
+- Auto-print terintegrasi penuh pada halaman invoice/print setelah transaksi kasir berhasil diselesaikan
