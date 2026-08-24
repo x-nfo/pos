@@ -14,6 +14,7 @@ import {
     IconQrcode,
     IconRefresh,
     IconUsb,
+    IconBluetooth,
     IconBolt,
 } from "@tabler/icons-react";
 import QRCode from "qrcode";
@@ -23,6 +24,7 @@ import ThermalReceipt, {
 import ShippingLabel from "@/Components/Receipt/ShippingLabel";
 import { useAuthorization } from "@/Utils/authorization";
 import { printViaWebUsb } from "@/Utils/webUsbPrinter";
+import { printViaBluetooth } from "@/Utils/webBluetoothPrinter";
 import toast from "react-hot-toast";
 import axios from "axios";
 
@@ -68,6 +70,7 @@ export default function Print({ transaction, defaultPaperSize = "58mm", autoPrin
     const [isRetryingQris, setIsRetryingQris] = useState(false);
     const [isDirectPrinting, setIsDirectPrinting] = useState(false);
     const [isWebUsbPrinting, setIsWebUsbPrinting] = useState(false);
+    const [isBluetoothPrinting, setIsBluetoothPrinting] = useState(false);
     const hasAutoPrinted = useRef(false);
     const canConfirmPayment = can("transactions-confirm-payment");
 
@@ -95,6 +98,19 @@ export default function Print({ transaction, defaultPaperSize = "58mm", autoPrin
             toast.error(e.message || "Gagal mencetak via WebUSB. Pastikan printer USB terhubung.");
         } finally {
             setIsWebUsbPrinting(false);
+        }
+    };
+
+    const handleBluetoothPrint = async () => {
+        setIsBluetoothPrinting(true);
+        try {
+            const paperSize = printMode === "thermal58" ? "58mm" : "80mm";
+            await printViaBluetooth(transaction, store, paperSize);
+            toast.success("Struk berhasil dikirim ke printer Bluetooth!");
+        } catch (e) {
+            toast.error(e.message || "Gagal mencetak via Bluetooth. Pastikan Bluetooth aktif.");
+        } finally {
+            setIsBluetoothPrinting(false);
         }
     };
 
@@ -277,6 +293,15 @@ export default function Print({ transaction, defaultPaperSize = "58mm", autoPrin
                                     <IconUsb size={14} />
                                     {isWebUsbPrinting ? "Mengirim..." : "WebUSB"}
                                 </button>
+                                <button
+                                    type="button"
+                                    onClick={handleBluetoothPrint}
+                                    disabled={isBluetoothPrinting}
+                                    className="px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-transparent hover:bg-amber-100/60 dark:hover:bg-amber-900/40 text-amber-900 dark:text-amber-200 font-semibold transition-all flex items-center gap-1 disabled:opacity-50"
+                                >
+                                    <IconBluetooth size={14} />
+                                    {isBluetoothPrinting ? "Connecting..." : "Bluetooth"}
+                                </button>
                             </div>
                         </div>
                     )}
@@ -429,6 +454,16 @@ export default function Print({ transaction, defaultPaperSize = "58mm", autoPrin
 
                             {(printMode === "thermal80" || printMode === "thermal58") && (
                                 <>
+                                    <button
+                                        type="button"
+                                        onClick={handleBluetoothPrint}
+                                        disabled={isBluetoothPrinting}
+                                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold transition-all shadow-sm w-full sm:w-auto disabled:opacity-50"
+                                        title="Cetak Struk Langsung via Web Bluetooth ESC/POS (Bluetooth Thermal Printer)"
+                                    >
+                                        <IconBluetooth size={18} className="text-indigo-500" />
+                                        {isBluetoothPrinting ? "Connecting..." : "Bluetooth"}
+                                    </button>
                                     <button
                                         type="button"
                                         onClick={handleWebUsbPrint}
