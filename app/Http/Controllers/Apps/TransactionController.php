@@ -878,7 +878,7 @@ class TransactionController extends Controller
                 }
             }
 
-            if (Setting::getBool('printer_auto_print', false) && $transaction->payment_status === 'paid') {
+            if (Setting::getBool('printer_auto_print', false) && Setting::get('printer_driver', 'browser') === 'server' && $transaction->payment_status === 'paid') {
                 try {
                     $thermalPrintService = app(ThermalPrintService::class);
                     $thermalPrintService->printDirectToCups($transaction);
@@ -902,11 +902,22 @@ class TransactionController extends Controller
 
         $defaultPaperSize = Setting::get('printer_paper_size', '58mm');
         $autoPrint = Setting::getBool('printer_auto_print', false);
+        $autoPrintDriver = Setting::get('printer_driver', 'browser');
+
+        $enabledButtons = [
+            'bluetooth' => Setting::getBool('printer_enable_bluetooth', true),
+            'webusb' => Setting::getBool('printer_enable_webusb', true),
+            'server' => Setting::getBool('printer_enable_server', true),
+            'pdf_receipt' => Setting::getBool('printer_enable_pdf_receipt', true),
+            'pdf_invoice' => Setting::getBool('printer_enable_pdf_invoice', true),
+        ];
 
         return Inertia::render('Dashboard/Transactions/Print', [
             'transaction' => $transaction,
             'defaultPaperSize' => $defaultPaperSize,
             'autoPrint' => $autoPrint,
+            'autoPrintDriver' => $autoPrintDriver,
+            'enabledButtons' => $enabledButtons,
         ]);
     }
 

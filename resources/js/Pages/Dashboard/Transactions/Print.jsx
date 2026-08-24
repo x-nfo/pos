@@ -60,7 +60,19 @@ function QrisCode({ value, size = 180 }) {
     );
 }
 
-export default function Print({ transaction, defaultPaperSize = "58mm", autoPrint = false }) {
+export default function Print({
+    transaction,
+    defaultPaperSize = "58mm",
+    autoPrint = false,
+    autoPrintDriver = "browser",
+    enabledButtons = {
+        bluetooth: true,
+        webusb: true,
+        server: true,
+        pdf_receipt: true,
+        pdf_invoice: true,
+    },
+}) {
     const { storeProfile, branding, flash } = usePage().props;
     const { can } = useAuthorization();
     const initialMode = defaultPaperSize === "58mm" ? "thermal58" : defaultPaperSize === "80mm" ? "thermal80" : "invoice";
@@ -227,12 +239,22 @@ export default function Print({ transaction, defaultPaperSize = "58mm", autoPrin
         if (shouldAutoPrint && paymentStatusKey === "paid" && !hasAutoPrinted.current) {
             hasAutoPrinted.current = true;
             const timer = setTimeout(() => {
-                toast.success("Cetak otomatis dipicu");
-                window.print();
+                if (autoPrintDriver === "bluetooth") {
+                    toast.success("Memicu auto-print via Bluetooth...");
+                    handleBluetoothPrint();
+                } else if (autoPrintDriver === "webusb") {
+                    toast.success("Memicu auto-print via WebUSB...");
+                    handleWebUsbPrint();
+                } else if (autoPrintDriver === "server") {
+                    toast.success("Auto-print dikirim via Server Spooler (CUPS)");
+                } else {
+                    toast.success("Memicu cetak otomatis browser...");
+                    window.print();
+                }
             }, 600);
             return () => clearTimeout(timer);
         }
-    }, [autoPrint, paymentStatusKey]);
+    }, [autoPrint, autoPrintDriver, paymentStatusKey]);
 
     const SimpleBarcode = ({ value }) => {
         const bars = useMemo(() => {
@@ -440,7 +462,7 @@ export default function Print({ transaction, defaultPaperSize = "58mm", autoPrin
                                     </button>
                                 )}
 
-                            {printMode === "invoice" && (
+                            {printMode === "invoice" && enabledButtons?.pdf_invoice !== false && (
                                 <a
                                     href={route("pdf.transactions.invoice", transaction.invoice)}
                                     target="_blank"
@@ -454,48 +476,56 @@ export default function Print({ transaction, defaultPaperSize = "58mm", autoPrin
 
                             {(printMode === "thermal80" || printMode === "thermal58") && (
                                 <>
-                                    <button
-                                        type="button"
-                                        onClick={handleBluetoothPrint}
-                                        disabled={isBluetoothPrinting}
-                                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold transition-all shadow-sm w-full sm:w-auto disabled:opacity-50"
-                                        title="Cetak Struk Langsung via Web Bluetooth ESC/POS (Bluetooth Thermal Printer)"
-                                    >
-                                        <IconBluetooth size={18} className="text-indigo-500" />
-                                        {isBluetoothPrinting ? "Connecting..." : "Bluetooth"}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleWebUsbPrint}
-                                        disabled={isWebUsbPrinting}
-                                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold transition-all shadow-sm w-full sm:w-auto disabled:opacity-50"
-                                        title="Cetak Struk Langsung via WebUSB ESC/POS (USB Thermal Printer)"
-                                    >
-                                        <IconUsb size={18} className="text-blue-500" />
-                                        {isWebUsbPrinting ? "Mengirim..." : "WebUSB"}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleDirectPrint}
-                                        disabled={isDirectPrinting}
-                                        className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto disabled:opacity-50"
-                                        title="Cetak Struk via Server Spooler CUPS / LPR"
-                                    >
-                                        <IconPrinter size={18} />
-                                        {isDirectPrinting ? "Mencetak..." : "Server Thermal"}
-                                    </button>
-                                    <a
-                                        href={route("pdf.transactions.receipt", {
-                                            invoice: transaction.invoice,
-                                            size: printMode === "thermal58" ? "58" : "80",
-                                        })}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-sm font-semibold text-white transition-colors w-full sm:w-auto"
-                                    >
-                                        <IconPrinter size={18} />
-                                        PDF Struk {printMode === "thermal58" ? "58mm" : "80mm"}
-                                    </a>
+                                    {enabledButtons?.bluetooth !== false && (
+                                        <button
+                                            type="button"
+                                            onClick={handleBluetoothPrint}
+                                            disabled={isBluetoothPrinting}
+                                            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold transition-all shadow-sm w-full sm:w-auto disabled:opacity-50"
+                                            title="Cetak Struk Langsung via Web Bluetooth ESC/POS (Bluetooth Thermal Printer)"
+                                        >
+                                            <IconBluetooth size={18} className="text-indigo-500" />
+                                            {isBluetoothPrinting ? "Connecting..." : "Bluetooth"}
+                                        </button>
+                                    )}
+                                    {enabledButtons?.webusb !== false && (
+                                        <button
+                                            type="button"
+                                            onClick={handleWebUsbPrint}
+                                            disabled={isWebUsbPrinting}
+                                            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold transition-all shadow-sm w-full sm:w-auto disabled:opacity-50"
+                                            title="Cetak Struk Langsung via WebUSB ESC/POS (USB Thermal Printer)"
+                                        >
+                                            <IconUsb size={18} className="text-blue-500" />
+                                            {isWebUsbPrinting ? "Mengirim..." : "WebUSB"}
+                                        </button>
+                                    )}
+                                    {enabledButtons?.server !== false && (
+                                        <button
+                                            type="button"
+                                            onClick={handleDirectPrint}
+                                            disabled={isDirectPrinting}
+                                            className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto disabled:opacity-50"
+                                            title="Cetak Struk via Server Spooler CUPS / LPR"
+                                        >
+                                            <IconPrinter size={18} />
+                                            {isDirectPrinting ? "Mencetak..." : "Server Thermal"}
+                                        </button>
+                                    )}
+                                    {enabledButtons?.pdf_receipt !== false && (
+                                        <a
+                                            href={route("pdf.transactions.receipt", {
+                                                invoice: transaction.invoice,
+                                                size: printMode === "thermal58" ? "58" : "80",
+                                            })}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-sm font-semibold text-white transition-colors w-full sm:w-auto"
+                                        >
+                                            <IconPrinter size={18} />
+                                            PDF Struk {printMode === "thermal58" ? "58mm" : "80mm"}
+                                        </a>
+                                    )}
                                 </>
                             )}
 

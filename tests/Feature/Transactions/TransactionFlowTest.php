@@ -610,6 +610,7 @@ class TransactionFlowTest extends TestCase
                     ->component('Dashboard/Transactions/Print')
                     ->where('autoPrint', true)
                     ->where('defaultPaperSize', '58mm')
+                    ->where('autoPrintDriver', 'browser')
             );
     }
 }

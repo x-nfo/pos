@@ -14,7 +14,7 @@ class PaymentWebhookController extends Controller
 {
     private function autoPrintIfEnabled(Transaction $transaction): void
     {
-        if (Setting::getBool('printer_auto_print', false)) {
+        if (Setting::getBool('printer_auto_print', false) && Setting::get('printer_driver', 'browser') === 'server') {
             try {
                 $transaction->loadMissing(['details.product', 'details.unit', 'cashier', 'customer']);
                 app(ThermalPrintService::class)->printDirectToCups($transaction);

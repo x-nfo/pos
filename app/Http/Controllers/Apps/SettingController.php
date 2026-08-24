@@ -154,6 +154,12 @@ class SettingController extends Controller
             'settings' => [
                 'printer_auto_print' => Setting::getBool('printer_auto_print', false),
                 'printer_paper_size' => Setting::get('printer_paper_size', '80mm'),
+                'printer_driver' => Setting::get('printer_driver', 'browser'),
+                'printer_enable_bluetooth' => Setting::getBool('printer_enable_bluetooth', true),
+                'printer_enable_webusb' => Setting::getBool('printer_enable_webusb', true),
+                'printer_enable_server' => Setting::getBool('printer_enable_server', true),
+                'printer_enable_pdf_receipt' => Setting::getBool('printer_enable_pdf_receipt', true),
+                'printer_enable_pdf_invoice' => Setting::getBool('printer_enable_pdf_invoice', true),
             ],
         ]);
     }
@@ -163,10 +169,22 @@ class SettingController extends Controller
         $validated = $request->validate([
             'printer_auto_print' => ['boolean'],
             'printer_paper_size' => ['required', 'in:80mm,58mm'],
+            'printer_driver' => ['required', 'in:browser,bluetooth,webusb,server'],
+            'printer_enable_bluetooth' => ['boolean'],
+            'printer_enable_webusb' => ['boolean'],
+            'printer_enable_server' => ['boolean'],
+            'printer_enable_pdf_receipt' => ['boolean'],
+            'printer_enable_pdf_invoice' => ['boolean'],
         ]);
 
         Setting::set('printer_auto_print', $validated['printer_auto_print'] ? '1' : '0', 'Auto-print receipt setelah transaksi');
         Setting::set('printer_paper_size', $validated['printer_paper_size'], 'Ukuran kertas printer thermal');
+        Setting::set('printer_driver', $validated['printer_driver'], 'Driver/metode pencetakan otomatis');
+        Setting::set('printer_enable_bluetooth', ($validated['printer_enable_bluetooth'] ?? true) ? '1' : '0', 'Tampilkan tombol cetak Bluetooth');
+        Setting::set('printer_enable_webusb', ($validated['printer_enable_webusb'] ?? true) ? '1' : '0', 'Tampilkan tombol cetak WebUSB');
+        Setting::set('printer_enable_server', ($validated['printer_enable_server'] ?? true) ? '1' : '0', 'Tampilkan tombol cetak Server Spooler');
+        Setting::set('printer_enable_pdf_receipt', ($validated['printer_enable_pdf_receipt'] ?? true) ? '1' : '0', 'Tampilkan tombol PDF Struk');
+        Setting::set('printer_enable_pdf_invoice', ($validated['printer_enable_pdf_invoice'] ?? true) ? '1' : '0', 'Tampilkan tombol PDF Invoice');
 
         return back()->with('success', 'Pengaturan printer disimpan.');
     }

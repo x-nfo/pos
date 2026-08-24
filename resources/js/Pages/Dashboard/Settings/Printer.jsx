@@ -17,6 +17,12 @@ export default function Printer({ settings }) {
     const { data, setData, post, processing, errors } = useForm({
         printer_auto_print: settings.printer_auto_print || false,
         printer_paper_size: settings.printer_paper_size || "80mm",
+        printer_driver: settings.printer_driver || "browser",
+        printer_enable_bluetooth: settings.printer_enable_bluetooth ?? true,
+        printer_enable_webusb: settings.printer_enable_webusb ?? true,
+        printer_enable_server: settings.printer_enable_server ?? true,
+        printer_enable_pdf_receipt: settings.printer_enable_pdf_receipt ?? true,
+        printer_enable_pdf_invoice: settings.printer_enable_pdf_invoice ?? true,
     });
 
     const submit = (e) => {
@@ -159,6 +165,182 @@ export default function Printer({ settings }) {
                                         className="sr-only peer"
                                     />
                                     <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-slate-600 peer-checked:bg-primary-600"></div>
+                                </label>
+                            </div>
+
+                            {data.printer_auto_print && (
+                                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                                        Pilih Metode / Target Driver Auto-Print:
+                                    </label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                        {/* Bluetooth Option */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setData("printer_driver", "bluetooth")}
+                                            className={`p-3 rounded-xl border text-left transition-all flex items-start gap-3 ${
+                                                data.printer_driver === "bluetooth"
+                                                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 shadow-sm"
+                                                    : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300"
+                                            }`}
+                                        >
+                                            <IconBluetooth className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs font-bold flex items-center gap-1">
+                                                    Web Bluetooth API
+                                                    {data.printer_driver === "bluetooth" && <span className="text-[10px] bg-indigo-500 text-white px-1.5 py-0.2 rounded-full">Aktif</span>}
+                                                </p>
+                                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                                    Otomatis kirim perintah ke printer Bluetooth (Android / Chrome).
+                                                </p>
+                                            </div>
+                                        </button>
+
+                                        {/* WebUSB Option */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setData("printer_driver", "webusb")}
+                                            className={`p-3 rounded-xl border text-left transition-all flex items-start gap-3 ${
+                                                data.printer_driver === "webusb"
+                                                    ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 shadow-sm"
+                                                    : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300"
+                                            }`}
+                                        >
+                                            <IconUsb className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs font-bold flex items-center gap-1">
+                                                    WebUSB API
+                                                    {data.printer_driver === "webusb" && <span className="text-[10px] bg-blue-500 text-white px-1.5 py-0.2 rounded-full">Aktif</span>}
+                                                </p>
+                                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                                    Otomatis kirim ke printer kabel USB via WebUSB browser.
+                                                </p>
+                                            </div>
+                                        </button>
+
+                                        {/* Server Spooler CUPS */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setData("printer_driver", "server")}
+                                            className={`p-3 rounded-xl border text-left transition-all flex items-start gap-3 ${
+                                                data.printer_driver === "server"
+                                                    ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 shadow-sm"
+                                                    : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300"
+                                            }`}
+                                        >
+                                            <IconDeviceDesktop className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs font-bold flex items-center gap-1">
+                                                    Server Spooler (CUPS)
+                                                    {data.printer_driver === "server" && <span className="text-[10px] bg-emerald-500 text-white px-1.5 py-0.2 rounded-full">Aktif</span>}
+                                                </p>
+                                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                                    Backend otomatis mencetak ke spooler server tanpa dialog browser.
+                                                </p>
+                                            </div>
+                                        </button>
+
+                                        {/* Browser Print */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setData("printer_driver", "browser")}
+                                            className={`p-3 rounded-xl border text-left transition-all flex items-start gap-3 ${
+                                                data.printer_driver === "browser"
+                                                    ? "border-amber-500 bg-amber-50/50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 shadow-sm"
+                                                    : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300"
+                                            }`}
+                                        >
+                                            <IconPrinter className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs font-bold flex items-center gap-1">
+                                                    Cetak Browser (Dialog)
+                                                    {data.printer_driver === "browser" && <span className="text-[10px] bg-amber-500 text-white px-1.5 py-0.2 rounded-full">Aktif</span>}
+                                                </p>
+                                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                                    Otomatis membuka dialog cetak standar browser (window.print).
+                                                </p>
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Visible Print Buttons Configuration Card */}
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-1">
+                                    Tombol Opsi Cetak yang Ditampilkan
+                                </label>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    Pilih tombol metode cetak yang ingin ditampilkan di halaman nota agar tampilan ringkas
+                                </p>
+                            </div>
+
+                            <div className="space-y-2 pt-1">
+                                <label className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 cursor-pointer">
+                                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                        <IconBluetooth className="w-4 h-4 text-indigo-500" />
+                                        Tombol Bluetooth (Web Bluetooth)
+                                    </span>
+                                    <input
+                                        type="checkbox"
+                                        checked={data.printer_enable_bluetooth}
+                                        onChange={(e) => setData("printer_enable_bluetooth", e.target.checked)}
+                                        className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-slate-300 dark:border-slate-700"
+                                    />
+                                </label>
+
+                                <label className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 cursor-pointer">
+                                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                        <IconUsb className="w-4 h-4 text-blue-500" />
+                                        Tombol WebUSB (USB Thermal)
+                                    </span>
+                                    <input
+                                        type="checkbox"
+                                        checked={data.printer_enable_webusb}
+                                        onChange={(e) => setData("printer_enable_webusb", e.target.checked)}
+                                        className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-slate-300 dark:border-slate-700"
+                                    />
+                                </label>
+
+                                <label className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 cursor-pointer">
+                                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                        <IconDeviceDesktop className="w-4 h-4 text-emerald-500" />
+                                        Tombol Server Thermal (CUPS)
+                                    </span>
+                                    <input
+                                        type="checkbox"
+                                        checked={data.printer_enable_server}
+                                        onChange={(e) => setData("printer_enable_server", e.target.checked)}
+                                        className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-slate-300 dark:border-slate-700"
+                                    />
+                                </label>
+
+                                <label className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 cursor-pointer">
+                                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                        <IconPrinter className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                                        Tombol PDF Struk Thermal
+                                    </span>
+                                    <input
+                                        type="checkbox"
+                                        checked={data.printer_enable_pdf_receipt}
+                                        onChange={(e) => setData("printer_enable_pdf_receipt", e.target.checked)}
+                                        className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-slate-300 dark:border-slate-700"
+                                    />
+                                </label>
+
+                                <label className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 cursor-pointer">
+                                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                        <IconFileText className="w-4 h-4 text-primary-500" />
+                                        Tombol PDF Invoice A4
+                                    </span>
+                                    <input
+                                        type="checkbox"
+                                        checked={data.printer_enable_pdf_invoice}
+                                        onChange={(e) => setData("printer_enable_pdf_invoice", e.target.checked)}
+                                        className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-slate-300 dark:border-slate-700"
+                                    />
                                 </label>
                             </div>
                         </div>
