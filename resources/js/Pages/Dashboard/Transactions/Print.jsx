@@ -287,46 +287,6 @@ export default function Print({
 
             <div className="min-h-screen bg-slate-100 dark:bg-slate-950 py-8 px-4 print:bg-white print:p-0 print:m-0 print:min-h-0">
                 <div className="max-w-4xl mx-auto space-y-6 print:max-w-none print:m-0 print:p-0 print:space-y-0">
-                    {/* Auto-Print Active Banner */}
-                    {autoPrint && (
-                        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-300 print:hidden shadow-sm">
-                            <div className="flex items-center gap-2.5">
-                                <IconBolt className="w-5 h-5 text-amber-500 shrink-0 animate-pulse" />
-                                <div>
-                                    <p className="font-bold text-sm text-slate-900 dark:text-white">Auto-Print Aktif</p>
-                                    <p className="text-slate-600 dark:text-slate-400">Struk otomatis dipicu untuk transaksi lunas saat halaman dibuka.</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => handlePrint()}
-                                    className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white font-semibold transition-all shadow-sm flex items-center gap-1"
-                                >
-                                    <IconPrinter size={14} />
-                                    Cetak Browser
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleWebUsbPrint}
-                                    disabled={isWebUsbPrinting}
-                                    className="px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-transparent hover:bg-amber-100/60 dark:hover:bg-amber-900/40 text-amber-900 dark:text-amber-200 font-semibold transition-all flex items-center gap-1 disabled:opacity-50"
-                                >
-                                    <IconUsb size={14} />
-                                    {isWebUsbPrinting ? "Mengirim..." : "WebUSB"}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleBluetoothPrint}
-                                    disabled={isBluetoothPrinting}
-                                    className="px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-transparent hover:bg-amber-100/60 dark:hover:bg-amber-900/40 text-amber-900 dark:text-amber-200 font-semibold transition-all flex items-center gap-1 disabled:opacity-50"
-                                >
-                                    <IconBluetooth size={14} />
-                                    {isBluetoothPrinting ? "Connecting..." : "Bluetooth"}
-                                </button>
-                            </div>
-                        </div>
-                    )}
                     {/* Action Bar */}
                     <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
                         <Link
