@@ -165,7 +165,7 @@
                 </td>
                 <td style="text-align: left;">
                     <div class="text-bold" style="font-size: 13pt; line-height: 1.1;">{{ $store['name'] }} </div>
-                    <div class="text-small text-muted" style="margin-top: 3pt;font-size: 7pt;">{{ Str::limit($store['address'], 60) }}
+                    <div class="text-small text-muted" style="margin-top: 3pt;font-size: 7pt;">{{ \Illuminate\Support\Str::limit($store['address'], 60) }}
                     </div>
                     <div class="text-small text-muted" style="margin-top: 2pt;letter-spacing: 0.7pt;">
                         {{ $store['phone'] }}@if ($store['phone'] && $store['email'])
@@ -189,20 +189,20 @@
                 <td style="padding-right: 5pt; width: 65%;">
                     <div class="section-box">
                         <div class="title-label">Penerima</div>
-                        <div class="text-bold">{{ $transaction->customer->name ?? 'Umum' }}</div>
+                        <div class="text-bold">{{ $transaction->customer?->name ?? 'Umum' }}</div>
                         <div class="text-small text-muted" style="margin-top: 5px; margin-bottom: 5px;">
-                            {{ $transaction->customer->no_telp ?? '-' }}</div>
+                            {{ $transaction->customer?->no_telp ?? '-' }}</div>
                         <div class="text-small text-muted">
-                            {{ Str::limit($transaction->customer->address ?? 'No Address', 80) }}</div>
+                            {{ \Illuminate\Support\Str::limit($transaction->customer?->address ?? 'No Address', 80) }}</div>
                         <div class="text-small text-muted" style="margin-top:2pt;">
-                            {{ $transaction->customer->village_name ?? '-' }}
-                            @if ($transaction->customer->district_name)
+                            {{ $transaction->customer?->village_name ?? '-' }}
+                            @if ($transaction->customer?->district_name)
                                 , {{ $transaction->customer->district_name }}
                             @endif
-                            @if ($transaction->customer->regency_name)
+                            @if ($transaction->customer?->regency_name)
                                 , {{ $transaction->customer->regency_name }}
                             @endif
-                            @if ($transaction->customer->province_name)
+                            @if ($transaction->customer?->province_name)
                                 , {{ $transaction->customer->province_name }}
                             @endif
                         </div>
@@ -231,7 +231,7 @@
         <div style="height: 50pt; overflow: hidden;">
             <ul>
                 @foreach ($transaction->details->take(3) as $detail)
-                    <li>{{ Str::limit($detail->product->title, 40) }} ({{ $detail->qty }}x)</li>
+                    <li>{{ \Illuminate\Support\Str::limit($detail->product?->title ?? 'Produk', 40) }} ({{ $detail->qty }}x)</li>
                 @endforeach
             </ul>
         </div>
@@ -240,7 +240,7 @@
             <table style="table-layout: auto;">
                 <tr>
                     <td class="text-muted" style="vertical-align: bottom; padding-bottom: 2pt;line-height: 1.5;">
-                        Admin: <strong>{{ $transaction->cashier->name ?? '-' }}</strong><br>
+                        Admin: <strong>{{ $transaction->cashier?->name ?? '-' }}</strong><br>
                         Dicetak: {{ now()->format('d/m/Y H:i') }}
                     </td>
 
