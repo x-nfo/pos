@@ -208,12 +208,18 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::post('crm-campaigns/{crmCampaign}/cancel', [CrmCampaignController::class, 'cancel'])
         ->middleware('permission:crm-campaigns-update')
         ->name('crm-campaigns.cancel');
+    Route::post('crm-campaigns/{crmCampaign}/dispatch', [CrmCampaignController::class, 'dispatchCampaign'])
+        ->middleware('permission:crm-campaigns-update')
+        ->name('crm-campaigns.dispatch');
     Route::post('crm-campaign-logs/{log}/mark-sent', [CrmCampaignController::class, 'markLogSent'])
         ->middleware('permission:crm-campaigns-update')
         ->name('crm-campaign-logs.mark-sent');
     Route::post('crm-campaign-logs/{log}/skip', [CrmCampaignController::class, 'markLogSkipped'])
         ->middleware('permission:crm-campaigns-update')
         ->name('crm-campaign-logs.skip');
+    Route::post('crm-campaign-logs/{log}/dispatch', [CrmCampaignController::class, 'dispatchLog'])
+        ->middleware('permission:crm-campaigns-update')
+        ->name('crm-campaign-logs.dispatch');
     Route::get('crm-reminders', [CrmReminderController::class, 'index'])
         ->middleware('permission:crm-reminders-access')
         ->name('crm-reminders.index');

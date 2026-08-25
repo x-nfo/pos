@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\SendWhatsAppCampaignLogJob;
 use App\Models\Customer;
 use App\Models\CustomerCampaign;
 use App\Models\CustomerCampaignLog;
@@ -141,9 +142,8 @@ class CrmAutomationService
             'segments' => $customer->segments->pluck('name')->values()->all(),
         ])->values()->all();
 
-        $waAvailable = Setting::getBool('wa_enabled', false)
-            && Setting::get('wa_service_url')
-            && $this->whatsAppService?->status()['connected'] ?? false;
+        $shouldQueueWhatsApp = Setting::getBool('wa_enabled', false)
+            && ! empty(Setting::get('wa_service_url'));
 
         foreach ($audience as $customer) {
             $payload = $this->buildCustomerPayload($campaign, $customer);
@@ -155,11 +155,8 @@ class CrmAutomationService
                 'payload' => $payload,
             ]);
 
-            if ($waAvailable && $customer->no_telp) {
-                $sent = $this->whatsAppService->send($customer->no_telp, $payload['message']);
-                if ($sent) {
-                    $this->markLog($log, CustomerCampaignLog::STATUS_SENT);
-                }
+            if ($shouldQueueWhatsApp && $customer->no_telp) {
+                SendWhatsAppCampaignLogJob::dispatch($log);
             }
         }
 
@@ -421,16 +418,41 @@ class CrmAutomationService
         }
     }
 
+    public function dispatchCampaignQueue(CustomerCampaign $campaign): int
+    {
+        $logs = $campaign->logs()
+            ->with(['customer', 'receivable.customer'])
+            ->whereIn('status', [
+                CustomerCampaignLog::STATUS_PENDING,
+                CustomerCampaignLog::STATUS_READY_TO_SEND,
+            ])
+            ->get();
+
+        $dispatched = 0;
+        foreach ($logs as $log) {
+            SendWhatsAppCampaignLogJob::dispatch($log);
+            $dispatched++;
+        }
+
+        return $dispatched;
+    }
+
+    public function dispatchLogQueue(CustomerCampaignLog $log): bool
+    {
+        SendWhatsAppCampaignLogJob::dispatch($log);
+
+        return true;
+    }
+
     private function fillReceivableReminderLogs(CustomerCampaign $campaign, Collection $receivables, string $reason, ?string $template = null): void
     {
         $storeName = Setting::get('store_name', config('app.name', 'Point of Sales'));
         $mode = Setting::get('wa_receivable_reminder_mode', 'manual');
         $isAutoDispatch = $mode === 'auto' || Setting::getBool('wa_auto_reminder', false);
 
-        $waAvailable = $isAutoDispatch
+        $shouldQueueWhatsApp = $isAutoDispatch
             && Setting::getBool('wa_enabled', false)
-            && Setting::get('wa_service_url')
-            && ($this->whatsAppService?->status()['connected'] ?? false);
+            && ! empty(Setting::get('wa_service_url'));
 
         foreach ($receivables as $receivable) {
             $customerName = $receivable->customer?->name ?? 'Pelanggan';
@@ -467,11 +489,8 @@ class CrmAutomationService
                 ],
             ]);
 
-            if ($waAvailable && $receivable->customer?->no_telp) {
-                $sent = $this->whatsAppService->send($receivable->customer->no_telp, $message);
-                if ($sent) {
-                    $this->markLog($log, CustomerCampaignLog::STATUS_SENT);
-                }
+            if ($shouldQueueWhatsApp && $receivable->customer?->no_telp) {
+                SendWhatsAppCampaignLogJob::dispatch($log);
             }
         }
 

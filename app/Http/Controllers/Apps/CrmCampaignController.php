@@ -135,6 +135,20 @@ class CrmCampaignController extends Controller
         return back()->with('success', 'Log campaign dilewati.');
     }
 
+    public function dispatchCampaign(CustomerCampaign $crmCampaign)
+    {
+        $count = $this->crmAutomationService->dispatchCampaignQueue($crmCampaign);
+
+        return back()->with('success', "{$count} pesan WhatsApp telah dimasukkan ke antrean pengiriman (Queue).");
+    }
+
+    public function dispatchLog(CustomerCampaignLog $log)
+    {
+        $this->crmAutomationService->dispatchLogQueue($log);
+
+        return back()->with('success', 'Pesan WhatsApp telah dimasukkan ke antrean pengiriman (Queue).');
+    }
+
     public function shareTransaction(Transaction $transaction, Request $request)
     {
         $campaign = $this->crmAutomationService->createInvoiceShareCampaignForTransaction($transaction, $request->user()->id);

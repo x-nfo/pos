@@ -3,7 +3,7 @@ import DashboardLayout from "@/Layouts/DashboardLayout";
 import { Head, Link, router } from "@inertiajs/react";
 import Button from "@/Components/Dashboard/Button";
 import Table from "@/Components/Dashboard/Table";
-import { IconArrowLeft, IconBrandWhatsapp, IconChecks, IconPlayerPlay, IconPlayerStop } from "@tabler/icons-react";
+import { IconArrowLeft, IconBrandWhatsapp, IconChecks, IconPlayerPlay, IconPlayerStop, IconSend } from "@tabler/icons-react";
 import toast from "react-hot-toast";
 
 const formatDateTime = (value) =>
@@ -17,6 +17,22 @@ export default function Show({ campaign }) {
             preserveScroll: true,
             onSuccess: () => toast.success("Campaign berhasil diproses"),
             onError: () => toast.error("Gagal memproses campaign"),
+        });
+    };
+
+    const dispatchCampaign = () => {
+        router.post(route("crm-campaigns.dispatch", campaign.id), {}, {
+            preserveScroll: true,
+            onSuccess: () => toast.success("Antrean pengiriman WhatsApp telah dipicu"),
+            onError: () => toast.error("Gagal mendispatch antrean campaign"),
+        });
+    };
+
+    const dispatchLog = (logId) => {
+        router.post(route("crm-campaign-logs.dispatch", logId), {}, {
+            preserveScroll: true,
+            onSuccess: () => toast.success("Pesan dimasukkan ke antrean pengiriman"),
+            onError: () => toast.error("Gagal mendispatch pesan ke antrean"),
         });
     };
 
@@ -43,15 +59,26 @@ export default function Show({ campaign }) {
                             {campaign.type} • status {campaign.status} • diproses {formatDateTime(campaign.processed_at)}
                         </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                         {campaign.status === "draft" && (
                             <button
                                 type="button"
                                 onClick={processCampaign}
-                                className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-600"
+                                className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-600 shadow-sm"
                             >
                                 <IconPlayerPlay size={16} />
                                 Proses Audience
+                            </button>
+                        )}
+                        {campaign.status !== "cancelled" && campaign.logs?.some((l) => l.status !== "sent" && l.status !== "skipped") && (
+                            <button
+                                type="button"
+                                onClick={dispatchCampaign}
+                                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 shadow-sm"
+                                title="Kirim semua pesan yang belum terkirim via antrean WhatsApp Gateway"
+                            >
+                                <IconSend size={16} />
+                                Kirim Antrean WA
                             </button>
                         )}
                         {campaign.status !== "cancelled" && campaign.status !== "processed" && (
@@ -103,18 +130,30 @@ export default function Show({ campaign }) {
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-300"
+                                                            title="Kirim manual via WhatsApp Web / App"
                                                         >
                                                             <IconBrandWhatsapp size={16} />
                                                         </a>
                                                     )}
                                                     {log.status !== "sent" && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => router.post(route("crm-campaign-logs.mark-sent", log.id))}
-                                                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary-50 text-primary-600 hover:bg-primary-100 dark:bg-primary-950/30 dark:text-primary-300"
-                                                        >
-                                                            <IconChecks size={16} />
-                                                        </button>
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => dispatchLog(log.id)}
+                                                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300"
+                                                                title="Kirim otomatis via Queue Gateway"
+                                                            >
+                                                                <IconSend size={16} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => router.post(route("crm-campaign-logs.mark-sent", log.id))}
+                                                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary-50 text-primary-600 hover:bg-primary-100 dark:bg-primary-950/30 dark:text-primary-300"
+                                                                title="Tandai sudah terkirim"
+                                                            >
+                                                                <IconChecks size={16} />
+                                                            </button>
+                                                        </>
                                                     )}
                                                 </div>
                                             </Table.Td>
