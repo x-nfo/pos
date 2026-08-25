@@ -6,12 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\PaymentSetting;
 use App\Models\Setting;
 use App\Models\Transaction;
+use App\Services\StockMutationService;
 use App\Services\ThermalPrintService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class PaymentWebhookController extends Controller
 {
+    public function __construct(
+        private readonly StockMutationService $stockMutationService
+    ) {}
+
     private function autoPrintIfEnabled(Transaction $transaction): void
     {
         if (Setting::getBool('printer_auto_print', false) && Setting::get('printer_driver', 'browser') === 'server') {
@@ -77,6 +82,18 @@ class PaymentWebhookController extends Controller
             $fraudStatus = $request->input('fraud_status');
 
             $newStatus = $this->mapMidtransStatus($transactionStatus, $fraudStatus);
+            $previousStatus = $transaction->payment_status;
+
+            // Prevent status update if transaction is already marked paid
+            if ($previousStatus === 'paid' && $newStatus !== 'paid') {
+                Log::info('Midtrans Webhook: Ignored status update for already paid transaction', [
+                    'provider' => 'midtrans',
+                    'order_id' => $orderId,
+                    'incoming_status' => $newStatus,
+                ]);
+
+                return response()->json(['status' => 'success', 'message' => 'Transaction already paid']);
+            }
 
             $transaction->update([
                 'payment_status' => $newStatus,
@@ -85,6 +102,8 @@ class PaymentWebhookController extends Controller
 
             if ($newStatus === 'paid') {
                 $this->autoPrintIfEnabled($transaction);
+            } elseif (in_array($newStatus, ['expired', 'failed', 'cancelled']) && in_array($previousStatus, ['pending', 'unpaid', 'pending_approval'])) {
+                $this->stockMutationService->restockTransaction($transaction, reason: $newStatus);
             }
 
             Log::info('Midtrans Webhook: Transaction updated', [
@@ -172,6 +191,18 @@ class PaymentWebhookController extends Controller
 
             // Map Xendit status to our status
             $newStatus = $this->mapXenditStatus($status);
+            $previousStatus = $transaction->payment_status;
+
+            // Prevent status update if transaction is already marked paid
+            if ($previousStatus === 'paid' && $newStatus !== 'paid') {
+                Log::info('Xendit Webhook: Ignored status update for already paid transaction', [
+                    'provider' => 'xendit',
+                    'external_id' => $externalId,
+                    'incoming_status' => $newStatus,
+                ]);
+
+                return response()->json(['status' => 'success', 'message' => 'Transaction already paid']);
+            }
 
             $transaction->update([
                 'payment_status' => $newStatus,
@@ -180,6 +211,8 @@ class PaymentWebhookController extends Controller
 
             if ($newStatus === 'paid') {
                 $this->autoPrintIfEnabled($transaction);
+            } elseif (in_array($newStatus, ['expired', 'failed', 'cancelled']) && in_array($previousStatus, ['pending', 'unpaid', 'pending_approval'])) {
+                $this->stockMutationService->restockTransaction($transaction, reason: $newStatus);
             }
 
             Log::info('Xendit Webhook: Transaction updated', [
@@ -252,6 +285,19 @@ class PaymentWebhookController extends Controller
             }
 
             $newStatus = $this->mapQrislyStatus($event, $status);
+            $previousStatus = $transaction->payment_status;
+
+            // Prevent status update if transaction is already marked paid
+            if ($previousStatus === 'paid' && $newStatus !== 'paid') {
+                Log::info('QRISLY Webhook: Ignored status update for already paid transaction', [
+                    'provider' => 'qrisly',
+                    'history_id' => $historyId,
+                    'invoice' => $transaction->invoice,
+                    'incoming_status' => $newStatus,
+                ]);
+
+                return response()->json(['success' => true, 'message' => 'Transaction already paid']);
+            }
 
             $transaction->update([
                 'payment_status' => $newStatus,
@@ -260,6 +306,8 @@ class PaymentWebhookController extends Controller
 
             if ($newStatus === 'paid') {
                 $this->autoPrintIfEnabled($transaction);
+            } elseif (in_array($newStatus, ['expired', 'failed', 'cancelled']) && in_array($previousStatus, ['pending', 'unpaid', 'pending_approval'])) {
+                $this->stockMutationService->restockTransaction($transaction, reason: $newStatus);
             }
 
             Log::info('QRISLY Webhook: Transaction updated', [
@@ -324,7 +372,8 @@ class PaymentWebhookController extends Controller
         return match ($transactionStatus) {
             'capture', 'settlement' => 'paid',
             'pending' => 'pending',
-            'deny', 'cancel', 'expire' => 'failed',
+            'expire' => 'expired',
+            'deny', 'cancel' => 'failed',
             default => 'pending',
         };
     }
@@ -337,7 +386,8 @@ class PaymentWebhookController extends Controller
         return match (strtoupper($status)) {
             'PAID', 'SETTLED' => 'paid',
             'PENDING' => 'pending',
-            'EXPIRED', 'FAILED' => 'failed',
+            'EXPIRED' => 'expired',
+            'FAILED' => 'failed',
             default => 'pending',
         };
     }

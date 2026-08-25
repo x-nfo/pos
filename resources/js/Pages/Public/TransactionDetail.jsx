@@ -5,8 +5,22 @@ const formatPrice = (v = 0) => Number(v || 0).toLocaleString("id-ID", { style: "
 const formatDate = (v) => v ? new Date(v).toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short" }) : "-";
 
 const statusBadge = (status) => {
-    const styles = { paid: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300", pending: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300", unpaid: "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300", pending_approval: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" };
-    const labels = { paid: "Lunas", pending: "Menunggu", unpaid: "Belum Lunas", pending_approval: "Menunggu Approval" };
+    const styles = {
+        paid: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300",
+        pending: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300",
+        unpaid: "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300",
+        expired: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+        failed: "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300",
+        pending_approval: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+    };
+    const labels = {
+        paid: "Lunas",
+        pending: "Menunggu",
+        unpaid: "Belum Lunas",
+        expired: "Kadaluarsa",
+        failed: "Gagal / Dibatalkan",
+        pending_approval: "Menunggu Approval",
+    };
     return <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${styles[status] || "bg-slate-100 text-slate-600"}`}>{labels[status] || status}</span>;
 };
 

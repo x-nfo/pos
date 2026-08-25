@@ -630,10 +630,21 @@ const History = ({ transactions, filters, warehouses = [] }) => {
                                                         >
                                                             Pending (Konfirmasi)
                                                         </button>
+                                                    ) : transaction.payment_status ===
+                                                      "pending" ? (
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 rounded-full border border-amber-200 dark:border-amber-800">
+                                                            Pending
+                                                        </span>
+                                                    ) : transaction.payment_status ===
+                                                      "expired" ? (
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-full border border-slate-200 dark:border-slate-700">
+                                                            Kadaluarsa
+                                                        </span>
                                                     ) : (
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold bg-danger-50 text-danger-700 dark:bg-danger-950/50 dark:text-danger-400 rounded-full border border-danger-200">
-                                                            {transaction.payment_status ??
-                                                                "-"}
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400 rounded-full border border-rose-200 dark:border-rose-800">
+                                                            {transaction.payment_status === "failed"
+                                                                ? "Gagal"
+                                                                : transaction.payment_status ?? "-"}
                                                         </span>
                                                     )}
                                                 </td>

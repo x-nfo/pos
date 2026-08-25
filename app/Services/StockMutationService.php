@@ -5,11 +5,13 @@ namespace App\Services;
 use App\Models\DineOrder;
 use App\Models\GoodsReceiving;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\SalesReturn;
 use App\Models\StockMutation;
 use App\Models\StockOpname;
 use App\Models\SupplierReturn;
 use App\Models\Transaction;
+use Illuminate\Support\Facades\DB;
 
 class StockMutationService
 {
@@ -448,5 +450,180 @@ class StockMutationService
         );
 
         return $mutation;
+    }
+
+    public function recordTransactionRestock(
+        Product $product,
+        Transaction $transaction,
+        int $qty,
+        int $stockBefore,
+        int $stockAfter,
+        ?int $warehouseId = null,
+        ?string $notes = null,
+        ?int $userId = null
+    ): StockMutation {
+        $mutation = StockMutation::create([
+            'product_id' => $product->id,
+            'warehouse_id' => $warehouseId,
+            'reference_type' => 'transaction_restock',
+            'reference_id' => $transaction->id,
+            'mutation_type' => 'in',
+            'qty' => $qty,
+            'stock_before' => $stockBefore,
+            'stock_after' => $stockAfter,
+            'notes' => $notes ?: 'Restock otomatis dari transaksi batal/expired '.$transaction->invoice,
+            'created_by' => $userId,
+        ]);
+
+        $this->auditLogService->log(
+            event: 'stock.adjusted',
+            module: 'stock',
+            auditable: $product,
+            description: 'Stok masuk (restock) dari transaksi batal/expired '.$transaction->invoice,
+            before: [
+                'product_id' => $product->id,
+                'stock_before' => $stockBefore,
+                'stock_after' => $stockBefore,
+                'difference' => 0,
+                'reference' => $transaction->invoice,
+            ],
+            after: [
+                'product_id' => $product->id,
+                'stock_before' => $stockBefore,
+                'stock_after' => $stockAfter,
+                'difference' => $stockAfter - $stockBefore,
+                'reference' => $transaction->invoice,
+            ],
+            meta: [
+                'stock_mutation_id' => $mutation->id,
+                'transaction_id' => $transaction->id,
+                'invoice' => $transaction->invoice,
+                'mutation_type' => $mutation->mutation_type,
+                'qty' => $qty,
+            ],
+        );
+
+        return $mutation;
+    }
+
+    /**
+     * Kembalikan stok gudang jika transaksi QRIS / Payment Gateway berakhir expired / cancelled.
+     */
+    public function restockTransaction(Transaction $transaction, ?string $reason = 'expired', ?int $userId = null): bool
+    {
+        return DB::transaction(function () use ($transaction, $reason, $userId) {
+            $lockedTransaction = Transaction::where('id', $transaction->id)->lockForUpdate()->first();
+
+            if (! $lockedTransaction) {
+                return false;
+            }
+
+            // Check idempotency: jangan restock jika sudah pernah direstock
+            $alreadyRestocked = StockMutation::where('reference_type', 'transaction_restock')
+                ->where('reference_id', $lockedTransaction->id)
+                ->exists();
+
+            if ($alreadyRestocked) {
+                return false;
+            }
+
+            $warehouseId = $lockedTransaction->warehouse_id;
+            $lockedTransaction->loadMissing(['details.product.components']);
+
+            foreach ($lockedTransaction->details as $detail) {
+                $product = $detail->product;
+                if (! $product) {
+                    continue;
+                }
+
+                if ($product->is_composite) {
+                    $product->loadMissing('components');
+                    foreach ($product->components as $component) {
+                        $componentModel = Product::where('id', $component->id)->lockForUpdate()->first();
+                        if (! $componentModel) {
+                            continue;
+                        }
+
+                        $componentQty = (int) round((float) $component->pivot->qty * $detail->qty);
+                        $stockBefore = (int) $componentModel->stock;
+                        $stockAfter = $stockBefore + $componentQty;
+
+                        $componentModel->increment('stock', $componentQty);
+
+                        if ($warehouseId) {
+                            ProductWarehouse::firstOrCreate(
+                                ['product_id' => $componentModel->id, 'warehouse_id' => $warehouseId],
+                                ['stock' => 0]
+                            )->increment('stock', $componentQty);
+                        }
+
+                        $this->recordTransactionRestock(
+                            product: $componentModel,
+                            transaction: $lockedTransaction,
+                            qty: $componentQty,
+                            stockBefore: $stockBefore,
+                            stockAfter: $stockAfter,
+                            warehouseId: $warehouseId,
+                            notes: "Restock otomatis ({$reason}) untuk komponen {$componentModel->title} pada transaksi {$lockedTransaction->invoice}",
+                            userId: $userId
+                        );
+                    }
+                } else {
+                    $productModel = Product::where('id', $product->id)->lockForUpdate()->first();
+                    if (! $productModel) {
+                        continue;
+                    }
+
+                    $baseQty = (int) round($detail->qty * (float) ($detail->conversion_factor ?? 1));
+                    $stockBefore = (int) $productModel->stock;
+                    $stockAfter = $stockBefore + $baseQty;
+
+                    $productModel->increment('stock', $baseQty);
+
+                    if ($warehouseId) {
+                        ProductWarehouse::firstOrCreate(
+                            ['product_id' => $productModel->id, 'warehouse_id' => $warehouseId],
+                            ['stock' => 0]
+                        )->increment('stock', $baseQty);
+                    }
+
+                    $this->recordTransactionRestock(
+                        product: $productModel,
+                        transaction: $lockedTransaction,
+                        qty: $baseQty,
+                        stockBefore: $stockBefore,
+                        stockAfter: $stockAfter,
+                        warehouseId: $warehouseId,
+                        notes: "Restock otomatis ({$reason}) transaksi {$lockedTransaction->invoice}",
+                        userId: $userId
+                    );
+                }
+            }
+
+            $this->auditLogService->log(
+                event: 'transaction.auto_restocked',
+                module: 'transactions',
+                auditable: $lockedTransaction,
+                description: "Stok gudang dikembalikan otomatis karena transaksi {$lockedTransaction->invoice} berakhir {$reason}.",
+                before: [
+                    'invoice' => $lockedTransaction->invoice,
+                    'payment_status' => $lockedTransaction->payment_status,
+                ],
+                after: [
+                    'invoice' => $lockedTransaction->invoice,
+                    'payment_status' => $lockedTransaction->payment_status,
+                    'restocked' => true,
+                    'reason' => $reason,
+                ],
+                meta: [
+                    'transaction_id' => $lockedTransaction->id,
+                    'invoice' => $lockedTransaction->invoice,
+                    'warehouse_id' => $warehouseId,
+                    'reason' => $reason,
+                ]
+            );
+
+            return true;
+        });
     }
 }

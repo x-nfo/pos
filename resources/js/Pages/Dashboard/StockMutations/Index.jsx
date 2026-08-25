@@ -29,6 +29,7 @@ const getMutationBadge = (type) => {
 const getReferenceLabel = (refType) => {
     const map = {
         transaction: "Penjualan (POS)",
+        transaction_restock: "Restock Transaksi (Batal/Expired)",
         dine_order: "Pesanan Meja",
         product_create: "Stok Awal",
         stock_opname: "Stock Opname",
