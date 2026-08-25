@@ -26,9 +26,9 @@ const formatCurrency = (value = 0) =>
 const formatDateTime = (value) =>
     value
         ? new Intl.DateTimeFormat("id-ID", {
-              dateStyle: "medium",
-              timeStyle: "short",
-          }).format(new Date(value))
+            dateStyle: "medium",
+            timeStyle: "short",
+        }).format(new Date(value))
         : "-";
 
 export default function SalesReturnForm({
@@ -246,10 +246,10 @@ export default function SalesReturnForm({
                 form.data.exchange_items.map((item) =>
                     item.product_id === product.id
                         ? {
-                              ...item,
-                              qty: item.qty + 1,
-                              subtotal: (item.qty + 1) * item.unit_price,
-                          }
+                            ...item,
+                            qty: item.qty + 1,
+                            subtotal: (item.qty + 1) * item.unit_price,
+                        }
                         : item
                 )
             );
@@ -276,10 +276,10 @@ export default function SalesReturnForm({
             form.data.exchange_items.map((item) =>
                 item.product_id === productId
                     ? {
-                          ...item,
-                          qty,
-                          subtotal: qty * item.unit_price,
-                      }
+                        ...item,
+                        qty,
+                        subtotal: qty * item.unit_price,
+                    }
                     : item
             )
         );
@@ -381,17 +381,17 @@ export default function SalesReturnForm({
                                 ? "Kembali ke daftar retur"
                                 : "Kembali ke riwayat transaksi"}
                         </Link>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {title}
                             </h1>
                             {salesReturn?.return_type ===
                                 "product_exchange" && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-cyan-100 px-3 py-1 text-xs font-semibold text-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-300">
-                                    <IconArrowsExchange size={14} />
-                                    Tukar Barang
-                                </span>
-                            )}
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-cyan-100 px-3 py-1 text-xs font-semibold text-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-300">
+                                        <IconArrowsExchange size={14} />
+                                        Tukar Barang
+                                    </span>
+                                )}
                         </div>
                         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                             Invoice {transaction.invoice} •{" "}
@@ -402,11 +402,10 @@ export default function SalesReturnForm({
                     {salesReturn && (
                         <div className="flex flex-wrap items-center gap-2">
                             <span
-                                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                                    salesReturn.status === "completed"
-                                        ? "bg-success-100 text-success-700 dark:bg-success-950/30 dark:text-success-400"
-                                        : "bg-warning-100 text-warning-700 dark:bg-warning-950/30 dark:text-warning-400"
-                                }`}
+                                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${salesReturn.status === "completed"
+                                    ? "bg-success-100 text-success-700 dark:bg-success-950/30 dark:text-success-400"
+                                    : "bg-warning-100 text-warning-700 dark:bg-warning-950/30 dark:text-warning-400"
+                                    }`}
                             >
                                 {salesReturn.status === "completed"
                                     ? "Completed"
@@ -421,7 +420,7 @@ export default function SalesReturnForm({
                                 <Button
                                     type="button"
                                     icon={<IconPrinter size={16} />}
-                                    className="bg-slate-800 text-white hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600"
+                                    className="bg-slate-800 text-white hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 w-full sm:w-auto mt-2 sm:mt-0"
                                     label="Cetak Struk"
                                     onClick={openReceipt}
                                 />
@@ -458,10 +457,10 @@ export default function SalesReturnForm({
                     className="grid gap-6 xl:grid-cols-[1.7fr_1fr]"
                 >
                     {/* Left Column: Return Items & Exchange Items */}
-                    <div className="space-y-6">
+                    <div className="space-y-6 overflow-hidden">
                         {/* Section 1: Return Items */}
-                        <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-                            <div className="mb-4 flex items-center justify-between">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
+                            <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div>
                                     <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                                         1. Barang yang Dikembalikan
@@ -474,7 +473,7 @@ export default function SalesReturnForm({
                                     <Button
                                         type="submit"
                                         icon={<IconDeviceFloppy size={18} />}
-                                        className="bg-primary-500 text-white hover:bg-primary-600"
+                                        className="bg-primary-500 text-white hover:bg-primary-600 w-full sm:w-auto"
                                         label={
                                             salesReturn
                                                 ? "Simpan Draft"
@@ -485,107 +484,112 @@ export default function SalesReturnForm({
                                 )}
                             </div>
 
-                            <Table>
-                                <Table.Thead>
-                                    <tr>
-                                        <Table.Th>Produk</Table.Th>
-                                        <Table.Th>Beli</Table.Th>
-                                        <Table.Th>Sisa</Table.Th>
-                                        <Table.Th>Qty Retur</Table.Th>
-                                        <Table.Th>Alasan Retur</Table.Th>
-                                        <Table.Th>Restock</Table.Th>
-                                        <Table.Th>Subtotal</Table.Th>
-                                    </tr>
-                                </Table.Thead>
-                                <Table.Tbody>
-                                    {itemStates.map((item) => (
-                                        <tr key={item.id}>
-                                            <Table.Td>
-                                                <div>
-                                                    <p className="font-medium text-slate-800 dark:text-slate-100">
-                                                        {item.product?.title ||
-                                                            "-"}
-                                                    </p>
-                                                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                                                        {item.product?.barcode ||
-                                                            item.product?.sku ||
-                                                            "-"}
-                                                    </p>
-                                                </div>
-                                            </Table.Td>
-                                            <Table.Td>{item.qty}</Table.Td>
-                                            <Table.Td>
-                                                {item.remaining_returnable_qty}
-                                            </Table.Td>
-                                            <Table.Td>
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    max={
-                                                        item.remaining_returnable_qty
-                                                    }
-                                                    value={item.qty_return}
-                                                    disabled={!canEdit}
-                                                    onChange={(event) =>
-                                                        updateItem(
-                                                            item.id,
-                                                            "qty_return",
-                                                            event.target.value
-                                                        )
-                                                    }
-                                                    className="h-10 w-20 rounded-lg border border-slate-200 bg-slate-50 px-2 text-center text-sm font-semibold text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                                                />
-                                            </Table.Td>
-                                            <Table.Td>
-                                                <input
-                                                    type="text"
-                                                    value={item.return_reason}
-                                                    disabled={
-                                                        !canEdit ||
-                                                        item.qty_return === 0
-                                                    }
-                                                    onChange={(event) =>
-                                                        updateItem(
-                                                            item.id,
-                                                            "return_reason",
-                                                            event.target.value
-                                                        )
-                                                    }
-                                                    placeholder="Alasan retur"
-                                                    className="h-10 min-w-36 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                                                />
-                                            </Table.Td>
-                                            <Table.Td>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={
-                                                        item.restock_to_inventory
-                                                    }
-                                                    disabled={
-                                                        !canEdit ||
-                                                        item.qty_return === 0
-                                                    }
-                                                    onChange={(event) =>
-                                                        updateItem(
-                                                            item.id,
-                                                            "restock_to_inventory",
-                                                            event.target.checked
-                                                        )
-                                                    }
-                                                    className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-                                                />
-                                            </Table.Td>
-                                            <Table.Td>
-                                                <span className="font-semibold text-slate-800 dark:text-slate-200">
-                                                    {formatCurrency(
-                                                        item.subtotal
-                                                    )}
-                                                </span>
-                                            </Table.Td>
+                            {/* Added wrapper for mobile scrolling */}
+                            <div className="overflow-x-auto pb-2">
+                                <Table>
+                                    <Table.Thead>
+                                        <tr className="whitespace-nowrap">
+                                            <Table.Th>Produk</Table.Th>
+                                            <Table.Th>Beli</Table.Th>
+                                            <Table.Th>Sisa</Table.Th>
+                                            <Table.Th>Qty Retur</Table.Th>
+                                            <Table.Th>Alasan Retur</Table.Th>
+                                            <Table.Th>Restock</Table.Th>
+                                            <Table.Th>Subtotal</Table.Th>
                                         </tr>
-                                    ))}
-                                </Table.Tbody>
-                            </Table>
+                                    </Table.Thead>
+                                    <Table.Tbody>
+                                        {itemStates.map((item) => (
+                                            <tr key={item.id}>
+                                                <Table.Td>
+                                                    <div className="min-w-[150px]">
+                                                        <p className="font-medium text-slate-800 dark:text-slate-100 line-clamp-2">
+                                                            {item.product?.title ||
+                                                                "-"}
+                                                        </p>
+                                                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                            {item.product?.barcode ||
+                                                                item.product?.sku ||
+                                                                "-"}
+                                                        </p>
+                                                    </div>
+                                                </Table.Td>
+                                                <Table.Td>{item.qty}</Table.Td>
+                                                <Table.Td>
+                                                    {item.remaining_returnable_qty}
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max={
+                                                            item.remaining_returnable_qty
+                                                        }
+                                                        value={item.qty_return}
+                                                        disabled={!canEdit}
+                                                        onChange={(event) =>
+                                                            updateItem(
+                                                                item.id,
+                                                                "qty_return",
+                                                                event.target.value
+                                                            )
+                                                        }
+                                                        className="h-10 w-20 rounded-lg border border-slate-200 bg-slate-50 px-2 text-center text-sm font-semibold text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                                    />
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <input
+                                                        type="text"
+                                                        value={item.return_reason}
+                                                        disabled={
+                                                            !canEdit ||
+                                                            item.qty_return === 0
+                                                        }
+                                                        onChange={(event) =>
+                                                            updateItem(
+                                                                item.id,
+                                                                "return_reason",
+                                                                event.target.value
+                                                            )
+                                                        }
+                                                        placeholder="Alasan retur"
+                                                        className="h-10 min-w-36 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                                    />
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <div className="flex justify-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={
+                                                                item.restock_to_inventory
+                                                            }
+                                                            disabled={
+                                                                !canEdit ||
+                                                                item.qty_return === 0
+                                                            }
+                                                            onChange={(event) =>
+                                                                updateItem(
+                                                                    item.id,
+                                                                    "restock_to_inventory",
+                                                                    event.target.checked
+                                                                )
+                                                            }
+                                                            className="h-5 w-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                                                        />
+                                                    </div>
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <span className="font-semibold text-slate-800 whitespace-nowrap dark:text-slate-200">
+                                                        {formatCurrency(
+                                                            item.subtotal
+                                                        )}
+                                                    </span>
+                                                </Table.Td>
+                                            </tr>
+                                        ))}
+                                    </Table.Tbody>
+                                </Table>
+                            </div>
 
                             {form.errors.items && (
                                 <p className="mt-3 text-sm text-danger-600">
@@ -594,9 +598,9 @@ export default function SalesReturnForm({
                             )}
                         </div>
 
-                        {/* Section 2: Replacement Exchange Items (Only when return_type === 'product_exchange') */}
+                        {/* Section 2: Replacement Exchange Items */}
                         {form.data.return_type === "product_exchange" && (
-                            <div className="rounded-2xl border border-cyan-200 bg-cyan-50/40 p-5 dark:border-cyan-900/50 dark:bg-cyan-950/20">
+                            <div className="rounded-2xl border border-cyan-200 bg-cyan-50/40 p-4 sm:p-5 dark:border-cyan-900/50 dark:bg-cyan-950/20">
                                 <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
                                         <h2 className="flex items-center gap-2 text-lg font-semibold text-cyan-950 dark:text-cyan-200">
@@ -610,7 +614,7 @@ export default function SalesReturnForm({
 
                                     {/* Product search picker */}
                                     {canEdit && (
-                                        <div className="relative">
+                                        <div className="relative w-full sm:w-auto">
                                             <div className="relative">
                                                 <input
                                                     type="text"
@@ -629,7 +633,7 @@ export default function SalesReturnForm({
                                                         )
                                                     }
                                                     placeholder="Cari produk pengganti..."
-                                                    className="h-10 w-full min-w-64 rounded-xl border border-cyan-300 bg-white pl-9 pr-4 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-cyan-800 dark:bg-slate-900 dark:text-slate-200"
+                                                    className="h-10 w-full sm:min-w-64 rounded-xl border border-cyan-300 bg-white pl-9 pr-4 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-cyan-800 dark:bg-slate-900 dark:text-slate-200"
                                                 />
                                                 <IconSearch
                                                     size={16}
@@ -639,8 +643,8 @@ export default function SalesReturnForm({
 
                                             {isProductDropdownOpen &&
                                                 filteredAvailableProducts.length >
-                                                    0 && (
-                                                    <div className="absolute right-0 z-30 mt-2 max-h-60 w-80 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                                                0 && (
+                                                    <div className="absolute left-0 sm:left-auto sm:right-0 z-30 mt-2 max-h-60 w-full sm:w-80 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900">
                                                         {filteredAvailableProducts.map(
                                                             (p) => (
                                                                 <button
@@ -653,8 +657,8 @@ export default function SalesReturnForm({
                                                                     }
                                                                     className="flex w-full items-center justify-between rounded-lg p-2 text-left text-sm transition hover:bg-cyan-50 dark:hover:bg-slate-800"
                                                                 >
-                                                                    <div>
-                                                                        <p className="font-medium text-slate-800 dark:text-slate-200">
+                                                                    <div className="flex-1 pr-2">
+                                                                        <p className="font-medium text-slate-800 line-clamp-1 dark:text-slate-200">
                                                                             {
                                                                                 p.title
                                                                             }
@@ -664,7 +668,7 @@ export default function SalesReturnForm({
                                                                             <span
                                                                                 className={
                                                                                     p.stock >
-                                                                                    0
+                                                                                        0
                                                                                         ? "font-semibold text-success-600"
                                                                                         : "font-semibold text-danger-600"
                                                                                 }
@@ -675,7 +679,7 @@ export default function SalesReturnForm({
                                                                             </span>
                                                                         </p>
                                                                     </div>
-                                                                    <div className="text-right">
+                                                                    <div className="text-right whitespace-nowrap">
                                                                         <span className="font-semibold text-primary-600 dark:text-primary-400">
                                                                             {formatCurrency(
                                                                                 p.sell_price
@@ -705,10 +709,10 @@ export default function SalesReturnForm({
                                         </p>
                                     </div>
                                 ) : (
-                                    <div className="overflow-x-auto">
+                                    <div className="overflow-x-auto pb-2">
                                         <Table>
                                             <Table.Thead>
-                                                <tr>
+                                                <tr className="whitespace-nowrap">
                                                     <Table.Th>Produk Pengganti</Table.Th>
                                                     <Table.Th>Harga Satuan</Table.Th>
                                                     <Table.Th>Qty</Table.Th>
@@ -723,8 +727,8 @@ export default function SalesReturnForm({
                                                     (item) => (
                                                         <tr key={item.product_id}>
                                                             <Table.Td>
-                                                                <div>
-                                                                    <p className="font-medium text-slate-800 dark:text-slate-100">
+                                                                <div className="min-w-[150px]">
+                                                                    <p className="font-medium text-slate-800 line-clamp-2 dark:text-slate-100">
                                                                         {item.product
                                                                             ?.title ||
                                                                             `Produk #${item.product_id}`}
@@ -739,9 +743,11 @@ export default function SalesReturnForm({
                                                                 </div>
                                                             </Table.Td>
                                                             <Table.Td>
-                                                                {formatCurrency(
-                                                                    item.unit_price
-                                                                )}
+                                                                <span className="whitespace-nowrap">
+                                                                    {formatCurrency(
+                                                                        item.unit_price
+                                                                    )}
+                                                                </span>
                                                             </Table.Td>
                                                             <Table.Td>
                                                                 <input
@@ -767,10 +773,10 @@ export default function SalesReturnForm({
                                                                 />
                                                             </Table.Td>
                                                             <Table.Td>
-                                                                <span className="font-semibold text-cyan-900 dark:text-cyan-200">
+                                                                <span className="font-semibold text-cyan-900 whitespace-nowrap dark:text-cyan-200">
                                                                     {formatCurrency(
                                                                         item.qty *
-                                                                            item.unit_price
+                                                                        item.unit_price
                                                                     )}
                                                                 </span>
                                                             </Table.Td>
@@ -810,8 +816,8 @@ export default function SalesReturnForm({
 
                     {/* Right Column: Settlement & Impact Preview */}
                     <div className="space-y-6">
-                        {/* Settlement Configuration Card */}
-                        <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                        {/* Settlement Configuration Card (Grid class removed for responsive stack) */}
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
                             <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
                                 Metode Penyelesaian
                             </h2>
@@ -854,187 +860,191 @@ export default function SalesReturnForm({
                                 {/* Dynamic Settlement Form for Product Exchange */}
                                 {form.data.return_type ===
                                     "product_exchange" && (
-                                    <div className="space-y-3 rounded-xl border border-cyan-100 bg-cyan-50/50 p-4 dark:border-cyan-900/40 dark:bg-cyan-950/20">
-                                        <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-800 dark:text-cyan-300">
-                                            Status Selisih Harga
-                                        </h3>
+                                        <div className="space-y-3 rounded-xl border border-cyan-100 bg-cyan-50/50 p-4 dark:border-cyan-900/40 dark:bg-cyan-950/20">
+                                            <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-800 dark:text-cyan-300">
+                                                Status Selisih Harga
+                                            </h3>
 
-                                        {summary.diffAmount === 0 && (
-                                            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                                                <IconCheck size={18} />
-                                                Tukar Pas (Selisih Rp 0)
-                                            </div>
-                                        )}
-
-                                        {summary.diffAmount > 0 && (
-                                            <div className="space-y-3">
-                                                <div className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                                                    <span className="font-semibold">
-                                                        Kurang Bayar (Pelanggan Tambah):
-                                                    </span>{" "}
-                                                    {formatCurrency(
-                                                        summary.diffAmount
-                                                    )}
+                                            {summary.diffAmount === 0 && (
+                                                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                                                    <IconCheck size={18} />
+                                                    Tukar Pas (Selisih Rp 0)
                                                 </div>
+                                            )}
 
-                                                <div>
-                                                    <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
-                                                        Metode Bayar Kekurangan
-                                                    </label>
-                                                    <select
-                                                        value={
-                                                            form.data
-                                                                .exchange_payment_method
-                                                        }
-                                                        disabled={!canEdit}
-                                                        onChange={(e) =>
-                                                            form.setData(
-                                                                "exchange_payment_method",
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                        className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                                                    >
-                                                        <option value="cash">
-                                                            Tunai (Cash)
-                                                        </option>
-                                                        <option value="bank_transfer">
-                                                            Transfer Bank
-                                                        </option>
-                                                        <option value="qris">
-                                                            QRIS
-                                                        </option>
-                                                        <option value="edc">
-                                                            Kartu Debit / EDC
-                                                        </option>
-                                                    </select>
-                                                </div>
-
-                                                {form.data
-                                                    .exchange_payment_method ===
-                                                    "cash" && (
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <div>
-                                                            <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
-                                                                Tunai Diterima
-                                                            </label>
-                                                            <input
-                                                                type="number"
-                                                                min={
-                                                                    summary.diffAmount
-                                                                }
-                                                                value={
-                                                                    form.data
-                                                                        .exchange_cash ||
-                                                                    summary.diffAmount
-                                                                }
-                                                                disabled={
-                                                                    !canEdit
-                                                                }
-                                                                onChange={(
-                                                                    e
-                                                                ) => {
-                                                                    const val =
-                                                                        Number(
-                                                                            e
-                                                                                .target
-                                                                                .value ||
-                                                                                0
-                                                                        );
-                                                                    form.setData(
-                                                                        (
-                                                                            prev
-                                                                        ) => ({
-                                                                            ...prev,
-                                                                            exchange_cash:
-                                                                                val,
-                                                                            exchange_change:
-                                                                                Math.max(
-                                                                                    0,
-                                                                                    val -
-                                                                                        summary.diffAmount
-                                                                                ),
-                                                                        })
-                                                                    );
-                                                                }}
-                                                                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                                                            />
-                                                        </div>
-                                                        <div>
-                                                            <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
-                                                                Kembalian
-                                                            </label>
-                                                            <input
-                                                                type="text"
-                                                                disabled
-                                                                value={formatCurrency(
-                                                                    Math.max(
-                                                                        0,
-                                                                        (form.data
-                                                                            .exchange_cash ||
-                                                                            summary.diffAmount) -
-                                                                            summary.diffAmount
-                                                                    )
-                                                                )}
-                                                                className="h-10 w-full rounded-lg border border-slate-200 bg-slate-100 px-3 text-sm font-bold text-emerald-600 dark:border-slate-700 dark:bg-slate-800/60 dark:text-emerald-400"
-                                                            />
-                                                        </div>
+                                            {summary.diffAmount > 0 && (
+                                                <div className="space-y-3">
+                                                    <div className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                                                        <span className="font-semibold block sm:inline">
+                                                            Kurang Bayar (Pelanggan Tambah):
+                                                        </span>{" "}
+                                                        <span className="font-bold text-sm">
+                                                            {formatCurrency(
+                                                                summary.diffAmount
+                                                            )}
+                                                        </span>
                                                     </div>
-                                                )}
-                                            </div>
-                                        )}
 
-                                        {summary.diffAmount < 0 && (
-                                            <div className="space-y-3">
-                                                <div className="rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                                                    <span className="font-semibold">
-                                                        Lebih Bayar (Toko Refund):
-                                                    </span>{" "}
-                                                    {formatCurrency(
-                                                        Math.abs(
-                                                            summary.diffAmount
-                                                        )
-                                                    )}
-                                                </div>
-
-                                                <div>
-                                                    <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
-                                                        Metode Pengembalian Selisih
-                                                    </label>
-                                                    <select
-                                                        value={
-                                                            form.data
-                                                                .exchange_payment_method ===
-                                                            "store_credit"
-                                                                ? "store_credit"
-                                                                : "refund_cash"
-                                                        }
-                                                        disabled={
-                                                            !canEdit ||
-                                                            !transaction.customer
-                                                        }
-                                                        onChange={(e) =>
-                                                            form.setData(
-                                                                "exchange_payment_method",
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                        className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                                                    >
-                                                        <option value="refund_cash">
-                                                            Refund Tunai
-                                                        </option>
-                                                        {transaction.customer && (
-                                                            <option value="store_credit">
-                                                                Saldo Toko (Store Credit)
+                                                    <div>
+                                                        <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+                                                            Metode Bayar Kekurangan
+                                                        </label>
+                                                        <select
+                                                            value={
+                                                                form.data
+                                                                    .exchange_payment_method
+                                                            }
+                                                            disabled={!canEdit}
+                                                            onChange={(e) =>
+                                                                form.setData(
+                                                                    "exchange_payment_method",
+                                                                    e.target.value
+                                                                )
+                                                            }
+                                                            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                                        >
+                                                            <option value="cash">
+                                                                Tunai (Cash)
                                                             </option>
+                                                            <option value="bank_transfer">
+                                                                Transfer Bank
+                                                            </option>
+                                                            <option value="qris">
+                                                                QRIS
+                                                            </option>
+                                                            <option value="edc">
+                                                                Kartu Debit / EDC
+                                                            </option>
+                                                        </select>
+                                                    </div>
+
+                                                    {form.data
+                                                        .exchange_payment_method ===
+                                                        "cash" && (
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                                <div>
+                                                                    <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+                                                                        Tunai Diterima
+                                                                    </label>
+                                                                    <input
+                                                                        type="number"
+                                                                        min={
+                                                                            summary.diffAmount
+                                                                        }
+                                                                        value={
+                                                                            form.data
+                                                                                .exchange_cash ||
+                                                                            summary.diffAmount
+                                                                        }
+                                                                        disabled={
+                                                                            !canEdit
+                                                                        }
+                                                                        onChange={(
+                                                                            e
+                                                                        ) => {
+                                                                            const val =
+                                                                                Number(
+                                                                                    e
+                                                                                        .target
+                                                                                        .value ||
+                                                                                    0
+                                                                                );
+                                                                            form.setData(
+                                                                                (
+                                                                                    prev
+                                                                                ) => ({
+                                                                                    ...prev,
+                                                                                    exchange_cash:
+                                                                                        val,
+                                                                                    exchange_change:
+                                                                                        Math.max(
+                                                                                            0,
+                                                                                            val -
+                                                                                            summary.diffAmount
+                                                                                        ),
+                                                                                })
+                                                                            );
+                                                                        }}
+                                                                        className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+                                                                        Kembalian
+                                                                    </label>
+                                                                    <input
+                                                                        type="text"
+                                                                        disabled
+                                                                        value={formatCurrency(
+                                                                            Math.max(
+                                                                                0,
+                                                                                (form.data
+                                                                                    .exchange_cash ||
+                                                                                    summary.diffAmount) -
+                                                                                summary.diffAmount
+                                                                            )
+                                                                        )}
+                                                                        className="h-10 w-full rounded-lg border border-slate-200 bg-slate-100 px-3 text-sm font-bold text-emerald-600 dark:border-slate-700 dark:bg-slate-800/60 dark:text-emerald-400"
+                                                                    />
+                                                                </div>
+                                                            </div>
                                                         )}
-                                                    </select>
                                                 </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
+                                            )}
+
+                                            {summary.diffAmount < 0 && (
+                                                <div className="space-y-3">
+                                                    <div className="rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                                        <span className="font-semibold block sm:inline">
+                                                            Lebih Bayar (Toko Refund):
+                                                        </span>{" "}
+                                                        <span className="font-bold text-sm">
+                                                            {formatCurrency(
+                                                                Math.abs(
+                                                                    summary.diffAmount
+                                                                )
+                                                            )}
+                                                        </span>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+                                                            Metode Pengembalian Selisih
+                                                        </label>
+                                                        <select
+                                                            value={
+                                                                form.data
+                                                                    .exchange_payment_method ===
+                                                                    "store_credit"
+                                                                    ? "store_credit"
+                                                                    : "refund_cash"
+                                                            }
+                                                            disabled={
+                                                                !canEdit ||
+                                                                !transaction.customer
+                                                            }
+                                                            onChange={(e) =>
+                                                                form.setData(
+                                                                    "exchange_payment_method",
+                                                                    e.target.value
+                                                                )
+                                                            }
+                                                            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                                        >
+                                                            <option value="refund_cash">
+                                                                Refund Tunai
+                                                            </option>
+                                                            {transaction.customer && (
+                                                                <option value="store_credit">
+                                                                    Saldo Toko (Store Credit)
+                                                                </option>
+                                                            )}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                 <div>
                                     <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -1058,7 +1068,7 @@ export default function SalesReturnForm({
                         </div>
 
                         {/* Impact Preview Card */}
-                        <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
                             <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
                                 Preview Dampak Transaksi
                             </h2>
@@ -1074,7 +1084,7 @@ export default function SalesReturnForm({
                                 />
 
                                 {form.data.return_type ===
-                                "product_exchange" ? (
+                                    "product_exchange" ? (
                                     <>
                                         <PreviewRow
                                             label="Barang pengganti"
@@ -1099,14 +1109,14 @@ export default function SalesReturnForm({
                                                 summary.diffAmount === 0
                                                     ? "Rp 0 (Tukar Pas)"
                                                     : summary.diffAmount > 0
-                                                    ? `+ ${formatCurrency(
-                                                          summary.diffAmount
-                                                      )} (Tambah)`
-                                                    : `- ${formatCurrency(
-                                                          Math.abs(
-                                                              summary.diffAmount
-                                                          )
-                                                      )} (Refund)`
+                                                        ? `+ ${formatCurrency(
+                                                            summary.diffAmount
+                                                        )} (Tambah)`
+                                                        : `- ${formatCurrency(
+                                                            Math.abs(
+                                                                summary.diffAmount
+                                                            )
+                                                        )} (Refund)`
                                             }
                                             strong
                                         />
@@ -1138,7 +1148,7 @@ export default function SalesReturnForm({
                                                     label="Piutang Setelah Retur"
                                                     value={formatCurrency(
                                                         summary.receivableAfter ??
-                                                            0
+                                                        0
                                                     )}
                                                 />
                                             </>
@@ -1160,7 +1170,7 @@ export default function SalesReturnForm({
                                     <Button
                                         type="button"
                                         icon={<IconCheck size={18} />}
-                                        className="w-full bg-success-500 text-white hover:bg-success-600 disabled:opacity-50"
+                                        className="w-full bg-success-500 text-white hover:bg-success-600 disabled:opacity-50 flex justify-center"
                                         label="Selesaikan Retur"
                                         onClick={handleComplete}
                                         disabled={
@@ -1184,11 +1194,10 @@ export default function SalesReturnForm({
 function InfoCard({ label, value, highlight = false }) {
     return (
         <div
-            className={`rounded-2xl border p-4 transition ${
-                highlight
-                    ? "border-primary-300 bg-primary-50/50 dark:border-primary-900/50 dark:bg-primary-950/30"
-                    : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-            }`}
+            className={`rounded-2xl border p-4 transition ${highlight
+                ? "border-primary-300 bg-primary-50/50 dark:border-primary-900/50 dark:bg-primary-950/30"
+                : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+                }`}
         >
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {label}
@@ -1205,11 +1214,10 @@ function PreviewRow({ label, value, strong = false }) {
         <div className="flex items-center justify-between gap-3">
             <span className="text-slate-500 dark:text-slate-400">{label}</span>
             <span
-                className={
-                    strong
-                        ? "font-semibold text-slate-900 dark:text-white"
-                        : "font-medium text-slate-800 dark:text-slate-200"
-                }
+                className={`text-right ${strong
+                    ? "font-semibold text-slate-900 dark:text-white"
+                    : "font-medium text-slate-800 dark:text-slate-200"
+                    }`}
             >
                 {value}
             </span>
