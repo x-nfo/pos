@@ -2,12 +2,10 @@
 
 namespace Tests\Feature\Crm;
 
-use App\Jobs\ProcessWhatsAppCampaignJob;
 use App\Jobs\SendWhatsAppCampaignLogJob;
 use App\Models\Customer;
 use App\Models\CustomerCampaign;
 use App\Models\CustomerCampaignLog;
-use App\Models\CustomerSegment;
 use App\Models\Receivable;
 use App\Models\Setting;
 use App\Models\User;

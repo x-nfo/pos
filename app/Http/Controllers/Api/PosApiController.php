@@ -19,6 +19,7 @@ use App\Models\Receivable;
 use App\Models\Transaction;
 use App\Models\Warehouse;
 use App\Services\CashierShiftService;
+use App\Services\DocumentNumberService;
 use App\Services\LoyaltyService;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\PricingService;
@@ -40,6 +41,7 @@ class PosApiController extends Controller
         private readonly LoyaltyService $loyaltyService,
         private readonly UnitConversionService $unitConversionService,
         private readonly StockMutationService $stockMutationService,
+        private readonly DocumentNumberService $documentNumberService,
     ) {}
 
     /**
@@ -537,7 +539,7 @@ class PosApiController extends Controller
             }
         }
 
-        $invoice = 'TRX-'.Str::upper(Str::random(10));
+        $invoice = $this->documentNumberService->generateTransactionInvoice();
         $isCashPayment = ! $paymentGateway && ! $isPayLater;
         $cashAmount = $isCashPayment ? max(0, (int) $validated['cash'] ?? 0) : 0;
         $customer = isset($validated['customer_id']) ? Customer::find($validated['customer_id']) : null;

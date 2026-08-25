@@ -6,68 +6,67 @@ use App\Models\ProductWarehouse;
 use App\Models\SupplierReturn;
 use App\Models\SupplierReturnItem;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class SupplierReturnService
 {
     public function __construct(
         private readonly AuditLogService $auditLogService,
-        private readonly StockMutationService $stockMutationService
+        private readonly StockMutationService $stockMutationService,
+        private readonly DocumentNumberService $documentNumberService
     ) {}
 
     public function generateDocumentNumber(): string
     {
-        $prefix = 'SR-'.now()->format('Ymd').'-';
-        $last = SupplierReturn::where('document_number', 'like', $prefix.'%')
-            ->orderByDesc('document_number')
-            ->value('document_number');
-
-        $next = $last ? (int) Str::afterLast($last, '-') + 1 : 1;
-
-        return $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+        return $this->documentNumberService->generateSequentialNumber(
+            modelClass: SupplierReturn::class,
+            column: 'document_number',
+            prefix: 'SR-'.now()->format('Ymd').'-'
+        );
     }
 
     public function createReturn(array $data, array $items, int $userId): SupplierReturn
     {
-        return DB::transaction(function () use ($data, $items, $userId) {
-            $return = SupplierReturn::create([
-                'supplier_id' => $data['supplier_id'] ?? null,
-                'warehouse_id' => $data['warehouse_id'] ?? null,
-                'goods_receiving_id' => $data['goods_receiving_id'] ?? null,
-                'payable_id' => $data['payable_id'] ?? null,
-                'document_number' => $this->generateDocumentNumber(),
-                'status' => 'draft',
-                'notes' => $data['notes'] ?? null,
-                'created_by' => $userId,
-            ]);
-
-            foreach ($items as $item) {
-                SupplierReturnItem::create([
-                    'supplier_return_id' => $return->id,
-                    'goods_receiving_item_id' => $item['goods_receiving_item_id'] ?? null,
-                    'product_id' => $item['product_id'],
-                    'qty_returned' => $item['qty_returned'],
-                    'unit_price' => $item['unit_price'] ?? 0,
-                    'reason' => $item['reason'] ?? null,
-                    'notes' => $item['notes'] ?? null,
-                ]);
-            }
-
-            $this->auditLogService->log(
-                event: 'supplier_return.created',
-                module: 'purchase',
-                auditable: $return,
-                description: 'Supplier return '.$return->document_number.' dibuat.',
-                after: [
-                    'document_number' => $return->document_number,
-                    'supplier_id' => $return->supplier_id,
+        return $this->documentNumberService->executeWithRetry(function () use ($data, $items, $userId) {
+            return DB::transaction(function () use ($data, $items, $userId) {
+                $return = SupplierReturn::create([
+                    'supplier_id' => $data['supplier_id'] ?? null,
+                    'warehouse_id' => $data['warehouse_id'] ?? null,
+                    'goods_receiving_id' => $data['goods_receiving_id'] ?? null,
+                    'payable_id' => $data['payable_id'] ?? null,
+                    'document_number' => $this->generateDocumentNumber(),
                     'status' => 'draft',
-                    'total_items' => count($items),
-                ],
-                meta: ['supplier_return_id' => $return->id],
-            );
+                    'notes' => $data['notes'] ?? null,
+                    'created_by' => $userId,
+                ]);
 
-            return $return;
+                foreach ($items as $item) {
+                    SupplierReturnItem::create([
+                        'supplier_return_id' => $return->id,
+                        'goods_receiving_item_id' => $item['goods_receiving_item_id'] ?? null,
+                        'product_id' => $item['product_id'],
+                        'qty_returned' => $item['qty_returned'],
+                        'unit_price' => $item['unit_price'] ?? 0,
+                        'reason' => $item['reason'] ?? null,
+                        'notes' => $item['notes'] ?? null,
+                    ]);
+                }
+
+                $this->auditLogService->log(
+                    event: 'supplier_return.created',
+                    module: 'purchase',
+                    auditable: $return,
+                    description: 'Supplier return '.$return->document_number.' dibuat.',
+                    after: [
+                        'document_number' => $return->document_number,
+                        'supplier_id' => $return->supplier_id,
+                        'status' => 'draft',
+                        'total_items' => count($items),
+                    ],
+                    meta: ['supplier_return_id' => $return->id],
+                );
+
+                return $return;
+            });
         });
     }
 

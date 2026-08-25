@@ -7,25 +7,22 @@ use App\Models\StockMutation;
 use App\Models\StockTransfer;
 use App\Models\StockTransferItem;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class StockTransferService
 {
     public function __construct(
-        private readonly AuditLogService $auditLogService
+        private readonly AuditLogService $auditLogService,
+        private readonly DocumentNumberService $documentNumberService
     ) {}
 
     public function generateDocumentNumber(): string
     {
-        $prefix = 'ST-'.now()->format('Ymd').'-';
-        $last = StockTransfer::where('document_number', 'like', $prefix.'%')
-            ->orderByDesc('document_number')
-            ->value('document_number');
-
-        $next = $last ? (int) Str::afterLast($last, '-') + 1 : 1;
-
-        return $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+        return $this->documentNumberService->generateSequentialNumber(
+            modelClass: StockTransfer::class,
+            column: 'document_number',
+            prefix: 'ST-'.now()->format('Ymd').'-'
+        );
     }
 
     public function createDraft(array $data, array $items, int $userId): StockTransfer
@@ -36,40 +33,42 @@ class StockTransferService
             ]);
         }
 
-        return DB::transaction(function () use ($data, $items, $userId) {
-            $transfer = StockTransfer::create([
-                'source_warehouse_id' => $data['source_warehouse_id'],
-                'destination_warehouse_id' => $data['destination_warehouse_id'],
-                'document_number' => $data['document_number'] ?? $this->generateDocumentNumber(),
-                'status' => 'draft',
-                'notes' => $data['notes'] ?? null,
-                'created_by' => $userId,
-            ]);
-
-            foreach ($items as $item) {
-                StockTransferItem::create([
-                    'stock_transfer_id' => $transfer->id,
-                    'product_id' => $item['product_id'],
-                    'qty' => $item['qty'],
-                ]);
-            }
-
-            $this->auditLogService->log(
-                event: 'stock_transfer.created',
-                module: 'stock',
-                auditable: $transfer,
-                description: 'Transfer stok '.$transfer->document_number.' dibuat.',
-                after: [
-                    'document_number' => $transfer->document_number,
-                    'source_warehouse_id' => $transfer->source_warehouse_id,
-                    'destination_warehouse_id' => $transfer->destination_warehouse_id,
+        return $this->documentNumberService->executeWithRetry(function () use ($data, $items, $userId) {
+            return DB::transaction(function () use ($data, $items, $userId) {
+                $transfer = StockTransfer::create([
+                    'source_warehouse_id' => $data['source_warehouse_id'],
+                    'destination_warehouse_id' => $data['destination_warehouse_id'],
+                    'document_number' => $data['document_number'] ?? $this->generateDocumentNumber(),
                     'status' => 'draft',
-                    'total_items' => count($items),
-                ],
-                meta: ['stock_transfer_id' => $transfer->id],
-            );
+                    'notes' => $data['notes'] ?? null,
+                    'created_by' => $userId,
+                ]);
 
-            return $transfer;
+                foreach ($items as $item) {
+                    StockTransferItem::create([
+                        'stock_transfer_id' => $transfer->id,
+                        'product_id' => $item['product_id'],
+                        'qty' => $item['qty'],
+                    ]);
+                }
+
+                $this->auditLogService->log(
+                    event: 'stock_transfer.created',
+                    module: 'stock',
+                    auditable: $transfer,
+                    description: 'Transfer stok '.$transfer->document_number.' dibuat.',
+                    after: [
+                        'document_number' => $transfer->document_number,
+                        'source_warehouse_id' => $transfer->source_warehouse_id,
+                        'destination_warehouse_id' => $transfer->destination_warehouse_id,
+                        'status' => 'draft',
+                        'total_items' => count($items),
+                    ],
+                    meta: ['stock_transfer_id' => $transfer->id],
+                );
+
+                return $transfer;
+            });
         });
     }
 

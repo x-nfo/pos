@@ -5,65 +5,64 @@ namespace App\Services;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class PurchaseOrderService
 {
     public function __construct(
-        private readonly AuditLogService $auditLogService
+        private readonly AuditLogService $auditLogService,
+        private readonly DocumentNumberService $documentNumberService
     ) {}
 
     public function generateDocumentNumber(): string
     {
-        $prefix = 'PO-'.now()->format('Ymd').'-';
-        $last = PurchaseOrder::where('document_number', 'like', $prefix.'%')
-            ->orderByDesc('document_number')
-            ->value('document_number');
-
-        $next = $last ? (int) Str::afterLast($last, '-') + 1 : 1;
-
-        return $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+        return $this->documentNumberService->generateSequentialNumber(
+            modelClass: PurchaseOrder::class,
+            column: 'document_number',
+            prefix: 'PO-'.now()->format('Ymd').'-'
+        );
     }
 
     public function createOrder(array $data, array $items, int $userId): PurchaseOrder
     {
-        return DB::transaction(function () use ($data, $items, $userId) {
-            $order = PurchaseOrder::create([
-                'supplier_id' => $data['supplier_id'] ?? null,
-                'warehouse_id' => $data['warehouse_id'] ?? null,
-                'document_number' => $data['document_number'] ?? $this->generateDocumentNumber(),
-                'status' => 'draft',
-                'notes' => $data['notes'] ?? null,
-                'created_by' => $userId,
-            ]);
-
-            foreach ($items as $item) {
-                PurchaseOrderItem::create([
-                    'purchase_order_id' => $order->id,
-                    'product_id' => $item['product_id'],
-                    'unit_id' => $item['unit_id'] ?? null,
-                    'conversion_factor' => $item['conversion_factor'] ?? 1.0,
-                    'qty_ordered' => $item['qty_ordered'],
-                    'qty_received' => 0,
-                    'unit_price' => $item['unit_price'],
-                ]);
-            }
-
-            $this->auditLogService->log(
-                event: 'purchase_order.created',
-                module: 'purchase',
-                auditable: $order,
-                description: 'Purchase order '.$order->document_number.' dibuat.',
-                after: [
-                    'document_number' => $order->document_number,
-                    'supplier_id' => $order->supplier_id,
+        return $this->documentNumberService->executeWithRetry(function () use ($data, $items, $userId) {
+            return DB::transaction(function () use ($data, $items, $userId) {
+                $order = PurchaseOrder::create([
+                    'supplier_id' => $data['supplier_id'] ?? null,
+                    'warehouse_id' => $data['warehouse_id'] ?? null,
+                    'document_number' => $data['document_number'] ?? $this->generateDocumentNumber(),
                     'status' => 'draft',
-                    'total_items' => count($items),
-                ],
-                meta: ['purchase_order_id' => $order->id],
-            );
+                    'notes' => $data['notes'] ?? null,
+                    'created_by' => $userId,
+                ]);
 
-            return $order;
+                foreach ($items as $item) {
+                    PurchaseOrderItem::create([
+                        'purchase_order_id' => $order->id,
+                        'product_id' => $item['product_id'],
+                        'unit_id' => $item['unit_id'] ?? null,
+                        'conversion_factor' => $item['conversion_factor'] ?? 1.0,
+                        'qty_ordered' => $item['qty_ordered'],
+                        'qty_received' => 0,
+                        'unit_price' => $item['unit_price'],
+                    ]);
+                }
+
+                $this->auditLogService->log(
+                    event: 'purchase_order.created',
+                    module: 'purchase',
+                    auditable: $order,
+                    description: 'Purchase order '.$order->document_number.' dibuat.',
+                    after: [
+                        'document_number' => $order->document_number,
+                        'supplier_id' => $order->supplier_id,
+                        'status' => 'draft',
+                        'total_items' => count($items),
+                    ],
+                    meta: ['purchase_order_id' => $order->id],
+                );
+
+                return $order;
+            });
         });
     }
 

@@ -11,14 +11,15 @@ use App\Models\ProductWarehouse;
 use App\Models\Receivable;
 use App\Models\Transaction;
 use App\Services\CashierShiftService;
+use App\Services\DocumentNumberService;
 use App\Services\LoyaltyService;
 use App\Services\PricingService;
 use App\Services\StockMutationService;
 use App\Services\UnitConversionService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class TransactionSyncController extends Controller
 {
@@ -27,7 +28,8 @@ class TransactionSyncController extends Controller
         protected PricingService $pricingService,
         protected LoyaltyService $loyaltyService,
         protected UnitConversionService $unitConversionService,
-        protected StockMutationService $stockMutationService
+        protected StockMutationService $stockMutationService,
+        protected DocumentNumberService $documentNumberService
     ) {}
 
     /**
@@ -97,183 +99,193 @@ class TransactionSyncController extends Controller
             ? CustomerVoucher::find($validated['customer_voucher_id'])
             : null;
 
-        $length = 10;
-        $random = '';
-        for ($i = 0; $i < $length; $i++) {
-            $random .= rand(0, 1) ? rand(0, 9) : chr(rand(ord('a'), ord('z')));
-        }
-        $invoice = 'TRX-'.Str::upper($random);
+        $invoice = $this->documentNumberService->generateTransactionInvoice();
 
-        $transaction = DB::transaction(function () use (
-            $validated,
-            $activeShift,
-            $invoice,
-            $offlineRef,
-            $isCashPayment,
-            $isPayLater,
-            $paymentGateway,
-            $manualDiscount,
-            $shippingCost,
-            $requestedRedeemPoints,
-            $customer,
-            $voucher
-        ) {
-            // Process items and calculate totals
-            $items = $validated['items'];
-            $lineItems = [];
-            $subtotal = 0;
+        try {
+            $transaction = DB::transaction(function () use (
+                $validated,
+                $activeShift,
+                $invoice,
+                $offlineRef,
+                $isCashPayment,
+                $isPayLater,
+                $paymentGateway,
+                $manualDiscount,
+                $shippingCost,
+                $requestedRedeemPoints,
+                $customer,
+                $voucher
+            ) {
+                // Process items and calculate totals
+                $items = $validated['items'];
+                $lineItems = [];
+                $subtotal = 0;
 
-            foreach ($items as $item) {
-                $product = Product::find($item['product_id']);
-                if (! $product) {
-                    continue;
+                foreach ($items as $item) {
+                    $product = Product::find($item['product_id']);
+                    if (! $product) {
+                        continue;
+                    }
+
+                    $qty = (float) $item['qty'];
+                    $unitId = (int) ($item['unit_id'] ?? ($product->baseUnit()?->id ?? 1));
+                    $conversionFactor = (float) ($item['conversion_factor'] ?? 1);
+                    $unitPrice = isset($item['unit_price']) ? (int) $item['unit_price'] : (int) $product->sell_price;
+                    $linePrice = isset($item['price']) ? (int) $item['price'] : (int) ($unitPrice * $qty);
+                    $lineDiscount = (int) ($item['discount_total'] ?? 0);
+
+                    $subtotal += $linePrice;
+
+                    $unitSellPrice = $unitId && $product
+                        ? $this->unitConversionService->getSellPrice($product, $unitId)
+                        : (int) ($product->sell_price * ($conversionFactor ?: 1));
+
+                    $lineItems[] = [
+                        'product' => $product,
+                        'product_id' => $product->id,
+                        'unit_id' => $unitId,
+                        'conversion_factor' => $conversionFactor,
+                        'qty' => $qty,
+                        'base_unit_price' => $unitSellPrice,
+                        'unit_price' => $unitPrice,
+                        'price' => $linePrice,
+                        'discount_total' => $lineDiscount,
+                    ];
                 }
 
-                $qty = (float) $item['qty'];
-                $unitId = (int) ($item['unit_id'] ?? ($product->baseUnit()?->id ?? 1));
-                $conversionFactor = (float) ($item['conversion_factor'] ?? 1);
-                $unitPrice = isset($item['unit_price']) ? (int) $item['unit_price'] : (int) $product->sell_price;
-                $linePrice = isset($item['price']) ? (int) $item['price'] : (int) ($unitPrice * $qty);
-                $lineDiscount = (int) ($item['discount_total'] ?? 0);
+                $subtotalAfterPromo = max(0, $subtotal);
+                $grandTotal = max(0, (int) ($validated['grand_total'] ?? ($subtotalAfterPromo - $manualDiscount + $shippingCost)));
+                $cashAmount = $isCashPayment ? max(0, (int) ($validated['cash'] ?? $grandTotal)) : 0;
+                $changeAmount = $isCashPayment ? max(0, $cashAmount - $grandTotal) : 0;
 
-                $subtotal += $linePrice;
-
-                $unitSellPrice = $unitId && $product
-                    ? $this->unitConversionService->getSellPrice($product, $unitId)
-                    : (int) ($product->sell_price * ($conversionFactor ?: 1));
-
-                $lineItems[] = [
-                    'product' => $product,
-                    'product_id' => $product->id,
-                    'unit_id' => $unitId,
-                    'conversion_factor' => $conversionFactor,
-                    'qty' => $qty,
-                    'base_unit_price' => $unitSellPrice,
-                    'unit_price' => $unitPrice,
-                    'price' => $linePrice,
-                    'discount_total' => $lineDiscount,
-                ];
-            }
-
-            $subtotalAfterPromo = max(0, $subtotal);
-            $grandTotal = max(0, (int) ($validated['grand_total'] ?? ($subtotalAfterPromo - $manualDiscount + $shippingCost)));
-            $cashAmount = $isCashPayment ? max(0, (int) ($validated['cash'] ?? $grandTotal)) : 0;
-            $changeAmount = $isCashPayment ? max(0, $cashAmount - $grandTotal) : 0;
-
-            $transaction = Transaction::create([
-                'cashier_id' => auth()->id(),
-                'cashier_shift_id' => $activeShift->id,
-                'warehouse_id' => $activeShift->warehouse_id,
-                'customer_id' => $customer?->id,
-                'invoice' => $invoice,
-                'cash' => $cashAmount,
-                'change' => $changeAmount,
-                'discount' => $manualDiscount,
-                'loyalty_points_redeemed' => $requestedRedeemPoints,
-                'loyalty_discount_total' => 0,
-                'customer_voucher_discount' => 0,
-                'customer_voucher_code' => $voucher?->code,
-                'customer_voucher_name' => $voucher?->name,
-                'shipping_cost' => $shippingCost,
-                'grand_total' => $grandTotal,
-                'payment_method' => $isPayLater ? 'pay_later' : ($paymentGateway ?: 'cash'),
-                'payment_status' => $isCashPayment ? 'paid' : ($isPayLater ? 'unpaid' : 'pending'),
-                'payment_reference' => $offlineRef,
-                'bank_account_id' => $paymentGateway === 'bank_transfer' ? ($validated['bank_account_id'] ?? null) : null,
-                'customer_npwp' => $validated['customer_npwp'] ?? null,
-            ]);
-
-            foreach ($lineItems as $lineItem) {
-                $transaction->details()->create([
-                    'transaction_id' => $transaction->id,
-                    'product_id' => $lineItem['product_id'],
-                    'unit_id' => $lineItem['unit_id'],
-                    'conversion_factor' => $lineItem['conversion_factor'],
-                    'qty' => $lineItem['qty'],
-                    'base_unit_price' => $lineItem['base_unit_price'],
-                    'unit_price' => $lineItem['unit_price'],
-                    'price' => $lineItem['price'],
-                    'discount_total' => $lineItem['discount_total'],
+                $transaction = Transaction::create([
+                    'cashier_id' => auth()->id(),
+                    'cashier_shift_id' => $activeShift->id,
+                    'warehouse_id' => $activeShift->warehouse_id,
+                    'customer_id' => $customer?->id,
+                    'invoice' => $invoice,
+                    'cash' => $cashAmount,
+                    'change' => $changeAmount,
+                    'discount' => $manualDiscount,
+                    'loyalty_points_redeemed' => $requestedRedeemPoints,
+                    'loyalty_discount_total' => 0,
+                    'customer_voucher_discount' => 0,
+                    'customer_voucher_code' => $voucher?->code,
+                    'customer_voucher_name' => $voucher?->name,
+                    'shipping_cost' => $shippingCost,
+                    'grand_total' => $grandTotal,
+                    'payment_method' => $isPayLater ? 'pay_later' : ($paymentGateway ?: 'cash'),
+                    'payment_status' => $isCashPayment ? 'paid' : ($isPayLater ? 'unpaid' : 'pending'),
+                    'payment_reference' => $offlineRef,
+                    'bank_account_id' => $paymentGateway === 'bank_transfer' ? ($validated['bank_account_id'] ?? null) : null,
+                    'customer_npwp' => $validated['customer_npwp'] ?? null,
                 ]);
 
-                $product = $lineItem['product'];
-                $unitBuyPrice = $lineItem['unit_id'] && $product
-                    ? $this->unitConversionService->getBuyPrice($product, (int) $lineItem['unit_id'])
-                    : (int) ($product->buy_price * ($lineItem['conversion_factor'] ?: 1));
-                $totalBuyPrice = $unitBuyPrice * $lineItem['qty'];
-                $lineShare = $subtotalAfterPromo > 0 ? $lineItem['price'] / $subtotalAfterPromo : 0;
-                $allocatedManualDiscount = (int) round($manualDiscount * $lineShare);
-                $netSellPrice = max(0, $lineItem['price'] - $allocatedManualDiscount);
-                $profits = $netSellPrice - $totalBuyPrice;
+                foreach ($lineItems as $lineItem) {
+                    $transaction->details()->create([
+                        'transaction_id' => $transaction->id,
+                        'product_id' => $lineItem['product_id'],
+                        'unit_id' => $lineItem['unit_id'],
+                        'conversion_factor' => $lineItem['conversion_factor'],
+                        'qty' => $lineItem['qty'],
+                        'base_unit_price' => $lineItem['base_unit_price'],
+                        'unit_price' => $lineItem['unit_price'],
+                        'price' => $lineItem['price'],
+                        'discount_total' => $lineItem['discount_total'],
+                    ]);
 
-                $transaction->profits()->create([
-                    'transaction_id' => $transaction->id,
-                    'total' => $profits,
-                ]);
+                    $product = $lineItem['product'];
+                    $unitBuyPrice = $lineItem['unit_id'] && $product
+                        ? $this->unitConversionService->getBuyPrice($product, (int) $lineItem['unit_id'])
+                        : (int) ($product->buy_price * ($lineItem['conversion_factor'] ?: 1));
+                    $totalBuyPrice = $unitBuyPrice * $lineItem['qty'];
+                    $lineShare = $subtotalAfterPromo > 0 ? $lineItem['price'] / $subtotalAfterPromo : 0;
+                    $allocatedManualDiscount = (int) round($manualDiscount * $lineShare);
+                    $netSellPrice = max(0, $lineItem['price'] - $allocatedManualDiscount);
+                    $profits = $netSellPrice - $totalBuyPrice;
 
-                // Option A: Decrement stock directly (allowing negative stock if offline sale exceeded current DB stock)
-                if ($product->is_composite) {
-                    $product->load('components');
-                    foreach ($product->components as $component) {
-                        $componentQty = (int) round((float) $component->pivot->qty * $lineItem['qty']);
-                        $stockBefore = (int) $component->stock;
-                        $stockAfter = $stockBefore - $componentQty;
+                    $transaction->profits()->create([
+                        'transaction_id' => $transaction->id,
+                        'total' => $profits,
+                    ]);
+
+                    // Option A: Decrement stock directly (allowing negative stock if offline sale exceeded current DB stock)
+                    if ($product->is_composite) {
+                        $product->load('components');
+                        foreach ($product->components as $component) {
+                            $componentQty = (int) round((float) $component->pivot->qty * $lineItem['qty']);
+                            $stockBefore = (int) $component->stock;
+                            $stockAfter = $stockBefore - $componentQty;
+
+                            ProductWarehouse::where([
+                                'product_id' => $component->id,
+                                'warehouse_id' => $activeShift->warehouse_id,
+                            ])->decrement('stock', $componentQty);
+                            $component->decrement('stock', $componentQty);
+
+                            $this->stockMutationService->recordSaleOut(
+                                product: $component,
+                                transaction: $transaction,
+                                qty: $componentQty,
+                                stockBefore: $stockBefore,
+                                stockAfter: $stockAfter,
+                                warehouseId: $activeShift->warehouse_id,
+                                notes: 'Komponen '.$component->title.' untuk bundle '.$product->title.' pada sync transaksi '.$transaction->invoice,
+                                userId: auth()->id()
+                            );
+                        }
+                    } else {
+                        $baseQty = (int) round($lineItem['qty'] * (float) $lineItem['conversion_factor']);
+                        $stockBefore = (int) $product->stock;
+                        $stockAfter = $stockBefore - $baseQty;
 
                         ProductWarehouse::where([
-                            'product_id' => $component->id,
+                            'product_id' => $product->id,
                             'warehouse_id' => $activeShift->warehouse_id,
-                        ])->decrement('stock', $componentQty);
-                        $component->decrement('stock', $componentQty);
+                        ])->decrement('stock', $baseQty);
+                        $product->decrement('stock', $baseQty);
 
                         $this->stockMutationService->recordSaleOut(
-                            product: $component,
+                            product: $product,
                             transaction: $transaction,
-                            qty: $componentQty,
+                            qty: $baseQty,
                             stockBefore: $stockBefore,
                             stockAfter: $stockAfter,
                             warehouseId: $activeShift->warehouse_id,
-                            notes: 'Komponen '.$component->title.' untuk bundle '.$product->title.' pada sync transaksi '.$transaction->invoice,
+                            notes: 'Sync offline penjualan transaksi '.$transaction->invoice,
                             userId: auth()->id()
                         );
                     }
-                } else {
-                    $baseQty = (int) round($lineItem['qty'] * (float) $lineItem['conversion_factor']);
-                    $stockBefore = (int) $product->stock;
-                    $stockAfter = $stockBefore - $baseQty;
-
-                    ProductWarehouse::where([
-                        'product_id' => $product->id,
-                        'warehouse_id' => $activeShift->warehouse_id,
-                    ])->decrement('stock', $baseQty);
-                    $product->decrement('stock', $baseQty);
-
-                    $this->stockMutationService->recordSaleOut(
-                        product: $product,
-                        transaction: $transaction,
-                        qty: $baseQty,
-                        stockBefore: $stockBefore,
-                        stockAfter: $stockAfter,
-                        warehouseId: $activeShift->warehouse_id,
-                        notes: 'Sync offline penjualan transaksi '.$transaction->invoice,
-                        userId: auth()->id()
-                    );
                 }
-            }
 
-            if ($isPayLater) {
-                Receivable::create([
-                    'customer_id' => $customer?->id,
-                    'transaction_id' => $transaction->id,
-                    'invoice' => $invoice,
-                    'total' => $grandTotal,
-                    'paid' => 0,
-                    'due_date' => $validated['due_date'] ?? null,
-                    'status' => 'unpaid',
+                if ($isPayLater) {
+                    Receivable::create([
+                        'customer_id' => $customer?->id,
+                        'transaction_id' => $transaction->id,
+                        'invoice' => $invoice,
+                        'total' => $grandTotal,
+                        'paid' => 0,
+                        'due_date' => $validated['due_date'] ?? null,
+                        'status' => 'unpaid',
+                    ]);
+                }
+
+                return $transaction;
+            });
+        } catch (QueryException $e) {
+            $existing = Transaction::where('payment_reference', $offlineRef)->first();
+            if ($existing) {
+                return response()->json([
+                    'success' => true,
+                    'idempotent' => true,
+                    'message' => 'Transaksi offline sudah tersinkronkan sebelumnya.',
+                    'invoice' => $existing->invoice,
+                    'transaction_id' => $existing->id,
                 ]);
             }
 
-            return $transaction;
-        });
+            throw $e;
+        }
 
         // Check if discount needs approval
         if ($transaction->discount > 0 && $transaction->needsDiscountApproval()) {

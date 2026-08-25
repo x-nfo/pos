@@ -7,13 +7,17 @@ use App\Models\BankAccount;
 use App\Models\Payable;
 use App\Models\PayablePayment;
 use App\Models\Supplier;
+use App\Services\DocumentNumberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class PayableController extends Controller
 {
+    public function __construct(
+        private readonly DocumentNumberService $documentNumberService
+    ) {}
+
     public function index(Request $request)
     {
         $filters = [
@@ -69,7 +73,7 @@ class PayableController extends Controller
         ]);
 
         if (! $data['document_number']) {
-            $data['document_number'] = 'INV-'.Str::upper(Str::random(8));
+            $data['document_number'] = $this->documentNumberService->generatePayableDocumentNumber();
         }
         $data['status'] = 'unpaid';
         $data['paid'] = 0;

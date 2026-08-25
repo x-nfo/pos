@@ -19,6 +19,7 @@ use App\Models\Transaction;
 use App\Models\Warehouse;
 use App\Services\AuditLogService;
 use App\Services\CashierShiftService;
+use App\Services\DocumentNumberService;
 use App\Services\LoyaltyService;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\PricingService;
@@ -31,7 +32,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -42,7 +42,8 @@ class TransactionController extends Controller
         private readonly AuditLogService $auditLogService,
         private readonly PricingService $pricingService,
         private readonly LoyaltyService $loyaltyService,
-        private readonly StockMutationService $stockMutationService
+        private readonly StockMutationService $stockMutationService,
+        private readonly DocumentNumberService $documentNumberService
     ) {}
 
     /**
@@ -665,13 +666,7 @@ class TransactionController extends Controller
                 }
             }
 
-            $length = 10;
-            $random = '';
-            for ($i = 0; $i < $length; $i++) {
-                $random .= rand(0, 1) ? rand(0, 9) : chr(rand(ord('a'), ord('z')));
-            }
-
-            $invoice = 'TRX-'.Str::upper($random);
+            $invoice = $this->documentNumberService->generateTransactionInvoice();
             $isCashPayment = empty($paymentGateway) && ! $isPayLater;
             $manualDiscount = max(0, (int) $request->input('discount', 0));
             $shippingCost = max(0, (int) $request->input('shipping_cost', 0));

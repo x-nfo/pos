@@ -9,114 +9,113 @@ use App\Models\ProductBatch;
 use App\Models\ProductWarehouse;
 use App\Models\PurchaseOrder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class GoodsReceivingService
 {
     public function __construct(
         private readonly StockMutationService $stockMutationService,
-        private readonly AuditLogService $auditLogService
+        private readonly AuditLogService $auditLogService,
+        private readonly DocumentNumberService $documentNumberService
     ) {}
 
     public function generateDocumentNumber(): string
     {
-        $prefix = 'GR-'.now()->format('Ymd').'-';
-        $last = GoodsReceiving::where('document_number', 'like', $prefix.'%')
-            ->orderByDesc('document_number')
-            ->value('document_number');
-
-        $next = $last ? (int) Str::afterLast($last, '-') + 1 : 1;
-
-        return $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+        return $this->documentNumberService->generateSequentialNumber(
+            modelClass: GoodsReceiving::class,
+            column: 'document_number',
+            prefix: 'GR-'.now()->format('Ymd').'-'
+        );
     }
 
     public function receive(PurchaseOrder $order, array $items, ?string $notes, int $userId): GoodsReceiving
     {
-        return DB::transaction(function () use ($order, $items, $notes, $userId) {
-            $receiving = GoodsReceiving::create([
-                'purchase_order_id' => $order->id,
-                'supplier_id' => $order->supplier_id,
-                'warehouse_id' => $order->warehouse_id,
-                'document_number' => $this->generateDocumentNumber(),
-                'notes' => $notes,
-                'received_by' => $userId,
-                'received_at' => now(),
-            ]);
-
-            foreach ($items as $item) {
-                $poItem = $order->items()->findOrFail($item['purchase_order_item_id']);
-                $qtyReceived = (int) $item['qty_received'];
-                $conversionFactor = (float) ($poItem->conversion_factor ?: 1.0);
-                $baseQty = (int) round($qtyReceived * $conversionFactor);
-
-                GoodsReceivingItem::create([
-                    'goods_receiving_id' => $receiving->id,
-                    'purchase_order_item_id' => $poItem->id,
-                    'product_id' => $poItem->product_id,
-                    'unit_id' => $poItem->unit_id,
-                    'conversion_factor' => $conversionFactor,
-                    'qty_received' => $qtyReceived,
-                    'notes' => $item['notes'] ?? null,
+        return $this->documentNumberService->executeWithRetry(function () use ($order, $items, $notes, $userId) {
+            return DB::transaction(function () use ($order, $items, $notes, $userId) {
+                $receiving = GoodsReceiving::create([
+                    'purchase_order_id' => $order->id,
+                    'supplier_id' => $order->supplier_id,
+                    'warehouse_id' => $order->warehouse_id,
+                    'document_number' => $this->generateDocumentNumber(),
+                    'notes' => $notes,
+                    'received_by' => $userId,
+                    'received_at' => now(),
                 ]);
 
-                $poItem->increment('qty_received', $qtyReceived);
+                foreach ($items as $item) {
+                    $poItem = $order->items()->findOrFail($item['purchase_order_item_id']);
+                    $qtyReceived = (int) $item['qty_received'];
+                    $conversionFactor = (float) ($poItem->conversion_factor ?: 1.0);
+                    $baseQty = (int) round($qtyReceived * $conversionFactor);
 
-                $product = $poItem->product;
-                $stockBefore = (int) $product->stock;
-                $product->increment('stock', $baseQty);
-                $stockAfter = (int) $product->stock;
-
-                // Increment warehouse pivot stock
-                if ($order->warehouse_id) {
-                    ProductWarehouse::where([
-                        'product_id' => $product->id,
-                        'warehouse_id' => $order->warehouse_id,
-                    ])->increment('stock', $baseQty);
-                }
-
-                // Create batch record
-                if (! empty($item['batch_number'])) {
-                    ProductBatch::create([
-                        'product_id' => $product->id,
-                        'warehouse_id' => $order->warehouse_id ?? 1,
-                        'batch_number' => $item['batch_number'],
-                        'expired_at' => $item['expired_at'] ?? null,
-                        'received_at' => now(),
-                        'stock' => $baseQty,
+                    GoodsReceivingItem::create([
+                        'goods_receiving_id' => $receiving->id,
+                        'purchase_order_item_id' => $poItem->id,
+                        'product_id' => $poItem->product_id,
+                        'unit_id' => $poItem->unit_id,
+                        'conversion_factor' => $conversionFactor,
+                        'qty_received' => $qtyReceived,
+                        'notes' => $item['notes'] ?? null,
                     ]);
+
+                    $poItem->increment('qty_received', $qtyReceived);
+
+                    $product = $poItem->product;
+                    $stockBefore = (int) $product->stock;
+                    $product->increment('stock', $baseQty);
+                    $stockAfter = (int) $product->stock;
+
+                    // Increment warehouse pivot stock
+                    if ($order->warehouse_id) {
+                        ProductWarehouse::where([
+                            'product_id' => $product->id,
+                            'warehouse_id' => $order->warehouse_id,
+                        ])->increment('stock', $baseQty);
+                    }
+
+                    // Create batch record
+                    if (! empty($item['batch_number'])) {
+                        ProductBatch::create([
+                            'product_id' => $product->id,
+                            'warehouse_id' => $order->warehouse_id ?? 1,
+                            'batch_number' => $item['batch_number'],
+                            'expired_at' => $item['expired_at'] ?? null,
+                            'received_at' => now(),
+                            'stock' => $baseQty,
+                        ]);
+                    }
+
+                    $this->stockMutationService->recordPurchaseInbound(
+                        product: $product,
+                        goodsReceiving: $receiving,
+                        qty: $baseQty,
+                        stockBefore: $stockBefore,
+                        stockAfter: $stockAfter,
+                        notes: 'Penerimaan dari PO '.$order->document_number,
+                        userId: $userId,
+                    );
                 }
 
-                $this->stockMutationService->recordPurchaseInbound(
-                    product: $product,
-                    goodsReceiving: $receiving,
-                    qty: $baseQty,
-                    stockBefore: $stockBefore,
-                    stockAfter: $stockAfter,
-                    notes: 'Penerimaan dari PO '.$order->document_number,
-                    userId: $userId,
+                $this->updateOrderStatus($order);
+
+                if ($receiving->supplier_id) {
+                    $this->createOrUpdatePayable($order, $receiving, $userId);
+                }
+
+                $this->auditLogService->log(
+                    event: 'goods_receiving.created',
+                    module: 'purchase',
+                    auditable: $receiving,
+                    description: 'Barang diterima dari PO '.$order->document_number,
+                    after: [
+                        'document_number' => $receiving->document_number,
+                        'purchase_order_id' => $order->id,
+                        'total_items' => count($items),
+                    ],
+                    meta: ['goods_receiving_id' => $receiving->id],
                 );
-            }
 
-            $this->updateOrderStatus($order);
-
-            if ($receiving->supplier_id) {
-                $this->createOrUpdatePayable($order, $receiving, $userId);
-            }
-
-            $this->auditLogService->log(
-                event: 'goods_receiving.created',
-                module: 'purchase',
-                auditable: $receiving,
-                description: 'Barang diterima dari PO '.$order->document_number,
-                after: [
-                    'document_number' => $receiving->document_number,
-                    'purchase_order_id' => $order->id,
-                    'total_items' => count($items),
-                ],
-                meta: ['goods_receiving_id' => $receiving->id],
-            );
-
-            return $receiving;
+                return $receiving;
+            });
         });
     }
 
