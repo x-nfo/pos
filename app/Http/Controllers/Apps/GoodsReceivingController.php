@@ -46,6 +46,7 @@ class GoodsReceivingController extends Controller
         $orders = PurchaseOrder::with([
             'supplier:id,name',
             'items.product:id,title,sku',
+            'items.unit:id,code,name,symbol',
         ])->whereIn('status', ['ordered', 'partial_received'])
             ->orderByDesc('created_at')
             ->get();
@@ -101,7 +102,9 @@ class GoodsReceivingController extends Controller
             'purchaseOrder:id,document_number,status',
             'supplier:id,name',
             'items.product:id,title,sku',
-            'items.purchaseOrderItem:id,unit_price',
+            'items.unit:id,code,name,symbol',
+            'items.purchaseOrderItem:id,unit_price,unit_id,conversion_factor',
+            'items.purchaseOrderItem.unit:id,code,name,symbol',
             'receiver:id,name',
         ]);
 

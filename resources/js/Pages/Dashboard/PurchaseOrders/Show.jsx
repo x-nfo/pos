@@ -140,6 +140,7 @@ export default function Show({ order }) {
                             <Table.Thead>
                                 <tr>
                                     <Table.Th>Produk</Table.Th>
+                                    <Table.Th>Satuan</Table.Th>
                                     <Table.Th>Qty Dipesan</Table.Th>
                                     <Table.Th>Qty Diterima</Table.Th>
                                     <Table.Th>Sisa</Table.Th>
@@ -151,6 +152,8 @@ export default function Show({ order }) {
                                 {order.items.length > 0 ? (
                                     order.items.map((item) => {
                                         const remaining = item.qty_ordered - item.qty_received;
+                                        const unitName = item.unit?.name || item.unit?.symbol || "Pcs";
+                                        const isMulti = item.conversion_factor > 1;
                                         return (
                                             <tr key={item.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50">
                                                 <Table.Td>
@@ -159,11 +162,17 @@ export default function Show({ order }) {
                                                     </p>
                                                     <p className="text-xs text-slate-500">{item.product?.sku || "-"}</p>
                                                 </Table.Td>
-                                                <Table.Td>{item.qty_ordered}</Table.Td>
-                                                <Table.Td>{item.qty_received}</Table.Td>
+                                                <Table.Td>
+                                                    <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                                        {unitName}
+                                                        {isMulti && ` (@${item.conversion_factor})`}
+                                                    </span>
+                                                </Table.Td>
+                                                <Table.Td>{item.qty_ordered} {item.unit?.symbol || unitName}</Table.Td>
+                                                <Table.Td>{item.qty_received} {item.unit?.symbol || unitName}</Table.Td>
                                                 <Table.Td>
                                                     <span className={`font-semibold ${remaining > 0 ? "text-warning-600" : "text-success-600"}`}>
-                                                        {remaining}
+                                                        {remaining} {item.unit?.symbol || unitName}
                                                     </span>
                                                 </Table.Td>
                                                 <Table.Td>{formatCurrency(item.unit_price)}</Table.Td>
@@ -172,7 +181,7 @@ export default function Show({ order }) {
                                         );
                                     })
                                 ) : (
-                                    <Table.Empty colSpan={6} message={
+                                    <Table.Empty colSpan={7} message={
                                         <div className="text-slate-500 dark:text-slate-400">Tidak ada item pada PO ini.</div>
                                     }>
                                         <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">

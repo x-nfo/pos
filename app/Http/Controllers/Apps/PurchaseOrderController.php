@@ -49,7 +49,30 @@ class PurchaseOrderController extends Controller
     public function create()
     {
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
-        $products = Product::orderBy('title')->get(['id', 'title', 'sku', 'buy_price', 'stock']);
+        $products = Product::with('units')
+            ->orderBy('title')
+            ->get(['id', 'title', 'sku', 'buy_price', 'sell_price', 'stock'])
+            ->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'title' => $product->title,
+                    'sku' => $product->sku,
+                    'buy_price' => $product->buy_price,
+                    'sell_price' => $product->sell_price,
+                    'stock' => $product->stock,
+                    'units' => $product->units->map(fn ($u) => [
+                        'id' => $u->id,
+                        'code' => $u->code,
+                        'name' => $u->name,
+                        'symbol' => $u->symbol,
+                        'is_base' => (bool) ($u->pivot->is_base ?? false),
+                        'conversion_factor' => (float) ($u->pivot->conversion_factor ?? 1),
+                        'buy_price' => (int) ($u->pivot->buy_price ?? $product->buy_price),
+                        'sell_price' => (int) ($u->pivot->sell_price ?? $product->sell_price),
+                        'barcode' => $u->pivot->barcode ?? null,
+                    ])->values()->toArray(),
+                ];
+            });
         $warehouses = Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name']);
 
         return Inertia::render('Dashboard/PurchaseOrders/Create', [
@@ -68,6 +91,8 @@ class PurchaseOrderController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
+            'items.*.unit_id' => ['nullable', 'exists:units,id'],
+            'items.*.conversion_factor' => ['nullable', 'numeric', 'min:0.0001'],
             'items.*.qty_ordered' => ['required', 'integer', 'min:1'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
         ]);
@@ -85,8 +110,12 @@ class PurchaseOrderController extends Controller
             'supplier:id,name,phone,email,address',
             'warehouse:id,code,name',
             'items.product:id,title,sku,image',
+            'items.unit:id,code,name,symbol',
             'goodsReceivings' => function ($q) {
-                $q->with('items.product:id,title,sku')->orderByDesc('received_at');
+                $q->with([
+                    'items.product:id,title,sku',
+                    'items.unit:id,code,name,symbol',
+                ])->orderByDesc('received_at');
             },
             'creator:id,name',
             'payable:id,purchase_order_id,total,paid,status,document_number',

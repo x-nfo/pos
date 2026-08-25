@@ -46,11 +46,15 @@ class GoodsReceivingService
             foreach ($items as $item) {
                 $poItem = $order->items()->findOrFail($item['purchase_order_item_id']);
                 $qtyReceived = (int) $item['qty_received'];
+                $conversionFactor = (float) ($poItem->conversion_factor ?: 1.0);
+                $baseQty = (int) round($qtyReceived * $conversionFactor);
 
                 GoodsReceivingItem::create([
                     'goods_receiving_id' => $receiving->id,
                     'purchase_order_item_id' => $poItem->id,
                     'product_id' => $poItem->product_id,
+                    'unit_id' => $poItem->unit_id,
+                    'conversion_factor' => $conversionFactor,
                     'qty_received' => $qtyReceived,
                     'notes' => $item['notes'] ?? null,
                 ]);
@@ -58,14 +62,16 @@ class GoodsReceivingService
                 $poItem->increment('qty_received', $qtyReceived);
 
                 $product = $poItem->product;
-                // Decrement legacy stock
-                $product->decrement('stock', $qtyReceived);
+                $stockBefore = (int) $product->stock;
+                $product->increment('stock', $baseQty);
+                $stockAfter = (int) $product->stock;
+
                 // Increment warehouse pivot stock
                 if ($order->warehouse_id) {
                     ProductWarehouse::where([
                         'product_id' => $product->id,
                         'warehouse_id' => $order->warehouse_id,
-                    ])->increment('stock', $qtyReceived);
+                    ])->increment('stock', $baseQty);
                 }
 
                 // Create batch record
@@ -76,16 +82,16 @@ class GoodsReceivingService
                         'batch_number' => $item['batch_number'],
                         'expired_at' => $item['expired_at'] ?? null,
                         'received_at' => now(),
-                        'stock' => $qtyReceived,
+                        'stock' => $baseQty,
                     ]);
                 }
 
                 $this->stockMutationService->recordPurchaseInbound(
                     product: $product,
                     goodsReceiving: $receiving,
-                    qty: $qtyReceived,
-                    stockBefore: (int) $product->stock + $qtyReceived,
-                    stockAfter: (int) $product->stock,
+                    qty: $baseQty,
+                    stockBefore: $stockBefore,
+                    stockAfter: $stockAfter,
                     notes: 'Penerimaan dari PO '.$order->document_number,
                     userId: $userId,
                 );

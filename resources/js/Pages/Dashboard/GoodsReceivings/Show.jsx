@@ -63,6 +63,7 @@ export default function Show({ receiving }) {
                         <Table.Thead>
                             <tr>
                                 <Table.Th>Produk</Table.Th>
+                                <Table.Th>Satuan</Table.Th>
                                 <Table.Th>Qty Diterima</Table.Th>
                                 <Table.Th>Harga Satuan</Table.Th>
                                 <Table.Th>Subtotal</Table.Th>
@@ -73,6 +74,10 @@ export default function Show({ receiving }) {
                             {receiving.items.length > 0 ? (
                                 receiving.items.map((item) => {
                                     const unitPrice = item.purchase_order_item?.unit_price || 0;
+                                    const unitName = item.unit?.name || item.purchase_order_item?.unit?.name || item.unit?.symbol || "Pcs";
+                                    const unitSymbol = item.unit?.symbol || item.purchase_order_item?.unit?.symbol || "pcs";
+                                    const isMulti = (item.conversion_factor || item.purchase_order_item?.conversion_factor || 1) > 1;
+                                    const factor = item.conversion_factor || item.purchase_order_item?.conversion_factor;
                                     return (
                                         <tr key={item.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50">
                                             <Table.Td>
@@ -81,7 +86,13 @@ export default function Show({ receiving }) {
                                                 </p>
                                                 <p className="text-xs text-slate-500">{item.product?.sku || "-"}</p>
                                             </Table.Td>
-                                            <Table.Td className="font-semibold">{item.qty_received}</Table.Td>
+                                            <Table.Td>
+                                                <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                                    {unitName}
+                                                    {isMulti && ` (@${factor})`}
+                                                </span>
+                                            </Table.Td>
+                                            <Table.Td className="font-semibold">{item.qty_received} {unitSymbol}</Table.Td>
                                             <Table.Td>{formatCurrency(unitPrice)}</Table.Td>
                                             <Table.Td className="font-semibold">{formatCurrency(item.qty_received * unitPrice)}</Table.Td>
                                             <Table.Td className="text-xs text-slate-500">{item.notes || "-"}</Table.Td>
@@ -89,7 +100,7 @@ export default function Show({ receiving }) {
                                     );
                                 })
                             ) : (
-                                <Table.Empty colSpan={5} message={
+                                <Table.Empty colSpan={6} message={
                                     <div className="text-slate-500 dark:text-slate-400">Tidak ada item pada penerimaan ini.</div>
                                 }>
                                     <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">

@@ -31,6 +31,9 @@ export default function Create({ orders }) {
                     purchase_order_item_id: item.id,
                     product_title: item.product?.title || "Produk #" + item.product_id,
                     product_sku: item.product?.sku || "-",
+                    unit_name: item.unit?.name || item.unit?.symbol || "Pcs",
+                    unit_symbol: item.unit?.symbol || item.unit?.code || "pcs",
+                    conversion_factor: item.conversion_factor || 1.0,
                     qty_ordered: item.qty_ordered,
                     qty_received_already: item.qty_received || 0,
                     outstanding: item.qty_ordered - (item.qty_received || 0),
@@ -117,6 +120,7 @@ export default function Create({ orders }) {
                                     <thead>
                                         <tr className="border-b border-slate-200 dark:border-slate-700">
                                             <th className="px-3 py-2 text-left font-semibold text-slate-700 dark:text-slate-200">Produk</th>
+                                            <th className="px-3 py-2 text-left font-semibold text-slate-700 dark:text-slate-200">Satuan</th>
                                             <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Qty PO</th>
                                             <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Sudah Diterima</th>
                                             <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Sisa</th>
@@ -131,9 +135,15 @@ export default function Create({ orders }) {
                                                     <p className="font-medium text-slate-800 dark:text-slate-200">{item.product_title}</p>
                                                     <p className="text-xs text-slate-500">{item.product_sku}</p>
                                                 </td>
-                                                <td className="px-3 py-3 text-right">{item.qty_ordered}</td>
-                                                <td className="px-3 py-3 text-right text-slate-500">{item.qty_received_already}</td>
-                                                <td className="px-3 py-3 text-right font-semibold text-warning-600">{item.outstanding}</td>
+                                                <td className="px-3 py-3">
+                                                    <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                                        {item.unit_name}
+                                                        {item.conversion_factor > 1 && ` (@${item.conversion_factor})`}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-3 text-right">{item.qty_ordered} {item.unit_symbol}</td>
+                                                <td className="px-3 py-3 text-right text-slate-500">{item.qty_received_already} {item.unit_symbol}</td>
+                                                <td className="px-3 py-3 text-right font-semibold text-warning-600">{item.outstanding} {item.unit_symbol}</td>
                                                 <td className="px-3 py-3 text-right">
                                                     <input
                                                         type="number"

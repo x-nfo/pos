@@ -174,4 +174,139 @@ class GoodsReceivingTest extends TestCase
             'qty' => 20,
         ]);
     }
+
+    public function test_authorized_user_can_receive_goods_with_multi_uom_conversion(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'goods-receivings-access',
+            'goods-receivings-create',
+            'purchase-orders-access',
+        ]);
+
+        $product = $this->createProduct(0);
+
+        $boxUnit = \App\Models\Unit::firstOrCreate(
+            ['code' => 'KTK'],
+            ['name' => 'Kotak', 'symbol' => 'ktk']
+        );
+
+        $cartonUnit = \App\Models\Unit::firstOrCreate(
+            ['code' => 'DUS'],
+            ['name' => 'Dus', 'symbol' => 'dus']
+        );
+
+        $product->units()->attach($boxUnit->id, [
+            'is_base' => true,
+            'conversion_factor' => 1.0000,
+            'buy_price' => 22083,
+            'sell_price' => 25000,
+        ]);
+
+        $product->units()->attach($cartonUnit->id, [
+            'is_base' => false,
+            'conversion_factor' => 12.0000,
+            'buy_price' => 265000,
+            'sell_price' => 295000,
+        ]);
+
+        $supplier = Supplier::create([
+            'name' => 'Supplier Susu',
+            'phone' => '08123456789',
+        ]);
+
+        $warehouse = Warehouse::create([
+            'code' => 'GUDANG-UTAMA',
+            'name' => 'Gudang Utama',
+            'type' => 'main',
+            'is_active' => true,
+        ]);
+
+        ProductWarehouse::create([
+            'product_id' => $product->id,
+            'warehouse_id' => $warehouse->id,
+            'stock' => 0,
+        ]);
+
+        $po = PurchaseOrder::create([
+            'supplier_id' => $supplier->id,
+            'warehouse_id' => $warehouse->id,
+            'document_number' => 'PO-20260825-0001',
+            'status' => 'ordered',
+            'created_by' => $user->id,
+            'ordered_at' => now(),
+        ]);
+
+        $poItem = PurchaseOrderItem::create([
+            'purchase_order_id' => $po->id,
+            'product_id' => $product->id,
+            'unit_id' => $cartonUnit->id,
+            'conversion_factor' => 12.0000,
+            'qty_ordered' => 2, // 2 Dus
+            'qty_received' => 0,
+            'unit_price' => 265000,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->post(route('goods-receivings.store'), [
+                'purchase_order_id' => $po->id,
+                'notes' => 'Penerimaan Susu 2 Dus',
+                'items' => [
+                    [
+                        'purchase_order_item_id' => $poItem->id,
+                        'qty_received' => 2,
+                    ],
+                ],
+            ]);
+
+        $receiving = GoodsReceiving::where('purchase_order_id', $po->id)->first();
+        $this->assertNotNull($receiving);
+        $response->assertRedirect(route('goods-receivings.show', $receiving));
+
+        // Goods receiving item has unit_id and conversion_factor
+        $this->assertDatabaseHas('goods_receiving_items', [
+            'goods_receiving_id' => $receiving->id,
+            'purchase_order_item_id' => $poItem->id,
+            'product_id' => $product->id,
+            'unit_id' => $cartonUnit->id,
+            'conversion_factor' => 12.0000,
+            'qty_received' => 2,
+        ]);
+
+        // PO item qty_received is 2
+        $this->assertDatabaseHas('purchase_order_items', [
+            'id' => $poItem->id,
+            'qty_received' => 2,
+        ]);
+
+        // Stock in warehouse pivot converted: 0 + (2 * 12) = 24
+        $this->assertDatabaseHas('product_warehouse', [
+            'product_id' => $product->id,
+            'warehouse_id' => $warehouse->id,
+            'stock' => 24,
+        ]);
+
+        // Master stock converted: 0 + (2 * 12) = 24
+        $this->assertDatabaseHas('products', [
+            'id' => $product->id,
+            'stock' => 24,
+        ]);
+
+        // Payable automatically created: 2 * 265000 = 530000
+        $this->assertDatabaseHas('payables', [
+            'purchase_order_id' => $po->id,
+            'supplier_id' => $supplier->id,
+            'total' => 530000,
+        ]);
+
+        // Stock mutation recorded: 24 base units
+        $this->assertDatabaseHas('stock_mutations', [
+            'product_id' => $product->id,
+            'reference_type' => 'goods_receiving',
+            'reference_id' => $receiving->id,
+            'mutation_type' => 'in',
+            'qty' => 24,
+            'stock_before' => 0,
+            'stock_after' => 24,
+        ]);
+    }
 }

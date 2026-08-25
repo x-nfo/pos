@@ -17,7 +17,7 @@ class PermissionController extends Controller
             ->when(request()->search, fn ($query) => $query->where('name', 'like', '%'.request()->search.'%'))
             ->select('id', 'name')
             ->latest()
-            ->paginate(7)
+            ->paginate(50)
             ->withQueryString();
 
         // render view

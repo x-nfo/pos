@@ -41,6 +41,8 @@ class PurchaseOrderService
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $order->id,
                     'product_id' => $item['product_id'],
+                    'unit_id' => $item['unit_id'] ?? null,
+                    'conversion_factor' => $item['conversion_factor'] ?? 1.0,
                     'qty_ordered' => $item['qty_ordered'],
                     'qty_received' => 0,
                     'unit_price' => $item['unit_price'],

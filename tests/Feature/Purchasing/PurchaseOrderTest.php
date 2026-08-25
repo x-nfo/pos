@@ -135,6 +135,70 @@ class PurchaseOrderTest extends TestCase
         ]);
     }
 
+    public function test_authorized_user_can_create_purchase_order_with_multi_uom(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'purchase-orders-access',
+            'purchase-orders-create',
+        ]);
+
+        $product = $this->createProduct();
+
+        $cartonUnit = \App\Models\Unit::firstOrCreate(
+            ['code' => 'DUS'],
+            ['name' => 'Dus', 'symbol' => 'dus']
+        );
+
+        $product->units()->attach($cartonUnit->id, [
+            'is_base' => false,
+            'conversion_factor' => 12.0000,
+            'buy_price' => 265000,
+            'sell_price' => 295000,
+        ]);
+
+        $supplier = Supplier::create([
+            'name' => 'Supplier Susu',
+            'phone' => '08123456789',
+        ]);
+
+        $warehouse = Warehouse::create([
+            'code' => 'GUDANG-UTAMA',
+            'name' => 'Gudang Utama',
+            'type' => 'main',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->post(route('purchase-orders.store'), [
+                'supplier_id' => $supplier->id,
+                'warehouse_id' => $warehouse->id,
+                'document_number' => 'PO-20260825-0010',
+                'notes' => 'PO Pembelian Susu Dus',
+                'items' => [
+                    [
+                        'product_id' => $product->id,
+                        'unit_id' => $cartonUnit->id,
+                        'conversion_factor' => 12.0000,
+                        'qty_ordered' => 5,
+                        'unit_price' => 265000,
+                    ],
+                ],
+            ]);
+
+        $po = PurchaseOrder::where('document_number', 'PO-20260825-0010')->first();
+        $this->assertNotNull($po);
+        $response->assertRedirect(route('purchase-orders.show', $po));
+
+        $this->assertDatabaseHas('purchase_order_items', [
+            'purchase_order_id' => $po->id,
+            'product_id' => $product->id,
+            'unit_id' => $cartonUnit->id,
+            'conversion_factor' => 12.0000,
+            'qty_ordered' => 5,
+            'unit_price' => 265000,
+        ]);
+    }
+
     public function test_authorized_user_can_place_order(): void
     {
         $user = $this->createUserWithPermissions([

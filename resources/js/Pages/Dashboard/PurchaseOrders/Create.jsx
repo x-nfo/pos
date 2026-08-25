@@ -40,14 +40,21 @@ export default function Create({ suppliers, products, warehouses = [] }) {
             toast.error("Produk sudah ada di daftar.");
             return;
         }
+
+        const productUnits = Array.isArray(product.units) ? product.units : [];
+        const baseUnit = productUnits.find((u) => u.is_base) || productUnits[0] || null;
+
         setData("items", [
             ...data.items,
             {
                 product_id: product.id,
                 product_title: product.title,
                 product_sku: product.sku || "-",
+                units: productUnits,
+                unit_id: baseUnit ? baseUnit.id : null,
+                conversion_factor: baseUnit ? Number(baseUnit.conversion_factor) || 1.0 : 1.0,
                 qty_ordered: 1,
-                unit_price: Number(product.buy_price) || 0,
+                unit_price: baseUnit ? Number(baseUnit.buy_price) || 0 : Number(product.buy_price) || 0,
             },
         ]);
     };
@@ -57,6 +64,28 @@ export default function Create({ suppliers, products, warehouses = [] }) {
             "items",
             data.items.filter((_, i) => i !== index)
         );
+    };
+
+    const handleUnitChange = (index, unitId) => {
+        const items = [...data.items];
+        const item = items[index];
+        const selected = (item.units || []).find((u) => u.id === Number(unitId));
+
+        if (selected) {
+            items[index] = {
+                ...item,
+                unit_id: selected.id,
+                conversion_factor: Number(selected.conversion_factor) || 1.0,
+                unit_price: Number(selected.buy_price) || 0,
+            };
+        } else {
+            items[index] = {
+                ...item,
+                unit_id: null,
+                conversion_factor: 1.0,
+            };
+        }
+        setData("items", items);
     };
 
     const updateItem = (index, key, value) => {
@@ -172,7 +201,10 @@ export default function Create({ suppliers, products, warehouses = [] }) {
                                     >
                                         <div>
                                             <p className="font-medium text-slate-800 dark:text-slate-200">{product.title}</p>
-                                            <p className="text-xs text-slate-500">{product.sku || "-"} &bull; Stok: {product.stock}</p>
+                                            <p className="text-xs text-slate-500">
+                                                {product.sku || "-"} &bull; Stok: {product.stock}
+                                                {product.units?.length > 1 && ` • ${product.units.length} Satuan`}
+                                            </p>
                                         </div>
                                         <span className="text-xs text-slate-500 dark:text-slate-400">
                                             {formatCurrency(product.buy_price)}
@@ -187,8 +219,9 @@ export default function Create({ suppliers, products, warehouses = [] }) {
                                     <thead>
                                         <tr className="border-b border-slate-200 dark:border-slate-700">
                                             <th className="px-3 py-2 text-left font-semibold text-slate-700 dark:text-slate-200">Produk</th>
+                                            <th className="px-3 py-2 text-left font-semibold text-slate-700 dark:text-slate-200">Satuan (UOM)</th>
                                             <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Qty</th>
-                                            <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Harga</th>
+                                            <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Harga Beli</th>
                                             <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Subtotal</th>
                                             <th className="w-16 px-3 py-2"></th>
                                         </tr>
@@ -199,6 +232,25 @@ export default function Create({ suppliers, products, warehouses = [] }) {
                                                 <td className="px-3 py-3">
                                                     <p className="font-medium text-slate-800 dark:text-slate-200">{item.product_title}</p>
                                                     <p className="text-xs text-slate-500">{item.product_sku}</p>
+                                                </td>
+                                                <td className="px-3 py-3">
+                                                    {item.units && item.units.length > 0 ? (
+                                                        <select
+                                                            value={item.unit_id || ""}
+                                                            onChange={(e) => handleUnitChange(index, e.target.value)}
+                                                            className="h-10 rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs font-medium text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                                        >
+                                                            {item.units.map((u) => (
+                                                                <option key={u.id} value={u.id}>
+                                                                    {u.name} ({u.symbol || u.code}) {u.conversion_factor > 1 ? `@${u.conversion_factor}` : ""}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    ) : (
+                                                        <span className="inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                                            Pcs
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="px-3 py-3 text-right">
                                                     <input
@@ -236,7 +288,7 @@ export default function Create({ suppliers, products, warehouses = [] }) {
                                     </tbody>
                                     <tfoot>
                                         <tr className="border-t-2 border-slate-200 dark:border-slate-700">
-                                            <td colSpan={3} className="px-3 py-3 text-right font-bold text-slate-800 dark:text-slate-200">Total</td>
+                                            <td colSpan={4} className="px-3 py-3 text-right font-bold text-slate-800 dark:text-slate-200">Total</td>
                                             <td className="px-3 py-3 text-right font-bold text-primary-600 dark:text-primary-400">{formatCurrency(total)}</td>
                                             <td></td>
                                         </tr>

@@ -12,6 +12,8 @@ class PurchaseOrderItem extends Model
     protected $fillable = [
         'purchase_order_id',
         'product_id',
+        'unit_id',
+        'conversion_factor',
         'qty_ordered',
         'qty_received',
         'unit_price',
@@ -20,6 +22,7 @@ class PurchaseOrderItem extends Model
     protected $casts = [
         'qty_ordered' => 'integer',
         'qty_received' => 'integer',
+        'conversion_factor' => 'float',
         'unit_price' => 'float',
     ];
 
@@ -31,5 +34,10 @@ class PurchaseOrderItem extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function unit()
+    {
+        return $this->belongsTo(Unit::class);
     }
 }
