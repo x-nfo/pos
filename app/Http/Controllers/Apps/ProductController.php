@@ -315,7 +315,7 @@ class ProductController extends Controller
             }
 
             $conversionFactor = $isBase ? 1.0000 : (float) ($u['conversion_factor'] ?? 1);
-            
+
             if ($isBase) {
                 $buyPrice = (int) $product->buy_price;
                 $sellPrice = (int) $product->sell_price;

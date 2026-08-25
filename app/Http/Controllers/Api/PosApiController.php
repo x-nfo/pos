@@ -173,7 +173,12 @@ class PosApiController extends Controller
         $shift = $this->cashierShiftService->getActiveShiftForUser($request->user()->id);
         $warehouseId = $shift?->warehouse_id;
 
-        $product = Product::whereRaw('LOWER(barcode) = ?', [strtolower($validated['barcode'])])
+        $rawBarcode = strtolower($validated['barcode']);
+        $product = Product::with('units')
+            ->where(function ($q) use ($rawBarcode) {
+                $q->whereRaw('LOWER(barcode) = ?', [$rawBarcode])
+                    ->orWhereHas('units', fn ($uq) => $uq->whereRaw('LOWER(product_units.barcode) = ?', [$rawBarcode]));
+            })
             ->when($warehouseId, fn ($q) => $q->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $warehouseId)))
             ->first();
 
@@ -185,12 +190,20 @@ class PosApiController extends Controller
             ? (int) ($product->warehouses()->where('warehouse_id', $warehouseId)->first()?->pivot->stock ?? 0)
             : (int) $product->stock;
 
+        $matchedUnit = $product->units->first(fn ($u) => strtolower((string) ($u->pivot->barcode ?? '')) === $rawBarcode);
+
         $data = (new ProductResource($product->load('category')))->resolve();
         $data['stock'] = $stock;
-        $data['units'] = $product->units()->get()->map(fn ($u) => [
+        $data['scanned_unit_id'] = $matchedUnit?->id;
+        $data['units'] = $product->units->map(fn ($u) => [
             'id' => $u->id,
             'name' => $u->name,
-            'conversion_factor' => (float) $u->pivot->conversion_factor,
+            'symbol' => $u->symbol,
+            'is_base' => (bool) ($u->pivot->is_base ?? false),
+            'conversion_factor' => (float) ($u->pivot->conversion_factor ?? 1),
+            'buy_price' => (bool) ($u->pivot->is_base ?? false) ? (int) $product->buy_price : (int) ($u->pivot->buy_price ?? $u->buy_price),
+            'sell_price' => (bool) ($u->pivot->is_base ?? false) ? (int) $product->sell_price : (int) ($u->pivot->sell_price ?? $u->sell_price),
+            'barcode' => $u->pivot->barcode ?? null,
         ]);
 
         return $this->ok($data, 'Produk ditemukan');

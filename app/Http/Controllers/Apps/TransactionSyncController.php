@@ -138,13 +138,17 @@ class TransactionSyncController extends Controller
 
                 $subtotal += $linePrice;
 
+                $unitSellPrice = $unitId && $product
+                    ? $this->unitConversionService->getSellPrice($product, $unitId)
+                    : (int) ($product->sell_price * ($conversionFactor ?: 1));
+
                 $lineItems[] = [
                     'product' => $product,
                     'product_id' => $product->id,
                     'unit_id' => $unitId,
                     'conversion_factor' => $conversionFactor,
                     'qty' => $qty,
-                    'base_unit_price' => (int) $product->sell_price,
+                    'base_unit_price' => $unitSellPrice,
                     'unit_price' => $unitPrice,
                     'price' => $linePrice,
                     'discount_total' => $lineDiscount,
@@ -193,7 +197,10 @@ class TransactionSyncController extends Controller
                 ]);
 
                 $product = $lineItem['product'];
-                $totalBuyPrice = $product->buy_price * $lineItem['qty'];
+                $unitBuyPrice = $lineItem['unit_id'] && $product
+                    ? $this->unitConversionService->getBuyPrice($product, (int) $lineItem['unit_id'])
+                    : (int) ($product->buy_price * ($lineItem['conversion_factor'] ?: 1));
+                $totalBuyPrice = $unitBuyPrice * $lineItem['qty'];
                 $lineShare = $subtotalAfterPromo > 0 ? $lineItem['price'] / $subtotalAfterPromo : 0;
                 $allocatedManualDiscount = (int) round($manualDiscount * $lineShare);
                 $netSellPrice = max(0, $lineItem['price'] - $allocatedManualDiscount);

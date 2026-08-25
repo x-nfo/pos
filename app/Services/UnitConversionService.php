@@ -27,7 +27,18 @@ class UnitConversionService
     {
         $pu = $product->units()->where('unit_id', $unitId)->first();
 
-        return (int) ($pu?->pivot->{$type} ?? $product->{$type});
+        if (! $pu || ! empty($pu->pivot?->is_base)) {
+            return (int) $product->{$type};
+        }
+
+        $pivotPrice = $pu->pivot?->{$type};
+        if ($pivotPrice !== null && $pivotPrice !== '' && (int) $pivotPrice > 0) {
+            return (int) $pivotPrice;
+        }
+
+        $factor = (float) ($pu->pivot?->conversion_factor ?? 1);
+
+        return (int) round(((float) $product->{$type}) * $factor);
     }
 
     public function getBuyPrice(Product $product, int $unitId): int

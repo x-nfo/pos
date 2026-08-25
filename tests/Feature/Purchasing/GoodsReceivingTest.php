@@ -9,6 +9,7 @@ use App\Models\ProductWarehouse;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
 use App\Models\Supplier;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -185,12 +186,12 @@ class GoodsReceivingTest extends TestCase
 
         $product = $this->createProduct(0);
 
-        $boxUnit = \App\Models\Unit::firstOrCreate(
+        $boxUnit = Unit::firstOrCreate(
             ['code' => 'KTK'],
             ['name' => 'Kotak', 'symbol' => 'ktk']
         );
 
-        $cartonUnit = \App\Models\Unit::firstOrCreate(
+        $cartonUnit = Unit::firstOrCreate(
             ['code' => 'DUS'],
             ['name' => 'Dus', 'symbol' => 'dus']
         );

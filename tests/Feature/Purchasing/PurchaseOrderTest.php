@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -144,7 +145,7 @@ class PurchaseOrderTest extends TestCase
 
         $product = $this->createProduct();
 
-        $cartonUnit = \App\Models\Unit::firstOrCreate(
+        $cartonUnit = Unit::firstOrCreate(
             ['code' => 'DUS'],
             ['name' => 'Dus', 'symbol' => 'dus']
         );

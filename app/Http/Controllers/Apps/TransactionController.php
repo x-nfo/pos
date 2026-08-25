@@ -129,17 +129,30 @@ class TransactionController extends Controller
         $products = $products->map(function (Product $product) use ($pricingBadges) {
             $pricing = $pricingBadges->get($product->id);
 
-            $units = $product->units->map(fn ($u) => [
-                'id' => $u->id,
-                'code' => $u->code,
-                'name' => $u->name,
-                'symbol' => $u->symbol,
-                'is_base' => (bool) ($u->pivot->is_base ?? false),
-                'conversion_factor' => (float) ($u->pivot->conversion_factor ?? 1),
-                'buy_price' => (int) ($u->pivot->buy_price ?? $u->buy_price),
-                'sell_price' => (int) ($u->pivot->sell_price ?? $u->sell_price),
-                'barcode' => $u->pivot->barcode ?? null,
-            ])->values()->toArray();
+            $units = $product->units->map(function ($u) use ($product) {
+                $isBase = (bool) ($u->pivot->is_base ?? false);
+                $factor = (float) ($u->pivot->conversion_factor ?? 1);
+
+                $buyPrice = $isBase
+                    ? (int) $product->buy_price
+                    : (int) (($u->pivot->buy_price && (int) $u->pivot->buy_price > 0) ? $u->pivot->buy_price : round($product->buy_price * $factor));
+
+                $sellPrice = $isBase
+                    ? (int) $product->sell_price
+                    : (int) (($u->pivot->sell_price && (int) $u->pivot->sell_price > 0) ? $u->pivot->sell_price : round($product->sell_price * $factor));
+
+                return [
+                    'id' => $u->id,
+                    'code' => $u->code,
+                    'name' => $u->name,
+                    'symbol' => $u->symbol,
+                    'is_base' => $isBase,
+                    'conversion_factor' => $factor,
+                    'buy_price' => $buyPrice,
+                    'sell_price' => $sellPrice,
+                    'barcode' => $u->pivot->barcode ?? null,
+                ];
+            })->values()->toArray();
 
             return [
                 ...$product->toArray(),
@@ -204,19 +217,26 @@ class TransactionController extends Controller
     {
         $activeShift = $this->cashierShiftService->getActiveShiftForUser(auth()->user()->id);
         $warehouseId = $activeShift?->warehouse_id;
+        $barcode = (string) $request->barcode;
 
-        $product = Product::where('barcode', $request->barcode)
+        $product = Product::with('units')
+            ->where(function ($q) use ($barcode) {
+                $q->where('barcode', $barcode)
+                    ->orWhereHas('units', fn ($uq) => $uq->where('product_units.barcode', $barcode));
+            })
             ->whereHas('warehouses', fn ($q) => $q->where('product_warehouse.warehouse_id', $warehouseId))
             ->first();
 
         if ($product) {
             $pivotStock = $product->warehouses()->where('warehouse_id', $warehouseId)->first()?->pivot->stock ?? 0;
+            $matchedUnit = $product->units->firstWhere('pivot.barcode', $barcode);
 
             return response()->json([
                 'success' => true,
                 'data' => [
                     ...$product->toArray(),
                     'stock' => $pivotStock,
+                    'scanned_unit_id' => $matchedUnit?->id,
                 ],
             ]);
         }
