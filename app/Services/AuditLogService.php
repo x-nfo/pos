@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class AuditLogService
 {
@@ -119,8 +121,34 @@ class AuditLogService
 
     public function roleNames($roles): array
     {
+        if (blank($roles)) {
+            return [];
+        }
+
         return collect($roles)
-            ->map(fn ($role) => is_string($role) ? $role : $role->name)
+            ->map(function ($role) {
+                if ($role instanceof Role) {
+                    return $role->name;
+                }
+
+                if (is_object($role) && isset($role->name)) {
+                    return (string) $role->name;
+                }
+
+                if (is_array($role) && isset($role['name'])) {
+                    return (string) $role['name'];
+                }
+
+                if (is_numeric($role)) {
+                    return Role::findById((int) $role, 'web')?->name ?? Role::find((int) $role)?->name ?? (string) $role;
+                }
+
+                if (is_string($role)) {
+                    return $role;
+                }
+
+                return null;
+            })
             ->filter()
             ->values()
             ->all();
@@ -128,8 +156,34 @@ class AuditLogService
 
     public function permissionNames($permissions): array
     {
+        if (blank($permissions)) {
+            return [];
+        }
+
         return collect($permissions)
-            ->map(fn ($permission) => is_string($permission) ? $permission : $permission->name)
+            ->map(function ($permission) {
+                if ($permission instanceof Permission) {
+                    return $permission->name;
+                }
+
+                if (is_object($permission) && isset($permission->name)) {
+                    return (string) $permission->name;
+                }
+
+                if (is_array($permission) && isset($permission['name'])) {
+                    return (string) $permission['name'];
+                }
+
+                if (is_numeric($permission)) {
+                    return Permission::findById((int) $permission, 'web')?->name ?? Permission::find((int) $permission)?->name ?? (string) $permission;
+                }
+
+                if (is_string($permission)) {
+                    return $permission;
+                }
+
+                return null;
+            })
             ->filter()
             ->values()
             ->all();

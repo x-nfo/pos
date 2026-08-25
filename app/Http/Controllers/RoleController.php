@@ -51,7 +51,9 @@ class RoleController extends Controller
         $role = Role::create(['name' => $request->name]);
 
         // give permissions to role
-        $role->givePermissionTo($request->selectedPermission);
+        if (! empty($request->selectedPermission)) {
+            $role->givePermissionTo($request->selectedPermission);
+        }
 
         $this->auditLogService->log(
             event: 'role.created',
@@ -60,7 +62,7 @@ class RoleController extends Controller
             description: 'Role baru dibuat.',
             after: [
                 'name' => $role->name,
-                'permissions' => $this->auditLogService->permissionNames($request->selectedPermission),
+                'permissions' => $this->auditLogService->permissionNames($request->selectedPermission ?? []),
             ],
         );
 
@@ -83,9 +85,9 @@ class RoleController extends Controller
         $role->update(['name' => $request->name]);
 
         // sync role permissions
-        $role->syncPermissions($request->selectedPermission);
+        $role->syncPermissions($request->selectedPermission ?? []);
 
-        $afterPermissions = $this->auditLogService->permissionNames($request->selectedPermission);
+        $afterPermissions = $this->auditLogService->permissionNames($request->selectedPermission ?? []);
 
         $this->auditLogService->log(
             event: 'role.updated',
