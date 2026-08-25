@@ -133,6 +133,11 @@ class ProductController extends Controller
      */
     public function destroy(Request $request, Product $product): JsonResponse
     {
+        if ($product->hasHistoricalRelations()) {
+            return $this->error('Produk tidak dapat dihapus karena sudah memiliki riwayat transaksi atau sisa stok.', 422);
+        }
+
+        $product->stockMutations()->delete();
         $product->delete();
 
         return $this->noContent();

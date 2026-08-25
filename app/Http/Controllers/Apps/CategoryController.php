@@ -138,13 +138,19 @@ class CategoryController extends Controller
         // find by ID
         $category = Category::findOrFail($id);
 
+        if ($category->hasHistoricalRelations()) {
+            return back()->with('error', 'Kategori tidak dapat dihapus karena masih digunakan oleh produk atau aturan harga.');
+        }
+
         // remove image
-        Storage::disk('local')->delete('public/category/'.basename($category->image));
+        if ($category->image) {
+            Storage::disk('local')->delete('public/category/'.basename($category->image));
+        }
 
         // delete
         $category->delete();
 
         // redirect
-        return to_route('categories.index');
+        return to_route('categories.index')->with('success', 'Kategori berhasil dihapus.');
     }
 }

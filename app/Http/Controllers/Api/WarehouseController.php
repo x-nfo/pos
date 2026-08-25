@@ -83,6 +83,19 @@ class WarehouseController extends Controller
      */
     public function destroy(Request $request, Warehouse $warehouse): JsonResponse
     {
+        if ($warehouse->type === 'main') {
+            return $this->error('Gudang utama tidak bisa dihapus.', 422);
+        }
+
+        $totalStock = (int) $warehouse->products()->sum('product_warehouse.stock');
+        if ($totalStock > 0) {
+            return $this->error('Gudang masih memiliki stok. Pindahkan stok terlebih dahulu.', 422);
+        }
+
+        if ($warehouse->hasHistoricalRelations()) {
+            return $this->error('Gudang tidak dapat dihapus karena memiliki riwayat transaksi, pergeseran kasir, atau mutasi stok.', 422);
+        }
+
         $warehouse->delete();
 
         return $this->noContent();

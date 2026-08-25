@@ -357,10 +357,20 @@ class ProductController extends Controller
     {
         // find by ID
         $product = Product::findOrFail($id);
+
+        if ($product->hasHistoricalRelations()) {
+            return back()->with('error', 'Produk tidak dapat dihapus karena sudah memiliki riwayat transaksi atau sisa stok.');
+        }
+
         $before = $this->productAuditPayload($product);
 
         // remove image
-        Storage::disk('local')->delete('public/products/'.basename($product->image));
+        if ($product->image) {
+            Storage::disk('local')->delete('public/products/'.basename($product->image));
+        }
+
+        // clean initial stock mutation
+        $product->stockMutations()->delete();
 
         // delete
         $product->delete();
@@ -374,7 +384,7 @@ class ProductController extends Controller
         );
 
         // redirect
-        return back();
+        return back()->with('success', 'Produk berhasil dihapus.');
     }
 
     private function logProductUpdate(Product $product, array $before): void

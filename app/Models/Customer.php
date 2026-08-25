@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Customer extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     /**
      * fillable
@@ -43,6 +44,9 @@ class Customer extends Model
         'loyalty_transaction_count' => 'integer',
         'loyalty_member_since' => 'datetime',
         'last_purchase_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     public function salesReturns()
@@ -75,6 +79,16 @@ class Customer extends Model
         return $this->hasMany(Receivable::class);
     }
 
+    public function dineOrders()
+    {
+        return $this->hasMany(DineOrder::class);
+    }
+
+    public function campaignLogs()
+    {
+        return $this->hasMany(CustomerCampaignLog::class);
+    }
+
     public function segmentMemberships()
     {
         return $this->hasMany(CustomerSegmentMembership::class);
@@ -85,5 +99,16 @@ class Customer extends Model
         return $this->belongsToMany(CustomerSegment::class, 'customer_segment_memberships')
             ->withPivot(['source', 'matched_at'])
             ->withTimestamps();
+    }
+
+    public function hasHistoricalRelations(): bool
+    {
+        return $this->transactions()->exists()
+            || $this->receivables()->exists()
+            || $this->salesReturns()->exists()
+            || $this->customerCredits()->exists()
+            || $this->loyaltyPointHistories()->exists()
+            || $this->vouchers()->where('is_used', true)->exists()
+            || $this->dineOrders()->exists();
     }
 }

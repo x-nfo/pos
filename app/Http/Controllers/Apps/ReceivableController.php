@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BankAccount;
 use App\Models\Receivable;
 use App\Models\ReceivablePayment;
+use App\Models\Setting;
 use App\Services\ReceivableService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -74,7 +75,7 @@ class ReceivableController extends Controller
         ]);
 
         $bankAccounts = BankAccount::active()->ordered()->get(['id', 'bank_name', 'account_number', 'account_name', 'logo']);
-        $approvalThreshold = (float) \App\Models\Setting::get('receivable_approval_threshold', 1000000);
+        $approvalThreshold = (float) Setting::get('receivable_approval_threshold', 1000000);
 
         return Inertia::render('Dashboard/Receivables/Show', [
             'receivable' => $receivable,
@@ -98,7 +99,7 @@ class ReceivableController extends Controller
             return back()->with('error', 'Nominal melebihi sisa piutang.');
         }
 
-        $threshold = (float) \App\Models\Setting::get('receivable_approval_threshold', 1000000);
+        $threshold = (float) Setting::get('receivable_approval_threshold', 1000000);
         $needsApproval = ($validated['method'] !== 'cash') || ($validated['amount'] >= $threshold);
 
         DB::transaction(function () use ($validated, $receivable, $request, $needsApproval) {

@@ -6,7 +6,6 @@ use App\Models\Customer;
 use App\Models\Receivable;
 use App\Models\ReceivablePayment;
 use App\Models\Setting;
-use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
@@ -18,7 +17,9 @@ class ReceivableApprovalTest extends TestCase
     use RefreshDatabase;
 
     protected User $admin;
+
     protected User $cashier;
+
     protected User $manager;
 
     protected function setUp(): void

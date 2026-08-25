@@ -4,13 +4,20 @@ import Sidebar from "@/Components/Dashboard/Sidebar";
 import Navbar from "@/Components/Dashboard/Navbar";
 import DashboardBottomNav from "@/Components/Dashboard/DashboardBottomNav";
 import MobileAppMenu from "@/Components/Mobile/MobileAppMenu";
-import { Toaster } from "react-hot-toast";
+import { Toaster, toast } from "react-hot-toast";
 import { useTheme } from "@/Context/ThemeSwitcherContext";
 
 export default function AppLayout({ children }) {
     const { darkMode, themeSwitcher } = useTheme();
     const { url } = usePage();
-    const { auth, security } = usePage().props;
+    const { auth, security, flash } = usePage().props;
+
+    useEffect(() => {
+        if (flash?.success) toast.success(flash.success);
+        if (flash?.error) toast.error(flash.error, { duration: 5000 });
+        if (flash?.warning) toast(flash.warning, { icon: "⚠️" });
+        if (flash?.info) toast(flash.info);
+    }, [flash]);
 
     const getInitialSidebarState = () => {
         if (typeof window === "undefined") return false;

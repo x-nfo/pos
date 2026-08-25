@@ -19,7 +19,7 @@ export default function Button({
     const deleteData = async (url) => {
         Swal.fire({
             title: "Hapus Data?",
-            text: "Data yang dihapus tidak dapat dikembalikan!",
+            text: "Data master yang memiliki relasi historis akan dilindungi dari penghapusan.",
             icon: "warning",
             showCancelButton: true,
             confirmButtonColor: "#6366f1",
@@ -29,14 +29,6 @@ export default function Button({
         }).then((result) => {
             if (result.isConfirmed) {
                 destroy(url);
-
-                Swal.fire({
-                    title: "Berhasil!",
-                    text: "Data berhasil dihapus!",
-                    icon: "success",
-                    showConfirmButton: false,
-                    timer: 1500,
-                });
             }
         });
     };

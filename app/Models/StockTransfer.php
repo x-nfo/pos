@@ -30,12 +30,12 @@ class StockTransfer extends Model
 
     public function sourceWarehouse(): BelongsTo
     {
-        return $this->belongsTo(Warehouse::class, 'source_warehouse_id');
+        return $this->belongsTo(Warehouse::class, 'source_warehouse_id')->withTrashed();
     }
 
     public function destinationWarehouse(): BelongsTo
     {
-        return $this->belongsTo(Warehouse::class, 'destination_warehouse_id');
+        return $this->belongsTo(Warehouse::class, 'destination_warehouse_id')->withTrashed();
     }
 
     public function items(): HasMany

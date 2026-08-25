@@ -326,11 +326,15 @@ class CustomerController extends Controller
         // find customer by ID
         $customer = Customer::findOrFail($id);
 
+        if ($customer->hasHistoricalRelations()) {
+            return back()->with('error', 'Pelanggan tidak dapat dihapus karena sudah memiliki riwayat transaksi atau piutang.');
+        }
+
         // delete customer
         $customer->delete();
 
         // redirect
-        return back();
+        return back()->with('success', 'Pelanggan berhasil dihapus.');
     }
 
     /**

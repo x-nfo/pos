@@ -222,6 +222,10 @@ export default function Index({ products }) {
     const isProductSelected = (productId) =>
         selectedProducts.some((p) => p.id === productId);
 
+    const handleDelete = (productId) => {
+        router.delete(route("products.destroy", productId));
+    };
+
     return (
         <>
             <Head title="Produk" />

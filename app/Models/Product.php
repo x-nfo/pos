@@ -6,16 +6,18 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $casts = [
         'id' => 'integer',
         'category_id' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
         'buy_price' => 'integer',
         'sell_price' => 'integer',
         'stock' => 'integer',
@@ -44,7 +46,7 @@ class Product extends Model
 
     public function category()
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(Category::class)->withTrashed();
     }
 
     public function warehouses(): BelongsToMany
@@ -109,9 +111,79 @@ class Product extends Model
         return $this->hasMany(SalesReturnItem::class);
     }
 
+    public function salesReturnExchangeItems()
+    {
+        return $this->hasMany(SalesReturnExchangeItem::class);
+    }
+
+    public function transactionDetails()
+    {
+        return $this->hasMany(TransactionDetail::class);
+    }
+
+    public function purchaseOrderItems()
+    {
+        return $this->hasMany(PurchaseOrderItem::class);
+    }
+
+    public function goodsReceivingItems()
+    {
+        return $this->hasMany(GoodsReceivingItem::class);
+    }
+
+    public function supplierReturnItems()
+    {
+        return $this->hasMany(SupplierReturnItem::class);
+    }
+
+    public function stockTransferItems()
+    {
+        return $this->hasMany(StockTransferItem::class);
+    }
+
+    public function dineOrderItems()
+    {
+        return $this->hasMany(DineOrderItem::class);
+    }
+
+    public function carts()
+    {
+        return $this->hasMany(Cart::class);
+    }
+
+    public function productBatches()
+    {
+        return $this->hasMany(ProductBatch::class);
+    }
+
     public function pricingRules()
     {
         return $this->hasMany(PricingRule::class);
+    }
+
+    public function hasHistoricalRelations(): bool
+    {
+        if ($this->transactionDetails()->exists()) {
+            return true;
+        }
+
+        if ($this->stockMutations()->where('reference_type', '!=', 'product_create')->exists()) {
+            return true;
+        }
+
+        if ($this->purchaseOrderItems()->exists() || $this->goodsReceivingItems()->exists() || $this->supplierReturnItems()->exists()) {
+            return true;
+        }
+
+        if ($this->salesReturnItems()->exists() || $this->salesReturnExchangeItems()->exists() || $this->stockOpnameItems()->exists() || $this->stockTransferItems()->exists() || $this->dineOrderItems()->exists()) {
+            return true;
+        }
+
+        if ($this->carts()->exists()) {
+            return true;
+        }
+
+        return false;
     }
 
     public function stockTotal(): int

@@ -149,7 +149,8 @@ class WarehouseTest extends TestCase
             ->delete(route('settings.warehouses.destroy', $warehouse->id))
             ->assertSessionHas('success');
 
-        $this->assertDatabaseMissing('warehouses', ['id' => $warehouse->id]);
+        $this->assertSoftDeleted('warehouses', ['id' => $warehouse->id]);
+        $this->assertNull(Warehouse::find($warehouse->id));
     }
 
     public function test_default_warehouse_is_created_after_seed()

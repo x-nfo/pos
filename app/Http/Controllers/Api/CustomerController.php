@@ -114,6 +114,10 @@ class CustomerController extends Controller
      */
     public function destroy(Request $request, Customer $customer): JsonResponse
     {
+        if ($customer->hasHistoricalRelations()) {
+            return $this->error('Pelanggan tidak dapat dihapus karena sudah memiliki riwayat transaksi atau piutang.', 422);
+        }
+
         $customer->delete();
 
         return $this->noContent();

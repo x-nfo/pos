@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Apps;
 use App\Exceptions\PaymentGatewayException;
 use App\Http\Controllers\Controller;
 use App\Models\PaymentSetting;
+use App\Models\Setting;
 use App\Services\AuditLogService;
 use App\Services\Payments\QrislyGateway;
 use Illuminate\Http\Request;
@@ -78,7 +79,7 @@ class PaymentSettingController extends Controller
                 'qrisly_qris_id' => $setting->qrisly_qris_id,
                 'qrisly_production' => (bool) $setting->qrisly_production,
                 'qrisly_use_unique_amount' => (bool) $setting->qrisly_use_unique_amount,
-                'receivable_approval_threshold' => (float) \App\Models\Setting::get('receivable_approval_threshold', 1000000),
+                'receivable_approval_threshold' => (float) Setting::get('receivable_approval_threshold', 1000000),
             ],
             'paymentSettingSources' => $setting->paymentSettingSources(),
             'supportedGateways' => [
@@ -226,7 +227,7 @@ class PaymentSettingController extends Controller
         ]);
 
         if (array_key_exists('receivable_approval_threshold', $data) && $data['receivable_approval_threshold'] !== null) {
-            \App\Models\Setting::set(
+            Setting::set(
                 'receivable_approval_threshold',
                 $data['receivable_approval_threshold'],
                 'Batas nominal pelunasan piutang yang membutuhkan approval'

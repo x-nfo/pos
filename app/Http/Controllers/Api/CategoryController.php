@@ -77,6 +77,10 @@ class CategoryController extends Controller
      */
     public function destroy(Request $request, Category $category): JsonResponse
     {
+        if ($category->hasHistoricalRelations()) {
+            return $this->error('Kategori tidak dapat dihapus karena masih digunakan oleh produk atau aturan harga.', 422);
+        }
+
         $category->delete();
 
         return $this->noContent();

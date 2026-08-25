@@ -90,7 +90,8 @@ class MasterDataApiTest extends TestCase
         $this->deleteJson("/api/v1/customers/{$customer->id}")
             ->assertStatus(204);
 
-        $this->assertDatabaseMissing('customers', ['id' => $customer->id]);
+        $this->assertSoftDeleted('customers', ['id' => $customer->id]);
+        $this->assertNull(Customer::find($customer->id));
     }
 
     public function test_categories_crud(): void
@@ -112,6 +113,9 @@ class MasterDataApiTest extends TestCase
             ->assertJsonPath('data.name', 'Minuman Segar');
 
         $this->deleteJson("/api/v1/categories/{$categoryId}")->assertStatus(204);
+
+        $this->assertSoftDeleted('categories', ['id' => $categoryId]);
+        $this->assertNull(Category::find($categoryId));
     }
 
     public function test_categories_duplicate_name_rejected(): void
@@ -144,6 +148,9 @@ class MasterDataApiTest extends TestCase
             ->assertJsonPath('data.name', 'Gudang Alpha');
 
         $this->deleteJson("/api/v1/warehouses/{$warehouseId}")->assertStatus(204);
+
+        $this->assertSoftDeleted('warehouses', ['id' => $warehouseId]);
+        $this->assertNull(Warehouse::find($warehouseId));
     }
 
     public function test_warehouses_duplicate_code_rejected(): void

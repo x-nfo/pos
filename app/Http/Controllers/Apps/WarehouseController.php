@@ -67,9 +67,13 @@ class WarehouseController extends Controller
             return back()->with('error', 'Gudang utama tidak bisa dihapus.');
         }
 
-        $totalStock = $warehouse->products()->sum('product_warehouse.stock');
+        $totalStock = (int) $warehouse->products()->sum('product_warehouse.stock');
         if ($totalStock > 0) {
             return back()->with('error', 'Gudang masih memiliki stok. Pindahkan stok terlebih dahulu.');
+        }
+
+        if ($warehouse->hasHistoricalRelations()) {
+            return back()->with('error', 'Gudang tidak dapat dihapus karena memiliki riwayat transaksi, pergeseran kasir, atau mutasi stok.');
         }
 
         $warehouse->delete();
