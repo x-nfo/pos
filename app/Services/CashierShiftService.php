@@ -88,16 +88,34 @@ class CashierShiftService
             ->sum('grand_total');
 
         $cashRefundTotal = (int) (clone $salesReturns)
-            ->where('return_type', 'refund_cash')
+            ->where(function ($q) {
+                $q->where('return_type', 'refund_cash')
+                    ->orWhere(function ($sq) {
+                        $sq->where('return_type', 'product_exchange')
+                            ->where('refund_amount', '>', 0);
+                    });
+            })
             ->sum('refund_amount');
 
         $nonCashRefundTotal = (int) (clone $salesReturns)
-            ->where('return_type', '!=', 'refund_cash')
+            ->where(function ($q) {
+                $q->where('return_type', 'store_credit')
+                    ->orWhere(function ($sq) {
+                        $sq->where('return_type', 'product_exchange')
+                            ->where('credited_amount', '>', 0);
+                    });
+            })
             ->sum(DB::raw('COALESCE(credited_amount, 0)'));
+
+        $cashExchangeInTotal = (int) (clone $salesReturns)
+            ->where('return_type', 'product_exchange')
+            ->where('exchange_payment_method', 'cash')
+            ->where('difference_amount', '>', 0)
+            ->sum('difference_amount');
 
         $transactionsCount = (int) (clone $transactions)->count();
         $salesReturnsCount = (int) (clone $salesReturns)->count();
-        $expectedCash = (int) $shift->opening_cash + $cashSalesTotal - $cashRefundTotal;
+        $expectedCash = (int) $shift->opening_cash + $cashSalesTotal + $cashExchangeInTotal - $cashRefundTotal;
 
         return [
             'cash_sales_total' => $cashSalesTotal,

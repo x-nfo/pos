@@ -21,6 +21,11 @@ class SalesReturn extends Model
         'refund_amount',
         'credited_amount',
         'total_return_amount',
+        'exchange_amount',
+        'difference_amount',
+        'exchange_payment_method',
+        'exchange_cash',
+        'exchange_change',
         'notes',
         'completed_at',
     ];
@@ -33,6 +38,10 @@ class SalesReturn extends Model
         'refund_amount' => 'integer',
         'credited_amount' => 'integer',
         'total_return_amount' => 'integer',
+        'exchange_amount' => 'integer',
+        'difference_amount' => 'integer',
+        'exchange_cash' => 'integer',
+        'exchange_change' => 'integer',
         'completed_at' => 'datetime',
     ];
 
@@ -64,6 +73,11 @@ class SalesReturn extends Model
     public function items()
     {
         return $this->hasMany(SalesReturnItem::class);
+    }
+
+    public function exchangeItems()
+    {
+        return $this->hasMany(SalesReturnExchangeItem::class);
     }
 
     public function customerCredits()

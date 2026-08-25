@@ -2,7 +2,7 @@ import React from "react";
 import SalesReturnForm from "./Form";
 import { useAuthorization } from "@/Utils/authorization";
 
-export default function Show({ salesReturn, transaction }) {
+export default function Show({ salesReturn, transaction, availableProducts = [] }) {
     const { can } = useAuthorization();
 
     return (
@@ -10,6 +10,7 @@ export default function Show({ salesReturn, transaction }) {
             title={salesReturn.code}
             transaction={transaction}
             salesReturn={salesReturn}
+            availableProducts={availableProducts}
             submitRoute={route("sales-returns.update", salesReturn.id)}
             submitMethod="patch"
             canEdit={

@@ -264,6 +264,9 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::get('/sales-returns/{salesReturn}', [SalesReturnController::class, 'show'])->middleware('permission:sales-returns-access')->name('sales-returns.show');
     Route::patch('/sales-returns/{salesReturn}', [SalesReturnController::class, 'update'])->middleware('permission:sales-returns-create')->name('sales-returns.update');
     Route::post('/sales-returns/{salesReturn}/complete', [SalesReturnController::class, 'complete'])->middleware('permission:sales-returns-complete')->name('sales-returns.complete');
+    Route::get('/sales-returns/{salesReturn}/receipt', [SalesReturnController::class, 'receipt'])->middleware('permission:sales-returns-access')->name('sales-returns.receipt');
+    Route::get('/sales-returns/{salesReturn}/print', [SalesReturnController::class, 'print'])->middleware('permission:sales-returns-access')->name('sales-returns.print');
+    Route::post('/sales-returns/{salesReturn}/print/direct', [SalesReturnController::class, 'directPrint'])->middleware('permission:sales-returns-access')->name('sales-returns.print.direct');
     // route purchase orders
     Route::get('/purchase-orders', [PurchaseOrderController::class, 'index'])->middleware('permission:purchase-orders-access')->name('purchase-orders.index');
     Route::get('/purchase-orders/create', [PurchaseOrderController::class, 'create'])->middleware('permission:purchase-orders-create')->name('purchase-orders.create');

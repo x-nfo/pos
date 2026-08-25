@@ -6,15 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSalesReturnRequest;
 use App\Http\Requests\UpdateSalesReturnRequest;
 use App\Models\CustomerCredit;
+use App\Models\Product;
 use App\Models\ProductWarehouse;
 use App\Models\Profit;
 use App\Models\SalesReturn;
+use App\Models\SalesReturnExchangeItem;
 use App\Models\SalesReturnItem;
+use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
 use App\Services\AuditLogService;
 use App\Services\CashierShiftService;
 use App\Services\StockMutationService;
+use App\Services\ThermalPrintService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -32,7 +36,8 @@ class SalesReturnController extends Controller
     public function __construct(
         private readonly StockMutationService $stockMutationService,
         private readonly CashierShiftService $cashierShiftService,
-        private readonly AuditLogService $auditLogService
+        private readonly AuditLogService $auditLogService,
+        private readonly ThermalPrintService $thermalPrintService
     ) {}
 
     public function index(Request $request): Response
@@ -61,7 +66,7 @@ class SalesReturnController extends Controller
             ->when($filters['date_from'], fn (Builder $query, $date) => $query->whereDate('created_at', '>=', $date))
             ->when($filters['date_to'], fn (Builder $query, $date) => $query->whereDate('created_at', '<=', $date))
             ->when($filters['return_type'], fn (Builder $query, $returnType) => $query->where('return_type', $returnType))
-            ->withCount('items')
+            ->withCount(['items', 'exchangeItems'])
             ->latest()
             ->paginate($this->perPage())->withQueryString()
             ->withQueryString();
@@ -84,6 +89,7 @@ class SalesReturnController extends Controller
 
         return Inertia::render('Dashboard/SalesReturns/Create', [
             'transaction' => $this->transformTransactionForEditor($transaction),
+            'availableProducts' => $this->getAvailableProducts($transaction->warehouse_id),
         ]);
     }
 
@@ -105,15 +111,24 @@ class SalesReturnController extends Controller
                 'refund_amount' => $payload['refund_amount'],
                 'credited_amount' => $payload['credited_amount'],
                 'total_return_amount' => $payload['total_return_amount'],
+                'exchange_amount' => $payload['exchange_amount'] ?? 0,
+                'difference_amount' => $payload['difference_amount'] ?? 0,
+                'exchange_payment_method' => $payload['exchange_payment_method'] ?? null,
+                'exchange_cash' => $payload['exchange_cash'] ?? 0,
+                'exchange_change' => $payload['exchange_change'] ?? 0,
                 'notes' => $payload['notes'],
             ]);
 
             $salesReturn->items()->createMany($payload['items']);
 
+            if ($payload['return_type'] === 'product_exchange' && ! empty($payload['exchange_items'])) {
+                $salesReturn->exchangeItems()->createMany($payload['exchange_items']);
+            }
+
             return $salesReturn;
         });
 
-        $salesReturn->load('items.product');
+        $salesReturn->load(['items.product', 'exchangeItems.product']);
         $this->auditLogService->log(
             event: 'sales_return.created',
             module: 'sales_returns',
@@ -121,6 +136,13 @@ class SalesReturnController extends Controller
             description: 'Draft retur penjualan dibuat.',
             after: $this->salesReturnAuditPayload($salesReturn),
         );
+
+        if ($request->input('action') === 'complete') {
+            abort_unless($request->user()->can('sales-returns-complete'), 403);
+            $this->executeCompletion($request, $salesReturn);
+
+            return to_route('sales-returns.show', $salesReturn)->with('success', 'Retur penjualan berhasil diselesaikan.');
+        }
 
         return to_route('sales-returns.show', $salesReturn)->with('success', 'Draft retur penjualan berhasil dibuat.');
     }
@@ -130,10 +152,12 @@ class SalesReturnController extends Controller
         $this->ensureSalesReturnTablesExist();
 
         $salesReturn = $this->resolveAccessibleSalesReturn($request, $salesReturn->id);
+        $warehouseId = $salesReturn->warehouse_id ?: $salesReturn->transaction?->warehouse_id;
 
         return Inertia::render('Dashboard/SalesReturns/Show', [
             'salesReturn' => $this->transformSalesReturn($salesReturn),
             'transaction' => $this->transformTransactionForEditor($salesReturn->transaction, $salesReturn),
+            'availableProducts' => $this->getAvailableProducts($warehouseId),
         ]);
     }
 
@@ -153,15 +177,25 @@ class SalesReturnController extends Controller
                 'refund_amount' => $payload['refund_amount'],
                 'credited_amount' => $payload['credited_amount'],
                 'total_return_amount' => $payload['total_return_amount'],
+                'exchange_amount' => $payload['exchange_amount'] ?? 0,
+                'difference_amount' => $payload['difference_amount'] ?? 0,
+                'exchange_payment_method' => $payload['exchange_payment_method'] ?? null,
+                'exchange_cash' => $payload['exchange_cash'] ?? 0,
+                'exchange_change' => $payload['exchange_change'] ?? 0,
                 'notes' => $payload['notes'],
             ]);
 
             $salesReturn->items()->delete();
             $salesReturn->items()->createMany($payload['items']);
+
+            $salesReturn->exchangeItems()->delete();
+            if ($payload['return_type'] === 'product_exchange' && ! empty($payload['exchange_items'])) {
+                $salesReturn->exchangeItems()->createMany($payload['exchange_items']);
+            }
         });
 
         $salesReturn->refresh();
-        $salesReturn->load('items.product');
+        $salesReturn->load(['items.product', 'exchangeItems.product']);
         $this->auditLogService->log(
             event: 'sales_return.updated',
             module: 'sales_returns',
@@ -170,6 +204,13 @@ class SalesReturnController extends Controller
             before: $before,
             after: $this->salesReturnAuditPayload($salesReturn),
         );
+
+        if ($request->input('action') === 'complete') {
+            abort_unless($request->user()->can('sales-returns-complete'), 403);
+            $this->executeCompletion($request, $salesReturn);
+
+            return back()->with('success', 'Retur penjualan berhasil diselesaikan.');
+        }
 
         return back()->with('success', 'Draft retur penjualan berhasil diperbarui.');
     }
@@ -180,6 +221,14 @@ class SalesReturnController extends Controller
 
         $salesReturn = $this->resolveAccessibleSalesReturn($request, $salesReturn->id);
         $this->ensureDraft($salesReturn);
+
+        $this->executeCompletion($request, $salesReturn);
+
+        return back()->with('success', 'Retur penjualan berhasil diselesaikan.');
+    }
+
+    private function executeCompletion(Request $request, SalesReturn $salesReturn): void
+    {
         $before = $this->salesReturnAuditPayload($salesReturn);
 
         DB::transaction(function () use ($request, $salesReturn) {
@@ -192,11 +241,18 @@ class SalesReturnController extends Controller
                 'transaction.receivable',
                 'items.product',
                 'items.transactionDetail',
+                'exchangeItems.product',
             ]);
 
             if ($salesReturn->items->isEmpty()) {
                 throw ValidationException::withMessages([
                     'sales_return' => 'Draft retur belum memiliki item.',
+                ]);
+            }
+
+            if ($salesReturn->return_type === 'product_exchange' && $salesReturn->exchangeItems->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'sales_return' => 'Tukar barang wajib memilih minimal satu barang pengganti.',
                 ]);
             }
 
@@ -224,6 +280,9 @@ class SalesReturnController extends Controller
                 }
             }
 
+            $transactionWarehouseId = $salesReturn->transaction->warehouse_id;
+
+            // Restock returned items
             foreach ($salesReturn->items as $item) {
                 if ($item->restock_to_inventory && $item->product) {
                     $product = $item->product()->lockForUpdate()->first();
@@ -237,7 +296,6 @@ class SalesReturnController extends Controller
                         ]);
 
                         // Restock to transaction warehouse
-                        $transactionWarehouseId = $salesReturn->transaction->warehouse_id;
                         if ($transactionWarehouseId) {
                             ProductWarehouse::where([
                                 'product_id' => $product->id,
@@ -266,11 +324,71 @@ class SalesReturnController extends Controller
                 ]);
             }
 
+            // Deduct exchange replacement items stock
+            if ($salesReturn->return_type === 'product_exchange') {
+                foreach ($salesReturn->exchangeItems as $exchangeItem) {
+                    $product = $exchangeItem->product()->lockForUpdate()->first();
+
+                    if (! $product) {
+                        throw ValidationException::withMessages([
+                            'sales_return' => 'Produk pengganti tidak ditemukan.',
+                        ]);
+                    }
+
+                    $availableStock = $transactionWarehouseId
+                        ? (int) ($product->warehouses()->where('warehouse_id', $transactionWarehouseId)->lockForUpdate()->first()?->pivot->stock ?? 0)
+                        : (int) $product->stock;
+
+                    if ($availableStock < (int) $exchangeItem->qty) {
+                        throw ValidationException::withMessages([
+                            'sales_return' => "Stok produk pengganti {$product->title} tidak mencukupi (Tersedia: {$availableStock}).",
+                        ]);
+                    }
+
+                    $stockBefore = (int) $product->stock;
+                    $stockAfter = $stockBefore - (int) $exchangeItem->qty;
+
+                    $product->update([
+                        'stock' => $stockAfter,
+                    ]);
+
+                    if ($transactionWarehouseId) {
+                        ProductWarehouse::where([
+                            'product_id' => $product->id,
+                            'warehouse_id' => $transactionWarehouseId,
+                        ])->decrement('stock', (int) $exchangeItem->qty);
+                    }
+
+                    $this->stockMutationService->recordSalesReturnExchangeOut(
+                        product: $product,
+                        salesReturn: $salesReturn,
+                        qty: (int) $exchangeItem->qty,
+                        stockBefore: $stockBefore,
+                        stockAfter: $stockAfter,
+                        warehouseId: $transactionWarehouseId,
+                        userId: $request->user()?->id,
+                    );
+
+                    $exchangeBuyPrice = (int) ($product->buy_price ?? 0);
+                    $exchangeMargin = ((int) $exchangeItem->unit_price - $exchangeBuyPrice) * (int) $exchangeItem->qty;
+
+                    Profit::create([
+                        'transaction_id' => $salesReturn->transaction_id,
+                        'total' => $exchangeMargin,
+                    ]);
+                }
+            }
+
             $salesReturn->loadMissing('transaction.receivable');
             $settlement = $this->calculateSettlement(
                 $salesReturn->transaction,
                 (int) $salesReturn->total_return_amount,
-                $salesReturn->return_type
+                $salesReturn->return_type,
+                (int) $salesReturn->exchange_amount,
+                (int) $salesReturn->difference_amount,
+                $salesReturn->exchange_payment_method,
+                (int) $salesReturn->exchange_cash,
+                (int) $salesReturn->exchange_change
             );
 
             $salesReturn->update([
@@ -279,6 +397,11 @@ class SalesReturnController extends Controller
                 'return_type' => $settlement['return_type'],
                 'refund_amount' => $settlement['refund_amount'],
                 'credited_amount' => $settlement['credited_amount'],
+                'exchange_amount' => $settlement['exchange_amount'],
+                'difference_amount' => $settlement['difference_amount'],
+                'exchange_payment_method' => $settlement['exchange_payment_method'],
+                'exchange_cash' => $settlement['exchange_cash'],
+                'exchange_change' => $settlement['exchange_change'],
                 'status' => 'completed',
                 'completed_at' => now(),
             ]);
@@ -286,7 +409,7 @@ class SalesReturnController extends Controller
             if ($salesReturn->transaction->payment_method === 'pay_later' && $salesReturn->transaction->receivable) {
                 $receivable = $salesReturn->transaction->receivable()->lockForUpdate()->first();
 
-                if ($receivable) {
+                if ($receivable && $settlement['receivable_total_after'] !== null) {
                     $receivable->update([
                         'total' => $settlement['receivable_total_after'],
                         'status' => $this->determineReceivableStatus(
@@ -299,8 +422,7 @@ class SalesReturnController extends Controller
             }
 
             if (
-                $salesReturn->return_type === 'store_credit'
-                && $salesReturn->customer_id
+                $salesReturn->customer_id
                 && $salesReturn->credited_amount > 0
             ) {
                 CustomerCredit::create([
@@ -314,7 +436,7 @@ class SalesReturnController extends Controller
         });
 
         $salesReturn->refresh();
-        $salesReturn->load('items.product');
+        $salesReturn->load(['items.product', 'exchangeItems.product']);
         $this->auditLogService->log(
             event: 'sales_return.completed',
             module: 'sales_returns',
@@ -323,8 +445,82 @@ class SalesReturnController extends Controller
             before: $before,
             after: $this->salesReturnAuditPayload($salesReturn),
         );
+    }
 
-        return back()->with('success', 'Retur penjualan berhasil diselesaikan.');
+    public function print(Request $request, SalesReturn $salesReturn)
+    {
+        $this->ensureSalesReturnTablesExist();
+        $salesReturn = $this->resolveAccessibleSalesReturn($request, $salesReturn->id);
+
+        $defaultPaperSize = Setting::get('printer_paper_size', '58mm');
+        $autoPrint = Setting::getBool('printer_auto_print', false);
+        $autoPrintDriver = Setting::get('printer_driver', 'browser');
+
+        $enabledButtons = [
+            'bluetooth' => Setting::getBool('printer_enable_bluetooth', true),
+            'webusb' => Setting::getBool('printer_enable_webusb', true),
+            'server' => Setting::getBool('printer_enable_server', true),
+        ];
+
+        return Inertia::render('Dashboard/SalesReturns/Print', [
+            'salesReturn' => $salesReturn,
+            'defaultPaperSize' => $defaultPaperSize,
+            'autoPrint' => $autoPrint,
+            'autoPrintDriver' => $autoPrintDriver,
+            'enabledButtons' => $enabledButtons,
+        ]);
+    }
+
+    public function directPrint(Request $request, SalesReturn $salesReturn)
+    {
+        $this->ensureSalesReturnTablesExist();
+        $salesReturn = $this->resolveAccessibleSalesReturn($request, $salesReturn->id);
+
+        $success = $this->thermalPrintService->printSalesReturnDirectToCups($salesReturn);
+
+        if ($success) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Struk retur berhasil dicetak langsung ke printer EPPOS!',
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Gagal mencetak struk langsung. Pastikan printer terhubung.',
+        ], 500);
+    }
+
+    public function receipt(Request $request, SalesReturn $salesReturn)
+    {
+        $this->ensureSalesReturnTablesExist();
+        $salesReturn = $this->resolveAccessibleSalesReturn($request, $salesReturn->id);
+        $paperSize = $request->query('size', Setting::get('printer_paper_size', '58mm'));
+        $html = $this->thermalPrintService->generateSalesReturnReceiptHtml($salesReturn, $paperSize);
+
+        return response($html)->header('Content-Type', 'text/html');
+    }
+
+    private function getAvailableProducts(?int $warehouseId = null): Collection
+    {
+        return Product::query()
+            ->select('id', 'barcode', 'sku', 'title', 'sell_price', 'buy_price', 'stock')
+            ->when($warehouseId, function ($q) use ($warehouseId) {
+                $q->with(['warehouses' => fn ($w) => $w->where('warehouses.id', $warehouseId)]);
+            })
+            ->orderBy('title')
+            ->get()
+            ->map(fn (Product $p) => [
+                'id' => $p->id,
+                'title' => $p->title,
+                'barcode' => $p->barcode,
+                'sku' => $p->sku,
+                'sell_price' => (int) $p->sell_price,
+                'buy_price' => (int) $p->buy_price,
+                'stock' => $warehouseId
+                    ? (int) ($p->warehouses->first()?->pivot->stock ?? 0)
+                    : (int) $p->stock,
+            ]);
     }
 
     private function salesReturnAuditPayload(SalesReturn $salesReturn): array
@@ -336,6 +532,11 @@ class SalesReturnController extends Controller
             'refund_amount' => (int) $salesReturn->refund_amount,
             'credited_amount' => (int) $salesReturn->credited_amount,
             'total_return_amount' => (int) $salesReturn->total_return_amount,
+            'exchange_amount' => (int) $salesReturn->exchange_amount,
+            'difference_amount' => (int) $salesReturn->difference_amount,
+            'exchange_payment_method' => $salesReturn->exchange_payment_method,
+            'exchange_cash' => (int) $salesReturn->exchange_cash,
+            'exchange_change' => (int) $salesReturn->exchange_change,
             'transaction_id' => (int) $salesReturn->transaction_id,
             'items_summary' => $salesReturn->items->map(fn (SalesReturnItem $item) => [
                 'product_id' => $item->product_id,
@@ -343,6 +544,13 @@ class SalesReturnController extends Controller
                 'qty_return' => (int) $item->qty_return,
                 'subtotal_return' => (int) $item->subtotal_return,
                 'restock_to_inventory' => (bool) $item->restock_to_inventory,
+            ])->values()->all(),
+            'exchange_items_summary' => $salesReturn->exchangeItems->map(fn (SalesReturnExchangeItem $item) => [
+                'product_id' => $item->product_id,
+                'product_title' => $item->product?->title,
+                'qty' => (int) $item->qty,
+                'unit_price' => (int) $item->unit_price,
+                'subtotal' => (int) $item->subtotal,
             ])->values()->all(),
         ];
     }
@@ -374,6 +582,7 @@ class SalesReturnController extends Controller
                 'transaction.details.salesReturnItems.salesReturn:id,status',
                 'items.product:id,title,barcode,sku,buy_price',
                 'items.transactionDetail:id,transaction_id,product_id,qty,price',
+                'exchangeItems.product:id,title,barcode,sku,buy_price,sell_price',
             ])
             ->when(! $request->user()->isSuperAdmin(), function (Builder $query) use ($request) {
                 $query->whereHas('transaction', fn (Builder $builder) => $builder->where('cashier_id', $request->user()->id));
@@ -452,6 +661,11 @@ class SalesReturnController extends Controller
             'refund_amount' => (int) $salesReturn->refund_amount,
             'credited_amount' => (int) $salesReturn->credited_amount,
             'total_return_amount' => (int) $salesReturn->total_return_amount,
+            'exchange_amount' => (int) $salesReturn->exchange_amount,
+            'difference_amount' => (int) $salesReturn->difference_amount,
+            'exchange_payment_method' => $salesReturn->exchange_payment_method,
+            'exchange_cash' => (int) $salesReturn->exchange_cash,
+            'exchange_change' => (int) $salesReturn->exchange_change,
             'notes' => $salesReturn->notes,
             'created_at' => optional($salesReturn->created_at)?->toISOString(),
             'completed_at' => optional($salesReturn->completed_at)?->toISOString(),
@@ -486,6 +700,22 @@ class SalesReturnController extends Controller
                     'restock_to_inventory' => (bool) $item->restock_to_inventory,
                 ];
             })->values(),
+            'exchange_items' => $salesReturn->exchangeItems->map(function (SalesReturnExchangeItem $item) {
+                return [
+                    'id' => $item->id,
+                    'product_id' => $item->product_id,
+                    'product' => $item->product ? [
+                        'id' => $item->product->id,
+                        'title' => $item->product->title,
+                        'barcode' => $item->product->barcode,
+                        'sku' => $item->product->sku,
+                        'sell_price' => (int) $item->product->sell_price,
+                    ] : null,
+                    'qty' => (int) $item->qty,
+                    'unit_price' => (int) $item->unit_price,
+                    'subtotal' => (int) $item->subtotal,
+                ];
+            })->values(),
         ];
     }
 
@@ -507,7 +737,7 @@ class SalesReturnController extends Controller
 
         $returnType = $validated['return_type'];
 
-        if (! $transaction->customer_id) {
+        if (! $transaction->customer_id && $returnType === 'store_credit') {
             $returnType = 'refund_cash';
         }
 
@@ -564,7 +794,72 @@ class SalesReturnController extends Controller
         }
 
         $totalReturnAmount = (int) $items->sum('subtotal');
-        $settlement = $this->calculateSettlement($transaction, $totalReturnAmount, $returnType);
+
+        $exchangeItems = collect();
+        $exchangeAmount = 0;
+        $diffAmount = 0;
+        $exchangePaymentMethod = $validated['exchange_payment_method'] ?? null;
+        $exchangeCash = (int) ($validated['exchange_cash'] ?? 0);
+        $exchangeChange = (int) ($validated['exchange_change'] ?? 0);
+
+        if ($returnType === 'product_exchange') {
+            $rawExchangeItems = $validated['exchange_items'] ?? [];
+            $productIds = collect($rawExchangeItems)->pluck('product_id')->filter()->unique();
+            $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+
+            $exchangeItems = collect($rawExchangeItems)->map(function ($eItem) use ($products) {
+                $pId = (int) ($eItem['product_id'] ?? 0);
+                $product = $products->get($pId);
+                $qty = max(0, (int) ($eItem['qty'] ?? 0));
+                if (! $product || $qty < 1) {
+                    return null;
+                }
+                $unitPrice = (int) ($eItem['unit_price'] ?? $product->sell_price);
+
+                return [
+                    'product_id' => $product->id,
+                    'qty' => $qty,
+                    'unit_price' => $unitPrice,
+                    'subtotal' => $qty * $unitPrice,
+                ];
+            })->filter()->values();
+
+            if ($exchangeItems->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'exchange_items' => 'Pilih minimal satu produk pengganti untuk tukar barang.',
+                ]);
+            }
+
+            $exchangeAmount = (int) $exchangeItems->sum('subtotal');
+            $diffAmount = $exchangeAmount - $totalReturnAmount;
+
+            if ($diffAmount > 0) {
+                if (empty($exchangePaymentMethod)) {
+                    $exchangePaymentMethod = 'cash';
+                }
+                if ($exchangePaymentMethod === 'cash') {
+                    $exchangeCash = max($diffAmount, $exchangeCash);
+                    $exchangeChange = max(0, $exchangeCash - $diffAmount);
+                } else {
+                    $exchangeCash = $diffAmount;
+                    $exchangeChange = 0;
+                }
+            } else {
+                $exchangeCash = 0;
+                $exchangeChange = 0;
+            }
+        }
+
+        $settlement = $this->calculateSettlement(
+            $transaction,
+            $totalReturnAmount,
+            $returnType,
+            $exchangeAmount,
+            $diffAmount,
+            $exchangePaymentMethod,
+            $exchangeCash,
+            $exchangeChange
+        );
 
         return [
             'return_type' => $settlement['return_type'],
@@ -572,12 +867,53 @@ class SalesReturnController extends Controller
             'refund_amount' => $settlement['refund_amount'],
             'credited_amount' => $settlement['credited_amount'],
             'total_return_amount' => $totalReturnAmount,
+            'exchange_amount' => $settlement['exchange_amount'],
+            'difference_amount' => $settlement['difference_amount'],
+            'exchange_payment_method' => $settlement['exchange_payment_method'],
+            'exchange_cash' => $settlement['exchange_cash'],
+            'exchange_change' => $settlement['exchange_change'],
             'items' => $items->all(),
+            'exchange_items' => $exchangeItems->all(),
         ];
     }
 
-    private function calculateSettlement(Transaction $transaction, int $totalReturnAmount, string $returnType): array
-    {
+    private function calculateSettlement(
+        Transaction $transaction,
+        int $totalReturnAmount,
+        string $returnType,
+        int $exchangeAmount = 0,
+        int $differenceAmount = 0,
+        ?string $exchangePaymentMethod = null,
+        int $exchangeCash = 0,
+        int $exchangeChange = 0
+    ): array {
+        if ($returnType === 'product_exchange') {
+            $diff = $exchangeAmount - $totalReturnAmount;
+            $refundAmount = 0;
+            $creditedAmount = 0;
+
+            if ($diff < 0) {
+                $overpaid = abs($diff);
+                if ($transaction->customer_id && $exchangePaymentMethod === 'store_credit') {
+                    $creditedAmount = $overpaid;
+                } else {
+                    $refundAmount = $overpaid;
+                }
+            }
+
+            return [
+                'return_type' => 'product_exchange',
+                'refund_amount' => $refundAmount,
+                'credited_amount' => $creditedAmount,
+                'exchange_amount' => $exchangeAmount,
+                'difference_amount' => $diff,
+                'exchange_payment_method' => $exchangePaymentMethod,
+                'exchange_cash' => $exchangeCash,
+                'exchange_change' => $exchangeChange,
+                'receivable_total_after' => null,
+            ];
+        }
+
         $resolvedReturnType = ! $transaction->customer_id && $returnType === 'store_credit'
             ? 'refund_cash'
             : $returnType;
@@ -609,6 +945,11 @@ class SalesReturnController extends Controller
             'return_type' => $resolvedReturnType,
             'refund_amount' => $refundAmount,
             'credited_amount' => $creditedAmount,
+            'exchange_amount' => 0,
+            'difference_amount' => 0,
+            'exchange_payment_method' => null,
+            'exchange_cash' => 0,
+            'exchange_change' => 0,
             'receivable_total_after' => $receivableTotalAfter,
         ];
     }

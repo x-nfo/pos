@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\SalesReturn;
 use App\Models\Setting;
 use App\Models\Transaction;
 
@@ -79,6 +80,102 @@ class ThermalPrintService
         $fontSize = $paperSize === '58mm' ? '11px' : '12px';
 
         return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Struk '.$transaction->invoice.'</title><style>@page{size:'.$paperSize.' auto;margin:0;}body{margin:0;padding:0;background:#fff;font-family:monospace;}pre{font-family:monospace;font-size:'.$fontSize.';line-height:1.3;width:'.$width.';max-width:'.$width.';margin:0;padding:2px;box-sizing:border-box;white-space:pre-wrap;word-break:break-all;color:#000;}</style></head><body onload="window.print()"><pre>'.e($text).'</pre></body></html>';
+    }
+
+    public function generateSalesReturnReceiptText(SalesReturn $salesReturn, string $paperSize = '80mm'): string
+    {
+        $salesReturn->loadMissing(['transaction', 'customer', 'cashier', 'items.product', 'exchangeItems.product']);
+
+        $storeName = Setting::get('store_name', 'Toko Anda');
+        $storeAddress = Setting::get('store_address', '');
+        $storePhone = Setting::get('store_phone', '');
+        $maxWidth = $paperSize === '58mm' ? 32 : 48;
+
+        $lines = [];
+        $lines[] = '';
+        $lines[] = $this->center(strtoupper($storeName ?? 'TOKO ANDA'), $maxWidth);
+        if ($storeAddress) {
+            $lines[] = $this->center($storeAddress, $maxWidth);
+        }
+        if ($storePhone) {
+            $lines[] = $this->center('Telp: '.$storePhone, $maxWidth);
+        }
+        $lines[] = $this->line($maxWidth);
+        $lines[] = $this->center($salesReturn->return_type === 'product_exchange' ? 'BUKTI TUKAR BARANG' : 'BUKTI RETUR PENJUALAN', $maxWidth);
+        $lines[] = $this->line($maxWidth);
+        $lines[] = $this->left('No Retur: '.($salesReturn->code ?? ''), $maxWidth);
+        $lines[] = $this->left('Ref Nota: '.($salesReturn->transaction?->invoice ?? '-'), $maxWidth);
+        $lines[] = $this->left('Tgl: '.($salesReturn->completed_at?->format('d/m/Y H:i') ?? $salesReturn->created_at?->format('d/m/Y H:i') ?? ''), $maxWidth);
+        $lines[] = $this->left('Kasir: '.($salesReturn->cashier?->name ?? '-'), $maxWidth);
+        $lines[] = $this->left('Pelanggan: '.($salesReturn->customer?->name ?? 'Umum'), $maxWidth);
+        $lines[] = $this->line($maxWidth);
+
+        $lines[] = $this->left('[BARANG DIRETUR]', $maxWidth);
+        foreach ($salesReturn->items as $item) {
+            $title = mb_substr($item->product?->title ?? 'Produk', 0, $maxWidth - 10);
+            $linePrice = '-'.number_format((int) $item->subtotal, 0, ',', '.');
+            $lineTotal = "{$item->qty_return}x @ ".number_format((int) $item->unit_price, 0, ',', '.');
+            $lines[] = $this->left($title, $maxWidth);
+            $lines[] = $this->leftRight($lineTotal, $linePrice, $maxWidth);
+        }
+
+        if ($salesReturn->return_type === 'product_exchange' && $salesReturn->exchangeItems->isNotEmpty()) {
+            $lines[] = $this->line($maxWidth);
+            $lines[] = $this->left('[BARANG PENGGANTI]', $maxWidth);
+            foreach ($salesReturn->exchangeItems as $item) {
+                $title = mb_substr($item->product?->title ?? 'Produk', 0, $maxWidth - 10);
+                $linePrice = number_format((int) $item->subtotal, 0, ',', '.');
+                $lineTotal = "{$item->qty}x @ ".number_format((int) $item->unit_price, 0, ',', '.');
+                $lines[] = $this->left($title, $maxWidth);
+                $lines[] = $this->leftRight($lineTotal, $linePrice, $maxWidth);
+            }
+
+            $lines[] = $this->line($maxWidth);
+            $lines[] = $this->leftRight('Total Retur', '-'.number_format((int) $salesReturn->total_return_amount, 0, ',', '.'), $maxWidth);
+            $lines[] = $this->leftRight('Total Pengganti', number_format((int) $salesReturn->exchange_amount, 0, ',', '.'), $maxWidth);
+            $lines[] = $this->line($maxWidth);
+
+            $diff = (int) $salesReturn->difference_amount;
+            if ($diff > 0) {
+                $lines[] = $this->leftRight('Kurang Bayar', number_format($diff, 0, ',', '.'), $maxWidth);
+                $methodName = strtoupper(str_replace('_', ' ', $salesReturn->exchange_payment_method ?: 'Tunai'));
+                $lines[] = $this->leftRight("Bayar ({$methodName})", number_format((int) ($salesReturn->exchange_cash ?: $diff), 0, ',', '.'), $maxWidth);
+                if (($salesReturn->exchange_change ?? 0) > 0) {
+                    $lines[] = $this->leftRight('Kembali', number_format((int) $salesReturn->exchange_change, 0, ',', '.'), $maxWidth);
+                }
+            } elseif ($diff < 0) {
+                $refundType = $salesReturn->credited_amount > 0 ? 'Saldo Toko' : 'Refund Tunai';
+                $lines[] = $this->leftRight($refundType, number_format(abs($diff), 0, ',', '.'), $maxWidth);
+            } else {
+                $lines[] = $this->leftRight('Selisih', 'Rp 0 (Tukar Pas)', $maxWidth);
+            }
+        } else {
+            $lines[] = $this->line($maxWidth);
+            $lines[] = $this->leftRight('Total Retur', number_format((int) $salesReturn->total_return_amount, 0, ',', '.'), $maxWidth);
+            if ($salesReturn->return_type === 'store_credit' || $salesReturn->credited_amount > 0) {
+                $lines[] = $this->leftRight('Saldo Toko', number_format((int) $salesReturn->credited_amount, 0, ',', '.'), $maxWidth);
+            } else {
+                $lines[] = $this->leftRight('Refund Tunai', number_format((int) $salesReturn->refund_amount, 0, ',', '.'), $maxWidth);
+            }
+        }
+
+        $lines[] = $this->line($maxWidth);
+        $lines[] = $this->center('Terima kasih', $maxWidth);
+        $lines[] = $this->center('Simpan bukti ini sebagai konfirmasi', $maxWidth);
+        $lines[] = '';
+        $lines[] = '';
+
+        return implode("\n", $lines);
+    }
+
+    public function generateSalesReturnReceiptHtml(SalesReturn $salesReturn, ?string $paperSize = null): string
+    {
+        $paperSize = $paperSize ?: Setting::get('printer_paper_size', '58mm');
+        $text = $this->generateSalesReturnReceiptText($salesReturn, $paperSize);
+        $width = $paperSize === '58mm' ? '48mm' : '80mm';
+        $fontSize = $paperSize === '58mm' ? '11px' : '12px';
+
+        return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Struk Retur '.$salesReturn->code.'</title><style>@page{size:'.$paperSize.' auto;margin:0;}body{margin:0;padding:0;background:#fff;font-family:monospace;}pre{font-family:monospace;font-size:'.$fontSize.';line-height:1.3;width:'.$width.';max-width:'.$width.';margin:0;padding:2px;box-sizing:border-box;white-space:pre-wrap;word-break:break-all;color:#000;}</style></head><body onload="window.print()"><pre>'.e($text).'</pre></body></html>';
     }
 
     private function center(string $text, int $width): string
@@ -201,6 +298,122 @@ class ThermalPrintService
         $raw .= "Terima kasih\r\n";
         $raw .= "Barang yang sudah dibeli\r\n";
         $raw .= "tidak dapat ditukar/kembali\r\n\r\n\r\n\r\n\r\n";
+
+        $process = @proc_open(['lpr', '-P', $printerName, '-o', 'raw'], [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ], $pipes);
+
+        if (is_resource($process)) {
+            fwrite($pipes[0], $raw);
+            fclose($pipes[0]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+
+            return proc_close($process) === 0;
+        }
+
+        return false;
+    }
+
+    public function printSalesReturnDirectToCups(SalesReturn $salesReturn, ?string $printerName = null, ?string $paperSize = null): bool
+    {
+        $printerName = $printerName ?: Setting::get('printer_cups_name', 'EPPOS');
+        $paperSize = $paperSize ?: Setting::get('printer_paper_size', '58mm');
+
+        $maxWidth = $paperSize === '58mm' ? 32 : 48;
+        $escInit = "\x1b@";
+        $escCenter = "\x1ba\x01";
+        $escLeft = "\x1ba\x00";
+        $escBoldOn = "\x1bE\x01";
+        $escBoldOff = "\x1bE\x00";
+
+        $storeName = Setting::get('store_name', 'Toko Anda');
+        $storeAddress = Setting::get('store_address', '');
+        $storePhone = Setting::get('store_phone', '');
+
+        $raw = $escInit;
+        $raw .= $escCenter.$escBoldOn.strtoupper($storeName)."\r\n".$escBoldOff;
+        if ($storeAddress) {
+            $raw .= $storeAddress."\r\n";
+        }
+        if ($storePhone) {
+            $raw .= 'Telp: '.$storePhone."\r\n";
+        }
+
+        $isExchange = $salesReturn->return_type === 'product_exchange';
+        $title = $isExchange ? 'BUKTI TUKAR BARANG' : 'BUKTI RETUR PENJUALAN';
+
+        $raw .= str_repeat('=', $maxWidth)."\r\n";
+        $raw .= $escBoldOn.$this->center($title, $maxWidth)."\r\n".$escBoldOff;
+        $raw .= str_repeat('-', $maxWidth)."\r\n";
+
+        $raw .= $escLeft;
+        $raw .= 'No: '.$salesReturn->code."\r\n";
+        $raw .= 'Ref: '.($salesReturn->transaction?->invoice ?? '-')."\r\n";
+        $raw .= 'Tgl: '.(($salesReturn->completed_at ?? $salesReturn->created_at)?->format('d/m/Y H:i') ?? '')."\r\n";
+        $raw .= 'Kasir: '.($salesReturn->cashier?->name ?? '-')."\r\n";
+        $raw .= 'Pelanggan: '.($salesReturn->customer?->name ?? 'Umum')."\r\n";
+        $raw .= str_repeat('=', $maxWidth)."\r\n";
+
+        $raw .= $escBoldOn."[BARANG DIRETUR]\r\n".$escBoldOff;
+        foreach ($salesReturn->items as $item) {
+            $itemTitle = mb_substr($item->product?->title ?? 'Produk', 0, $maxWidth);
+            $qty = (int) ($item->qty_return ?: $item->qty ?: 1);
+            $unitPrice = (int) $item->unit_price;
+            $subtotal = (int) ($item->subtotal ?: $qty * $unitPrice);
+
+            $raw .= $itemTitle."\r\n";
+            $raw .= $this->leftRight("{$qty}x @ ".number_format($unitPrice, 0, ',', '.'), '-'.number_format($subtotal, 0, ',', '.'), $maxWidth)."\r\n";
+        }
+
+        if ($isExchange && $salesReturn->exchangeItems->isNotEmpty()) {
+            $raw .= str_repeat('-', $maxWidth)."\r\n";
+            $raw .= $escBoldOn."[BARANG PENGGANTI]\r\n".$escBoldOff;
+            foreach ($salesReturn->exchangeItems as $item) {
+                $itemTitle = mb_substr($item->product?->title ?? 'Produk Pengganti', 0, $maxWidth);
+                $qty = (int) $item->qty;
+                $unitPrice = (int) $item->unit_price;
+                $subtotal = (int) ($item->subtotal ?: $qty * $unitPrice);
+
+                $raw .= $itemTitle."\r\n";
+                $raw .= $this->leftRight("{$qty}x @ ".number_format($unitPrice, 0, ',', '.'), number_format($subtotal, 0, ',', '.'), $maxWidth)."\r\n";
+            }
+        }
+
+        $raw .= str_repeat('-', $maxWidth)."\r\n";
+
+        if ($isExchange) {
+            $raw .= $this->leftRight('Total Retur', '-'.number_format((int) $salesReturn->total_return_amount, 0, ',', '.'), $maxWidth)."\r\n";
+            $raw .= $this->leftRight('Total Pengganti', number_format((int) $salesReturn->exchange_amount, 0, ',', '.'), $maxWidth)."\r\n";
+            $raw .= str_repeat('-', $maxWidth)."\r\n";
+
+            $diff = (int) $salesReturn->difference_amount;
+            if ($diff > 0) {
+                $raw .= $escBoldOn.$this->leftRight('Kurang Bayar', number_format($diff, 0, ',', '.'), $maxWidth)."\r\n".$escBoldOff;
+                $methodName = strtoupper(str_replace('_', ' ', $salesReturn->exchange_payment_method ?: 'Tunai'));
+                $raw .= $this->leftRight("Bayar ({$methodName})", number_format((int) ($salesReturn->exchange_cash ?: $diff), 0, ',', '.'), $maxWidth)."\r\n";
+                if (($salesReturn->exchange_change ?? 0) > 0) {
+                    $raw .= $this->leftRight('Kembali', number_format((int) $salesReturn->exchange_change, 0, ',', '.'), $maxWidth)."\r\n";
+                }
+            } elseif ($diff < 0) {
+                $refundType = $salesReturn->credited_amount > 0 ? 'Saldo Toko' : 'Refund Tunai';
+                $raw .= $escBoldOn.$this->leftRight($refundType, number_format(abs($diff), 0, ',', '.'), $maxWidth)."\r\n".$escBoldOff;
+            } else {
+                $raw .= $this->leftRight('Selisih', 'Rp 0 (Tukar Pas)', $maxWidth)."\r\n";
+            }
+        } else {
+            $raw .= $this->leftRight('Total Retur', number_format((int) $salesReturn->total_return_amount, 0, ',', '.'), $maxWidth)."\r\n";
+            $refundType = ($salesReturn->return_type === 'store_credit' || $salesReturn->credited_amount > 0) ? 'Saldo Toko' : 'Refund Tunai';
+            $refundAmount = $salesReturn->credited_amount ?: $salesReturn->refund_amount ?: $salesReturn->total_return_amount ?: 0;
+            $raw .= $this->leftRight($refundType, number_format((int) $refundAmount, 0, ',', '.'), $maxWidth)."\r\n";
+        }
+
+        $raw .= str_repeat('=', $maxWidth)."\r\n";
+        $raw .= $escCenter;
+        $raw .= "Terima kasih\r\n";
+        $raw .= "Simpan bukti ini sebagai konfirmasi\r\n\r\n\r\n\r\n\r\n";
 
         $process = @proc_open(['lpr', '-P', $printerName, '-o', 'raw'], [
             0 => ['pipe', 'r'],

@@ -185,6 +185,60 @@ class StockMutationService
         return $mutation;
     }
 
+    public function recordSalesReturnExchangeOut(
+        Product $product,
+        SalesReturn $salesReturn,
+        int $qty,
+        int $stockBefore,
+        int $stockAfter,
+        ?int $warehouseId = null,
+        ?string $notes = null,
+        ?int $userId = null
+    ): StockMutation {
+        $mutation = StockMutation::create([
+            'product_id' => $product->id,
+            'warehouse_id' => $warehouseId,
+            'reference_type' => 'sales_return_exchange',
+            'reference_id' => $salesReturn->id,
+            'mutation_type' => 'out',
+            'qty' => $qty,
+            'stock_before' => $stockBefore,
+            'stock_after' => $stockAfter,
+            'notes' => $notes ?: 'Barang pengganti retur penjualan '.$salesReturn->code,
+            'created_by' => $userId,
+        ]);
+
+        $this->auditLogService->log(
+            event: 'stock.adjusted',
+            module: 'stock',
+            auditable: $product,
+            description: 'Stok keluar sebagai barang pengganti retur '.$salesReturn->code,
+            before: [
+                'product_id' => $product->id,
+                'stock_before' => $stockBefore,
+                'stock_after' => $stockBefore,
+                'difference' => 0,
+                'reference' => $salesReturn->code,
+            ],
+            after: [
+                'product_id' => $product->id,
+                'stock_before' => $stockBefore,
+                'stock_after' => $stockAfter,
+                'difference' => $stockAfter - $stockBefore,
+                'reference' => $salesReturn->code,
+            ],
+            meta: [
+                'stock_mutation_id' => $mutation->id,
+                'sales_return_id' => $salesReturn->id,
+                'sales_return_code' => $salesReturn->code,
+                'mutation_type' => $mutation->mutation_type,
+                'qty' => $qty,
+            ],
+        );
+
+        return $mutation;
+    }
+
     public function recordPurchaseInbound(
         Product $product,
         GoodsReceiving $goodsReceiving,

@@ -124,6 +124,7 @@ export default function Index({ salesReturns, filters }) {
                             <option value="">Semua metode</option>
                             <option value="refund_cash">Refund Tunai</option>
                             <option value="store_credit">Saldo Toko</option>
+                            <option value="product_exchange">Tukar Barang</option>
                         </select>
                         <button
                             type="submit"
@@ -165,9 +166,19 @@ export default function Index({ salesReturns, filters }) {
                                             {item.customer?.name || "Umum"}
                                         </td>
                                         <td className="px-4 py-4">
-                                            {item.return_type === "store_credit"
-                                                ? "Saldo Toko"
-                                                : "Refund Tunai"}
+                                            {item.return_type === "product_exchange" ? (
+                                                <span className="inline-flex items-center rounded-full bg-cyan-100 px-2.5 py-0.5 text-xs font-semibold text-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-300">
+                                                    Tukar Barang
+                                                </span>
+                                            ) : item.return_type === "store_credit" ? (
+                                                <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-semibold text-purple-800 dark:bg-purple-950/40 dark:text-purple-300">
+                                                    Saldo Toko
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-800 dark:bg-slate-800 dark:text-slate-300">
+                                                    Refund Tunai
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-4 py-4 text-right font-medium text-slate-900 dark:text-white">
                                             {formatCurrency(
@@ -188,15 +199,29 @@ export default function Index({ salesReturns, filters }) {
                                             </span>
                                         </td>
                                         <td className="px-4 py-4 text-center">
-                                            <Link
-                                                href={route(
-                                                    "sales-returns.show",
-                                                    item.id
+                                            <div className="flex items-center justify-center gap-1.5">
+                                                <Link
+                                                    href={route(
+                                                        "sales-returns.show",
+                                                        item.id
+                                                    )}
+                                                    className="inline-flex rounded-lg bg-primary-50 px-3 py-2 text-xs font-semibold text-primary-700 hover:bg-primary-100 dark:bg-primary-950/40 dark:text-primary-300"
+                                                >
+                                                    Lihat
+                                                </Link>
+                                                {item.status === "completed" && (
+                                                    <Link
+                                                        href={route(
+                                                            "sales-returns.print",
+                                                            item.id
+                                                        )}
+                                                        className="inline-flex rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                                                        title="Cetak Struk"
+                                                    >
+                                                        Cetak
+                                                    </Link>
                                                 )}
-                                                className="inline-flex rounded-lg bg-primary-50 px-3 py-2 text-xs font-semibold text-primary-700 hover:bg-primary-100 dark:bg-primary-950/40 dark:text-primary-300"
-                                            >
-                                                Lihat
-                                            </Link>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
