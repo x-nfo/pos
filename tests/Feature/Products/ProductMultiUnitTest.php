@@ -192,4 +192,70 @@ class ProductMultiUnitTest extends TestCase
             'sell_price' => 360000,
         ]);
     }
+
+    public function test_base_unit_price_always_syncs_with_product_price(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo(['products-access', 'products-edit']);
+
+        $category = Category::create([
+            'name' => 'Bumbu',
+            'description' => 'Kategori Bumbu',
+            'image' => 'bumbu.jpg',
+        ]);
+
+        $pcs = Unit::where('code', 'PCS')->first();
+
+        $product = Product::create([
+            'image' => 'kecap.jpg',
+            'barcode' => '899111222333',
+            'sku' => 'KCP-001',
+            'title' => 'Kecap Asin 133ml',
+            'description' => 'Kecap asin botol',
+            'category_id' => $category->id,
+            'buy_price' => 2000,
+            'sell_price' => 2800,
+            'stock' => 50,
+        ]);
+
+        // Attach initial unit with 2800
+        $product->units()->attach($pcs->id, [
+            'is_base' => true,
+            'conversion_factor' => 1,
+            'buy_price' => 2000,
+            'sell_price' => 2800,
+        ]);
+
+        // Update product price to 7500, even if request payload accidentally has old unit sell_price 2800
+        $payload = [
+            'barcode' => '899111222333',
+            'sku' => 'KCP-001',
+            'title' => 'Kecap Asin 133ml',
+            'description' => 'Kecap asin botol',
+            'category_id' => $category->id,
+            'buy_price' => 5000,
+            'sell_price' => 7500,
+            'units' => [
+                [
+                    'unit_id' => $pcs->id,
+                    'is_base' => true,
+                    'conversion_factor' => 1,
+                    'buy_price' => 2000, // old value in request
+                    'sell_price' => 2800, // old value in request
+                ],
+            ],
+        ];
+
+        $response = $this->actingAs($user)->put(route('products.update', $product->id), $payload);
+        $response->assertRedirect(route('products.index'));
+
+        // Base unit price in pivot must be synced with the main product prices (5000 and 7500)
+        $this->assertDatabaseHas('product_units', [
+            'product_id' => $product->id,
+            'unit_id' => $pcs->id,
+            'is_base' => 1,
+            'buy_price' => 5000,
+            'sell_price' => 7500,
+        ]);
+    }
 }

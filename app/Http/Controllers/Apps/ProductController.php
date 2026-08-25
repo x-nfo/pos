@@ -315,12 +315,18 @@ class ProductController extends Controller
             }
 
             $conversionFactor = $isBase ? 1.0000 : (float) ($u['conversion_factor'] ?? 1);
-            $buyPrice = isset($u['buy_price']) && $u['buy_price'] !== '' && $u['buy_price'] !== null
-                ? (int) $u['buy_price']
-                : (int) $product->buy_price;
-            $sellPrice = isset($u['sell_price']) && $u['sell_price'] !== '' && $u['sell_price'] !== null
-                ? (int) $u['sell_price']
-                : (int) $product->sell_price;
+            
+            if ($isBase) {
+                $buyPrice = (int) $product->buy_price;
+                $sellPrice = (int) $product->sell_price;
+            } else {
+                $buyPrice = isset($u['buy_price']) && $u['buy_price'] !== '' && $u['buy_price'] !== null
+                    ? (int) $u['buy_price']
+                    : (int) $product->buy_price;
+                $sellPrice = isset($u['sell_price']) && $u['sell_price'] !== '' && $u['sell_price'] !== null
+                    ? (int) $u['sell_price']
+                    : (int) $product->sell_price;
+            }
 
             $syncData[$unitId] = [
                 'is_base' => $isBase,

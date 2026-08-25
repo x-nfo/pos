@@ -111,7 +111,9 @@ export default function ProductUnitModal({
 
                     {units.map((unit) => {
                         const factor = Number(unit.conversion_factor) || 1;
-                        const unitPrice = Number(unit.sell_price || product.sell_price || 0);
+                        const unitPrice = unit.is_base 
+                            ? Number(product.sell_price || 0) 
+                            : Number(unit.sell_price || product.sell_price || 0);
                         const estStock = factor > 0 ? Math.floor(baseStock / factor) : 0;
                         const isAvailable = baseStock >= factor;
 
