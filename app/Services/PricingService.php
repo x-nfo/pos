@@ -77,6 +77,11 @@ class PricingService
         ?Customer $customer = null,
         ?Collection $rules = null
     ): array {
+        $priceListService = app(PriceListService::class);
+        $applicablePriceList = $priceListService->getApplicablePriceList($customer);
+        $priceListPrice = $applicablePriceList ? $priceListService->getProductPrice($applicablePriceList, $product->id) : null;
+        $basePrice = $priceListPrice ?? (int) $product->sell_price;
+
         $rules = $rules ?? $this->getActiveRules();
         $quantity = max(1, $qty);
         $matchingRules = $rules
@@ -88,12 +93,12 @@ class PricingService
                 PricingRule::KIND_STANDARD_DISCOUNT,
                 PricingRule::KIND_QTY_BREAK,
             ], true))
-            ->map(function (PricingRule $rule) use ($product, $quantity) {
+            ->map(function (PricingRule $rule) use ($product, $quantity, $basePrice) {
                 $previewQuantity = $rule->kind === PricingRule::KIND_QTY_BREAK
                     ? max($quantity, (int) ($rule->preview_quantity_multiplier ?: $rule->qtyBreaks->max('min_qty') ?: 1))
                     : $quantity;
 
-                return $this->calculateLineCandidate($rule, $product, $previewQuantity);
+                return $this->calculateLineCandidate($rule, $product, $previewQuantity, $basePrice);
             })
             ->filter()
             ->sortBy([
@@ -133,11 +138,11 @@ class PricingService
             ->first();
 
         return [
-            'base_unit_price' => (int) $product->sell_price,
-            'effective_unit_price' => (int) $product->sell_price,
+            'base_unit_price' => $basePrice,
+            'effective_unit_price' => $basePrice,
             'quantity' => $quantity,
-            'line_base_total' => (int) $product->sell_price * $quantity,
-            'line_total' => (int) $product->sell_price * $quantity,
+            'line_base_total' => $basePrice * $quantity,
+            'line_total' => $basePrice * $quantity,
             'line_discount_total' => 0,
             'pricing_rule' => $complexRule ? $this->serializeRule($complexRule, false) : null,
         ];
@@ -156,10 +161,27 @@ class PricingService
     private function buildPreview(Collection $carts, ?Customer $customer, Collection $rules): array
     {
         $unitConversion = app(UnitConversionService::class);
-        $items = $carts->map(function (Cart $cart) use ($unitConversion) {
-            $baseUnitPrice = $cart->unit_id && $cart->product
-                ? $unitConversion->getSellPrice($cart->product, $cart->unit_id)
-                : (int) ($cart->qty > 0 && $cart->price > 0 ? round($cart->price / $cart->qty) : ($cart->product?->sell_price ?? 0));
+        $priceListService = app(PriceListService::class);
+        $applicablePriceList = $priceListService->getApplicablePriceList($customer);
+
+        $items = $carts->map(function (Cart $cart) use ($unitConversion, $priceListService, $applicablePriceList) {
+            $priceListPrice = null;
+            if ($applicablePriceList && $cart->product_id) {
+                $priceListPrice = $priceListService->getProductPrice($applicablePriceList, $cart->product_id);
+            }
+
+            if ($priceListPrice !== null) {
+                $conversionFactor = 1.0;
+                if ($cart->unit_id && $cart->product) {
+                    $pu = $cart->product->units()->where('unit_id', $cart->unit_id)->first();
+                    $conversionFactor = (float) ($pu?->pivot->conversion_factor ?? 1);
+                }
+                $baseUnitPrice = (int) round($priceListPrice * $conversionFactor);
+            } else {
+                $baseUnitPrice = $cart->unit_id && $cart->product
+                    ? $unitConversion->getSellPrice($cart->product, $cart->unit_id)
+                    : (int) ($cart->qty > 0 && $cart->price > 0 ? round($cart->price / $cart->qty) : ($cart->product?->sell_price ?? 0));
+            }
 
             return [
                 'cart_id' => $cart->id,

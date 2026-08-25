@@ -15,7 +15,7 @@ class PriceListService
             if ($list->customer_scope === 'all') {
                 return $list;
             }
-            if ($list->customer_scope === 'walk_in') {
+            if ($list->customer_scope === 'walk_in' && ! $customer) {
                 return $list;
             }
             if ($list->customer_scope === 'registered' && $customer) {
