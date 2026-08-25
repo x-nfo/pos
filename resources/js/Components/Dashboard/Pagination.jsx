@@ -162,7 +162,7 @@ export default function Pagination({ links }) {
                         <select
                             value={perPage}
                             onChange={(e) => changePerPage(e.target.value)}
-                            className="py-1 px-2.5 rounded-xl text-xs font-semibold border bg-white text-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 border-slate-200 focus:ring-1 focus:ring-primary-500"
+                            className="py-1 pl-2.5 pr-8 rounded-xl text-xs font-semibold border bg-white text-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 border-slate-200 focus:ring-1 focus:ring-primary-500 cursor-pointer"
                             aria-label="Jumlah data per halaman"
                         >
                             <option value="10">10</option>
