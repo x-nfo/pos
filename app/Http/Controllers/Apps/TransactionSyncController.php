@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\ProductWarehouse;
 use App\Models\Receivable;
 use App\Models\Transaction;
+use App\Services\AuditLogService;
 use App\Services\CashierShiftService;
 use App\Services\DocumentNumberService;
 use App\Services\LoyaltyService;
@@ -29,7 +30,8 @@ class TransactionSyncController extends Controller
         protected LoyaltyService $loyaltyService,
         protected UnitConversionService $unitConversionService,
         protected StockMutationService $stockMutationService,
-        protected DocumentNumberService $documentNumberService
+        protected DocumentNumberService $documentNumberService,
+        protected AuditLogService $auditLogService
     ) {}
 
     /**
@@ -102,7 +104,7 @@ class TransactionSyncController extends Controller
         $invoice = $this->documentNumberService->generateTransactionInvoice();
 
         try {
-            $transaction = DB::transaction(function () use (
+            [$transaction, $negativeStockAlerts] = DB::transaction(function () use (
                 $validated,
                 $activeShift,
                 $invoice,
@@ -120,6 +122,7 @@ class TransactionSyncController extends Controller
                 $items = $validated['items'];
                 $lineItems = [];
                 $subtotal = 0;
+                $negativeStockAlerts = [];
 
                 foreach ($items as $item) {
                     $product = Product::find($item['product_id']);
@@ -223,6 +226,11 @@ class TransactionSyncController extends Controller
                             ])->decrement('stock', $componentQty);
                             $component->decrement('stock', $componentQty);
 
+                            $isDeficit = $stockAfter < 0;
+                            $notes = $isDeficit
+                                ? 'Stok mengalami selisih minus ('.$stockAfter.') akibat sinkronisasi offline komponen '.$component->title.' bundle '.$product->title.' transaksi '.$transaction->invoice
+                                : 'Komponen '.$component->title.' untuk bundle '.$product->title.' pada sync transaksi '.$transaction->invoice;
+
                             $this->stockMutationService->recordSaleOut(
                                 product: $component,
                                 transaction: $transaction,
@@ -230,9 +238,59 @@ class TransactionSyncController extends Controller
                                 stockBefore: $stockBefore,
                                 stockAfter: $stockAfter,
                                 warehouseId: $activeShift->warehouse_id,
-                                notes: 'Komponen '.$component->title.' untuk bundle '.$product->title.' pada sync transaksi '.$transaction->invoice,
+                                notes: $notes,
                                 userId: auth()->id()
                             );
+
+                            if ($isDeficit) {
+                                $this->auditLogService->log(
+                                    event: 'stock.offline_negative_sync',
+                                    module: 'stock',
+                                    auditable: $component,
+                                    description: "Stok mengalami selisih minus akibat sinkronisasi offline untuk produk {$component->title} (Sisa stok: {$stockAfter}) pada transaksi {$transaction->invoice}",
+                                    before: [
+                                        'product_id' => $component->id,
+                                        'product_title' => $component->title,
+                                        'stock_before' => $stockBefore,
+                                        'stock_after' => $stockBefore,
+                                        'difference' => 0,
+                                        'reference' => $transaction->invoice,
+                                    ],
+                                    after: [
+                                        'product_id' => $component->id,
+                                        'product_title' => $component->title,
+                                        'stock_before' => $stockBefore,
+                                        'stock_after' => $stockAfter,
+                                        'difference' => $stockAfter - $stockBefore,
+                                        'deficit' => abs($stockAfter),
+                                        'reference' => $transaction->invoice,
+                                    ],
+                                    meta: [
+                                        'transaction_id' => $transaction->id,
+                                        'invoice' => $transaction->invoice,
+                                        'product_id' => $component->id,
+                                        'product_title' => $component->title,
+                                        'parent_product_id' => $product->id,
+                                        'parent_product_title' => $product->title,
+                                        'qty_sold' => $componentQty,
+                                        'stock_before' => $stockBefore,
+                                        'stock_after' => $stockAfter,
+                                        'is_negative_stock' => true,
+                                        'offline_sync' => true,
+                                        'warning' => 'Stok mengalami selisih minus akibat sinkronisasi offline',
+                                    ],
+                                    actor: auth()->user()
+                                );
+
+                                $negativeStockAlerts[] = [
+                                    'product_id' => $component->id,
+                                    'product_title' => $component->title,
+                                    'stock_before' => $stockBefore,
+                                    'stock_after' => $stockAfter,
+                                    'deficit' => abs($stockAfter),
+                                    'message' => 'Stok mengalami selisih minus akibat sinkronisasi offline',
+                                ];
+                            }
                         }
                     } else {
                         $baseQty = (int) round($lineItem['qty'] * (float) $lineItem['conversion_factor']);
@@ -245,6 +303,11 @@ class TransactionSyncController extends Controller
                         ])->decrement('stock', $baseQty);
                         $product->decrement('stock', $baseQty);
 
+                        $isDeficit = $stockAfter < 0;
+                        $notes = $isDeficit
+                            ? 'Stok mengalami selisih minus ('.$stockAfter.') akibat sinkronisasi offline transaksi '.$transaction->invoice
+                            : 'Sync offline penjualan transaksi '.$transaction->invoice;
+
                         $this->stockMutationService->recordSaleOut(
                             product: $product,
                             transaction: $transaction,
@@ -252,9 +315,57 @@ class TransactionSyncController extends Controller
                             stockBefore: $stockBefore,
                             stockAfter: $stockAfter,
                             warehouseId: $activeShift->warehouse_id,
-                            notes: 'Sync offline penjualan transaksi '.$transaction->invoice,
+                            notes: $notes,
                             userId: auth()->id()
                         );
+
+                        if ($isDeficit) {
+                            $this->auditLogService->log(
+                                event: 'stock.offline_negative_sync',
+                                module: 'stock',
+                                auditable: $product,
+                                description: "Stok mengalami selisih minus akibat sinkronisasi offline untuk produk {$product->title} (Sisa stok: {$stockAfter}) pada transaksi {$transaction->invoice}",
+                                before: [
+                                    'product_id' => $product->id,
+                                    'product_title' => $product->title,
+                                    'stock_before' => $stockBefore,
+                                    'stock_after' => $stockBefore,
+                                    'difference' => 0,
+                                    'reference' => $transaction->invoice,
+                                ],
+                                after: [
+                                    'product_id' => $product->id,
+                                    'product_title' => $product->title,
+                                    'stock_before' => $stockBefore,
+                                    'stock_after' => $stockAfter,
+                                    'difference' => $stockAfter - $stockBefore,
+                                    'deficit' => abs($stockAfter),
+                                    'reference' => $transaction->invoice,
+                                ],
+                                meta: [
+                                    'transaction_id' => $transaction->id,
+                                    'invoice' => $transaction->invoice,
+                                    'product_id' => $product->id,
+                                    'product_title' => $product->title,
+                                    'qty_sold' => $baseQty,
+                                    'stock_before' => $stockBefore,
+                                    'stock_after' => $stockAfter,
+                                    'is_negative_stock' => true,
+                                    'offline_sync' => true,
+                                    'warning' => 'Stok mengalami selisih minus akibat sinkronisasi offline',
+                                ],
+                                actor: auth()->user()
+                            );
+
+                            $negativeStockAlerts[] = [
+                                'product_id' => $product->id,
+                                'product_title' => $product->title,
+                                'stock_before' => $stockBefore,
+                                'stock_after' => $stockAfter,
+                                'deficit' => abs($stockAfter),
+                                'message' => 'Stok mengalami selisih minus akibat sinkronisasi offline',
+                            ];
+                        }
                     }
                 }
 
@@ -270,7 +381,7 @@ class TransactionSyncController extends Controller
                     ]);
                 }
 
-                return $transaction;
+                return [$transaction, $negativeStockAlerts];
             });
         } catch (QueryException $e) {
             $existing = Transaction::where('payment_reference', $offlineRef)->first();
@@ -307,6 +418,8 @@ class TransactionSyncController extends Controller
             'message' => 'Transaksi offline berhasil disinkronkan.',
             'invoice' => $transaction->invoice,
             'transaction_id' => $transaction->id,
+            'has_negative_stock' => ! empty($negativeStockAlerts),
+            'stock_warnings' => $negativeStockAlerts,
         ]);
     }
 }
