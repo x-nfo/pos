@@ -76,7 +76,7 @@ export default function AgingIndex() {
                 </div>
 
                 {/* Summary Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
                         <div className="flex items-center gap-2 mb-3">
                             <div className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/30">
