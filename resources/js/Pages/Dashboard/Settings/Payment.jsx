@@ -48,6 +48,7 @@ export default function Payment({
         qrisly_qris_id: setting?.qrisly_qris_id ?? "",
         qrisly_production: setting?.qrisly_production ?? false,
         qrisly_use_unique_amount: setting?.qrisly_use_unique_amount ?? true,
+        receivable_approval_threshold: setting?.receivable_approval_threshold ?? 1000000,
     });
 
     useEffect(() => {
@@ -562,6 +563,42 @@ export default function Payment({
                             </span>
                         </label>
                     </div>
+                </div>
+
+                {/* Kebijakan Approval Pelunasan Piutang */}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500">
+                            <IconCreditCard size={22} />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-slate-800 dark:text-white">
+                                Kebijakan Approval Pelunasan Piutang
+                            </h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Atur batas nominal dan metode pembayaran pelunasan piutang yang memerlukan persetujuan Supervisor/Manager.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Input
+                            label="Batas Nominal Approval Tunai (Rp)"
+                            type="number"
+                            min="0"
+                            step="10000"
+                            value={data.receivable_approval_threshold}
+                            onChange={(e) =>
+                                setData("receivable_approval_threshold", e.target.value)
+                            }
+                            errors={errors?.receivable_approval_threshold}
+                            placeholder="1000000"
+                            disabled={!canUpdatePaymentSettings}
+                        />
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                        * Pembayaran dengan metode non-tunai (Transfer Bank, QRIS) atau tunai dengan nominal $\ge$ batas di atas akan otomatis masuk ke antrean persetujuan (status: Pending).
+                    </p>
                 </div>
 
                 {/* Webhook URLs Info */}

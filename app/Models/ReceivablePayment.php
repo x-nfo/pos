@@ -17,10 +17,15 @@ class ReceivablePayment extends Model
         'bank_account_id',
         'user_id',
         'note',
+        'status',
+        'approved_by',
+        'approved_at',
+        'approval_notes',
     ];
 
     protected $casts = [
         'paid_at' => 'date',
+        'approved_at' => 'datetime',
         'amount' => 'float',
     ];
 
@@ -37,5 +42,10 @@ class ReceivablePayment extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 }

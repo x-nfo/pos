@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Head, Link, useForm, usePage } from "@inertiajs/react";
+import { Head, Link, router, useForm, usePage } from "@inertiajs/react";
 import DashboardLayout from "@/Layouts/DashboardLayout";
 import {
     IconArrowLeft,
@@ -7,8 +7,13 @@ import {
     IconBrandWhatsapp,
     IconCash,
     IconPrinter,
+    IconCheck,
+    IconX,
+    IconClock,
+    IconAlertCircle,
 } from "@tabler/icons-react";
 import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 import { useAuthorization } from "@/Utils/authorization";
 
 const formatCurrency = (value = 0) =>
@@ -18,8 +23,8 @@ const formatCurrency = (value = 0) =>
         minimumFractionDigits: 0,
     }).format(value);
 
-export default function ReceivableShow({ receivable, bankAccounts = [] }) {
-    const { flash, storeProfile } = usePage().props;
+export default function ReceivableShow({ receivable, bankAccounts = [], approvalThreshold = 1000000 }) {
+    const { flash, storeProfile, auth } = usePage().props;
     const { can } = useAuthorization();
     const [showForm, setShowForm] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
@@ -35,6 +40,7 @@ export default function ReceivableShow({ receivable, bankAccounts = [] }) {
         collection_notes: receivable.collection_notes || "",
     });
     const canPayReceivable = can("receivables-pay");
+    const canApprove = can("receivables-approve") || can("super-admin");
     const canCreateCrmCampaign = can("crm-campaigns-create");
 
     useEffect(() => {
@@ -54,6 +60,92 @@ export default function ReceivableShow({ receivable, bankAccounts = [] }) {
             day: "2-digit",
             month: "short",
             year: "numeric",
+        });
+    };
+
+    const paymentStatusBadge = (status) => {
+        switch (status) {
+            case "pending":
+                return (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                        <IconClock size={12} />
+                        Menunggu Approval
+                    </span>
+                );
+            case "rejected":
+                return (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400">
+                        <IconX size={12} />
+                        Ditolak
+                    </span>
+                );
+            default:
+                return (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                        <IconCheck size={12} />
+                        Disetujui
+                    </span>
+                );
+        }
+    };
+
+    const handleApprove = (payment) => {
+        Swal.fire({
+            title: "Setujui Pembayaran?",
+            text: `Apakah Anda yakin ingin menyetujui pembayaran senilai ${formatCurrency(payment.amount)}?`,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#10b981",
+            cancelButtonColor: "#64748b",
+            confirmButtonText: "Ya, Setujui",
+            cancelButtonText: "Batal",
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.post(
+                    route("receivables.payments.approve", payment.id),
+                    {},
+                    {
+                        preserveScroll: true,
+                        onSuccess: () => toast.success("Pembayaran berhasil disetujui"),
+                        onError: (errs) => toast.error(errs?.message || "Gagal menyetujui pembayaran"),
+                    }
+                );
+            }
+        });
+    };
+
+    const handleReject = (payment) => {
+        Swal.fire({
+            title: "Tolak Pembayaran",
+            text: `Masukkan alasan penolakan pembayaran senilai ${formatCurrency(payment.amount)}:`,
+            input: "textarea",
+            inputPlaceholder: "Contoh: Bukti transfer belum masuk mutasi rekening...",
+            inputAttributes: {
+                "aria-label": "Alasan penolakan",
+                required: "true",
+            },
+            showCancelButton: true,
+            confirmButtonColor: "#ef4444",
+            cancelButtonColor: "#64748b",
+            confirmButtonText: "Tolak Pembayaran",
+            cancelButtonText: "Batal",
+            inputValidator: (value) => {
+                if (!value || !value.trim()) {
+                    return "Alasan penolakan wajib diisi!";
+                }
+            },
+        }).then((result) => {
+            if (result.isConfirmed && result.value) {
+                router.post(
+                    route("receivables.payments.reject", payment.id),
+                    { approval_notes: result.value },
+                    {
+                        preserveScroll: true,
+                        onSuccess: () => toast.success("Pembayaran berhasil ditolak"),
+                        onError: (errs) => toast.error(errs?.message || "Gagal menolak pembayaran"),
+                    }
+                );
+            }
         });
     };
 
@@ -221,30 +313,70 @@ export default function ReceivableShow({ receivable, bankAccounts = [] }) {
                             )}
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             {receivable.payments?.length ? (
                                 receivable.payments.map((pay) => (
                                     <div
                                         key={pay.id}
-                                        className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-between"
+                                        className={`p-3.5 rounded-xl border ${
+                                            pay.status === "pending"
+                                                ? "border-amber-200 dark:border-amber-800/60 bg-amber-50/40 dark:bg-amber-950/20"
+                                                : pay.status === "rejected"
+                                                ? "border-rose-200 dark:border-rose-800/60 bg-rose-50/40 dark:bg-rose-950/20 opacity-80"
+                                                : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                                        } flex flex-col sm:flex-row sm:items-center justify-between gap-3`}
                                     >
-                                        <div>
-                                            <p className="text-sm font-semibold text-slate-800 dark:text-white">
-                                                {formatCurrency(pay.amount)}
-                                            </p>
-                                            <p className="text-xs text-slate-500">
-                                                {pay.paid_at || "-"} • {pay.method || "metode"}
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <p className="text-sm font-bold text-slate-800 dark:text-white">
+                                                    {formatCurrency(pay.amount)}
+                                                </p>
+                                                {paymentStatusBadge(pay.status || "approved")}
+                                            </div>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                {formatDate(pay.paid_at)} • {pay.method === "bank_transfer" ? "Transfer Bank" : pay.method}
                                                 {pay.bank_account && ` • ${pay.bank_account.bank_name}`}
+                                                {pay.user?.name && ` • Oleh: ${pay.user.name}`}
                                             </p>
                                             {pay.note && (
-                                                <p className="text-xs text-slate-500 mt-1">
-                                                    {pay.note}
+                                                <p className="text-xs text-slate-600 dark:text-slate-300 italic">
+                                                    Catatan: {pay.note}
                                                 </p>
                                             )}
+                                            {pay.approver && (
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                    {pay.status === "approved" ? "Disetujui" : "Diproses"} oleh:{" "}
+                                                    <span className="font-semibold">{pay.approver.name}</span>
+                                                    {pay.approved_at && ` (${formatDate(pay.approved_at)})`}
+                                                </p>
+                                            )}
+                                            {pay.status === "rejected" && pay.approval_notes && (
+                                                <div className="mt-1 p-2 rounded-lg bg-rose-100/60 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-xs text-rose-700 dark:text-rose-300">
+                                                    <span className="font-semibold">Alasan Penolakan:</span> {pay.approval_notes}
+                                                </div>
+                                            )}
                                         </div>
-                                        <span className="text-xs text-slate-500">
-                                            {pay.user?.name || "-"}
-                                        </span>
+
+                                        {pay.status === "pending" && canApprove && (
+                                            <div className="flex items-center gap-2 self-end sm:self-center">
+                                                <button
+                                                    onClick={() => handleApprove(pay)}
+                                                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 transition shadow-sm"
+                                                    title="Setujui pembayaran"
+                                                >
+                                                    <IconCheck size={14} />
+                                                    Setujui
+                                                </button>
+                                                <button
+                                                    onClick={() => handleReject(pay)}
+                                                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1 transition shadow-sm"
+                                                    title="Tolak pembayaran"
+                                                >
+                                                    <IconX size={14} />
+                                                    Tolak
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 ))
                             ) : (
@@ -408,6 +540,19 @@ export default function ReceivableShow({ receivable, bankAccounts = [] }) {
                                         placeholder="Catatan pembayaran"
                                     />
                                 </div>
+
+                                {(data.method !== "cash" || (Number(data.amount) >= approvalThreshold && Number(data.amount) > 0)) && (
+                                    <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                                        <IconAlertCircle size={16} className="shrink-0 mt-0.5" />
+                                        <span>
+                                            Pembayaran ini akan berstatus <strong>Menunggu Persetujuan (Pending)</strong> dari Supervisor/Manager karena{" "}
+                                            {data.method !== "cash"
+                                                ? "menggunakan metode non-tunai."
+                                                : `nominal mencapai/melebihi ${formatCurrency(approvalThreshold)}.`}
+                                        </span>
+                                    </div>
+                                )}
+
                                 <button
                                     type="submit"
                                     disabled={processing}

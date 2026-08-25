@@ -24,6 +24,7 @@ use App\Http\Controllers\Apps\ProductCatalogController;
 use App\Http\Controllers\Apps\ProductController;
 use App\Http\Controllers\Apps\PurchaseOrderController;
 use App\Http\Controllers\Apps\ReceivableController;
+use App\Http\Controllers\Apps\ReceivablePaymentApprovalController;
 use App\Http\Controllers\Apps\SalesReturnController;
 use App\Http\Controllers\Apps\SettingController;
 use App\Http\Controllers\Apps\StockMutationController;
@@ -305,6 +306,8 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::get('/receivables/{receivable}', [ReceivableController::class, 'show'])->middleware('permission:receivables-access')->name('receivables.show');
     Route::patch('/receivables/{receivable}/collection-notes', [ReceivableController::class, 'updateCollectionNotes'])->middleware('permission:receivables-access')->name('receivables.collection-notes');
     Route::post('/receivables/{receivable}/pay', [ReceivableController::class, 'pay'])->middleware('permission:receivables-pay')->name('receivables.pay');
+    Route::post('/receivables/payments/{payment}/approve', [ReceivablePaymentApprovalController::class, 'approve'])->middleware('permission:receivables-approve')->name('receivables.payments.approve');
+    Route::post('/receivables/payments/{payment}/reject', [ReceivablePaymentApprovalController::class, 'reject'])->middleware('permission:receivables-approve')->name('receivables.payments.reject');
     Route::post('/receivables/{receivable}/share-campaign', [CrmCampaignController::class, 'shareReceivable'])->middleware('permission:crm-campaigns-create')->name('receivables.share-campaign');
     // suppliers & payables
     Route::get('/suppliers', [SupplierController::class, 'index'])->middleware('permission:suppliers-access')->name('suppliers.index');

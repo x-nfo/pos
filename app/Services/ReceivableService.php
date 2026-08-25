@@ -34,7 +34,7 @@ class ReceivableService
         $customer = Customer::findOrFail($customerId);
 
         $receivables = Receivable::where('customer_id', $customerId)
-            ->withSum('payments as total_paid', 'amount')
+            ->withSum(['payments as total_paid' => fn ($q) => $q->where('status', 'approved')], 'amount')
             ->orderBy('due_date')
             ->get();
 

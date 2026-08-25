@@ -282,7 +282,14 @@ export default function ReceivablesIndex({ receivables, filters = {} }) {
                                                 className="grid grid-cols-12 gap-2 px-4 py-3 items-center border-b border-slate-100 dark:border-slate-800 hover:bg-primary-50/50 dark:hover:bg-slate-800/50 transition-colors"
                                             >
                                                 <div className="col-span-2">
-                                                    <p className="text-sm font-semibold text-slate-800 dark:text-white">{item.invoice}</p>
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <p className="text-sm font-semibold text-slate-800 dark:text-white">{item.invoice}</p>
+                                                        {item.pending_payments_count > 0 && (
+                                                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                                                                {item.pending_payments_count} Pending
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     {item.transaction_id && (
                                                         <p className="text-[11px] text-slate-500">POS #{item.transaction_id}</p>
                                                     )}

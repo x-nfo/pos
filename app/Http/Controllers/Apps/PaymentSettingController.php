@@ -78,6 +78,7 @@ class PaymentSettingController extends Controller
                 'qrisly_qris_id' => $setting->qrisly_qris_id,
                 'qrisly_production' => (bool) $setting->qrisly_production,
                 'qrisly_use_unique_amount' => (bool) $setting->qrisly_use_unique_amount,
+                'receivable_approval_threshold' => (float) \App\Models\Setting::get('receivable_approval_threshold', 1000000),
             ],
             'paymentSettingSources' => $setting->paymentSettingSources(),
             'supportedGateways' => [
@@ -129,6 +130,7 @@ class PaymentSettingController extends Controller
             'qrisly_qris_id' => ['nullable', 'string', 'max:255'],
             'qrisly_production' => ['boolean'],
             'qrisly_use_unique_amount' => ['boolean'],
+            'receivable_approval_threshold' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $midtransEnabled = (bool) ($data['midtrans_enabled'] ?? false);
@@ -222,6 +224,14 @@ class PaymentSettingController extends Controller
             'qrisly_production' => (bool) ($data['qrisly_production'] ?? false),
             'qrisly_use_unique_amount' => (bool) ($data['qrisly_use_unique_amount'] ?? true),
         ]);
+
+        if (array_key_exists('receivable_approval_threshold', $data) && $data['receivable_approval_threshold'] !== null) {
+            \App\Models\Setting::set(
+                'receivable_approval_threshold',
+                $data['receivable_approval_threshold'],
+                'Batas nominal pelunasan piutang yang membutuhkan approval'
+            );
+        }
 
         $this->auditLogService->log(
             event: 'payment.setting.updated',

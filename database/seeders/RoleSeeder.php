@@ -34,6 +34,7 @@ class RoleSeeder extends Seeder
         $this->createRoleWithPermissions('transactions-access', '%transactions%');
         $this->createRoleWithPermissions('transactions-confirm-payment', 'transactions-confirm-payment');
         $this->createRoleWithPermissions('receivables-access', '%receivables%');
+        $this->createRoleWithPermissions('receivables-approve', 'receivables-approve');
         $this->createRoleWithPermissions('payables-access', '%payables%');
         $this->createRoleWithPermissions('suppliers-access', '%suppliers%');
         $this->createRoleWithPermissions('reports-access', '%reports%');

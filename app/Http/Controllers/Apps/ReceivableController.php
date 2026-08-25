@@ -28,7 +28,8 @@ class ReceivableController extends Controller
         ];
 
         $query = Receivable::with('customer:id,name')
-            ->withSum('payments as total_paid', 'amount')
+            ->withSum(['payments as total_paid' => fn ($q) => $q->where('status', 'approved')], 'amount')
+            ->withCount(['payments as pending_payments_count' => fn ($q) => $q->where('status', 'pending')])
             ->orderByDesc('created_at');
 
         $query->when($filters['status'], function ($q, $status) {
@@ -64,15 +65,21 @@ class ReceivableController extends Controller
             'customer:id,name,no_telp',
             'transaction',
             'payments' => function ($query) {
-                $query->orderByDesc('paid_at')->with(['bankAccount:id,bank_name,account_number,account_name,logo', 'user:id,name']);
+                $query->orderByDesc('paid_at')->with([
+                    'bankAccount:id,bank_name,account_number,account_name,logo',
+                    'user:id,name',
+                    'approver:id,name',
+                ]);
             },
         ]);
 
         $bankAccounts = BankAccount::active()->ordered()->get(['id', 'bank_name', 'account_number', 'account_name', 'logo']);
+        $approvalThreshold = (float) \App\Models\Setting::get('receivable_approval_threshold', 1000000);
 
         return Inertia::render('Dashboard/Receivables/Show', [
             'receivable' => $receivable,
             'bankAccounts' => $bankAccounts,
+            'approvalThreshold' => $approvalThreshold,
         ]);
     }
 
@@ -91,35 +98,58 @@ class ReceivableController extends Controller
             return back()->with('error', 'Nominal melebihi sisa piutang.');
         }
 
-        DB::transaction(function () use ($validated, $receivable, $request) {
-            ReceivablePayment::create([
-                'receivable_id' => $receivable->id,
-                'paid_at' => $validated['paid_at'],
-                'amount' => $validated['amount'],
-                'method' => $validated['method'],
-                'bank_account_id' => $validated['bank_account_id'] ?? null,
-                'note' => $validated['note'] ?? null,
-                'user_id' => $request->user()->id,
-            ]);
+        $threshold = (float) \App\Models\Setting::get('receivable_approval_threshold', 1000000);
+        $needsApproval = ($validated['method'] !== 'cash') || ($validated['amount'] >= $threshold);
 
-            $receivable->paid = ($receivable->paid ?? 0) + $validated['amount'];
-            $remaining = max(0, ($receivable->total ?? 0) - ($receivable->paid ?? 0));
-            $receivable->status = $remaining <= 0 ? 'paid' : 'partial';
-            if ($receivable->status !== 'paid' && $receivable->due_date && now()->gt($receivable->due_date)) {
-                $receivable->status = 'overdue';
-            }
-            $receivable->save();
-
-            if ($receivable->transaction) {
-                $receivable->transaction->update([
-                    'payment_status' => $receivable->status === 'paid' ? 'paid' : 'unpaid',
+        DB::transaction(function () use ($validated, $receivable, $request, $needsApproval) {
+            if ($needsApproval) {
+                ReceivablePayment::create([
+                    'receivable_id' => $receivable->id,
+                    'paid_at' => $validated['paid_at'],
+                    'amount' => $validated['amount'],
+                    'method' => $validated['method'],
+                    'bank_account_id' => $validated['bank_account_id'] ?? null,
+                    'note' => $validated['note'] ?? null,
+                    'user_id' => $request->user()->id,
+                    'status' => 'pending',
                 ]);
+            } else {
+                ReceivablePayment::create([
+                    'receivable_id' => $receivable->id,
+                    'paid_at' => $validated['paid_at'],
+                    'amount' => $validated['amount'],
+                    'method' => $validated['method'],
+                    'bank_account_id' => $validated['bank_account_id'] ?? null,
+                    'note' => $validated['note'] ?? null,
+                    'user_id' => $request->user()->id,
+                    'status' => 'approved',
+                    'approved_by' => $request->user()->id,
+                    'approved_at' => now(),
+                ]);
+
+                $receivable->paid = ($receivable->paid ?? 0) + $validated['amount'];
+                $remaining = max(0, ($receivable->total ?? 0) - ($receivable->paid ?? 0));
+                $receivable->status = $remaining <= 0 ? 'paid' : 'partial';
+                if ($receivable->status !== 'paid' && $receivable->due_date && now()->gt($receivable->due_date)) {
+                    $receivable->status = 'overdue';
+                }
+                $receivable->save();
+
+                if ($receivable->transaction) {
+                    $receivable->transaction->update([
+                        'payment_status' => $receivable->status === 'paid' ? 'paid' : 'unpaid',
+                    ]);
+                }
             }
         });
 
+        $message = $needsApproval
+            ? 'Pembayaran piutang berhasil dicatat dan menunggu persetujuan (Approval) Supervisor/Manager.'
+            : 'Pembayaran piutang berhasil dicatat.';
+
         return redirect()
             ->route('receivables.show', $receivable)
-            ->with('success', 'Pembayaran piutang berhasil dicatat.');
+            ->with('success', $message);
     }
 
     public function aging()

@@ -80,6 +80,7 @@ class PermissionSeeder extends Seeder
         // permission receivables & payables
         $create('receivables-access');
         $create('receivables-pay');
+        $create('receivables-approve');
         $create('payables-access');
         $create('payables-pay');
         $create('suppliers-access');
