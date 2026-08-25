@@ -55,7 +55,7 @@ Kembali ke indeks dokumentasi: `docs/README.md`
 |---------|--------|
 | `AuditLogService` | Catat perubahan penting dengan before/after snapshot |
 | `CashierShiftService` | Lifecycle shift: open, close, force-close, summary |
-| `StockMutationService` | Catat semua perubahan stok dengan audit trail |
+| `StockMutationService` | Catat semua perubahan stok secara menyeluruh (penjualan POS, offline sync, dine-in, transfer, opname, GR, retur) dengan audit trail |
 | `PricingService` | Engine promo: qty break, bundle, buy-x-get-y |
 | `LoyaltyService` | Poin, tier, voucher — earn/redeem |
 | `TaxService` | Hitung PPN exclusive/inclusive per item |

@@ -8,12 +8,14 @@ Mencatat piutang pelanggan yang berasal dari transaksi `pay_later` dan menyediak
 
 ## Fitur Saat Ini
 
-- list piutang
+- list piutang & dashboard aging piutang
 - filter status, customer, invoice, due date
-- detail piutang
-- pembayaran parsial
+- detail piutang & riwayat pembayaran
+- pembayaran parsial / bertahap
+- bayar piutang online oleh customer via Customer Portal (`docs/features/customer-portal.md`)
+- reminder jatuh tempo via CRM & WhatsApp (`docs/features/crm-segments.md`)
 - status `unpaid`, `partial`, `paid`, `overdue`
-- PDF receivable
+- PDF receivable & statement
 
 ## Halaman dan Route
 
@@ -21,6 +23,7 @@ Mencatat piutang pelanggan yang berasal dari transaksi `pay_later` dan menyediak
 - `receivables.show`
 - `receivables.pay`
 - `pdf.receivables.show`
+- `customer-portal` (bayar piutang online mandiri)
 
 ## Permission
 
@@ -29,9 +32,9 @@ Mencatat piutang pelanggan yang berasal dari transaksi `pay_later` dan menyediak
 
 ## Alur User
 
-1. checkout `pay_later` membuat receivable
-2. user memantau daftar piutang
-3. user mencatat pembayaran
+1. checkout `pay_later` membuat receivable dengan tanggal jatuh tempo
+2. kasir/admin memantau daftar piutang dan umur piutang (*aging*)
+3. customer dapat membayar mandiri via portal publik atau kasir mencatat pembayaran tunai/transfer
 4. sistem memperbarui nilai `paid`, `remaining`, dan `status`
 
 ## Integrasi Data
@@ -41,18 +44,20 @@ Mencatat piutang pelanggan yang berasal dari transaksi `pay_later` dan menyediak
 - `transactions`
 - `customers`
 - `bank_accounts`
+- `customer_campaigns` / `crm_reminders`
 
 ## Efek Bisnis Penting
 
 - pembayaran receivable ikut memengaruhi `payment_status` transaksi terkait
 - sales return dapat mengoreksi total receivable jika retur berasal dari transaksi piutang
+- customer dapat melunasi tagihan secara mandiri lewat payment gateway
 
 ## Batasan Saat Ini
 
-- belum ada reminder otomatis eksternal
-- belum ada approval flow pembayaran
+- approval flow bertingkat untuk pelunasan manual bernilai besar belum diterapkan
 
 ## File Sentral
 
 - `app/Http/Controllers/Apps/ReceivableController.php`
+- `app/Services/ReceivableService.php`
 - `resources/js/Pages/Dashboard/Receivables`
