@@ -212,47 +212,52 @@ export default function ReceivableShow({ receivable, bankAccounts = [], approval
         <>
             <Head title={`Nota ${receivable.invoice}`} />
             <div className="space-y-6">
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                    <div>
+                <div className="flex flex-col gap-4">
+                    {/* Top Row: Back Link and Status Badge */}
+                    <div className="flex items-start justify-between gap-3">
                         <Link
                             href={route("receivables.index")}
-                            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-primary-600 mb-2 transition-colors"
+                            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-primary-600 transition-colors"
                         >
                             <IconChevronLeft size={18} strokeWidth={2.2} />
                             Kembali ke Piutang
                         </Link>
+                        <div>{statusBadge(receivable.status)}</div>
+                    </div>
+
+                    {/* Bottom Row: Title and Action Buttons */}
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div>
-                            <p className="text-xs text-slate-500 mt-3">Invoice</p>
+                            <p className="text-xs text-slate-500">Invoice</p>
                             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {receivable.invoice}
                             </h1>
                         </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {canCreateCrmCampaign && (
-                            <Link
-                                href={route(
-                                    "receivables.share-campaign",
-                                    receivable.id
-                                )}
-                                method="post"
-                                as="button"
-                                className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600"
+                        <div className="flex items-center gap-2">
+                            {canCreateCrmCampaign && (
+                                <Link
+                                    href={route(
+                                        "receivables.share-campaign",
+                                        receivable.id
+                                    )}
+                                    method="post"
+                                    as="button"
+                                    className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600"
+                                >
+                                    <IconBrandWhatsapp size={18} />
+                                    Campaign
+                                </Link>
+                            )}
+                            <a
+                                href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-green-500 text-white text-sm font-semibold hover:bg-green-600 transition-colors"
                             >
                                 <IconBrandWhatsapp size={18} />
-                                Campaign
-                            </Link>
-                        )}
-                        <a
-                            href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-green-500 text-white text-sm font-semibold hover:bg-green-600 transition-colors"
-                        >
-                            <IconBrandWhatsapp size={18} />
-                            Share
-                        </a>
-                        <div>{statusBadge(receivable.status)}</div>
+                                Share
+                            </a>
+                        </div>
                     </div>
                 </div>
 

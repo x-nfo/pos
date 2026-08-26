@@ -98,8 +98,9 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
         <>
             <Head title={`Hutang ${payable.document_number}`} />
             <div className="space-y-6">
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                    <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-4">
+                    {/* Top Row: Back Link and Status Badge */}
+                    <div className="flex items-start justify-between gap-3">
                         <Link
                             href={route("payables.index")}
                             className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-primary-600 transition-colors"
@@ -107,15 +108,20 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                             <IconChevronLeft size={18} strokeWidth={2.2} />
                             Kembali ke Hutang
                         </Link>
+                        <div>{statusBadge(payable.status)}</div>
+                    </div>
+
+                    {/* Bottom Row: Title and Action Buttons */}
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div>
-                            <p className="text-xs mt-3 text-slate-500">Dokumen</p>
+                            <p className="text-xs text-slate-500">Dokumen</p>
                             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                                 {payable.document_number}
                             </h1>
                         </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div>{statusBadge(payable.status)}</div>
+                        <div className="flex items-center gap-2">
+                            {/* Action buttons can be added here if needed in the future */}
+                        </div>
                     </div>
                 </div>
 
