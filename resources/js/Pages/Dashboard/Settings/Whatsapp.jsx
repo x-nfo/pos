@@ -152,13 +152,10 @@ export default function Whatsapp({ settings, waStatus }) {
 
                 <div className="bg-sky-50 dark:bg-sky-900/30 border border-sky-200 dark:border-sky-700/50 rounded-2xl p-4 flex gap-3">
                     <IconInfoCircle className="text-sky-600 dark:text-sky-400 flex-shrink-0" size={24} />
-                    <div className="text-sm text-sky-800 dark:text-sky-300 space-y-2">
-                        <strong className="block font-bold">Panduan Pengiriman Aman (Smart Delay Aktif)</strong>
+                    <div className="text-sm text-sky-800 dark:text-sky-300">
+                        <strong className="block font-bold mb-1">Sistem Pengiriman Aman Aktif</strong>
                         <p>
-                            Sistem ini telah dilengkapi dengan fitur pengaman <strong>Smart Delay</strong> yang mengatur jeda antar pesan secara acak dan natural, menyerupai ketikan manusia. Teknologi ini dirancang khusus untuk meminimalkan risiko filter anti-spam WhatsApp.
-                        </p>
-                        <p>
-                            Meskipun sistem telah bekerja secara aman di latar belakang, sebagai langkah perlindungan ekstra (<em>best practice</em>), kami tetap merekomendasikan penggunaan <strong>nomor operasional toko</strong> (bukan nomor pribadi utama) dan membatasi eksekusi pengiriman kampanye secara bertahap (maksimal 100 pesan per sesi).
+                            Pengiriman dilindungi fitur <strong>Smart Delay</strong> (jeda otomatis) untuk menghindari pemblokiran WhatsApp. Gunakan <strong>nomor operasional toko</strong> agar Anda tetap bisa membalas secara langsung jika pelanggan merespons pesan sistem.
                         </p>
                     </div>
                 </div>
