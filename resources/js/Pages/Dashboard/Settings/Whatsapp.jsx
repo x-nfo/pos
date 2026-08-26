@@ -150,6 +150,16 @@ export default function Whatsapp({ settings, waStatus }) {
                     </p>
                 </div>
 
+                <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700/50 rounded-2xl p-4 flex gap-3">
+                    <IconAlertTriangle className="text-amber-600 dark:text-amber-400 flex-shrink-0" size={24} />
+                    <div className="text-sm text-amber-800 dark:text-amber-300">
+                        <strong className="block font-bold mb-1">Perhatian: Risiko Pemblokiran (Banned)</strong>
+                        <p>
+                            Sistem ini menggunakan API tidak resmi (<em>unofficial</em>). WhatsApp menerapkan batasan pengiriman (<strong>rate limit</strong>) yang ketat untuk mencegah spam. Gunakan nomor WhatsApp khusus operasional (bukan nomor utama) dan <strong>hindari mengirim lebih dari 100 pesan sekaligus secara bersamaan</strong> untuk meminimalkan risiko nomor diblokir.
+                        </p>
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     {/* Kolom Kiri: Status & Test Send */}
                     <div className="space-y-6 lg:col-span-1">
