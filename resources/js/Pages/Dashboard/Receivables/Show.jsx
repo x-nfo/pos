@@ -279,7 +279,7 @@ export default function ReceivableShow({ receivable, bankAccounts = [], approval
                                 </p>
                             </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid sm:grid-cols-3 gap-3">
                             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                                 <p className="text-xs text-slate-500">Total</p>
                                 <p className="text-lg font-bold text-slate-900 dark:text-white">
@@ -318,13 +318,12 @@ export default function ReceivableShow({ receivable, bankAccounts = [], approval
                                 receivable.payments.map((pay) => (
                                     <div
                                         key={pay.id}
-                                        className={`p-3.5 rounded-xl border ${
-                                            pay.status === "pending"
-                                                ? "border-amber-200 dark:border-amber-800/60 bg-amber-50/40 dark:bg-amber-950/20"
-                                                : pay.status === "rejected"
+                                        className={`p-3.5 rounded-xl border ${pay.status === "pending"
+                                            ? "border-amber-200 dark:border-amber-800/60 bg-amber-50/40 dark:bg-amber-950/20"
+                                            : pay.status === "rejected"
                                                 ? "border-rose-200 dark:border-rose-800/60 bg-rose-50/40 dark:bg-rose-950/20 opacity-80"
                                                 : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                                        } flex flex-col sm:flex-row sm:items-center justify-between gap-3`}
+                                            } flex flex-col sm:flex-row sm:items-center justify-between gap-3`}
                                     >
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-2 flex-wrap">
@@ -485,11 +484,10 @@ export default function ReceivableShow({ receivable, bankAccounts = [], approval
                                     <button
                                         type="button"
                                         onClick={() => setData("method", "cash")}
-                                        className={`h-11 rounded-xl border-2 flex items-center justify-center gap-2 text-sm font-semibold ${
-                                            data.method === "cash"
-                                                ? "border-primary-500 bg-primary-50 text-primary-700"
-                                                : "border-slate-200 dark:border-slate-700"
-                                        }`}
+                                        className={`h-11 rounded-xl border-2 flex items-center justify-center gap-2 text-sm font-semibold ${data.method === "cash"
+                                            ? "border-primary-500 bg-primary-50 text-primary-700"
+                                            : "border-slate-200 dark:border-slate-700"
+                                            }`}
                                     >
                                         <IconCash size={16} />
                                         Tunai
@@ -497,11 +495,10 @@ export default function ReceivableShow({ receivable, bankAccounts = [], approval
                                     <button
                                         type="button"
                                         onClick={() => setData("method", "bank_transfer")}
-                                        className={`h-11 rounded-xl border-2 flex items-center justify-center gap-2 text-sm font-semibold ${
-                                            data.method === "bank_transfer"
-                                                ? "border-primary-500 bg-primary-50 text-primary-700"
-                                                : "border-slate-200 dark:border-slate-700"
-                                        }`}
+                                        className={`h-11 rounded-xl border-2 flex items-center justify-center gap-2 text-sm font-semibold ${data.method === "bank_transfer"
+                                            ? "border-primary-500 bg-primary-50 text-primary-700"
+                                            : "border-slate-200 dark:border-slate-700"
+                                            }`}
                                     >
                                         <IconCreditCard size={16} />
                                         Transfer
