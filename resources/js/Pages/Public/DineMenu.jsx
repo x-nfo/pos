@@ -132,7 +132,7 @@ export default function DineMenu({ table, categories, products, selfOrderEnabled
                                         className="w-full aspect-square object-cover"
                                         loading="lazy"
                                         onError={(e) => {
-                                            e.currentTarget.src = "/images/product-placeholder.svg";
+                                            e.currentTarget.src = "/images/product-placeholder.svg?v=5";
                                         }}
                                     />
                                     <div className="p-3">

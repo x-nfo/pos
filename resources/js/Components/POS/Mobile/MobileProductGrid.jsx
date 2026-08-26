@@ -60,7 +60,7 @@ function MobileProductCard({ product, onAddToCart, onSelectUnit, isAdding }) {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     loading="lazy"
                     onError={(e) => {
-                        e.currentTarget.src = "/images/product-placeholder.svg";
+                        e.currentTarget.src = "/images/product-placeholder.svg?v=5";
                     }}
                 />
 

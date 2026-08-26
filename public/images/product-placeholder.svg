@@ -1,23 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
   <defs>
     <style>
-      .box-stroke {
+      .icon-stroke {
         stroke: #94a3b8;
-        stroke-width: 8;
+        stroke-width: 1.5;
         stroke-linecap: round;
         stroke-linejoin: round;
-      }
-      .box-fill-top {
-        fill: #f8fafc;
-      }
-      .box-fill-left {
-        fill: #f1f5f9;
-      }
-      .box-fill-right {
-        fill: #e2e8f0;
-      }
-      .tape-fill {
-        fill: #94a3b8;
       }
       .placeholder-text {
         fill: #94a3b8;
@@ -29,20 +17,8 @@
       }
 
       @media (prefers-color-scheme: dark) {
-        .box-stroke {
+        .icon-stroke {
           stroke: #64748b;
-        }
-        .box-fill-top {
-          fill: #1e293b;
-        }
-        .box-fill-left {
-          fill: #0f172a;
-        }
-        .box-fill-right {
-          fill: #1e293b;
-        }
-        .tape-fill {
-          fill: #64748b;
         }
         .placeholder-text {
           fill: #64748b;
@@ -51,30 +27,11 @@
     </style>
   </defs>
 
-  <!-- 3D Box Faces -->
-  <!-- Top Face -->
-  <polygon points="200,95 260,130 200,165 140,130" class="box-fill-top" />
-  
-  <!-- Left Face -->
-  <polygon points="140,130 200,165 200,235 140,200" class="box-fill-left" />
-  
-  <!-- Right Face -->
-  <polygon points="200,165 260,130 260,200 200,235" class="box-fill-right" />
-
-  <!-- Tape Tab on Front-Right Face (Solid Grey) -->
-  <polygon points="222,152 238,143 238,165 222,174" class="tape-fill" />
-
-  <!-- Outer Hexagon Outline -->
-  <polygon points="200,95 260,130 260,200 200,235 140,200 140,130" class="box-stroke" fill="none" />
-
-  <!-- Internal 3-Axis Meeting at Center -->
-  <line x1="200" y1="165" x2="200" y2="235" class="box-stroke" />
-  <line x1="200" y1="165" x2="140" y2="130" class="box-stroke" />
-  <line x1="200" y1="165" x2="260" y2="130" class="box-stroke" />
-
-  <!-- Tape Seam Lines across Top Face -->
-  <line x1="162" y1="117" x2="222" y2="152" class="box-stroke" />
-  <line x1="178" y1="108" x2="238" y2="143" class="box-stroke" />
+  <g transform="translate(128, 100) scale(6)">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <path class="icon-stroke" d="M7.5 7.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+    <path class="icon-stroke" d="M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3z" />
+  </g>
 
   <!-- Label Text -->
   <text x="200" y="278" text-anchor="middle" class="placeholder-text">

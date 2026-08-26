@@ -77,7 +77,7 @@ export default function ProductUnitModal({
                                 alt={product.title}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
-                                    e.currentTarget.src = "/images/product-placeholder.svg";
+                                    e.currentTarget.src = "/images/product-placeholder.svg?v=5";
                                 }}
                             />
                         </div>

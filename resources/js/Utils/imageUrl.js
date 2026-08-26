@@ -1,4 +1,4 @@
-export const DEFAULT_PRODUCT_IMAGE = "/images/product-placeholder.svg";
+export const DEFAULT_PRODUCT_IMAGE = "/images/product-placeholder.svg?v=5";
 
 /**
  * Get proper image URL - handles both full URLs and filenames

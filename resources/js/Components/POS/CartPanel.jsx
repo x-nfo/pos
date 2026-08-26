@@ -53,7 +53,7 @@ function CartItem({ item, pricingItem, onUpdateQty, onRemove, isRemoving }) {
                     alt={item.product?.title || "Produk"}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                        e.currentTarget.src = "/images/product-placeholder.svg";
+                        e.currentTarget.src = "/images/product-placeholder.svg?v=5";
                     }}
                 />
             </div>
