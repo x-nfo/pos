@@ -301,7 +301,7 @@ export default function Whatsapp({ settings, waStatus }) {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                                <div className="space-y-3 pt-2">
                                     {/* Pilihan 1: Pengingat Internal (Manual) */}
                                     <div
                                         onClick={() => {
@@ -311,25 +311,25 @@ export default function Whatsapp({ settings, waStatus }) {
                                                 wa_auto_reminder: false,
                                             }));
                                         }}
-                                        className={`cursor-pointer rounded-2xl border p-4.5 transition-all ${
+                                        className={`cursor-pointer rounded-2xl border p-4 transition-all ${
                                             data.wa_receivable_reminder_mode === "manual"
-                                                ? "border-primary-500 bg-primary-50/40 ring-2 ring-primary-500/20 dark:border-primary-500 dark:bg-primary-950/20"
+                                                ? "border-primary-500 bg-primary-50 ring-1 ring-primary-500/50 dark:border-primary-500 dark:bg-primary-900/20 dark:ring-primary-500/30"
                                                 : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
                                         }`}
                                     >
-                                        <div className="flex items-start gap-3">
+                                        <div className="flex items-start gap-4">
                                             <div
-                                                className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                                                className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
                                                     data.wa_receivable_reminder_mode === "manual"
-                                                        ? "bg-primary-500 text-white"
+                                                        ? "bg-primary-500 text-white shadow-md shadow-primary-500/20"
                                                         : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                                                 }`}
                                             >
-                                                <IconBell size={20} />
+                                                <IconBell size={22} />
                                             </div>
                                             <div className="flex-1">
                                                 <div className="flex items-center justify-between">
-                                                    <span className="font-semibold text-slate-900 dark:text-white text-sm">
+                                                    <span className={`font-semibold text-sm ${data.wa_receivable_reminder_mode === 'manual' ? 'text-primary-900 dark:text-primary-100' : 'text-slate-900 dark:text-white'}`}>
                                                         Pengingat Internal (Manual)
                                                     </span>
                                                     <input
@@ -337,10 +337,10 @@ export default function Whatsapp({ settings, waStatus }) {
                                                         name="wa_receivable_reminder_mode"
                                                         checked={data.wa_receivable_reminder_mode === "manual"}
                                                         onChange={() => {}}
-                                                        className="h-4 w-4 text-primary-600 focus:ring-primary-500"
+                                                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-slate-300"
                                                     />
                                                 </div>
-                                                <p className="mt-1.5 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                                                <p className={`mt-1 text-xs leading-relaxed ${data.wa_receivable_reminder_mode === 'manual' ? 'text-primary-700 dark:text-primary-300' : 'text-slate-500 dark:text-slate-400'}`}>
                                                     Hanya menyusun antrean reminder internal di CRM. Owner/staf meninjau dan mengirim pesan WhatsApp secara manual lewat tombol kirim.
                                                 </p>
                                             </div>
@@ -356,25 +356,25 @@ export default function Whatsapp({ settings, waStatus }) {
                                                 wa_auto_reminder: true,
                                             }));
                                         }}
-                                        className={`cursor-pointer rounded-2xl border p-4.5 transition-all ${
+                                        className={`cursor-pointer rounded-2xl border p-4 transition-all ${
                                             data.wa_receivable_reminder_mode === "auto"
-                                                ? "border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/20 dark:border-emerald-500 dark:bg-emerald-950/20"
+                                                ? "border-primary-500 bg-primary-50 ring-1 ring-primary-500/50 dark:border-primary-500 dark:bg-primary-900/20 dark:ring-primary-500/30"
                                                 : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
                                         }`}
                                     >
-                                        <div className="flex items-start gap-3">
+                                        <div className="flex items-start gap-4">
                                             <div
-                                                className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                                                className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
                                                     data.wa_receivable_reminder_mode === "auto"
-                                                        ? "bg-emerald-500 text-white"
+                                                        ? "bg-primary-500 text-white shadow-md shadow-primary-500/20"
                                                         : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                                                 }`}
                                             >
-                                                <IconRobot size={20} />
+                                                <IconRobot size={22} />
                                             </div>
                                             <div className="flex-1">
                                                 <div className="flex items-center justify-between">
-                                                    <span className="font-semibold text-slate-900 dark:text-white text-sm">
+                                                    <span className={`font-semibold text-sm ${data.wa_receivable_reminder_mode === 'auto' ? 'text-primary-900 dark:text-primary-100' : 'text-slate-900 dark:text-white'}`}>
                                                         Kirim Otomatis (Auto-Dispatch)
                                                     </span>
                                                     <input
@@ -382,10 +382,10 @@ export default function Whatsapp({ settings, waStatus }) {
                                                         name="wa_receivable_reminder_mode"
                                                         checked={data.wa_receivable_reminder_mode === "auto"}
                                                         onChange={() => {}}
-                                                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+                                                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-slate-300"
                                                     />
                                                 </div>
-                                                <p className="mt-1.5 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                                                <p className={`mt-1 text-xs leading-relaxed ${data.wa_receivable_reminder_mode === 'auto' ? 'text-primary-700 dark:text-primary-300' : 'text-slate-500 dark:text-slate-400'}`}>
                                                     Pesan pengingat otomatis terkirim langsung ke nomor WhatsApp pelanggan saat jadwal cron berjalan, tanpa perlu klik manual.
                                                 </p>
                                             </div>
