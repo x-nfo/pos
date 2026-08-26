@@ -23,6 +23,7 @@ export default function ImageCaptureUpload({
     compressOptions = { maxWidth: 1200, maxHeight: 1200, quality: 0.82 },
 }) {
     const [preview, setPreview] = useState(currentPreview);
+    const [imageError, setImageError] = useState(false);
     const [isCompressing, setIsCompressing] = useState(false);
     const [compressionInfo, setCompressionInfo] = useState(null);
 
@@ -39,6 +40,7 @@ export default function ImageCaptureUpload({
 
     useEffect(() => {
         setPreview(currentPreview);
+        setImageError(false);
     }, [currentPreview]);
 
     // Handle file processing from either input
@@ -46,6 +48,7 @@ export default function ImageCaptureUpload({
         if (!file) return;
 
         setIsCompressing(true);
+        setImageError(false);
         try {
             const result = await compressImage(file, compressOptions);
             const previewUrl = URL.createObjectURL(result.file);
@@ -111,6 +114,7 @@ export default function ImageCaptureUpload({
     const handleRemove = () => {
         setPreview(null);
         setCompressionInfo(null);
+        setImageError(false);
         if (onImageRemoved) {
             onImageRemoved();
         }
@@ -226,11 +230,23 @@ export default function ImageCaptureUpload({
             <div className="relative aspect-square rounded-2xl bg-slate-50 dark:bg-slate-800/80 border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center overflow-hidden group transition-all duration-200 hover:border-primary-400/60 dark:hover:border-primary-500/60">
                 {preview ? (
                     <>
-                        <img
-                            src={preview}
-                            alt="Preview Produk"
-                            className="w-full h-full object-cover"
-                        />
+                        {imageError ? (
+                            <div className="text-center p-6 flex flex-col items-center justify-center w-full h-full bg-slate-100 dark:bg-slate-800">
+                                <div className="w-16 h-16 rounded-2xl bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 flex items-center justify-center mb-3">
+                                    <IconPhoto size={32} />
+                                </div>
+                                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                                    Gambar tidak tersedia
+                                </p>
+                            </div>
+                        ) : (
+                            <img
+                                src={preview}
+                                alt="Preview Produk"
+                                className="w-full h-full object-cover"
+                                onError={() => setImageError(true)}
+                            />
+                        )}
                         {/* Overlay Actions */}
                         <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                             <button
