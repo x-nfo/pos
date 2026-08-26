@@ -100,21 +100,19 @@ export default function ReceivablesIndex({ receivables, filters = {} }) {
                         <div className="flex rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1">
                             <button
                                 onClick={() => setActiveTab("list")}
-                                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                                    activeTab === "list"
+                                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === "list"
                                         ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
                                         : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                                }`}
+                                    }`}
                             >
                                 Daftar
                             </button>
                             <button
                                 onClick={() => setActiveTab("aging")}
-                                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${
-                                    activeTab === "aging"
+                                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 ${activeTab === "aging"
                                         ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
                                         : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                                }`}
+                                    }`}
                             >
                                 <IconChartBar size={16} />
                                 Aging
@@ -137,7 +135,7 @@ export default function ReceivablesIndex({ receivables, filters = {} }) {
                             </div>
                         ) : agingData ? (
                             <>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
                                     <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
                                         <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Piutang</p>
                                         <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
@@ -331,11 +329,10 @@ export default function ReceivablesIndex({ receivables, filters = {} }) {
                                         key={idx}
                                         disabled={!link.url}
                                         onClick={() => link.url && router.visit(link.url)}
-                                        className={`px-3 py-1.5 rounded-lg text-sm ${
-                                            link.active
+                                        className={`px-3 py-1.5 rounded-lg text-sm ${link.active
                                                 ? "bg-primary-500 text-white"
                                                 : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                                        }`}
+                                            }`}
                                         dangerouslySetInnerHTML={{ __html: link.label }}
                                     />
                                 ))}
