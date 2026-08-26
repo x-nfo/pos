@@ -249,7 +249,7 @@ export default function ReceivableShow({ receivable, bankAccounts = [], approval
                             className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-green-500 text-white text-sm font-semibold hover:bg-green-600 transition-colors"
                         >
                             <IconBrandWhatsapp size={18} />
-                            Share WA
+                            Share
                         </a>
                         <div>{statusBadge(receivable.status)}</div>
                     </div>
