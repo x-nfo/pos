@@ -262,7 +262,7 @@ class CrmAutomationService
             $template
         );
 
-        $campaign = CustomerCampaign::query()->firstOrCreate(
+        $campaign = CustomerCampaign::query()->updateOrCreate(
             ['context_key' => 'invoice-share-receivable-'.$receivable->id],
             [
                 'name' => 'Share Piutang '.$receivable->invoice,
