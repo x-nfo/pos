@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import DashboardLayout from "@/Layouts/DashboardLayout";
+import Pagination from "@/Components/Dashboard/Pagination";
 import {
     IconHistory,
     IconSearch,
@@ -319,25 +320,7 @@ export default function ReceivablesIndex({ receivables, filters = {} }) {
                             </div>
                         </div>
 
-                        <div className="flex justify-between items-center text-sm text-slate-500">
-                            <div>
-                                Menampilkan {rows.length} dari {receivables?.total || 0} data
-                            </div>
-                            <div className="flex gap-2">
-                                {receivables?.links?.map((link, idx) => (
-                                    <button
-                                        key={idx}
-                                        disabled={!link.url}
-                                        onClick={() => link.url && router.visit(link.url)}
-                                        className={`px-3 py-1.5 rounded-lg text-sm ${link.active
-                                                ? "bg-primary-500 text-white"
-                                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                                            }`}
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                    />
-                                ))}
-                            </div>
-                        </div>
+                        {receivables.last_page !== 1 && <Pagination links={receivables.links} />}
                     </>
                 )}
             </div>
