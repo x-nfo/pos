@@ -552,10 +552,6 @@ export default function MenuIndex() {
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-white/80 mt-1 min-w-0">
-                                    <span className="font-semibold truncate">
-                                        {storeProfile?.name || "Point of Sales"}
-                                    </span>
-                                    <span className="text-white/40 flex-shrink-0">•</span>
                                     <span className="text-white/70 truncate">
                                         {user?.email}
                                     </span>
