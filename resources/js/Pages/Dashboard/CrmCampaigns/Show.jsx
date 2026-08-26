@@ -52,10 +52,10 @@ export default function Show({ campaign }) {
                     <IconArrowLeft size={16} />
                     Kembali ke CRM campaigns
                 </Link>
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{campaign.name}</h1>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between min-w-0">
+                    <div className="min-w-0">
+                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white break-words">{campaign.name}</h1>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 break-words">
                             {campaign.type} • status {campaign.status} • diproses {formatDateTime(campaign.processed_at)}
                         </p>
                     </div>
@@ -96,10 +96,11 @@ export default function Show({ campaign }) {
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
-                <div className="space-y-6">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                <div className="space-y-6 min-w-0">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">Delivery Logs</h2>
-                        <Table>
+                        <div className="overflow-x-auto w-full">
+                            <Table>
                             <Table.Thead>
                                 <tr>
                                     <Table.Th>Customer</Table.Th>
@@ -164,22 +165,23 @@ export default function Show({ campaign }) {
                                 )}
                             </Table.Tbody>
                         </Table>
+                        </div>
                     </div>
                 </div>
 
-                <div className="space-y-6">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                <div className="space-y-6 min-w-0">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">Audience Snapshot</h2>
-                        <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60">
-                            <pre className="overflow-x-auto whitespace-pre-wrap text-xs text-slate-600 dark:text-slate-300">
+                        <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60 overflow-x-auto">
+                            <pre className="whitespace-pre-wrap text-xs text-slate-600 dark:text-slate-300">
                                 {JSON.stringify(campaign.audience_snapshot || [], null, 2)}
                             </pre>
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">Template Pesan</h2>
-                        <p className="whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-300">
+                        <p className="whitespace-pre-wrap break-words text-sm text-slate-600 dark:text-slate-300">
                             {campaign.message_template || "-"}
                         </p>
                     </div>

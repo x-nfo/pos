@@ -234,6 +234,34 @@ class CrmAutomationService
 
     public function createInvoiceShareCampaignForReceivable(Receivable $receivable, int $userId): CustomerCampaign
     {
+        $storeName = Setting::get('store_name', config('app.name', 'Point of Sales'));
+        $isOverdue = $receivable->due_date && now()->startOfDay()->gt($receivable->due_date);
+
+        if ($isOverdue) {
+            $template = Setting::get(
+                'wa_template_overdue',
+                'Halo {{customer_name}}, tagihan invoice {{invoice}} sebesar Rp {{remaining}} telah melewati jatuh tempo ({{due_date}}). Mohon segera melakukan konfirmasi dan pelunasan pembayaran. Terima kasih.'
+            );
+            $reason = 'overdue';
+        } else {
+            $template = Setting::get(
+                'wa_template_due_soon',
+                'Halo {{customer_name}}, ini pengingat tagihan invoice {{invoice}} sebesar Rp {{remaining}} akan jatuh tempo pada {{due_date}}. Mohon dapat melakukan pembayaran sebelum jatuh tempo. Terima kasih.'
+            );
+            $reason = 'jatuh tempo';
+        }
+
+        $customerName = $receivable->customer?->name ?? 'Pelanggan';
+        $remaining = number_format($receivable->remaining, 0, ',', '.');
+        $total = number_format($receivable->total, 0, ',', '.');
+        $dueDate = optional($receivable->due_date)?->format('d/m/Y') ?? '-';
+
+        $shareText = str_replace(
+            ['{{customer_name}}', '{{name}}', '{{invoice}}', '{{remaining}}', '{{total}}', '{{due_date}}', '{{store_name}}', '{{reason}}'],
+            [$customerName, $customerName, $receivable->invoice, $remaining, $total, $dueDate, $storeName, $reason],
+            $template
+        );
+
         $campaign = CustomerCampaign::query()->firstOrCreate(
             ['context_key' => 'invoice-share-receivable-'.$receivable->id],
             [
@@ -247,17 +275,10 @@ class CrmAutomationService
                     'receivable_id' => $receivable->id,
                     'invoice' => $receivable->invoice,
                 ]],
-                'message_template' => 'Invoice {{invoice}} total {{remaining}} jatuh tempo {{due_date}}',
+                'message_template' => $template,
                 'processed_at' => now(),
                 'created_by' => $userId,
             ]
-        );
-
-        $shareText = sprintf(
-            'Pengingat piutang %s. Sisa tagihan Rp %s. Jatuh tempo: %s',
-            $receivable->invoice,
-            number_format($receivable->remaining, 0, ',', '.'),
-            optional($receivable->due_date)?->format('d/m/Y') ?? '-'
         );
 
         $campaign->logs()->updateOrCreate(
