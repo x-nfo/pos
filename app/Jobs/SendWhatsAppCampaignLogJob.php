@@ -64,6 +64,10 @@ class SendWhatsAppCampaignLogJob implements ShouldQueue
             throw new \RuntimeException("WhatsApp Gateway belum terhubung/terputus untuk pengiriman ke {$target}.");
         }
 
+        // Delay otomatis secara acak antara 3 hingga 7 detik untuk simulasi pengetikan manusia
+        // Ini adalah langkah pengamanan (safeguard) agar nomor WhatsApp tidak terblokir karena spam
+        sleep(rand(3, 7));
+
         $sent = $whatsAppService->send($target, $message);
 
         if ($sent) {
