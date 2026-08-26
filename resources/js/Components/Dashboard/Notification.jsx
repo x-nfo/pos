@@ -7,7 +7,7 @@ import {
     IconReceipt,
     IconCurrencyDollar,
 } from "@tabler/icons-react";
-import { usePage, router } from "@inertiajs/react";
+import { usePage, router, Link } from "@inertiajs/react";
 import { useHaptic } from "@/Hooks/useHaptic";
 
 export default function Notification() {
@@ -53,6 +53,7 @@ export default function Notification() {
             receivableNotifications.map((n) => ({
                 ...n,
                 id: `recv-${n.id}`,
+                originalId: n.id,
                 type: "receivable",
             }))
         ),
@@ -60,6 +61,7 @@ export default function Notification() {
             payableNotifications.map((n) => ({
                 ...n,
                 id: `pay-${n.id}`,
+                originalId: n.id,
                 type: "payable",
             }))
         ),
@@ -110,14 +112,23 @@ export default function Notification() {
                 >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                         {item.icon}
-                        <div className="min-w-0 flex-1">
-                            <div className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-200 truncate">
+                        <Link 
+                            href={
+                                item.type === "stock"
+                                    ? route("products.edit", item.originalId)
+                                    : item.type === "receivable"
+                                    ? route("receivables.show", item.originalId)
+                                    : route("payables.show", item.originalId)
+                            }
+                            className="min-w-0 flex-1 group"
+                        >
+                            <div className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                                 {item.title}
                             </div>
                             <div className="text-slate-500 dark:text-slate-400 text-[11px] sm:text-xs truncate mt-0.5">
                                 {item.subtitle} {item.time && `• ${item.time}`}
                             </div>
-                        </div>
+                        </Link>
                     </div>
                     <button
                         type="button"
