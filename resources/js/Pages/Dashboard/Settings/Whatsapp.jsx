@@ -150,12 +150,12 @@ export default function Whatsapp({ settings, waStatus }) {
                     </p>
                 </div>
 
-                <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700/50 rounded-2xl p-4 flex gap-3">
-                    <IconAlertTriangle className="text-amber-600 dark:text-amber-400 flex-shrink-0" size={24} />
-                    <div className="text-sm text-amber-800 dark:text-amber-300">
-                        <strong className="block font-bold mb-1">Perhatian: Risiko Pemblokiran (Banned)</strong>
+                <div className="bg-sky-50 dark:bg-sky-900/30 border border-sky-200 dark:border-sky-700/50 rounded-2xl p-4 flex gap-3">
+                    <IconInfoCircle className="text-sky-600 dark:text-sky-400 flex-shrink-0" size={24} />
+                    <div className="text-sm text-sky-800 dark:text-sky-300">
+                        <strong className="block font-bold mb-1">Panduan Penggunaan Aman (Best Practice)</strong>
                         <p>
-                            Sistem ini menggunakan API tidak resmi (<em>unofficial</em>). WhatsApp menerapkan batasan pengiriman (<strong>rate limit</strong>) yang ketat untuk mencegah spam. Gunakan nomor WhatsApp khusus operasional (bukan nomor utama) dan <strong>hindari mengirim lebih dari 100 pesan sekaligus secara bersamaan</strong> untuk meminimalkan risiko nomor diblokir.
+                            Fitur otomatisasi ini dirancang untuk mempermudah komunikasi dengan pelanggan Anda. Agar layanan tetap optimal dan terhindar dari filter anti-spam WhatsApp, kami sangat menyarankan Anda untuk menggunakan <strong>nomor operasional khusus</strong> (bukan nomor pribadi utama) dan membatasi pengiriman massal maksimal <strong>100 pesan secara bersamaan</strong>.
                         </p>
                     </div>
                 </div>
