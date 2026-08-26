@@ -10,23 +10,23 @@ import {
 import toast from "react-hot-toast";
 import { useAuthorization } from "@/Utils/authorization";
 
-    const formatCurrency = (value = 0) =>
-        new Intl.NumberFormat("id-ID", {
-            style: "currency",
-            currency: "IDR",
-            minimumFractionDigits: 0,
-        }).format(value);
+const formatCurrency = (value = 0) =>
+    new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+    }).format(value);
 
-    const formatDate = (value) => {
-        if (!value) return "-";
-        const d = new Date(value);
-        if (Number.isNaN(d.getTime())) return value;
-        return d.toLocaleDateString("id-ID", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-        });
-    };
+const formatDate = (value) => {
+    if (!value) return "-";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    return d.toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+    });
+};
 
 export default function PayableShow({ payable, bankAccounts = [] }) {
     const { flash, storeProfile } = usePage().props;
@@ -142,7 +142,7 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                                 </p>
                             </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid  sm:grid-cols-3 gap-3">
                             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                                 <p className="text-xs text-slate-500">Total</p>
                                 <p className="text-lg font-bold text-slate-900 dark:text-white">
@@ -177,28 +177,28 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                         </div>
 
                         <div className="space-y-2">
-                                        {payable.payments?.length ? (
-                                            payable.payments.map((pay) => (
-                                                <div
-                                                    key={pay.id}
-                                                    className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-between"
-                                                >
-                                                    <div>
-                                                        <p className="text-sm font-semibold text-slate-800 dark:text-white">
-                                                            {formatCurrency(pay.amount)}
-                                                        </p>
-                                                        <p className="text-xs text-slate-500">
-                                                            {formatDate(pay.paid_at)} • {pay.method || "metode"}
-                                                            {pay.bank_account && ` • ${pay.bank_account.bank_name}`}
-                                                        </p>
-                                                        {pay.note && (
-                                                            <p className="text-xs text-slate-500 mt-1">
-                                                                {pay.note}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-xs text-slate-500">
-                                                        {pay.user?.name || "-"}
+                            {payable.payments?.length ? (
+                                payable.payments.map((pay) => (
+                                    <div
+                                        key={pay.id}
+                                        className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-between"
+                                    >
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-800 dark:text-white">
+                                                {formatCurrency(pay.amount)}
+                                            </p>
+                                            <p className="text-xs text-slate-500">
+                                                {formatDate(pay.paid_at)} • {pay.method || "metode"}
+                                                {pay.bank_account && ` • ${pay.bank_account.bank_name}`}
+                                            </p>
+                                            {pay.note && (
+                                                <p className="text-xs text-slate-500 mt-1">
+                                                    {pay.note}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <span className="text-xs text-slate-500">
+                                            {pay.user?.name || "-"}
                                         </span>
                                     </div>
                                 ))
@@ -267,11 +267,10 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                                     <button
                                         type="button"
                                         onClick={() => setData("method", "cash")}
-                                        className={`h-11 rounded-xl border-2 flex items-center justify-center gap-2 text-sm font-semibold ${
-                                            data.method === "cash"
-                                                ? "border-primary-500 bg-primary-50 text-primary-700"
-                                                : "border-slate-200 dark:border-slate-700"
-                                        }`}
+                                        className={`h-11 rounded-xl border-2 flex items-center justify-center gap-2 text-sm font-semibold ${data.method === "cash"
+                                            ? "border-primary-500 bg-primary-50 text-primary-700"
+                                            : "border-slate-200 dark:border-slate-700"
+                                            }`}
                                     >
                                         <IconCash size={16} />
                                         Tunai
@@ -279,11 +278,10 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                                     <button
                                         type="button"
                                         onClick={() => setData("method", "bank_transfer")}
-                                        className={`h-11 rounded-xl border-2 flex items-center justify-center gap-2 text-sm font-semibold ${
-                                            data.method === "bank_transfer"
-                                                ? "border-primary-500 bg-primary-50 text-primary-700"
-                                                : "border-slate-200 dark:border-slate-700"
-                                        }`}
+                                        className={`h-11 rounded-xl border-2 flex items-center justify-center gap-2 text-sm font-semibold ${data.method === "bank_transfer"
+                                            ? "border-primary-500 bg-primary-50 text-primary-700"
+                                            : "border-slate-200 dark:border-slate-700"
+                                            }`}
                                     >
                                         <IconCreditCard size={16} />
                                         Transfer
@@ -374,8 +372,8 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                             </div>
                         </div>
                         <div className="p-6 bg-slate-50 dark:bg-slate-900">
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 print-area">
-                        <div className="flex items-start justify-between gap-4">
+                            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 print-area">
+                                <div className="flex items-start justify-between gap-4">
                                     <div className="flex items-center gap-3">
                                         <div className="w-12 h-12 border border-slate-200 rounded-md flex items-center justify-center overflow-hidden">
                                             {storeProfile?.logo ? (
@@ -401,14 +399,14 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                                     </div>
                                     <div className="text-right">
                                         <p className="text-xs text-slate-500">Dokumen</p>
-                                <p className="text-lg font-bold text-slate-900 dark:text-white">
-                                    {payable.document_number}
-                                </p>
-                                <p className="text-xs text-slate-500">
-                                    Jatuh tempo: {formatDate(payable.due_date)}
-                                </p>
-                            </div>
-                        </div>
+                                        <p className="text-lg font-bold text-slate-900 dark:text-white">
+                                            {payable.document_number}
+                                        </p>
+                                        <p className="text-xs text-slate-500">
+                                            Jatuh tempo: {formatDate(payable.due_date)}
+                                        </p>
+                                    </div>
+                                </div>
 
                                 <div className="grid grid-cols-2 gap-4 text-sm mt-4">
                                     <div>
