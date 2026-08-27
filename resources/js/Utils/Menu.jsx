@@ -12,6 +12,7 @@ import {
     IconClockHour6,
     IconClipboardCheck,
     IconCreditCard,
+    IconRobotFace,
     IconCrown,
     IconFileCertificate,
     IconFileDescription,
@@ -377,17 +378,10 @@ export default function Menu() {
             title: t("sidebar.sections.settings"),
             details: [
                 {
-                    title: t("sidebar.items.storeProfile"),
+                    title: "Identitas & Branding",
                     href: route("settings.store"),
                     active: url.startsWith("/dashboard/settings/store"),
                     icon: <IconBuildingStore size={20} strokeWidth={1.5} />,
-                    permissions: hasAnyPermission(["dashboard-access"]),
-                },
-                {
-                    title: t("sidebar.items.branding"),
-                    href: route("settings.branding"),
-                    active: url.startsWith("/dashboard/settings/branding"),
-                    icon: <IconPalette size={20} strokeWidth={1.5} />,
                     permissions: hasAnyPermission(["dashboard-access"]),
                 },
                 {
@@ -416,6 +410,13 @@ export default function Menu() {
                     href: route("settings.whatsapp"),
                     active: url.startsWith("/dashboard/settings/whatsapp"),
                     icon: <IconBrandWhatsapp size={20} strokeWidth={1.5} />,
+                    permissions: hasAnyPermission(["whatsapp-settings-access"]),
+                },
+                {
+                    title: "Otomatisasi & CRM",
+                    href: route("settings.automation"),
+                    active: url.startsWith("/dashboard/settings/automation"),
+                    icon: <IconRobotFace size={20} strokeWidth={1.5} />,
                     permissions: hasAnyPermission(["whatsapp-settings-access"]),
                 },
                 {

@@ -341,9 +341,8 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     // settings target penjualan
     Route::get('/settings/target', [SettingController::class, 'target'])->middleware('permission:dashboard-access')->name('settings.target');
     Route::post('/settings/target', [SettingController::class, 'updateTarget'])->middleware('permission:dashboard-access')->name('settings.target.update');
-    Route::get('/settings/store', [SettingController::class, 'storeProfile'])->middleware('permission:dashboard-access')->name('settings.store');
+    Route::get('/settings/store', [SettingController::class, 'storeIdentity'])->middleware('permission:dashboard-access')->name('settings.store');
     Route::post('/settings/store', [SettingController::class, 'updateStoreProfile'])->middleware('permission:dashboard-access')->name('settings.store.update');
-    Route::get('/settings/branding', [SettingController::class, 'branding'])->middleware('permission:dashboard-access')->name('settings.branding');
     Route::post('/settings/branding', [SettingController::class, 'updateBranding'])->middleware('permission:dashboard-access')->name('settings.branding.update');
     Route::get('/settings/printer', [SettingController::class, 'printer'])->middleware('permission:dashboard-access')->name('settings.printer');
     Route::post('/settings/printer', [SettingController::class, 'updatePrinter'])->middleware('permission:dashboard-access')->name('settings.printer.update');
@@ -357,6 +356,10 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::post('/settings/whatsapp/start', [SettingController::class, 'startWhatsapp'])->middleware('permission:whatsapp-settings-update')->name('settings.whatsapp.start');
     Route::get('/settings/whatsapp/status', [SettingController::class, 'whatsappStatus'])->middleware('permission:whatsapp-settings-access')->name('settings.whatsapp.status');
     Route::post('/settings/whatsapp/disconnect', [SettingController::class, 'disconnectWhatsapp'])->middleware('permission:whatsapp-settings-update')->name('settings.whatsapp.disconnect');
+
+    // settings automation & crm
+    Route::get('/settings/automation', [SettingController::class, 'automation'])->middleware('permission:whatsapp-settings-access')->name('settings.automation');
+    Route::post('/settings/automation', [SettingController::class, 'updateAutomation'])->middleware('permission:whatsapp-settings-update')->name('settings.automation.update');
 
     // settings bank accounts
     Route::get('/settings/bank-accounts', [BankAccountController::class, 'index'])->middleware('permission:payment-settings-access')->name('settings.bank-accounts.index');

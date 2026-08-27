@@ -1,5 +1,4 @@
-import DashboardLayout from "@/Layouts/DashboardLayout";
-import { Head, useForm } from "@inertiajs/react";
+import { useForm } from "@inertiajs/react";
 import Input from "@/Components/Dashboard/Input";
 import Textarea from "@/Components/Dashboard/TextArea";
 import toast from "react-hot-toast";
@@ -16,7 +15,7 @@ import {
     IconReceiptTax,
 } from "@tabler/icons-react";
 
-export default function Store({ settings }) {
+export default function StoreTab({ settings }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         store_name: settings.store_name || "",
         store_logo: null,
@@ -54,7 +53,6 @@ export default function Store({ settings }) {
 
     return (
         <>
-            <Head title="Profil Toko" />
 
             <div className="space-y-6">
                 <div>
@@ -218,4 +216,3 @@ export default function Store({ settings }) {
     );
 }
 
-Store.layout = (page) => <DashboardLayout children={page} />;

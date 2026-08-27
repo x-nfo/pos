@@ -54,9 +54,9 @@ class SettingController extends Controller
     }
 
     /**
-     * Store profile settings page
+     * Store profile & Branding settings page
      */
-    public function storeProfile()
+    public function storeIdentity()
     {
         $settings = [
             'store_name' => Setting::get('store_name', ''),
@@ -71,8 +71,10 @@ class SettingController extends Controller
             'tax_default_rate' => Setting::get('tax_default_rate', '11.00'),
         ];
 
-        return Inertia::render('Dashboard/Settings/Store', [
+        return Inertia::render('Dashboard/Settings/StoreIdentity', [
             'settings' => $settings,
+            'brandingSettings' => $this->brandingService->getSettingsForForm(),
+            'branding' => $this->brandingService->getBranding(),
         ]);
     }
 
@@ -263,6 +265,29 @@ class SettingController extends Controller
             'settings' => [
                 'wa_service_url' => Setting::get('wa_service_url', ''),
                 'wa_enabled' => Setting::getBool('wa_enabled', false),
+            ],
+            'waStatus' => $waStatus,
+        ]);
+    }
+
+    public function updateWhatsapp(Request $request)
+    {
+        $validated = $request->validate([
+            'wa_service_url' => ['nullable', 'string', 'max:255'],
+            'wa_enabled' => ['boolean'],
+        ]);
+
+        Setting::set('wa_service_url', $validated['wa_service_url'] ?? '', 'URL service WhatsApp');
+        Setting::set('wa_enabled', ($validated['wa_enabled'] ?? false) ? '1' : '0', 'WhatsApp gateway aktif');
+        \Illuminate\Support\Facades\Cache::forget('wa_connection_status');
+
+        return back()->with('success', 'Pengaturan WhatsApp disimpan.');
+    }
+
+    public function automation()
+    {
+        return Inertia::render('Dashboard/Settings/Automation', [
+            'settings' => [
                 'wa_auto_reminder' => Setting::getBool('wa_auto_reminder', false),
                 'wa_auto_invoice' => Setting::getBool('wa_auto_invoice', false),
                 'wa_receivable_reminder_mode' => Setting::get('wa_receivable_reminder_mode', 'manual'),
@@ -275,15 +300,12 @@ class SettingController extends Controller
                     'Halo {{customer_name}}, tagihan invoice {{invoice}} sebesar Rp {{remaining}} telah melewati jatuh tempo ({{due_date}}). Mohon segera melakukan konfirmasi dan pelunasan pembayaran. Terima kasih.'
                 ),
             ],
-            'waStatus' => $waStatus,
         ]);
     }
 
-    public function updateWhatsapp(Request $request)
+    public function updateAutomation(Request $request)
     {
         $validated = $request->validate([
-            'wa_service_url' => ['nullable', 'string', 'max:255'],
-            'wa_enabled' => ['boolean'],
             'wa_auto_reminder' => ['boolean'],
             'wa_auto_invoice' => ['boolean'],
             'wa_receivable_reminder_mode' => ['nullable', 'string', 'in:manual,auto'],
@@ -294,8 +316,6 @@ class SettingController extends Controller
         $mode = $validated['wa_receivable_reminder_mode'] ?? ($request->boolean('wa_auto_reminder') ? 'auto' : 'manual');
         $isAuto = $mode === 'auto';
 
-        Setting::set('wa_service_url', $validated['wa_service_url'] ?? '', 'URL service WhatsApp');
-        Setting::set('wa_enabled', ($validated['wa_enabled'] ?? false) ? '1' : '0', 'WhatsApp gateway aktif');
         Setting::set('wa_auto_reminder', $isAuto ? '1' : '0', 'Auto-kirim reminder via WA');
         Setting::set('wa_auto_invoice', ($validated['wa_auto_invoice'] ?? false) ? '1' : '0', 'Auto-kirim invoice via WA');
         Setting::set('wa_receivable_reminder_mode', $mode, 'Mode pengiriman reminder piutang (manual/auto)');
@@ -306,18 +326,7 @@ class SettingController extends Controller
             Setting::set('wa_template_overdue', $validated['wa_template_overdue'], 'Template WA reminder piutang overdue');
         }
 
-        return back()->with('success', 'Pengaturan WhatsApp disimpan.');
-    }
-
-    /**
-     * Branding settings page
-     */
-    public function branding()
-    {
-        return Inertia::render('Dashboard/Settings/Branding', [
-            'settings' => $this->brandingService->getSettingsForForm(),
-            'branding' => $this->brandingService->getBranding(),
-        ]);
+        return back()->with('success', 'Pengaturan Otomatisasi & CRM disimpan.');
     }
 
     /**
@@ -325,6 +334,8 @@ class SettingController extends Controller
      */
     public function updateBranding(Request $request)
     {
+        abort_if(!$request->user()->isSuperAdmin(), 403, 'Unauthorized action.');
+
         $request->validate([
             'app_name' => 'required|string|max:255',
             'app_tagline' => 'nullable|string|max:255',
@@ -406,6 +417,7 @@ class SettingController extends Controller
 
     public function startWhatsapp()
     {
+        \Illuminate\Support\Facades\Cache::forget('wa_connection_status');
         $result = $this->whatsAppService->start();
 
         return response()->json($result);
@@ -420,6 +432,7 @@ class SettingController extends Controller
 
     public function disconnectWhatsapp()
     {
+        \Illuminate\Support\Facades\Cache::forget('wa_connection_status');
         $this->whatsAppService->disconnect();
 
         return response()->json(['status' => true]);

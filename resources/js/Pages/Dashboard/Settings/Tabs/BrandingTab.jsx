@@ -1,5 +1,4 @@
-import DashboardLayout from "@/Layouts/DashboardLayout";
-import { Head, useForm } from "@inertiajs/react";
+import { useForm } from "@inertiajs/react";
 import Input from "@/Components/Dashboard/Input";
 import toast from "react-hot-toast";
 import { useState, useEffect } from "react";
@@ -39,7 +38,7 @@ const PRESET_ACCENT_COLORS = [
     { name: "Rose", hex: "#f43f5e" },
 ];
 
-export default function Branding({ settings, branding }) {
+export default function BrandingTab({ settings, branding }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         app_name: settings.app_name || "Rekasir",
         app_tagline: settings.app_tagline || "Sistem Kasir & Manajemen Toko Modern",
@@ -95,7 +94,6 @@ export default function Branding({ settings, branding }) {
 
     return (
         <>
-            <Head title="White Label & Branding" />
 
             <div className="space-y-8 max-w-7xl mx-auto pb-12">
                 {/* Header */}
@@ -712,4 +710,3 @@ export default function Branding({ settings, branding }) {
     );
 }
 
-Branding.layout = (page) => <DashboardLayout children={page} />;
