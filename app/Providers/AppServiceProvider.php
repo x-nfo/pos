@@ -37,7 +37,7 @@ class AppServiceProvider extends ServiceProvider
 
         $issues = ProductionSecurityBaseline::issues();
 
-        if (str_starts_with((string) config('app.url'), 'https://') || request()->server('HTTP_X_FORWARDED_PROTO') === 'https') {
+        if ($this->app->environment('production') || str_starts_with((string) config('app.url'), 'https://') || request()->server('HTTP_X_FORWARDED_PROTO') === 'https') {
             URL::forceScheme('https');
         }
 

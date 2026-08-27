@@ -34,6 +34,21 @@ export default function Pagination({ links }) {
         });
     };
 
+    const toSafeUrl = (url) => {
+        if (!url) return null;
+        try {
+            if (typeof window !== "undefined" && url.startsWith("http")) {
+                const parsed = new URL(url);
+                if (parsed.hostname === window.location.hostname) {
+                    return parsed.pathname + parsed.search + parsed.hash;
+                }
+            }
+            return url;
+        } catch {
+            return url;
+        }
+    };
+
     const isPrev = (item, i) =>
         i === 0 ||
         item.label.includes("Previous") ||
@@ -74,7 +89,7 @@ export default function Pagination({ links }) {
                     {/* Prev Button */}
                     {prevItem?.url ? (
                         <Link
-                            href={prevItem.url}
+                            href={toSafeUrl(prevItem.url)}
                             onClick={() => triggerHaptic("tap")}
                             className="flex-1 h-11 inline-flex items-center justify-center gap-1.5 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700 active:scale-95 transition-all"
                         >
@@ -103,7 +118,7 @@ export default function Pagination({ links }) {
                     {/* Next Button */}
                     {nextItem?.url ? (
                         <Link
-                            href={nextItem.url}
+                            href={toSafeUrl(nextItem.url)}
                             onClick={() => triggerHaptic("tap")}
                             className="flex-1 h-11 inline-flex items-center justify-center gap-1.5 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700 active:scale-95 transition-all"
                         >
@@ -180,7 +195,7 @@ export default function Pagination({ links }) {
                             return item.url ? (
                                 <Link
                                     key={i}
-                                    href={item.url}
+                                    href={toSafeUrl(item.url)}
                                     className={baseBtn}
                                     aria-label="Halaman sebelumnya"
                                 >
@@ -201,7 +216,7 @@ export default function Pagination({ links }) {
                             return item.url ? (
                                 <Link
                                     key={i}
-                                    href={item.url}
+                                    href={toSafeUrl(item.url)}
                                     className={baseBtn}
                                     aria-label="Halaman berikutnya"
                                 >
@@ -233,7 +248,7 @@ export default function Pagination({ links }) {
                         return (
                             <Link
                                 key={i}
-                                href={item.url}
+                                href={toSafeUrl(item.url)}
                                 aria-current={item.active ? "page" : undefined}
                                 className={`${baseBtn} px-3 ${
                                     item.active ? activeBtn : ""
