@@ -12,12 +12,18 @@ let isStarting = false;
 
 function createClient() {
     if (client) {
-        try { client.destroy(); } catch (e) {}
+        try { client.destroy(); } catch (e) { }
     }
 
     const puppeteerOptions = {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+        args: ['--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--disable-extensions',
+            '--no-zygote',
+            '--single-porcess'],
     };
 
     const fs = require('fs');
@@ -103,7 +109,7 @@ app.post('/disconnect', async (req, res) => {
         if (fs.existsSync(sessionDir)) {
             fs.rmSync(sessionDir, { recursive: true, force: true });
         }
-    } catch (e) {}
+    } catch (e) { }
     isConnected = false;
     phoneNumber = null;
     qrCodeData = null;
