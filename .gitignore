@@ -29,3 +29,7 @@ planning/
 
 # dompdf runtime font cache (machine-specific, regenerated at runtime)
 /storage/fonts
+
+**/caddy
+frankenphp
+frankenphp-worker.php
