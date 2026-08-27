@@ -8,20 +8,33 @@ export const DEFAULT_PRODUCT_IMAGE = "/images/product-placeholder.svg?v=5";
  * @returns {string|null} - Proper image URL or fallback/null
  */
 export function getImageUrl(image, folder = "products", fallback = null) {
-    if (!image) return fallback;
+    if (!image || typeof image !== "string") return fallback;
+
+    const trimmed = image.trim();
+    if (
+        !trimmed ||
+        trimmed.endsWith("/storage/products") ||
+        trimmed.endsWith("/storage/products/") ||
+        trimmed.endsWith("/storage/category") ||
+        trimmed.endsWith("/storage/category/") ||
+        trimmed.endsWith("/storage/categories") ||
+        trimmed.endsWith("/storage/categories/")
+    ) {
+        return fallback;
+    }
 
     // If already a full URL, return as-is
     if (
-        image.startsWith("http://") ||
-        image.startsWith("https://") ||
-        image.startsWith("/storage/") ||
-        image.startsWith("/images/")
+        trimmed.startsWith("http://") ||
+        trimmed.startsWith("https://") ||
+        trimmed.startsWith("/storage/") ||
+        trimmed.startsWith("/images/")
     ) {
-        return image;
+        return trimmed;
     }
 
     // Otherwise, prepend storage path
-    return `/storage/${folder}/${image}`;
+    return `/storage/${folder}/${trimmed.replace(/^\/+/, "")}`;
 }
 
 /**
@@ -42,7 +55,7 @@ export function getProductImageUrl(image, fallback = false) {
  * @returns {string|null}
  */
 export function getCategoryImageUrl(image, fallback = null) {
-    return getImageUrl(image, "categories", fallback);
+    return getImageUrl(image, "category", fallback);
 }
 
 export default {

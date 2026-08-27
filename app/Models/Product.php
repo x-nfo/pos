@@ -219,7 +219,21 @@ class Product extends Model
     protected function image(): Attribute
     {
         return Attribute::make(
-            get: fn ($value) => asset('/storage/products/'.$value),
+            get: function ($value) {
+                if (! $value) {
+                    return null;
+                }
+
+                if (
+                    str_starts_with($value, 'http://') ||
+                    str_starts_with($value, 'https://') ||
+                    str_starts_with($value, '/storage/')
+                ) {
+                    return $value;
+                }
+
+                return asset('/storage/products/'.ltrim($value, '/'));
+            }
         );
     }
 }

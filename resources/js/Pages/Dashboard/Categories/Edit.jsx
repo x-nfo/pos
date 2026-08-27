@@ -11,6 +11,7 @@ import {
     IconArrowLeft,
     IconPhoto,
 } from "@tabler/icons-react";
+import { getCategoryImageUrl } from "@/Utils/imageUrl";
 
 export default function Edit({ category }) {
     const { errors } = usePage().props;
@@ -24,7 +25,7 @@ export default function Edit({ category }) {
     });
 
     const [imagePreview, setImagePreview] = useState(
-        category.image ? `/storage/categories/${category.image}` : null
+        category.image ? getCategoryImageUrl(category.image) : null
     );
 
     const handleImageChange = (e) => {
