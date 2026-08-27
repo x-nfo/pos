@@ -168,6 +168,14 @@ class HandleInertiaRequests extends Middleware
             ];
         }
 
+        $waReady = false;
+        if (Schema::hasTable('settings') && Setting::getBool('wa_enabled', false) && ! empty(Setting::get('wa_service_url'))) {
+            $waReady = \Illuminate\Support\Facades\Cache::remember('wa_connection_status', 30, function () {
+                $status = app(\App\Services\WhatsAppService::class)->status();
+                return $status['connected'] ?? false;
+            });
+        }
+
         $branding = app(BrandingService::class)->getBranding();
 
         return [
@@ -196,6 +204,7 @@ class HandleInertiaRequests extends Middleware
             'pendingApprovalCount' => $pendingApprovalCount,
             'pendingDineOrdersCount' => $pendingDineOrdersCount,
             'appVersion' => config('app.version'),
+            'wa_ready' => $waReady,
             'security' => [
                 'warnings' => $securityWarnings,
                 'publicRegistrationEnabled' => config('security.auth.public_registration'),

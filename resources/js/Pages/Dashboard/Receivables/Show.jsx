@@ -25,7 +25,7 @@ const formatCurrency = (value = 0) =>
     }).format(value);
 
 export default function ReceivableShow({ receivable, bankAccounts = [], approvalThreshold = 1000000 }) {
-    const { flash, storeProfile, auth } = usePage().props;
+    const { flash, storeProfile, auth, wa_ready } = usePage().props;
     const { can } = useAuthorization();
     const [showForm, setShowForm] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
@@ -234,15 +234,16 @@ export default function ReceivableShow({ receivable, bankAccounts = [], approval
                             </h1>
                         </div>
                         <div className="flex items-center gap-2">
-                            {canCreateCrmCampaign && (
+                            {receivable.status !== "paid" && canCreateCrmCampaign && (
                                 <Link
-                                    href={route(
-                                        "receivables.share-campaign",
-                                        receivable.id
-                                    )}
-                                    method="post"
+                                    href={wa_ready ? route("receivables.share-campaign", receivable.id) : "#"}
+                                    method={wa_ready ? "post" : "get"}
                                     as="button"
-                                    className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600"
+                                    disabled={!wa_ready}
+                                    className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-white transition-colors ${
+                                        wa_ready ? "bg-primary-500 hover:bg-primary-600" : "bg-primary-300 cursor-not-allowed opacity-70"
+                                    }`}
+                                    title={wa_ready ? "Buat CRM Campaign untuk Piutang ini" : "WhatsApp Gateway belum dikonfigurasi di Pengaturan"}
                                 >
                                     <IconBrandWhatsapp size={18} />
                                     Auto Reminder

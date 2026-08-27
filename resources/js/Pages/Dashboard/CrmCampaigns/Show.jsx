@@ -1,6 +1,6 @@
 import React from "react";
 import DashboardLayout from "@/Layouts/DashboardLayout";
-import { Head, Link, router } from "@inertiajs/react";
+import { Head, Link, router, usePage } from "@inertiajs/react";
 import Button from "@/Components/Dashboard/Button";
 import Table from "@/Components/Dashboard/Table";
 import { IconArrowLeft, IconBrandWhatsapp, IconChecks, IconPlayerPlay, IconPlayerStop, IconSend } from "@tabler/icons-react";
@@ -12,6 +12,8 @@ const formatDateTime = (value) =>
         : "-";
 
 export default function Show({ campaign }) {
+    const { wa_ready } = usePage().props;
+
     const processCampaign = () => {
         router.post(route("crm-campaigns.process", campaign.id), {}, {
             preserveScroll: true,
@@ -73,9 +75,12 @@ export default function Show({ campaign }) {
                         {campaign.status !== "cancelled" && campaign.logs?.some((l) => l.status !== "sent" && l.status !== "skipped") && (
                             <button
                                 type="button"
-                                onClick={dispatchCampaign}
-                                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 shadow-sm"
-                                title="Kirim semua pesan yang belum terkirim via antrean WhatsApp Gateway"
+                                onClick={wa_ready ? dispatchCampaign : undefined}
+                                disabled={!wa_ready}
+                                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-white shadow-sm ${
+                                    wa_ready ? "bg-emerald-600 hover:bg-emerald-700" : "bg-emerald-400 cursor-not-allowed opacity-70"
+                                }`}
+                                title={wa_ready ? "Kirim semua pesan yang belum terkirim via antrean WhatsApp Gateway" : "WhatsApp Gateway belum dikonfigurasi di Pengaturan"}
                             >
                                 <IconSend size={16} />
                                 Kirim Antrean WA
@@ -140,9 +145,14 @@ export default function Show({ campaign }) {
                                                         <>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => dispatchLog(log.id)}
-                                                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300"
-                                                                title="Kirim otomatis via Queue Gateway"
+                                                                onClick={wa_ready ? () => dispatchLog(log.id) : undefined}
+                                                                disabled={!wa_ready}
+                                                                className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${
+                                                                    wa_ready 
+                                                                        ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300"
+                                                                        : "bg-emerald-50/50 text-emerald-400 cursor-not-allowed dark:bg-emerald-950/10 dark:text-emerald-500/50"
+                                                                }`}
+                                                                title={wa_ready ? "Kirim otomatis via Queue Gateway" : "WhatsApp Gateway belum dikonfigurasi di Pengaturan"}
                                                             >
                                                                 <IconSend size={16} />
                                                             </button>
