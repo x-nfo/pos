@@ -135,9 +135,9 @@ const Empty = ({ colSpan = 1, message = "Tidak ada data yang ditemukan", childre
                     <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3 text-slate-400">
                         {children || <IconDatabaseOff size={28} strokeWidth={1.5} />}
                     </div>
-                    <p className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    <div className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
                         {message}
-                    </p>
+                    </div>
                 </div>
             </td>
         </tr>

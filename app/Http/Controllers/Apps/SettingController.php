@@ -285,51 +285,6 @@ class SettingController extends Controller
         return back()->with('success', 'Pengaturan WhatsApp disimpan.');
     }
 
-    public function automation()
-    {
-        return Inertia::render('Dashboard/Settings/Automation', [
-            'settings' => [
-                'wa_auto_reminder' => Setting::getBool('wa_auto_reminder', false),
-                'wa_auto_invoice' => Setting::getBool('wa_auto_invoice', false),
-                'wa_receivable_reminder_mode' => Setting::get('wa_receivable_reminder_mode', 'manual'),
-                'wa_template_due_soon' => Setting::get(
-                    'wa_template_due_soon',
-                    'Halo {{customer_name}}, ini pengingat tagihan invoice {{invoice}} sebesar Rp {{remaining}} akan jatuh tempo pada {{due_date}}. Mohon dapat melakukan pembayaran sebelum jatuh tempo. Terima kasih.'
-                ),
-                'wa_template_overdue' => Setting::get(
-                    'wa_template_overdue',
-                    'Halo {{customer_name}}, tagihan invoice {{invoice}} sebesar Rp {{remaining}} telah melewati jatuh tempo ({{due_date}}). Mohon segera melakukan konfirmasi dan pelunasan pembayaran. Terima kasih.'
-                ),
-            ],
-        ]);
-    }
-
-    public function updateAutomation(Request $request)
-    {
-        $validated = $request->validate([
-            'wa_auto_reminder' => ['boolean'],
-            'wa_auto_invoice' => ['boolean'],
-            'wa_receivable_reminder_mode' => ['nullable', 'string', 'in:manual,auto'],
-            'wa_template_due_soon' => ['nullable', 'string', 'max:2000'],
-            'wa_template_overdue' => ['nullable', 'string', 'max:2000'],
-        ]);
-
-        $mode = $validated['wa_receivable_reminder_mode'] ?? ($request->boolean('wa_auto_reminder') ? 'auto' : 'manual');
-        $isAuto = $mode === 'auto';
-
-        Setting::set('wa_auto_reminder', $isAuto ? '1' : '0', 'Auto-kirim reminder via WA');
-        Setting::set('wa_auto_invoice', ($validated['wa_auto_invoice'] ?? false) ? '1' : '0', 'Auto-kirim invoice via WA');
-        Setting::set('wa_receivable_reminder_mode', $mode, 'Mode pengiriman reminder piutang (manual/auto)');
-        if (array_key_exists('wa_template_due_soon', $validated) && $validated['wa_template_due_soon'] !== null) {
-            Setting::set('wa_template_due_soon', $validated['wa_template_due_soon'], 'Template WA reminder piutang jatuh tempo H-3');
-        }
-        if (array_key_exists('wa_template_overdue', $validated) && $validated['wa_template_overdue'] !== null) {
-            Setting::set('wa_template_overdue', $validated['wa_template_overdue'], 'Template WA reminder piutang overdue');
-        }
-
-        return back()->with('success', 'Pengaturan Otomatisasi & CRM disimpan.');
-    }
-
     /**
      * Update branding settings
      */

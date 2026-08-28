@@ -412,13 +412,7 @@ export default function Menu() {
                     icon: <IconBrandWhatsapp size={20} strokeWidth={1.5} />,
                     permissions: hasAnyPermission(["whatsapp-settings-access"]),
                 },
-                {
-                    title: "Otomatisasi & CRM",
-                    href: route("settings.automation"),
-                    active: url.startsWith("/dashboard/settings/automation"),
-                    icon: <IconRobotFace size={20} strokeWidth={1.5} />,
-                    permissions: hasAnyPermission(["whatsapp-settings-access"]),
-                },
+
                 {
                     title: t("sidebar.items.warehouses"),
                     href: route("settings.warehouses.index"),

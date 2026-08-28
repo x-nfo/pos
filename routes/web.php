@@ -202,6 +202,9 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
         ->middlewareFor(['create', 'store'], 'permission:crm-campaigns-create')
         ->middlewareFor(['edit', 'update'], 'permission:crm-campaigns-update')
         ->middlewareFor('destroy', 'permission:crm-campaigns-delete');
+    Route::post('crm-campaigns/automation', [CrmCampaignController::class, 'updateAutomation'])
+        ->middleware('permission:crm-campaigns-update')
+        ->name('crm-campaigns.automation.update');
     Route::post('crm-campaigns/{crmCampaign}/process', [CrmCampaignController::class, 'process'])
         ->middleware('permission:crm-campaigns-update')
         ->name('crm-campaigns.process');
@@ -357,10 +360,6 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::post('/settings/whatsapp/start', [SettingController::class, 'startWhatsapp'])->middleware('permission:whatsapp-settings-update')->name('settings.whatsapp.start');
     Route::get('/settings/whatsapp/status', [SettingController::class, 'whatsappStatus'])->middleware('permission:whatsapp-settings-access')->name('settings.whatsapp.status');
     Route::post('/settings/whatsapp/disconnect', [SettingController::class, 'disconnectWhatsapp'])->middleware('permission:whatsapp-settings-update')->name('settings.whatsapp.disconnect');
-
-    // settings automation & crm
-    Route::get('/settings/automation', [SettingController::class, 'automation'])->middleware('permission:whatsapp-settings-access')->name('settings.automation');
-    Route::post('/settings/automation', [SettingController::class, 'updateAutomation'])->middleware('permission:whatsapp-settings-update')->name('settings.automation.update');
 
     // settings bank accounts
     Route::get('/settings/bank-accounts', [BankAccountController::class, 'index'])->middleware('permission:payment-settings-access')->name('settings.bank-accounts.index');

@@ -769,7 +769,7 @@ export default function Mobile({
                                 onAddToCart={handleAddToCart}
                                 addingProductId={addingProductId}
                                 searchInputRef={searchInputRef}
-                                onAddNewProduct={() => setQuickAddModalOpen(true)}
+                                onAddNewProduct={() => router.get(route('products.create'))}
                             />
 
                             {/* Floating Cart Bar */}

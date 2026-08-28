@@ -1027,7 +1027,7 @@ export default function Index({
                         onAddToCart={handleAddToCart}
                         addingProductId={addingProductId}
                         searchInputRef={searchInputRef}
-                        onAddNewProduct={() => setQuickAddModalOpen(true)}
+                        onAddNewProduct={() => router.get(route('products.create'))}
                     />
                 </div>
 

@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import DashboardLayout from "@/Layouts/DashboardLayout";
+import AutomationTab from "./Components/AutomationTab";
 import { Head, Link, router } from "@inertiajs/react";
 import Button from "@/Components/Dashboard/Button";
 import Pagination from "@/Components/Dashboard/Pagination";
@@ -18,8 +19,9 @@ const statusBadge = (status) => {
     return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${classes[status] || classes.draft}`}>{status}</span>;
 };
 
-export default function Index({ campaigns, filters }) {
+export default function Index({ campaigns, filters, settings }) {
     const { can } = useAuthorization();
+    const [activeTab, setActiveTab] = useState("campaigns");
     const handleFilterChange = (key, value) => {
         router.get(route("crm-campaigns.index"), { ...filters, [key]: value }, { preserveState: true, replace: true });
     };
@@ -46,8 +48,33 @@ export default function Index({ campaigns, filters }) {
                     )}
                 </div>
 
-                <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                    <div className="grid gap-3 md:grid-cols-2">
+                <div className="mb-6 flex border-b border-slate-200 dark:border-slate-800">
+                    <button
+                        onClick={() => setActiveTab("campaigns")}
+                        className={`pb-3 text-sm font-semibold transition-colors border-b-2 px-1 ${
+                            activeTab === "campaigns"
+                                ? "border-primary-500 text-primary-600 dark:text-primary-400"
+                                : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400"
+                        }`}
+                    >
+                        Daftar Campaign
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("automation")}
+                        className={`ml-6 pb-3 text-sm font-semibold transition-colors border-b-2 px-1 ${
+                            activeTab === "automation"
+                                ? "border-primary-500 text-primary-600 dark:text-primary-400"
+                                : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400"
+                        }`}
+                    >
+                        Pengingat Otomatis
+                    </button>
+                </div>
+
+                {activeTab === "campaigns" && (
+                    <>
+                        <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                            <div className="grid gap-3 md:grid-cols-2">
                         <select
                             value={filters.type || ""}
                             onChange={(event) => handleFilterChange("type", event.target.value)}
@@ -133,6 +160,12 @@ export default function Index({ campaigns, filters }) {
                 </Table.Card>
 
                 {campaigns.last_page > 1 && <Pagination links={campaigns.links} />}
+                    </>
+                )}
+
+                {activeTab === "automation" && (
+                    <AutomationTab settings={settings} />
+                )}
             </div>
         </>
     );

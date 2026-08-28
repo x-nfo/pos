@@ -1,5 +1,4 @@
-import DashboardLayout from "@/Layouts/DashboardLayout";
-import { Head, useForm, usePage } from "@inertiajs/react";
+import { useForm, usePage } from "@inertiajs/react";
 import { useState, useRef } from "react";
 import toast from "react-hot-toast";
 import {
@@ -22,19 +21,19 @@ const PLACEHOLDERS = [
     { tag: "{{store_name}}", label: "Nama Toko" },
 ];
 
-export default function Automation({ settings }) {
+export default function AutomationTab({ settings = {} }) {
     const { props } = usePage();
     const wa_ready = props.wa_ready;
 
     const { data, setData, post, processing } = useForm({
-        wa_auto_reminder: settings.wa_auto_reminder || false,
-        wa_auto_invoice: settings.wa_auto_invoice || false,
-        wa_receivable_reminder_mode: settings.wa_receivable_reminder_mode || (settings.wa_auto_reminder ? "auto" : "manual"),
+        wa_auto_reminder: settings?.wa_auto_reminder || false,
+        wa_auto_invoice: settings?.wa_auto_invoice || false,
+        wa_receivable_reminder_mode: settings?.wa_receivable_reminder_mode || (settings?.wa_auto_reminder ? "auto" : "manual"),
         wa_template_due_soon:
-            settings.wa_template_due_soon ||
+            settings?.wa_template_due_soon ||
             "Halo {{customer_name}}, ini pengingat tagihan invoice {{invoice}} sebesar Rp {{remaining}} akan jatuh tempo pada {{due_date}}. Mohon dapat melakukan pembayaran sebelum jatuh tempo. Terima kasih.",
         wa_template_overdue:
-            settings.wa_template_overdue ||
+            settings?.wa_template_overdue ||
             "Halo {{customer_name}}, tagihan invoice {{invoice}} sebesar Rp {{remaining}} telah melewati jatuh tempo ({{due_date}}). Mohon segera melakukan konfirmasi dan pelunasan pembayaran. Terima kasih.",
     });
 
@@ -44,7 +43,7 @@ export default function Automation({ settings }) {
 
     const handleSave = (e) => {
         e.preventDefault();
-        post(route("settings.automation.update"), {
+        post(route("crm-campaigns.automation.update"), {
             preserveScroll: true,
             onSuccess: () => toast.success("Pengaturan Otomatisasi & CRM berhasil disimpan"),
             onError: () => toast.error("Gagal menyimpan pengaturan"),
@@ -83,12 +82,11 @@ export default function Automation({ settings }) {
 
     return (
         <>
-            <Head title="Pengaturan Otomatisasi & CRM" />
             <div className="space-y-6 max-w-4xl mx-auto">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                         <IconRobotFace size={28} className="text-primary-500" />
-                        Otomatisasi & CRM
+                        Pengingat Otomatis
                     </h1>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                         Konfigurasi otomatisasi pengiriman pesan dan template untuk berinteraksi dengan pelanggan.
@@ -385,5 +383,3 @@ export default function Automation({ settings }) {
         </>
     );
 }
-
-Automation.layout = (page) => <DashboardLayout children={page} />;
