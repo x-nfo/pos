@@ -13,6 +13,7 @@ import {
     IconUpload,
     IconLoader2,
     IconCheck,
+    IconPercentage,
 } from "@tabler/icons-react";
 import toast from "react-hot-toast";
 
@@ -49,6 +50,9 @@ export default function Payment({
         qrisly_production: setting?.qrisly_production ?? false,
         qrisly_use_unique_amount: setting?.qrisly_use_unique_amount ?? true,
         receivable_approval_threshold: setting?.receivable_approval_threshold ?? 1000000,
+        discount_approval_threshold: setting?.discount_approval_threshold ?? 0,
+        discount_approval_percent_threshold: setting?.discount_approval_percent_threshold ?? 0,
+        discount_approval_timeout: setting?.discount_approval_timeout ?? 300,
     });
 
     useEffect(() => {
@@ -597,7 +601,71 @@ export default function Payment({
                         />
                     </div>
                     <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                        * Pembayaran dengan metode non-tunai (Transfer Bank, QRIS) atau tunai dengan nominal $\ge$ batas di atas akan otomatis masuk ke antrean persetujuan (status: Pending).
+                        * Pembayaran dengan metode non-tunai (Transfer Bank, QRIS) atau tunai dengan nominal &ge; batas di atas akan otomatis masuk ke antrean persetujuan (status: Pending).
+                    </p>
+                </div>
+
+                {/* Kebijakan Approval Diskon Kasir */}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-500">
+                            <IconPercentage size={22} />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-slate-800 dark:text-white">
+                                Kebijakan Approval Diskon Kasir
+                            </h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Atur batas maksimal diskon manual di POS sebelum memerlukan persetujuan (Approval) Supervisor/Manager.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Input
+                            label="Batas Nominal Diskon (Rp)"
+                            type="number"
+                            min="0"
+                            step="1000"
+                            value={data.discount_approval_threshold}
+                            onChange={(e) =>
+                                setData("discount_approval_threshold", e.target.value)
+                            }
+                            errors={errors?.discount_approval_threshold}
+                            placeholder="0 (Nonaktif)"
+                            disabled={!canUpdatePaymentSettings}
+                        />
+                        <Input
+                            label="Batas Persentase Diskon (%)"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="1"
+                            value={data.discount_approval_percent_threshold}
+                            onChange={(e) =>
+                                setData("discount_approval_percent_threshold", e.target.value)
+                            }
+                            errors={errors?.discount_approval_percent_threshold}
+                            placeholder="0 (Nonaktif)"
+                            disabled={!canUpdatePaymentSettings}
+                        />
+                        <Input
+                            label="Batas Waktu Tunggu (Detik)"
+                            type="number"
+                            min="10"
+                            max="3600"
+                            step="10"
+                            value={data.discount_approval_timeout}
+                            onChange={(e) =>
+                                setData("discount_approval_timeout", e.target.value)
+                            }
+                            errors={errors?.discount_approval_timeout}
+                            placeholder="300"
+                            disabled={!canUpdatePaymentSettings}
+                        />
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                        * Masukkan nilai <strong>0</strong> untuk menonaktifkan batas. Jika kasir memberikan diskon manual di POS &ge; nominal atau persentase di atas, transaksi otomatis tertahan dengan status <em>Pending Approval</em> hingga disetujui Supervisor.
                     </p>
                 </div>
 

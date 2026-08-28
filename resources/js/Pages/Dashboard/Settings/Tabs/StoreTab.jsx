@@ -2,7 +2,7 @@ import { useForm } from "@inertiajs/react";
 import Input from "@/Components/Dashboard/Input";
 import Textarea from "@/Components/Dashboard/TextArea";
 import toast from "react-hot-toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
     IconBuildingStore,
     IconDeviceFloppy,
@@ -13,12 +13,21 @@ import {
     IconPhoto,
     IconFileCertificate,
     IconReceiptTax,
+    IconUpload,
+    IconTrash,
 } from "@tabler/icons-react";
+import { getStoreLogoUrl } from "@/Utils/imageUrl";
 
 export default function StoreTab({ settings }) {
+    const initialLogo = getStoreLogoUrl(settings.store_logo);
+    const [logoPreview, setLogoPreview] = useState(initialLogo);
+    const [imageError, setImageError] = useState(false);
+    const fileInputRef = useRef(null);
+
     const { data, setData, post, processing, errors, reset } = useForm({
         store_name: settings.store_name || "",
         store_logo: null,
+        remove_store_logo: false,
         store_address: settings.store_address || "",
         store_phone: settings.store_phone || "",
         store_email: settings.store_email || "",
@@ -29,7 +38,11 @@ export default function StoreTab({ settings }) {
         tax_default_rate: settings.tax_default_rate || "11.00",
     });
 
-    const [logoPreview, setLogoPreview] = useState(settings.store_logo || null);
+    useEffect(() => {
+        const resolved = getStoreLogoUrl(settings.store_logo);
+        setLogoPreview(resolved);
+        setImageError(false);
+    }, [settings.store_logo]);
 
     useEffect(() => {
         return () => {
@@ -39,13 +52,47 @@ export default function StoreTab({ settings }) {
         };
     }, [logoPreview]);
 
+    const handleFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setData((prev) => ({
+                ...prev,
+                store_logo: file,
+                remove_store_logo: false,
+            }));
+            setImageError(false);
+            if (logoPreview && logoPreview.startsWith("blob:")) {
+                URL.revokeObjectURL(logoPreview);
+            }
+            setLogoPreview(URL.createObjectURL(file));
+        }
+    };
+
+    const handleRemoveLogo = () => {
+        if (logoPreview && logoPreview.startsWith("blob:")) {
+            URL.revokeObjectURL(logoPreview);
+        }
+        setLogoPreview(null);
+        setImageError(false);
+        setData((prev) => ({
+            ...prev,
+            store_logo: null,
+            remove_store_logo: true,
+        }));
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    };
+
     const submit = (e) => {
         e.preventDefault();
         post(route("settings.store.update"), {
             preserveScroll: true,
+            forceFormData: true,
             onSuccess: () => {
                 toast.success("Profil toko disimpan");
                 reset("store_logo");
+                setData("remove_store_logo", false);
             },
             onError: () => toast.error("Gagal menyimpan profil toko"),
         });
@@ -53,7 +100,6 @@ export default function StoreTab({ settings }) {
 
     return (
         <>
-
             <div className="space-y-6">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -72,32 +118,57 @@ export default function StoreTab({ settings }) {
                                 <IconPhoto size={18} />
                                 Logo Toko
                             </label>
-                            <div className="w-32 h-32 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center overflow-hidden mb-3">
-                                {logoPreview ? (
+                            <div className="w-36 h-36 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 flex items-center justify-center p-2 overflow-hidden mb-3 shadow-inner">
+                                {logoPreview && !imageError ? (
                                     <img
-                                        src={logoPreview.startsWith("http") || logoPreview.startsWith("/storage")
-                                            ? logoPreview
-                                            : `/storage/${logoPreview}`}
-                                        alt="Logo"
-                                        className="w-full h-full object-cover"
+                                        src={logoPreview}
+                                        alt="Logo Toko"
+                                        className="max-w-full max-h-full object-contain"
+                                        onError={() => setImageError(true)}
                                     />
                                 ) : (
-                                    <IconBuildingStore size={36} className="text-slate-300" />
+                                    <div className="text-center text-slate-400 dark:text-slate-500">
+                                        <IconBuildingStore size={40} className="mx-auto" />
+                                        <span className="text-[11px] block mt-1 font-medium">Tanpa Logo</span>
+                                    </div>
                                 )}
                             </div>
+
                             <input
+                                ref={fileInputRef}
                                 type="file"
-                                accept="image/*"
-                                onChange={(e) => {
-                                    const file = e.target.files[0];
-                                    if (file) {
-                                        setData("store_logo", file);
-                                        setLogoPreview(URL.createObjectURL(file));
-                                    }
-                                }}
+                                id="store_logo_input"
+                                accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+                                onChange={handleFileChange}
+                                className="hidden"
                             />
+
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                                <label
+                                    htmlFor="store_logo_input"
+                                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200"
+                                >
+                                    <IconUpload size={16} />
+                                    {logoPreview ? "Ganti Logo" : "Pilih Logo"}
+                                </label>
+
+                                {logoPreview && (
+                                    <button
+                                        type="button"
+                                        onClick={handleRemoveLogo}
+                                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-danger-600 hover:bg-danger-50 dark:text-danger-400 dark:hover:bg-danger-950/30 transition-colors"
+                                    >
+                                        <IconTrash size={16} />
+                                        Hapus
+                                    </button>
+                                )}
+                            </div>
+
+                            <p className="text-xs text-slate-400 dark:text-slate-500">
+                                Format: PNG, JPG, JPEG, SVG, atau WEBP. Maksimal 2MB.
+                            </p>
                             {errors.store_logo && (
-                                <p className="text-xs text-danger-500 mt-1">
+                                <p className="text-xs text-danger-500 mt-1 font-medium">
                                     {errors.store_logo}
                                 </p>
                             )}

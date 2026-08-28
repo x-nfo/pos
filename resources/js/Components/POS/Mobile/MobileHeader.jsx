@@ -17,6 +17,7 @@ import {
 } from "@tabler/icons-react";
 import { useHaptic } from "@/Hooks/useHaptic";
 import hasAnyPermission from "@/Utils/Permission";
+import { normalizeStorageUrl } from "@/Utils/imageUrl";
 
 export default function MobileHeader({
     activeShift,
@@ -33,6 +34,8 @@ export default function MobileHeader({
 
     const hasDashboardAccess = hasAnyPermission(["dashboard-access"]);
     const homeRoute = hasDashboardAccess ? route("dashboard") : route("dashboard.menu");
+    const storeLogoUrl = normalizeStorageUrl(storeProfile?.logo);
+    const storeInitial = (storeProfile?.name || "K").charAt(0).toUpperCase();
 
     const handleOfflineRestrictedNav = (e, targetName) => {
         if (!isOnline) {
@@ -65,15 +68,22 @@ export default function MobileHeader({
                     className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-tr from-primary-600 to-primary-700 text-white font-black text-xs shadow-xs flex-shrink-0 active:scale-95 transition-transform"
                     title={hasDashboardAccess ? "Dashboard" : "Menu Aplikasi"}
                 >
-                    {storeProfile?.logo ? (
+                    {storeLogoUrl ? (
                         <img
-                            src={storeProfile.logo}
+                            src={storeLogoUrl}
                             alt="Logo"
                             className="w-full h-full object-cover rounded-xl"
+                            onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                if (e.currentTarget.nextElementSibling) {
+                                    e.currentTarget.nextElementSibling.style.display = "block";
+                                }
+                            }}
                         />
-                    ) : (
-                        (storeProfile?.name || "K").charAt(0).toUpperCase()
-                    )}
+                    ) : null}
+                    <span className={storeLogoUrl ? "hidden" : ""}>
+                        {storeInitial}
+                    </span>
                 </Link>
                 <div className="min-w-0">
                     <div className="flex items-center gap-1.5">

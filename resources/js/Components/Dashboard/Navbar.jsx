@@ -7,6 +7,7 @@ import Menu from "@/Utils/Menu";
 import Notification from "@/Components/Dashboard/Notification";
 import { useHaptic } from "@/Hooks/useHaptic";
 import hasAnyPermission from "@/Utils/Permission";
+import { getStoreLogoUrl } from "@/Utils/imageUrl";
 
 export default function Navbar({ toggleSidebar, themeSwitcher, darkMode, isDashboard = true }) {
     const { auth, storeProfile } = usePage().props;
@@ -19,6 +20,7 @@ export default function Navbar({ toggleSidebar, themeSwitcher, darkMode, isDashb
 
     const storeName = storeProfile?.name || "KASIR";
     const storeInitial = storeName?.charAt(0)?.toUpperCase() || "K";
+    const storeLogoUrl = getStoreLogoUrl(storeProfile?.logo);
 
     // Get current page title
     const links = menuNavigation.flatMap((item) => item.details);
@@ -86,18 +88,25 @@ export default function Navbar({ toggleSidebar, themeSwitcher, darkMode, isDashb
                     <div className="md:hidden flex items-center gap-2.5 min-w-0">
                         <Link
                             href={homeRoute}
-                            className="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary-600 to-primary-700 flex items-center justify-center flex-shrink-0 text-white font-bold text-xs shadow-xs active:scale-95 transition-transform"
+                            className="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary-600 to-primary-700 flex items-center justify-center flex-shrink-0 text-white font-bold text-xs shadow-xs active:scale-95 transition-transform overflow-hidden"
                             title={hasDashboardAccess ? "Dashboard" : "Menu Aplikasi"}
                         >
-                            {storeProfile?.logo ? (
+                            {storeLogoUrl ? (
                                 <img
-                                    src={storeProfile.logo}
+                                    src={storeLogoUrl}
                                     alt="Logo"
                                     className="w-full h-full object-cover rounded-xl"
+                                    onError={(e) => {
+                                        e.currentTarget.style.display = "none";
+                                        if (e.currentTarget.nextElementSibling) {
+                                            e.currentTarget.nextElementSibling.style.display = "block";
+                                        }
+                                    }}
                                 />
-                            ) : (
-                                storeInitial
-                            )}
+                            ) : null}
+                            <span className={storeLogoUrl ? "hidden" : ""}>
+                                {storeInitial}
+                            </span>
                         </Link>
                         <div className="min-w-0">
                             <span className="text-xs font-black text-slate-900 dark:text-white truncate block leading-tight">

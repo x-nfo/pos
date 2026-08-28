@@ -80,6 +80,9 @@ class PaymentSettingController extends Controller
                 'qrisly_production' => (bool) $setting->qrisly_production,
                 'qrisly_use_unique_amount' => (bool) $setting->qrisly_use_unique_amount,
                 'receivable_approval_threshold' => (float) Setting::get('receivable_approval_threshold', 1000000),
+                'discount_approval_threshold' => (float) Setting::get('discount_approval_threshold', 0),
+                'discount_approval_percent_threshold' => (float) Setting::get('discount_approval_percent_threshold', 0),
+                'discount_approval_timeout' => (int) Setting::get('discount_approval_timeout', 300),
             ],
             'paymentSettingSources' => $setting->paymentSettingSources(),
             'supportedGateways' => [
@@ -132,6 +135,9 @@ class PaymentSettingController extends Controller
             'qrisly_production' => ['boolean'],
             'qrisly_use_unique_amount' => ['boolean'],
             'receivable_approval_threshold' => ['nullable', 'numeric', 'min:0'],
+            'discount_approval_threshold' => ['nullable', 'numeric', 'min:0'],
+            'discount_approval_percent_threshold' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'discount_approval_timeout' => ['nullable', 'integer', 'min:10', 'max:3600'],
         ]);
 
         $midtransEnabled = (bool) ($data['midtrans_enabled'] ?? false);
@@ -231,6 +237,30 @@ class PaymentSettingController extends Controller
                 'receivable_approval_threshold',
                 $data['receivable_approval_threshold'],
                 'Batas nominal pelunasan piutang yang membutuhkan approval'
+            );
+        }
+
+        if (array_key_exists('discount_approval_threshold', $data) && $data['discount_approval_threshold'] !== null) {
+            Setting::set(
+                'discount_approval_threshold',
+                $data['discount_approval_threshold'],
+                'Nominal diskon maksimal tanpa approval. 0 = nonaktif'
+            );
+        }
+
+        if (array_key_exists('discount_approval_percent_threshold', $data) && $data['discount_approval_percent_threshold'] !== null) {
+            Setting::set(
+                'discount_approval_percent_threshold',
+                $data['discount_approval_percent_threshold'],
+                'Persentase diskon maksimal tanpa approval. 0 = nonaktif'
+            );
+        }
+
+        if (array_key_exists('discount_approval_timeout', $data) && $data['discount_approval_timeout'] !== null) {
+            Setting::set(
+                'discount_approval_timeout',
+                $data['discount_approval_timeout'],
+                'Timeout approval dalam detik'
             );
         }
 

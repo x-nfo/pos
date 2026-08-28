@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Head, router, Link } from "@inertiajs/react";
+import { Head, router, Link, usePage } from "@inertiajs/react";
 import DashboardLayout from "@/Layouts/DashboardLayout";
 import Pagination from "@/Components/Dashboard/Pagination";
 import MobileBottomSheet from "@/Components/Mobile/MobileBottomSheet";
@@ -7,6 +7,7 @@ import MobileDataCard from "@/Components/Mobile/MobileDataCard";
 import { useHaptic } from "@/Hooks/useHaptic";
 import { useWebShare } from "@/Hooks/useWebShare";
 import { useAuthorization } from "@/Utils/authorization";
+import { shareWhatsappReceipt } from "@/Utils/whatsappReceipt";
 import {
     IconDatabaseOff,
     IconSearch,
@@ -41,6 +42,7 @@ const formatCurrency = (value = 0) =>
     }).format(value);
 
 const History = ({ transactions, filters, warehouses = [] }) => {
+    const { storeProfile, branding } = usePage().props;
     const { can } = useAuthorization();
     const { triggerHaptic } = useHaptic();
     const { share: nativeShare, isSupported: isShareSupported } = useWebShare();
@@ -97,24 +99,13 @@ const History = ({ transactions, filters, warehouses = [] }) => {
 
     const handleShareTransaction = async (trx) => {
         triggerHaptic("tap");
-        const publicUrl = route("transactions.public", trx.invoice, true);
-        const text = `Nota Transaksi ${trx.invoice}\nTotal: ${formatCurrency(trx.grand_total)}\nLihat Nota Online: ${publicUrl}`;
-
-        if (isShareSupported) {
-            const shared = await nativeShare({
-                title: `Nota ${trx.invoice}`,
-                text,
-                url: publicUrl,
-            });
-            if (shared) return;
-        }
-
-        // Fallback WhatsApp
-        window.open(
-            `https://wa.me/?text=${encodeURIComponent(text)}`,
-            "_blank",
-            "noopener,noreferrer"
-        );
+        await shareWhatsappReceipt({
+            transaction: trx,
+            storeProfile,
+            branding,
+            isShareSupported,
+            nativeShare,
+        });
     };
 
     const rows = transactions?.data ?? [];

@@ -381,7 +381,14 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
                                                     (currentPage - 1) * perPage}
                                             </td>
                                             <td className="px-4 py-4 text-sm font-semibold text-slate-900 dark:text-white">
-                                                {trx.invoice}
+                                                <div className="flex flex-col sm:flex-row sm:items-center gap-1.5">
+                                                    <span>{trx.invoice}</span>
+                                                    {trx.discount_approval_status === "pending" && (
+                                                        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 rounded w-fit">
+                                                            Pending Approval
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
                                                 {trx.created_at}

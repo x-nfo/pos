@@ -21,13 +21,17 @@ class WhiteLabelBrandingTest extends TestCase
         Permission::firstOrCreate(['name' => 'dashboard-access', 'guard_name' => 'web']);
         Permission::firstOrCreate(['name' => 'store-settings-access', 'guard_name' => 'web']);
         Permission::firstOrCreate(['name' => 'store-settings-update', 'guard_name' => 'web']);
-        Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'branding-settings-access', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'branding-settings-update', 'guard_name' => 'web']);
+        $superAdminRole = Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
+        $superAdminRole->syncPermissions(Permission::all());
     }
 
     public function test_branding_settings_page_can_be_rendered(): void
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('store-settings-access');
+        $user->assignRole('super-admin');
+        $user->givePermissionTo('branding-settings-access');
 
         $response = $this->actingAs($user)->get(route('settings.branding'));
 
@@ -38,7 +42,7 @@ class WhiteLabelBrandingTest extends TestCase
     {
         $user = User::factory()->create();
         $user->assignRole('super-admin');
-        $user->givePermissionTo('store-settings-update');
+        $user->givePermissionTo('branding-settings-update');
 
         $payload = [
             'app_name' => 'RetailPro Suite',
