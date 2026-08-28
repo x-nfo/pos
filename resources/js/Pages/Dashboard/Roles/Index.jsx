@@ -222,35 +222,53 @@ export default function Index() {
                     data.isUpdate ? "Ubah Akses Group" : "Tambah Akses Group"
                 }
                 icon={<IconUserShield size={20} strokeWidth={1.5} />}
+                maxWidth="4xl"
             >
-                <form onSubmit={data.isUpdate ? updateRole : saveRole}>
-                    <div className="mb-4">
+                <form onSubmit={data.isUpdate ? updateRole : saveRole} className="space-y-4">
+                    <div>
                         <Input
-                            label={"Nama group"}
+                            label={"Nama Akses Group / Role"}
                             type={"text"}
-                            placeholder={"Masukan nama group"}
+                            placeholder={"Contoh: Kasir Senior, Supervisor, Admin Gudang"}
                             value={data.name}
                             onChange={(e) => setData("name", e.target.value)}
                             errors={errors.name}
                         />
                     </div>
-                    <div className="mb-4">
+                    <div>
                         <ListBox
-                            label={"Pilih hak akses"}
+                            label={"Pilih Hak Akses"}
                             data={permissions}
                             selected={data.selectedPermission}
                             setSelected={setSelectedPermission}
                             errors={errors.selectedPermission}
                         />
                     </div>
-                    <Button
-                        type={"submit"}
-                        icon={<IconPencilCheck size={18} />}
-                        className={
-                            "bg-primary-500 hover:bg-primary-600 text-white w-full justify-center"
-                        }
-                        label={"Simpan"}
-                    />
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setData({
+                                    isOpen: false,
+                                    id: "",
+                                    name: "",
+                                    selectedPermission: [],
+                                    isUpdate: false,
+                                })
+                            }
+                            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-medium transition-colors"
+                        >
+                            Batal
+                        </button>
+                        <Button
+                            type={"submit"}
+                            icon={<IconPencilCheck size={18} />}
+                            className={
+                                "bg-primary-500 hover:bg-primary-600 text-white px-5 py-2.5 shadow-md shadow-primary-500/20"
+                            }
+                            label={data.isUpdate ? "Simpan Perubahan" : "Simpan Akses Group"}
+                        />
+                    </div>
                 </form>
             </Modal>
 

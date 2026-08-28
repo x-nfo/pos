@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, usePage } from "@inertiajs/react";
+import toast from "react-hot-toast";
 import { useTheme } from "@/Context/ThemeSwitcherContext";
 import { useOfflineSync } from "@/Context/OnlineStatusContext";
 import {
@@ -32,6 +33,16 @@ export default function MobileHeader({
 
     const hasDashboardAccess = hasAnyPermission(["dashboard-access"]);
     const homeRoute = hasDashboardAccess ? route("dashboard") : route("dashboard.menu");
+
+    const handleOfflineRestrictedNav = (e, targetName) => {
+        if (!isOnline) {
+            e.preventDefault();
+            toast.error(`Menu ${targetName} memerlukan koneksi internet. Kasir POS tetap aktif secara offline.`, {
+                id: 'mobile-offline-nav-warning',
+                icon: '📡',
+            });
+        }
+    };
 
     const handleSync = async () => {
         if (!isOnline || isSyncing) return;
@@ -189,7 +200,10 @@ export default function MobileHeader({
                                 <Link
                                     href={route("dashboard.menu")}
                                     className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                                    onClick={() => setMenuOpen(false)}
+                                    onClick={(e) => {
+                                        handleOfflineRestrictedNav(e, "Menu Aplikasi");
+                                        setMenuOpen(false);
+                                    }}
                                 >
                                     <IconGridDots size={15} className="text-primary-500" />
                                     <span>Menu Aplikasi</span>
@@ -207,7 +221,10 @@ export default function MobileHeader({
                                 <Link
                                     href={route("transactions.history")}
                                     className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                                    onClick={() => setMenuOpen(false)}
+                                    onClick={(e) => {
+                                        handleOfflineRestrictedNav(e, "Riwayat Transaksi");
+                                        setMenuOpen(false);
+                                    }}
                                 >
                                     <IconHistory size={15} />
                                     <span>Riwayat Transaksi</span>
@@ -216,8 +233,9 @@ export default function MobileHeader({
                                 {activeShift && (
                                     <Link
                                         href={route("cashier-shifts.show", activeShift.id)}
-                                        onClick={() => {
+                                        onClick={(e) => {
                                             triggerHaptic("tap");
+                                            handleOfflineRestrictedNav(e, "Detail Shift");
                                             setMenuOpen(false);
                                         }}
                                         className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"

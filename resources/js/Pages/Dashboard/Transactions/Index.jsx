@@ -20,10 +20,11 @@ import HeldTransactions, {
     HoldButton,
 } from "@/Components/POS/HeldTransactions";
 import QuickAddProductModal from "@/Components/POS/QuickAddProductModal";
+import OfflineReceiptModal from "@/Components/POS/OfflineReceiptModal";
 import useBarcodeScanner from "@/Hooks/useBarcodeScanner";
 import { getProductImageUrl } from "@/Utils/imageUrl";
 import { useAuthorization } from "@/Utils/authorization";
-import { queueTransaction, cacheProducts, cacheCustomers, getCachedProducts, getCachedCustomers } from "@/Utils/offlineDb";
+import { queueTransaction, cacheProducts, cacheCustomers, cacheCategories, getCachedProducts, getCachedCustomers, getCachedCategories } from "@/Utils/offlineDb";
 import {
     IconUser,
     IconShoppingCart,
@@ -98,11 +99,13 @@ export default function Index({
     const [shiftNotesInput, setShiftNotesInput] = useState("");
     const [productList, setProductList] = useState(products);
     const [customerList, setCustomerList] = useState(customers);
+    const [categoryList, setCategoryList] = useState(categories);
     const [activeCarts, setActiveCarts] = useState(carts);
     const [editingQtyId, setEditingQtyId] = useState(null);
     const [tempQtyInput, setTempQtyInput] = useState("");
     const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
     const [quickAddInitialData, setQuickAddInitialData] = useState({});
+    const [offlineReceiptData, setOfflineReceiptData] = useState(null);
 
     useEffect(() => {
         setProductList(products);
@@ -113,10 +116,14 @@ export default function Index({
     }, [customers]);
 
     useEffect(() => {
+        setCategoryList(categories);
+    }, [categories]);
+
+    useEffect(() => {
         setActiveCarts(carts);
     }, [carts]);
 
-    // Offline fallback: load cached products/customers from IndexedDB if props are empty
+    // Offline fallback: load cached products/customers/categories from IndexedDB if props are empty
     useEffect(() => {
         if (!products || products.length === 0) {
             getCachedProducts().then((cached) => {
@@ -132,7 +139,14 @@ export default function Index({
                 }
             }).catch(() => {});
         }
-    }, [products, customers]);
+        if (!categories || categories.length === 0) {
+            getCachedCategories().then((cached) => {
+                if (cached && cached.length > 0) {
+                    setCategoryList(cached);
+                }
+            }).catch(() => {});
+        }
+    }, [products, customers, categories]);
 
     // Auto-redirect to Mobile POS on mobile viewport
     useEffect(() => {
@@ -175,7 +189,7 @@ export default function Index({
         if (flash?.success) toast.success(flash.success);
     }, [flash]);
 
-    // Cache products and customers for offline POS capability
+    // Cache products, customers, and categories for offline POS capability
     useEffect(() => {
         if (products && products.length > 0) {
             cacheProducts(products).catch(() => {});
@@ -183,7 +197,10 @@ export default function Index({
         if (customers && customers.length > 0) {
             cacheCustomers(customers).catch(() => {});
         }
-    }, [products, customers]);
+        if (categories && categories.length > 0) {
+            cacheCategories(categories).catch(() => {});
+        }
+    }, [products, customers, categories]);
 
     const LowStockAlerts = () => null;
 
@@ -818,7 +835,17 @@ export default function Index({
                 items,
             };
 
-            queueTransaction(payload).then(() => {
+            queueTransaction(payload).then((res) => {
+                const receiptInfo = {
+                    ...payload,
+                    client_tx_id: res?.client_tx_id,
+                    customer: selectedCustomer,
+                    cashier_name: auth?.user?.name,
+                    change: isCashPayment ? Math.max(cash - payable, 0) : 0,
+                    created_at: new Date().toISOString(),
+                    items: [...activeCarts],
+                };
+                setOfflineReceiptData(receiptInfo);
                 setActiveCarts([]);
                 setDiscountInput("");
                 setRedeemPointsInput("");
@@ -1013,7 +1040,7 @@ export default function Index({
                 >
                     <ProductGrid
                         products={allProducts}
-                        categories={categories}
+                        categories={categoryList}
                         selectedCategory={selectedCategory}
                         onCategoryChange={(categoryId) =>
                             setSelectedCategory(
@@ -1912,7 +1939,14 @@ export default function Index({
                 onClose={() => setQuickAddModalOpen(false)}
                 onSuccess={handleQuickAddSuccess}
                 initialData={quickAddInitialData}
-                categories={categories}
+                categories={categoryList}
+            />
+
+            {/* Offline Receipt Modal */}
+            <OfflineReceiptModal
+                isOpen={Boolean(offlineReceiptData)}
+                onClose={() => setOfflineReceiptData(null)}
+                transactionData={offlineReceiptData}
             />
         </>
     );

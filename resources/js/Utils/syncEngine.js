@@ -30,7 +30,7 @@ export async function flushOfflineTransactions() {
                 await updatePendingTransaction(item.id, { status: 'syncing' });
 
                 const payload = item.data;
-                const url = typeof route === 'function' ? route('transactions.sync-offline') : '/transactions/sync-offline';
+                const url = typeof route === 'function' ? route('transactions.sync-offline') : '/dashboard/transactions/sync-offline';
                 
                 const response = await axios.post(url, payload, {
                     headers: {

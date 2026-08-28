@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { usePage, Link } from "@inertiajs/react";
-import { Toaster } from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
 import { useTheme } from "@/Context/ThemeSwitcherContext";
 import { useOfflineSync } from "@/Context/OnlineStatusContext";
 import {
@@ -36,6 +36,16 @@ export default function POSLayout({ children }) {
     const appLogo = branding?.logoLight || storeProfile?.logo || null;
     const hasDashboardAccess = hasAnyPermission(["dashboard-access"]);
     const homeRoute = hasDashboardAccess ? route("dashboard") : route("dashboard.menu");
+
+    const handleOfflineRestrictedNav = (e, targetName) => {
+        if (!isOnline) {
+            e.preventDefault();
+            toast.error(`Menu ${targetName} memerlukan koneksi internet. Kasir POS tetap dapat digunakan offline.`, {
+                id: 'pos-offline-nav-warning',
+                icon: '📡',
+            });
+        }
+    };
 
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
@@ -140,6 +150,7 @@ export default function POSLayout({ children }) {
                         {hasDashboardAccess ? (
                             <Link
                                 href={route("dashboard")}
+                                onClick={(e) => handleOfflineRestrictedNav(e, "Dashboard")}
                                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
                             >
                                 <IconHome size={18} />
@@ -148,6 +159,7 @@ export default function POSLayout({ children }) {
                         ) : (
                             <Link
                                 href={route("dashboard.menu")}
+                                onClick={(e) => handleOfflineRestrictedNav(e, "Menu Aplikasi")}
                                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
                             >
                                 <IconGridDots size={18} />
@@ -156,6 +168,7 @@ export default function POSLayout({ children }) {
                         )}
                         <Link
                             href={route("transactions.history")}
+                            onClick={(e) => handleOfflineRestrictedNav(e, "Riwayat Transaksi")}
                             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
                         >
                             <IconHistory size={18} />
@@ -285,6 +298,10 @@ export default function POSLayout({ children }) {
                             {hasDashboardAccess ? (
                                 <Link
                                     href={route("dashboard")}
+                                    onClick={(e) => {
+                                        handleOfflineRestrictedNav(e, "Dashboard");
+                                        setShowMobileMenu(false);
+                                    }}
                                     className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
                                 >
                                     <IconHome size={20} />
@@ -293,6 +310,10 @@ export default function POSLayout({ children }) {
                             ) : (
                                 <Link
                                     href={route("dashboard.menu")}
+                                    onClick={(e) => {
+                                        handleOfflineRestrictedNav(e, "Menu Aplikasi");
+                                        setShowMobileMenu(false);
+                                    }}
                                     className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
                                 >
                                     <IconGridDots size={20} className="text-primary-500" />
@@ -301,6 +322,10 @@ export default function POSLayout({ children }) {
                             )}
                             <Link
                                 href={route("transactions.history")}
+                                onClick={(e) => {
+                                    handleOfflineRestrictedNav(e, "Riwayat Transaksi");
+                                    setShowMobileMenu(false);
+                                }}
                                 className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
                             >
                                 <IconHistory size={20} />
@@ -310,6 +335,7 @@ export default function POSLayout({ children }) {
                             </Link>
                             <Link
                                 href={route("transactions.mobile")}
+                                onClick={() => setShowMobileMenu(false)}
                                 className="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-600 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-950/50 transition-colors font-medium"
                             >
                                 <IconDeviceMobile size={20} />
@@ -317,6 +343,10 @@ export default function POSLayout({ children }) {
                             </Link>
                             <Link
                                 href={route("profile.edit")}
+                                onClick={(e) => {
+                                    handleOfflineRestrictedNav(e, "Profil");
+                                    setShowMobileMenu(false);
+                                }}
                                 className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
                             >
                                 <IconUser size={20} />
@@ -327,6 +357,10 @@ export default function POSLayout({ children }) {
                                 href={route("logout")}
                                 method="post"
                                 as="button"
+                                onClick={(e) => {
+                                    handleOfflineRestrictedNav(e, "Keluar");
+                                    setShowMobileMenu(false);
+                                }}
                                 className="flex items-center gap-3 px-4 py-3 rounded-xl text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-950/50 transition-colors w-full"
                             >
                                 <IconLogout size={20} />

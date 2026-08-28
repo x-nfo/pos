@@ -2,7 +2,8 @@
     "name": "Point of Sales",
     "short_name": "POS",
     "description": "Sistem kasir online untuk UMKM",
-    "start_url": "/",
+    "start_url": "/dashboard/transactions",
+    "scope": "/",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#4f46e5",
@@ -10,6 +11,22 @@
     "icons": [
         { "src": "/images/icon-192.png", "sizes": "192x192", "type": "image/png" },
         { "src": "/images/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    ],
+    "shortcuts": [
+        {
+            "name": "Kasir POS",
+            "short_name": "Kasir",
+            "description": "Buka antarmuka kasir POS",
+            "url": "/dashboard/transactions",
+            "icons": [{ "src": "/images/icon-192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "Mobile POS",
+            "short_name": "Mobile POS",
+            "description": "Buka kasir versi layar sentuh/handheld",
+            "url": "/dashboard/transactions/mobile",
+            "icons": [{ "src": "/images/icon-192.png", "sizes": "192x192" }]
+        }
     ],
     "categories": ["business", "finance"],
     "lang": "id-ID"

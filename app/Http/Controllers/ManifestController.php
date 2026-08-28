@@ -20,7 +20,8 @@ class ManifestController extends Controller
             'name' => $appName,
             'short_name' => $shortName,
             'description' => $branding['tagline'],
-            'start_url' => '/',
+            'start_url' => '/dashboard/transactions',
+            'scope' => '/',
             'display' => 'standalone',
             'background_color' => '#ffffff',
             'theme_color' => $branding['colors']['primary'],
@@ -35,6 +36,32 @@ class ManifestController extends Controller
                     'src' => $icon512,
                     'sizes' => '512x512',
                     'type' => 'image/png',
+                ],
+            ],
+            'shortcuts' => [
+                [
+                    'name' => 'Kasir POS',
+                    'short_name' => 'Kasir',
+                    'description' => 'Buka antarmuka kasir POS',
+                    'url' => '/dashboard/transactions',
+                    'icons' => [
+                        [
+                            'src' => $icon192,
+                            'sizes' => '192x192',
+                        ],
+                    ],
+                ],
+                [
+                    'name' => 'Mobile POS',
+                    'short_name' => 'Mobile POS',
+                    'description' => 'Buka kasir versi layar sentuh/handheld',
+                    'url' => '/dashboard/transactions/mobile',
+                    'icons' => [
+                        [
+                            'src' => $icon192,
+                            'sizes' => '192x192',
+                        ],
+                    ],
                 ],
             ],
             'categories' => ['business', 'finance'],

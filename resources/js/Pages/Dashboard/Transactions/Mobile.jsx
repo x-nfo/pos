@@ -15,14 +15,19 @@ import MobileCartSheet from "@/Components/POS/Mobile/MobileCartSheet";
 import MobilePaymentSheet from "@/Components/POS/Mobile/MobilePaymentSheet";
 import { WALK_IN_CUSTOMER } from "@/Components/POS/CustomerSelect";
 import QuickAddProductModal from "@/Components/POS/QuickAddProductModal";
+import OfflineReceiptModal from "@/Components/POS/OfflineReceiptModal";
 import useBarcodeScanner from "@/Hooks/useBarcodeScanner";
 import { useHaptic } from "@/Hooks/useHaptic";
 import { useWebShare } from "@/Hooks/useWebShare";
 import { useAuthorization } from "@/Utils/authorization";
 import {
     queueTransaction,
+    cacheProducts,
+    cacheCustomers,
+    cacheCategories,
     getCachedProducts,
     getCachedCustomers,
+    getCachedCategories,
 } from "@/Utils/offlineDb";
 
 const formatPrice = (value = 0) =>
@@ -107,11 +112,13 @@ export default function Mobile({
     // Local cached lists
     const [productList, setProductList] = useState(products);
     const [customerList, setCustomerList] = useState(customers);
+    const [categoryList, setCategoryList] = useState(categories);
     const [activeCarts, setActiveCarts] = useState(carts);
 
     // Quick Add Product Modal
     const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
     const [quickAddInitialData, setQuickAddInitialData] = useState({});
+    const [offlineReceiptData, setOfflineReceiptData] = useState(null);
 
     const searchInputRef = useRef(null);
 
@@ -122,6 +129,10 @@ export default function Mobile({
     useEffect(() => {
         setCustomerList(customers);
     }, [customers]);
+
+    useEffect(() => {
+        setCategoryList(categories);
+    }, [categories]);
 
     useEffect(() => {
         setActiveCarts(carts);
@@ -147,7 +158,29 @@ export default function Mobile({
                 })
                 .catch(() => {});
         }
-    }, [products, customers]);
+        if (!categories || categories.length === 0) {
+            getCachedCategories()
+                .then((cached) => {
+                    if (cached && cached.length > 0) {
+                        setCategoryList(cached);
+                    }
+                })
+                .catch(() => {});
+        }
+    }, [products, customers, categories]);
+
+    // Cache products, customers, and categories for offline POS capability
+    useEffect(() => {
+        if (products && products.length > 0) {
+            cacheProducts(products).catch(() => {});
+        }
+        if (customers && customers.length > 0) {
+            cacheCustomers(customers).catch(() => {});
+        }
+        if (categories && categories.length > 0) {
+            cacheCategories(categories).catch(() => {});
+        }
+    }, [products, customers, categories]);
 
     const pricingItemsByCartId = useMemo(() => {
         const items = pricingPreview?.items || [];
@@ -639,7 +672,17 @@ export default function Mobile({
                 items,
             };
 
-            queueTransaction(payload).then(() => {
+            queueTransaction(payload).then((res) => {
+                const receiptInfo = {
+                    ...payload,
+                    client_tx_id: res?.client_tx_id,
+                    customer: selectedCustomer,
+                    cashier_name: auth?.user?.name,
+                    change: isCash ? Math.max(cash - payable, 0) : 0,
+                    created_at: new Date().toISOString(),
+                    items: [...activeCarts],
+                };
+                setOfflineReceiptData(receiptInfo);
                 setActiveCarts([]);
                 setDiscountInput("");
                 setRedeemPointsInput("");
@@ -759,7 +802,7 @@ export default function Mobile({
                         <>
                             <MobileProductGrid
                                 products={productList}
-                                categories={categories}
+                                categories={categoryList}
                                 selectedCategory={selectedCategory}
                                 onCategoryChange={setSelectedCategory}
                                 searchQuery={searchQuery}
@@ -842,7 +885,14 @@ export default function Mobile({
                     onClose={() => setQuickAddModalOpen(false)}
                     onSuccess={handleQuickAddSuccess}
                     initialData={quickAddInitialData}
-                    categories={categories}
+                    categories={categoryList}
+                />
+
+                {/* Offline Receipt Modal */}
+                <OfflineReceiptModal
+                    isOpen={Boolean(offlineReceiptData)}
+                    onClose={() => setOfflineReceiptData(null)}
+                    transactionData={offlineReceiptData}
                 />
 
                 {/* Open Shift Modal */}

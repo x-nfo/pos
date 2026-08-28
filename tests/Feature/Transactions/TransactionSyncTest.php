@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\ProductWarehouse;
+use App\Models\Receivable;
 use App\Models\StockMutation;
 use App\Models\Transaction;
 use App\Models\User;
@@ -262,6 +263,148 @@ class TransactionSyncTest extends TestCase
         $this->assertStringContainsString('Stok mengalami selisih minus akibat sinkronisasi offline', $auditLog->description);
         $this->assertSame(-3, $auditLog->after['stock_after']);
         $this->assertTrue($auditLog->meta['is_negative_stock']);
+    }
+
+    public function test_offline_sync_with_composite_product_deducts_component_stock(): void
+    {
+        $cashier = $this->createCashier();
+        $warehouse = Warehouse::create([
+            'code' => 'WH-'.Str::upper(Str::random(4)),
+            'name' => 'Toko Utama',
+            'type' => 'main',
+            'address' => 'Jl. Pengujian No. 1',
+            'is_active' => true,
+        ]);
+        $this->openShiftFor($cashier, $warehouse->id);
+
+        $comp1 = $this->createProduct($warehouse->id, initialStock: 50);
+        $comp2 = $this->createProduct($warehouse->id, initialStock: 30);
+
+        $category = Category::first();
+        $bundleProduct = Product::create([
+            'category_id' => $category->id,
+            'image' => 'bundle.png',
+            'barcode' => 'BNDL-'.Str::upper(Str::random(8)),
+            'title' => 'Paket Hemat Bundle',
+            'description' => 'Paket promo',
+            'buy_price' => 20000,
+            'sell_price' => 35000,
+            'stock' => 0,
+            'is_composite' => true,
+            'tax_rate' => 0,
+        ]);
+
+        $bundleProduct->components()->attach([
+            $comp1->id => ['qty' => 2], // 2 pcs comp1
+            $comp2->id => ['qty' => 1], // 1 pc comp2
+        ]);
+
+        $clientTxId = (string) Str::uuid();
+        $soldQty = 3; // 3 bundles -> 6 comp1, 3 comp2
+        $linePrice = $bundleProduct->sell_price * $soldQty;
+
+        $response = $this
+            ->actingAs($cashier)
+            ->postJson(route('transactions.sync-offline'), [
+                'client_tx_id' => $clientTxId,
+                'discount' => 0,
+                'shipping_cost' => 0,
+                'grand_total' => $linePrice,
+                'cash' => $linePrice,
+                'payment_gateway' => 'cash',
+                'items' => [
+                    [
+                        'product_id' => $bundleProduct->id,
+                        'qty' => $soldQty,
+                        'unit_price' => $bundleProduct->sell_price,
+                        'price' => $linePrice,
+                        'conversion_factor' => 1,
+                    ],
+                ],
+            ]);
+
+        $response->assertOk();
+        $response->assertJson(['success' => true]);
+
+        // Component 1: 50 - (3 * 2) = 44
+        $comp1->refresh();
+        $this->assertSame(44, (int) $comp1->stock);
+
+        // Component 2: 30 - (3 * 1) = 27
+        $comp2->refresh();
+        $this->assertSame(27, (int) $comp2->stock);
+    }
+
+    public function test_offline_sync_with_pay_later_creates_receivable(): void
+    {
+        $cashier = $this->createCashier();
+        $warehouse = Warehouse::create([
+            'code' => 'WH-'.Str::upper(Str::random(4)),
+            'name' => 'Toko Utama',
+            'type' => 'main',
+            'address' => 'Jl. Pengujian No. 1',
+            'is_active' => true,
+        ]);
+        $this->openShiftFor($cashier, $warehouse->id);
+
+        $customer = Customer::create([
+            'name' => 'Pelanggan Piutang',
+            'no_telp' => 6289876543,
+            'address' => 'Jl. Piutang',
+        ]);
+
+        $product = $this->createProduct($warehouse->id, initialStock: 10);
+        $clientTxId = (string) Str::uuid();
+        $dueDate = now()->addDays(14)->format('Y-m-d');
+
+        $response = $this
+            ->actingAs($cashier)
+            ->postJson(route('transactions.sync-offline'), [
+                'client_tx_id' => $clientTxId,
+                'customer_id' => $customer->id,
+                'discount' => 0,
+                'shipping_cost' => 0,
+                'grand_total' => $product->sell_price,
+                'cash' => 0,
+                'pay_later' => true,
+                'due_date' => $dueDate,
+                'items' => [
+                    [
+                        'product_id' => $product->id,
+                        'qty' => 1,
+                        'unit_price' => $product->sell_price,
+                        'price' => $product->sell_price,
+                        'conversion_factor' => 1,
+                    ],
+                ],
+            ]);
+
+        $response->assertOk();
+        $response->assertJson(['success' => true]);
+
+        $transaction = Transaction::where('payment_reference', 'offline:'.$clientTxId)->first();
+        $this->assertNotNull($transaction);
+        $this->assertSame('unpaid', $transaction->payment_status);
+
+        $receivable = Receivable::where('transaction_id', $transaction->id)->first();
+        $this->assertNotNull($receivable);
+        $this->assertSame($customer->id, $receivable->customer_id);
+        $this->assertSame($product->sell_price, (int) $receivable->total);
+        $this->assertSame($dueDate, $receivable->due_date->format('Y-m-d'));
+    }
+
+    public function test_manifest_pwa_endpoint_returns_valid_configuration(): void
+    {
+        $response = $this->get('/manifest.json');
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/manifest+json');
+
+        $json = $response->json();
+        $this->assertArrayHasKey('name', $json);
+        $this->assertArrayHasKey('start_url', $json);
+        $this->assertArrayHasKey('display', $json);
+        $this->assertArrayHasKey('icons', $json);
+        $this->assertSame('standalone', $json['display']);
     }
 
     protected function createCashier(): User

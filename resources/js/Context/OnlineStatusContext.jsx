@@ -46,6 +46,14 @@ export function OnlineStatusProvider({ children }) {
         refreshPendingCount();
         const cleanupSync = initSyncEngine();
 
+        // Background warm-up POS cache in Service Worker when online
+        if (typeof window !== 'undefined' && 'serviceWorker' in navigator && navigator.onLine) {
+            const warmRoutes = ['/dashboard/transactions', '/dashboard/transactions/mobile'];
+            warmRoutes.forEach((path) => {
+                fetch(path, { credentials: 'same-origin' }).catch(() => {});
+            });
+        }
+
         return () => {
             window.removeEventListener('online', goOnline);
             window.removeEventListener('offline', goOffline);

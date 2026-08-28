@@ -1,7 +1,7 @@
 import { openDB } from 'idb';
 
 const DB_NAME = 'pos-offline';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const dbPromise = openDB(DB_NAME, DB_VERSION, {
     upgrade(db) {
@@ -13,6 +13,9 @@ const dbPromise = openDB(DB_NAME, DB_VERSION, {
         }
         if (!db.objectStoreNames.contains('pricing')) {
             db.createObjectStore('pricing', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('categories')) {
+            db.createObjectStore('categories', { keyPath: 'id' });
         }
         if (!db.objectStoreNames.contains('pending_transactions')) {
             db.createObjectStore('pending_transactions', { keyPath: 'id', autoIncrement: true });
@@ -46,6 +49,20 @@ export async function cacheCustomers(customers) {
 export async function getCachedCustomers() {
     const db = await dbPromise;
     return db.getAll('customers');
+}
+
+export async function cacheCategories(categories) {
+    const db = await dbPromise;
+    const tx = db.transaction('categories', 'readwrite');
+    for (const category of categories) {
+        await tx.store.put(category);
+    }
+    await tx.done;
+}
+
+export async function getCachedCategories() {
+    const db = await dbPromise;
+    return db.getAll('categories');
 }
 
 export async function queueTransaction(transactionData) {
