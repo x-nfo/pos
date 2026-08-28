@@ -20,9 +20,11 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('receivables', function (Blueprint $table) {
+            $table->dropUnique(['access_token']);
             $table->dropColumn('access_token');
         });
         Schema::table('transactions', function (Blueprint $table) {
+            $table->dropUnique(['access_token']);
             $table->dropColumn('access_token');
         });
     }

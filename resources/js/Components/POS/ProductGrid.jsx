@@ -255,6 +255,7 @@ export default function ProductGrid({
     onAddToCart,
     addingProductId,
     searchInputRef,
+    onAddNewProduct,
 }) {
     const [selectedUnitProduct, setSelectedUnitProduct] = useState(null);
 
@@ -336,6 +337,14 @@ export default function ProductGrid({
                                 ? "Produk tidak ditemukan"
                                 : "Tidak ada produk"}
                         </p>
+                        {onAddNewProduct && (
+                            <button
+                                onClick={onAddNewProduct}
+                                className="mt-4 px-4 py-2 bg-primary-100 text-primary-600 dark:bg-primary-900/40 dark:text-primary-400 rounded-lg text-sm font-semibold hover:bg-primary-200 dark:hover:bg-primary-900/60 transition-colors"
+                            >
+                                + Tambah Produk Baru
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

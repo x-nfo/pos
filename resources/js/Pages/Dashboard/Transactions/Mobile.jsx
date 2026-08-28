@@ -769,6 +769,7 @@ export default function Mobile({
                                 onAddToCart={handleAddToCart}
                                 addingProductId={addingProductId}
                                 searchInputRef={searchInputRef}
+                                onAddNewProduct={() => setQuickAddModalOpen(true)}
                             />
 
                             {/* Floating Cart Bar */}

@@ -165,6 +165,7 @@ export default function MobileProductGrid({
     onAddToCart,
     addingProductId,
     searchInputRef,
+    onAddNewProduct,
 }) {
     const [showScanner, setShowScanner] = useState(false);
     const [selectedUnitProduct, setSelectedUnitProduct] = useState(null);
@@ -285,6 +286,15 @@ export default function MobileProductGrid({
                         <p className="text-xs font-semibold">
                             {searchQuery ? "Produk tidak ditemukan" : "Tidak ada produk"}
                         </p>
+                        {onAddNewProduct && (
+                            <button
+                                type="button"
+                                onClick={onAddNewProduct}
+                                className="mt-3 px-3 py-1.5 bg-primary-100 text-primary-600 dark:bg-primary-900/40 dark:text-primary-400 rounded-lg text-xs font-bold hover:bg-primary-200 dark:hover:bg-primary-900/60 transition-colors"
+                            >
+                                + Tambah Produk Baru
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

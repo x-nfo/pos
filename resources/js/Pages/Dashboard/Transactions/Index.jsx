@@ -1027,6 +1027,7 @@ export default function Index({
                         onAddToCart={handleAddToCart}
                         addingProductId={addingProductId}
                         searchInputRef={searchInputRef}
+                        onAddNewProduct={() => setQuickAddModalOpen(true)}
                     />
                 </div>
 
