@@ -1,13 +1,17 @@
 import React from "react";
-import { usePage } from "@inertiajs/react";
+import { usePage, Link } from "@inertiajs/react";
 import { IconLayoutGrid } from "@tabler/icons-react";
 import LinkItem from "@/Components/Dashboard/LinkItem";
 import LinkItemDropdown from "@/Components/Dashboard/LinkItemDropdown";
 import Menu from "@/Utils/Menu";
+import hasAnyPermission from "@/Utils/Permission";
 
 export default function Sidebar({ sidebarOpen }) {
     const { auth, storeProfile, appVersion, branding } = usePage().props;
     const menuNavigation = Menu();
+
+    const hasDashboardAccess = hasAnyPermission(["dashboard-access"]);
+    const homeRoute = hasDashboardAccess ? route("dashboard") : route("dashboard.menu");
 
     const appName = branding?.appName || storeProfile?.name || "KASIR";
     const appLogo = branding?.logoLight || storeProfile?.logo || null;
@@ -28,7 +32,11 @@ export default function Sidebar({ sidebarOpen }) {
             `}
         >
             {/* Logo */}
-            <div className="flex items-center justify-center h-16 border-b border-slate-100 dark:border-slate-800 px-4">
+            <Link
+                href={homeRoute}
+                className="flex items-center justify-center h-16 border-b border-slate-100 dark:border-slate-800 px-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                title={hasDashboardAccess ? "Dashboard" : "Menu Aplikasi"}
+            >
                 {sidebarOpen ? (
                     <div className="flex items-center gap-2.5 w-full min-w-0">
                         {appLogo ? (
@@ -63,7 +71,7 @@ export default function Sidebar({ sidebarOpen }) {
                         </div>
                     )
                 )}
-            </div>
+            </Link>
 
             {/* Navigation */}
             <nav className="dashboard-scrollbar min-h-0 flex-1 overflow-y-auto py-3">

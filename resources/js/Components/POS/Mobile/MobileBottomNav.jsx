@@ -5,6 +5,7 @@ import {
     IconShoppingCart,
     IconHistory,
     IconUser,
+    IconGridDots,
 } from "@tabler/icons-react";
 import { useHaptic } from "@/Hooks/useHaptic";
 
@@ -18,7 +19,7 @@ export default function MobileBottomNav({
 
     return (
         <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 pb-safe shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
-            <div className="max-w-md mx-auto grid grid-cols-4 h-16 px-2">
+            <div className="max-w-md mx-auto grid grid-cols-5 h-16 px-1">
                 {/* 1. Katalog */}
                 <button
                     type="button"
@@ -96,6 +97,16 @@ export default function MobileBottomNav({
                     <IconUser size={22} strokeWidth={1.8} />
                     <span className="text-[10px]">Shift</span>
                 </button>
+
+                {/* 5. Menu Aplikasi */}
+                <Link
+                    href={route("dashboard.menu")}
+                    onClick={() => triggerHaptic("tap")}
+                    className="flex flex-col items-center justify-center gap-1 transition-all active:scale-95 text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400"
+                >
+                    <IconGridDots size={22} strokeWidth={1.8} />
+                    <span className="text-[10px]">Menu</span>
+                </Link>
             </div>
         </nav>
     );

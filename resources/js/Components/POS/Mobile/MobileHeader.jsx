@@ -12,8 +12,10 @@ import {
     IconDotsVertical,
     IconUser,
     IconShoppingCart,
+    IconGridDots,
 } from "@tabler/icons-react";
 import { useHaptic } from "@/Hooks/useHaptic";
+import hasAnyPermission from "@/Utils/Permission";
 
 export default function MobileHeader({
     activeShift,
@@ -27,6 +29,9 @@ export default function MobileHeader({
     const { isOnline, pendingCount, syncOfflineTransactions } = useOfflineSync();
     const [isSyncing, setIsSyncing] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
+
+    const hasDashboardAccess = hasAnyPermission(["dashboard-access"]);
+    const homeRoute = hasDashboardAccess ? route("dashboard") : route("dashboard.menu");
 
     const handleSync = async () => {
         if (!isOnline || isSyncing) return;
@@ -44,9 +49,10 @@ export default function MobileHeader({
             {/* Left: Brand & Shift Status Pill */}
             <div className="flex items-center gap-2.5 min-w-0">
                 <Link
-                    href={route("dashboard")}
+                    href={homeRoute}
                     onClick={() => triggerHaptic("tap")}
                     className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-tr from-primary-600 to-primary-700 text-white font-black text-xs shadow-xs flex-shrink-0 active:scale-95 transition-transform"
+                    title={hasDashboardAccess ? "Dashboard" : "Menu Aplikasi"}
                 >
                     {storeProfile?.logo ? (
                         <img
@@ -179,6 +185,15 @@ export default function MobileHeader({
                                         {auth?.user?.name || "Kasir"}
                                     </p>
                                 </div>
+
+                                <Link
+                                    href={route("dashboard.menu")}
+                                    className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                    onClick={() => setMenuOpen(false)}
+                                >
+                                    <IconGridDots size={15} className="text-primary-500" />
+                                    <span>Menu Aplikasi</span>
+                                </Link>
 
                                 <Link
                                     href={route("transactions.index", { desktop: 1 })}

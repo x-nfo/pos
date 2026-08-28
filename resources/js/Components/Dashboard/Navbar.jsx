@@ -6,12 +6,16 @@ import LanguageSwitcher from "@/Components/Dashboard/LanguageSwitcher";
 import Menu from "@/Utils/Menu";
 import Notification from "@/Components/Dashboard/Notification";
 import { useHaptic } from "@/Hooks/useHaptic";
+import hasAnyPermission from "@/Utils/Permission";
 
 export default function Navbar({ toggleSidebar, themeSwitcher, darkMode, isDashboard = true }) {
     const { auth, storeProfile } = usePage().props;
     const { url } = usePage();
     const { triggerHaptic } = useHaptic();
     const menuNavigation = Menu();
+
+    const hasDashboardAccess = hasAnyPermission(["dashboard-access"]);
+    const homeRoute = hasDashboardAccess ? route("dashboard") : route("dashboard.menu");
 
     const storeName = storeProfile?.name || "KASIR";
     const storeInitial = storeName?.charAt(0)?.toUpperCase() || "K";
@@ -53,13 +57,13 @@ export default function Navbar({ toggleSidebar, themeSwitcher, darkMode, isDashb
         >
             {/* Left Section: Menu Toggle / Back Button & Title */}
             <div className="flex items-center gap-2.5 md:gap-4 min-w-0">
-                {/* Mobile Subpage: Chevron Left Back to Dashboard */}
+                {/* Mobile Subpage: Chevron Left Back to Dashboard or Menu */}
                 {!isDashboard && (
                     <Link
-                        href={route("dashboard")}
+                        href={homeRoute}
                         onClick={() => triggerHaptic("tap")}
                         className="md:hidden w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-primary-600 dark:hover:text-primary-400 active:scale-95 flex items-center justify-center transition-all flex-shrink-0"
-                        title="Kembali ke Dashboard"
+                        title={hasDashboardAccess ? "Kembali ke Dashboard" : "Kembali ke Menu"}
                     >
                         <IconChevronLeft size={20} strokeWidth={2.2} />
                     </Link>
@@ -81,8 +85,9 @@ export default function Navbar({ toggleSidebar, themeSwitcher, darkMode, isDashb
                 {isDashboard && (
                     <div className="md:hidden flex items-center gap-2.5 min-w-0">
                         <Link
-                            href={route("dashboard")}
+                            href={homeRoute}
                             className="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary-600 to-primary-700 flex items-center justify-center flex-shrink-0 text-white font-bold text-xs shadow-xs active:scale-95 transition-transform"
+                            title={hasDashboardAccess ? "Dashboard" : "Menu Aplikasi"}
                         >
                             {storeProfile?.logo ? (
                                 <img

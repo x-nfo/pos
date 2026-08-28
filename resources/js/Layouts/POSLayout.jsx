@@ -18,6 +18,7 @@ import {
     IconRefresh,
     IconCloudUpload,
     IconDeviceMobile,
+    IconGridDots,
 } from "@tabler/icons-react";
 import Notification from "@/Components/Dashboard/Notification";
 import hasAnyPermission from "@/Utils/Permission";
@@ -34,7 +35,7 @@ export default function POSLayout({ children }) {
     const appName = branding?.appName || storeProfile?.name || "KASIR";
     const appLogo = branding?.logoLight || storeProfile?.logo || null;
     const hasDashboardAccess = hasAnyPermission(["dashboard-access"]);
-    const homeRoute = hasDashboardAccess ? route("dashboard") : route("transactions.index");
+    const homeRoute = hasDashboardAccess ? route("dashboard") : route("dashboard.menu");
 
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
@@ -136,13 +137,21 @@ export default function POSLayout({ children }) {
                 <div className="flex items-center gap-2 lg:gap-3">
                     {/* Quick Actions */}
                     <nav className="hidden lg:flex items-center gap-1">
-                        {hasDashboardAccess && (
+                        {hasDashboardAccess ? (
                             <Link
                                 href={route("dashboard")}
                                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
                             >
                                 <IconHome size={18} />
                                 <span>Dashboard</span>
+                            </Link>
+                        ) : (
+                            <Link
+                                href={route("dashboard.menu")}
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <IconGridDots size={18} />
+                                <span>Menu Aplikasi</span>
                             </Link>
                         )}
                         <Link
@@ -273,13 +282,21 @@ export default function POSLayout({ children }) {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <nav className="p-4 space-y-2">
-                            {hasDashboardAccess && (
+                            {hasDashboardAccess ? (
                                 <Link
                                     href={route("dashboard")}
                                     className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
                                 >
                                     <IconHome size={20} />
                                     <span className="font-medium">Dashboard</span>
+                                </Link>
+                            ) : (
+                                <Link
+                                    href={route("dashboard.menu")}
+                                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+                                >
+                                    <IconGridDots size={20} className="text-primary-500" />
+                                    <span className="font-medium">Menu Aplikasi</span>
                                 </Link>
                             )}
                             <Link
