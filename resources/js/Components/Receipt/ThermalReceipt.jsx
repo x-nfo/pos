@@ -113,6 +113,8 @@ export default function ThermalReceipt({
         );
     };
 
+    const isPaid = (transaction?.payment_status || "").toLowerCase() === "paid";
+
     return (
         <div
             className="thermal-receipt font-mono text-xs leading-tight text-slate-900 bg-white"
@@ -244,16 +246,46 @@ export default function ThermalReceipt({
             {/* Payment Info */}
             <div className="my-1">
                 <div className="flex justify-between">
-                    <span>Bayar ({paymentMethod})</span>
-                    <span>{formatPrice(cash)}</span>
+                    <span>Metode</span>
+                    <span>{paymentMethod}</span>
                 </div>
+                {transaction?.payment_method === "cash" && cash > 0 && (
+                    <div className="flex justify-between">
+                        <span>Bayar Tunai</span>
+                        <span>{formatPrice(cash)}</span>
+                    </div>
+                )}
                 {change > 0 && (
                     <div className="flex justify-between font-bold">
                         <span>Kembali</span>
                         <span>{formatPrice(change)}</span>
                     </div>
                 )}
+                {isPaid ? (
+                    <div className="flex justify-between font-bold">
+                        <span>Status</span>
+                        <span>LUNAS</span>
+                    </div>
+                ) : null}
             </div>
+
+            {!isPaid && (
+                <>
+                    <pre className="whitespace-pre-wrap">{dashLine}</pre>
+                    <div className="my-1 text-center">
+                        <p className="font-bold text-xs">*** BELUM LUNAS ***</p>
+                        <p className="text-[10px]">MENUNGGU KONFIRMASI DANA</p>
+                        {paymentMethodKey === "bank_transfer" && transaction?.bank_account && (
+                            <div className="mt-1 text-[10px] border border-dashed border-slate-400 p-1 text-left">
+                                <p className="font-bold">Transfer ke:</p>
+                                <p>Bank: {transaction.bank_account.bank_name}</p>
+                                <p>No: {transaction.bank_account.account_number}</p>
+                                <p>a.n {transaction.bank_account.account_name}</p>
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
 
             {/* QRIS Code on Thermal Receipt */}
             {paymentMethodKey === "qrisly" && transaction?.payment_url && (
@@ -459,14 +491,39 @@ export function ThermalReceipt58mm({
                 <span>TOTAL</span>
                 <span>{formatPrice(transaction?.grand_total)}</span>
             </div>
-            <div className="flex justify-between">
-                <span>Bayar</span>
-                <span>{formatPrice(transaction?.cash)}</span>
-            </div>
-            <div className="flex justify-between">
-                <span>Kembali</span>
-                <span>{formatPrice(transaction?.change)}</span>
-            </div>
+            {transaction?.payment_method === "cash" && (
+                <div className="flex justify-between">
+                    <span>Bayar</span>
+                    <span>{formatPrice(transaction?.cash)}</span>
+                </div>
+            )}
+            {Number(transaction?.change || 0) > 0 && (
+                <div className="flex justify-between">
+                    <span>Kembali</span>
+                    <span>{formatPrice(transaction?.change)}</span>
+                </div>
+            )}
+            {transaction?.payment_status === "paid" ? (
+                <div className="flex justify-between font-bold">
+                    <span>Status</span>
+                    <span>LUNAS</span>
+                </div>
+            ) : (
+                <>
+                    <pre>{line}</pre>
+                    <div className="text-center my-1">
+                        <p className="font-bold text-[10px]">*** BELUM LUNAS ***</p>
+                        <p className="text-[9px]">MENUNGGU TRANSFER</p>
+                        {paymentMethodKey === "bank_transfer" && transaction?.bank_account && (
+                            <div className="mt-1 text-[9px] border border-dashed border-slate-400 p-0.5 text-left">
+                                <p className="font-bold">{transaction.bank_account.bank_name}</p>
+                                <p>No: {transaction.bank_account.account_number}</p>
+                                <p>a.n {transaction.bank_account.account_name}</p>
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
 
             {/* QRIS Code on 58mm Thermal */}
             {paymentMethodKey === "qrisly" && transaction?.payment_url && (

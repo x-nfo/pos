@@ -10,6 +10,8 @@ class ThermalPrintService
 {
     public function generateReceiptText(Transaction $transaction, string $paperSize = '80mm'): string
     {
+        $transaction->loadMissing(['customer', 'details.product', 'details.unit', 'cashier', 'bankAccount']);
+
         $storeName = Setting::get('store_name', 'Toko Anda');
         $storeAddress = Setting::get('store_address', '');
         $storePhone = Setting::get('store_phone', '');
@@ -55,11 +57,36 @@ class ThermalPrintService
         $lines[] = $this->line($maxWidth);
         $lines[] = $this->leftRight('TOTAL', number_format((int) $transaction->grand_total, 0, ',', '.'), $maxWidth);
 
+        $paymentMap = [
+            'cash' => 'TUNAI',
+            'bank_transfer' => 'TRANSFER BANK',
+            'qris' => 'QRIS',
+            'qrisly' => 'QRIS',
+            'midtrans' => 'MIDTRANS',
+            'xendit' => 'XENDIT',
+            'pay_later' => 'PIUTANG',
+        ];
+        $methodLabel = $paymentMap[$transaction->payment_method] ?? strtoupper((string) $transaction->payment_method);
+        $lines[] = $this->leftRight('Metode', $methodLabel, $maxWidth);
+
         if ($transaction->payment_method === 'cash' && $transaction->cash > 0) {
             $lines[] = $this->leftRight('Tunai', number_format((int) $transaction->cash, 0, ',', '.'), $maxWidth);
             if (($transaction->change ?? 0) > 0) {
                 $lines[] = $this->leftRight('Kembali', number_format((int) $transaction->change, 0, ',', '.'), $maxWidth);
             }
+        }
+
+        if ($transaction->payment_status !== 'paid') {
+            $lines[] = $this->line($maxWidth);
+            $lines[] = $this->center('*** BELUM LUNAS ***', $maxWidth);
+            $lines[] = $this->center('MENUNGGU KONFIRMASI DANA', $maxWidth);
+            if ($transaction->payment_method === 'bank_transfer' && $transaction->bankAccount) {
+                $lines[] = $this->center('Transfer: '.$transaction->bankAccount->bank_name, $maxWidth);
+                $lines[] = $this->center('Rek: '.$transaction->bankAccount->account_number, $maxWidth);
+                $lines[] = $this->center('a.n '.$transaction->bankAccount->account_name, $maxWidth);
+            }
+        } else {
+            $lines[] = $this->leftRight('Status', 'LUNAS', $maxWidth);
         }
 
         $lines[] = $this->line($maxWidth);
@@ -84,7 +111,7 @@ class ThermalPrintService
 
     public function generateWhatsappReceiptText(Transaction $transaction): string
     {
-        $transaction->loadMissing(['customer', 'details.product', 'details.unit', 'cashier', 'receivable']);
+        $transaction->loadMissing(['customer', 'details.product', 'details.unit', 'cashier', 'receivable', 'bankAccount']);
 
         $storeName = Setting::get('store_name', config('app.name', 'Point of Sales'));
         $storeAddress = Setting::get('store_address', '');
@@ -97,8 +124,10 @@ class ThermalPrintService
             $storePhone = '';
         }
 
+        $isPaid = $transaction->payment_status === 'paid';
+
         $lines = [];
-        $lines[] = '*STRUK PEMBELIAN*';
+        $lines[] = $isPaid ? '*STRUK PEMBELIAN (LUNAS)*' : '*TAGIHAN PEMBELIAN (BELUM LUNAS)*';
         $lines[] = '*'.strtoupper((string) $storeName).'*';
         if ($storeAddress) {
             $lines[] = $storeAddress;
@@ -147,18 +176,28 @@ class ThermalPrintService
             'cash' => 'Tunai (Cash)',
             'bank_transfer' => 'Transfer Bank',
             'qris' => 'QRIS',
+            'qrisly' => 'QRIS Dinamis',
             'midtrans' => 'Midtrans Gateway',
             'xendit' => 'Xendit Gateway',
             'pay_later' => 'Tempo / Piutang',
         ];
         $paymentLabel = $paymentMap[$transaction->payment_method] ?? strtoupper((string) $transaction->payment_method);
         $lines[] = 'Metode    : '.$paymentLabel;
+        $lines[] = 'Status    : '.($isPaid ? 'LUNAS' : 'BELUM LUNAS (MENUNGGU KONFIRMASI)');
 
         if ($transaction->payment_method === 'cash' && ($transaction->cash ?? 0) > 0) {
             $lines[] = 'Bayar     : Rp '.number_format((int) $transaction->cash, 0, ',', '.');
             if (($transaction->change ?? 0) > 0) {
                 $lines[] = 'Kembali   : Rp '.number_format((int) $transaction->change, 0, ',', '.');
             }
+        }
+
+        if (! $isPaid && $transaction->payment_method === 'bank_transfer' && $transaction->bankAccount) {
+            $lines[] = '--------------------------------';
+            $lines[] = '*Petunjuk Transfer:*';
+            $lines[] = "Bank      : {$transaction->bankAccount->bank_name}";
+            $lines[] = "No. Rek   : {$transaction->bankAccount->account_number}";
+            $lines[] = "Atas Nama : {$transaction->bankAccount->account_name}";
         }
 
         if ($transaction->receivable && $transaction->payment_method === 'pay_later') {

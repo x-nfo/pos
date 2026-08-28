@@ -761,6 +761,12 @@ export default function Print({
                                                             ?.due_date || "-"}
                                                     </span>
                                                 )}
+                                            {transaction.payment_confirmer && (
+                                                <span className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
+                                                    Dikonfirmasi:{" "}
+                                                    {transaction.payment_confirmer.name}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

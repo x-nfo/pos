@@ -951,6 +951,7 @@ class TransactionController extends Controller
             'bankAccount',
             'discountApprover:id,name',
             'discountApprovalLogs.responder:id,name',
+            'paymentConfirmer:id,name',
         ])
             ->where('invoice', $invoice)
             ->firstOrFail();
@@ -1037,6 +1038,7 @@ class TransactionController extends Controller
         $query = Transaction::query()
             ->with([
                 'cashier:id,name',
+                'paymentConfirmer:id,name',
                 'warehouse:id,code,name',
                 'cashierShift:id,opened_at,status',
                 'customer:id,name,no_telp',
@@ -1118,8 +1120,12 @@ class TransactionController extends Controller
         }
 
         $beforeStatus = $transaction->payment_status;
+        $confirmedAt = now();
+
         $transaction->update([
             'payment_status' => 'paid',
+            'payment_confirmed_by' => auth()->id(),
+            'payment_confirmed_at' => $confirmedAt,
         ]);
 
         $this->auditLogService->log(
@@ -1138,10 +1144,14 @@ class TransactionController extends Controller
                 'payment_method' => $transaction->payment_method,
                 'payment_status' => 'paid',
                 'bank_account_id' => $transaction->bank_account_id,
+                'payment_confirmed_by' => auth()->id(),
+                'payment_confirmed_at' => $confirmedAt->toDateTimeString(),
             ],
             meta: [
                 'invoice' => $transaction->invoice,
                 'bank_account_id' => $transaction->bank_account_id,
+                'payment_confirmed_by' => auth()->id(),
+                'payment_confirmed_at' => $confirmedAt->toDateTimeString(),
             ],
         );
 

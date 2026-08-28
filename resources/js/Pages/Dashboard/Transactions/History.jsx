@@ -375,7 +375,14 @@ const History = ({ transactions, filters, warehouses = [] }) => {
                                                     Piutang
                                                 </span>
                                             ) : isPaid ? (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
+                                                <span
+                                                    title={
+                                                        transaction.payment_confirmer
+                                                            ? `Dikonfirmasi oleh ${transaction.payment_confirmer.name}`
+                                                            : undefined
+                                                    }
+                                                    className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
+                                                >
                                                     <IconCheck size={12} strokeWidth={3} />
                                                     Lunas
                                                 </span>
@@ -603,7 +610,14 @@ const History = ({ transactions, filters, warehouses = [] }) => {
                                                         </span>
                                                     ) : transaction.payment_status ===
                                                       "paid" ? (
-                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 rounded-full border border-emerald-200 dark:border-emerald-800">
+                                                        <span
+                                                            title={
+                                                                transaction.payment_confirmer
+                                                                    ? `Dikonfirmasi oleh ${transaction.payment_confirmer.name}`
+                                                                    : undefined
+                                                            }
+                                                            className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 rounded-full border border-emerald-200 dark:border-emerald-800 cursor-default"
+                                                        >
                                                             <IconCheck size={12} strokeWidth={3} />
                                                             Lunas
                                                         </span>

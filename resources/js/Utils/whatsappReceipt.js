@@ -74,8 +74,10 @@ export function generateWhatsappReceiptText(
 
     const lines = [];
 
+    const isPaid = transaction.payment_status === "paid";
+
     // Header Toko
-    lines.push("*STRUK PEMBELIAN*");
+    lines.push(isPaid ? "*STRUK PEMBELIAN (LUNAS)*" : "*TAGIHAN PEMBELIAN (BELUM LUNAS)*");
     lines.push(`*${storeName.toUpperCase()}*`);
     if (storeAddress) lines.push(storeAddress);
     if (storePhone) lines.push(`Telp: ${storePhone}`);
@@ -145,6 +147,7 @@ export function generateWhatsappReceiptText(
 
     // Metode Pembayaran & Tunai
     lines.push(`Metode    : ${formatPaymentMethod(transaction.payment_method)}`);
+    lines.push(`Status    : ${isPaid ? "LUNAS" : "BELUM LUNAS (MENUNGGU KONFIRMASI)"}`);
 
     const cash = Number(transaction.cash || 0);
     const change = Number(transaction.change || 0);
@@ -154,6 +157,14 @@ export function generateWhatsappReceiptText(
         if (change > 0) {
             lines.push(`Kembali   : ${formatRupiah(change)}`);
         }
+    }
+
+    if (!isPaid && transaction.payment_method === "bank_transfer" && transaction.bank_account) {
+        lines.push("--------------------------------");
+        lines.push("*Petunjuk Transfer:*");
+        lines.push(`Bank      : ${transaction.bank_account.bank_name}`);
+        lines.push(`No. Rek   : ${transaction.bank_account.account_number}`);
+        lines.push(`Atas Nama : ${transaction.bank_account.account_name}`);
     }
 
     if (transaction.receivable && transaction.payment_method === "pay_later") {

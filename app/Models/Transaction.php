@@ -46,6 +46,8 @@ class Transaction extends Model
         'discount_approved_at',
         'discount_approval_status',
         'access_token',
+        'payment_confirmed_by',
+        'payment_confirmed_at',
     ];
 
     protected $casts = [
@@ -64,6 +66,8 @@ class Transaction extends Model
         'shipping_cost' => 'integer',
         'grand_total' => 'integer',
         'bank_account_id' => 'integer',
+        'payment_confirmed_by' => 'integer',
+        'payment_confirmed_at' => 'datetime',
         'tax_rate' => 'decimal:2',
         'tax_total' => 'integer',
         'discount_approved_at' => 'datetime',
@@ -147,6 +151,11 @@ class Transaction extends Model
     public function discountApprover()
     {
         return $this->belongsTo(User::class, 'discount_approved_by');
+    }
+
+    public function paymentConfirmer()
+    {
+        return $this->belongsTo(User::class, 'payment_confirmed_by');
     }
 
     public function discountApprovalLogs()
