@@ -194,6 +194,10 @@ class CrmAutomationService
 
     public function createInvoiceShareCampaignForTransaction(Transaction $transaction, int $userId): CustomerCampaign
     {
+        $transaction->loadMissing(['customer', 'details.product', 'details.unit', 'cashier']);
+        $thermalPrintService = app(ThermalPrintService::class);
+        $message = $thermalPrintService->generateWhatsappReceiptText($transaction);
+
         $campaign = CustomerCampaign::query()->firstOrCreate(
             ['context_key' => 'invoice-share-transaction-'.$transaction->id],
             [
@@ -207,11 +211,21 @@ class CrmAutomationService
                     'transaction_id' => $transaction->id,
                     'invoice' => $transaction->invoice,
                 ]],
-                'message_template' => 'Invoice {{invoice}}: {{url}}',
+                'message_template' => $message,
                 'processed_at' => now(),
                 'created_by' => $userId,
             ]
         );
+
+        $target = $transaction->customer?->no_telp;
+        $targetFormatted = $target ? preg_replace('/[^0-9]/', '', $target) : '';
+        if ($targetFormatted && str_starts_with($targetFormatted, '0')) {
+            $targetFormatted = '62'.substr($targetFormatted, 1);
+        }
+
+        $waUrl = $targetFormatted
+            ? 'https://wa.me/'.$targetFormatted.'?text='.urlencode($message)
+            : 'https://wa.me/?text='.urlencode($message);
 
         $campaign->logs()->updateOrCreate(
             [
@@ -222,8 +236,8 @@ class CrmAutomationService
                 'channel' => CustomerCampaign::CHANNEL_WHATSAPP_LINK,
                 'status' => CustomerCampaignLog::STATUS_READY_TO_SEND,
                 'payload' => [
-                    'message' => 'Invoice '.$transaction->invoice.': '.route('transactions.public', $transaction->invoice, true),
-                    'whatsapp_url' => 'https://wa.me/?text='.urlencode('Invoice '.$transaction->invoice.': '.route('transactions.public', $transaction->invoice, true)),
+                    'message' => $message,
+                    'whatsapp_url' => $waUrl,
                     'invoice' => $transaction->invoice,
                 ],
             ]

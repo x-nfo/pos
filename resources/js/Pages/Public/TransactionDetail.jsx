@@ -1,5 +1,7 @@
 import React from "react";
 import { Head, usePage } from "@inertiajs/react";
+import { IconBrandWhatsapp } from "@tabler/icons-react";
+import { shareWhatsappReceipt } from "@/Utils/whatsappReceipt";
 
 const formatPrice = (v = 0) => Number(v || 0).toLocaleString("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 });
 const formatDate = (v) => v ? new Date(v).toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short" }) : "-";
@@ -104,7 +106,7 @@ export default function TransactionDetail({ transaction, token }) {
                             )}
                             {transaction.shipping_cost > 0 && (
                                 <div className="flex justify-between text-slate-500 dark:text-slate-400">
-                                    <span>Ongkos Kirim</span>
+                                    <span>Ongkir</span>
                                     <span className="font-mono">+{formatPrice(transaction.shipping_cost)}</span>
                                 </div>
                             )}
@@ -144,6 +146,23 @@ export default function TransactionDetail({ transaction, token }) {
                                 </button>
                             </div>
                         )}
+
+                        <div className="pt-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    shareWhatsappReceipt({
+                                        transaction,
+                                        storeProfile,
+                                        branding,
+                                    });
+                                }}
+                                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-sm shadow-md shadow-emerald-500/20 transition-all active:scale-[0.98]"
+                            >
+                                <IconBrandWhatsapp size={18} />
+                                Bagikan ke WhatsApp
+                            </button>
+                        </div>
                     </div>
 
                     <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 text-center text-xs text-slate-400 dark:text-slate-500">

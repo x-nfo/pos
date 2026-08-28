@@ -82,6 +82,102 @@ class ThermalPrintService
         return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Struk '.$transaction->invoice.'</title><style>@page{size:'.$paperSize.' auto;margin:0;}body{margin:0;padding:0;background:#fff;font-family:monospace;}pre{font-family:monospace;font-size:'.$fontSize.';line-height:1.3;width:'.$width.';max-width:'.$width.';margin:0;padding:2px;box-sizing:border-box;white-space:pre-wrap;word-break:break-all;color:#000;}</style></head><body onload="window.print()"><pre>'.e($text).'</pre></body></html>';
     }
 
+    public function generateWhatsappReceiptText(Transaction $transaction): string
+    {
+        $transaction->loadMissing(['customer', 'details.product', 'details.unit', 'cashier', 'receivable']);
+
+        $storeName = Setting::get('store_name', config('app.name', 'Point of Sales'));
+        $storeAddress = Setting::get('store_address', '');
+        $storePhone = Setting::get('store_phone', '');
+
+        if ($storeAddress && str_contains(strtolower($storeAddress), 'belum diisi')) {
+            $storeAddress = '';
+        }
+        if ($storePhone && str_contains(strtolower($storePhone), 'belum diisi')) {
+            $storePhone = '';
+        }
+
+        $lines = [];
+        $lines[] = '*STRUK PEMBELIAN*';
+        $lines[] = '*'.strtoupper((string) $storeName).'*';
+        if ($storeAddress) {
+            $lines[] = $storeAddress;
+        }
+        if ($storePhone) {
+            $lines[] = 'Telp: '.$storePhone;
+        }
+        $lines[] = '================================';
+        $lines[] = 'No. Nota  : '.$transaction->invoice;
+        $lines[] = 'Tanggal   : '.($transaction->created_at?->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i'));
+        $lines[] = 'Kasir     : '.($transaction->cashier?->name ?? '-');
+        $lines[] = 'Pelanggan : '.($transaction->customer?->name ?? 'Umum');
+        $lines[] = '================================';
+
+        foreach ($transaction->details as $detail) {
+            $title = $detail->product?->title ?? 'Produk';
+            $qty = $detail->qty ?: 1;
+            $unitSymbol = $detail->unit?->symbol ? ' '.$detail->unit->symbol : ' pcs';
+            $unitPrice = (int) ($detail->unit_price ?: ($detail->price / max(1, $qty)));
+            $linePrice = (int) $detail->price;
+
+            $lines[] = "*{$title}*";
+            $lines[] = "{$qty}{$unitSymbol} x Rp ".number_format($unitPrice, 0, ',', '.').' = Rp '.number_format($linePrice, 0, ',', '.');
+            if (($detail->discount_total ?? 0) > 0) {
+                $lines[] = '(Diskon Item: -Rp '.number_format((int) $detail->discount_total, 0, ',', '.').')';
+            }
+        }
+
+        $lines[] = '================================';
+        $subtotal = ($transaction->grand_total ?? 0) + ($transaction->discount ?? 0) - ($transaction->shipping_cost ?? 0) - ($transaction->tax_total ?? 0);
+        $lines[] = 'Subtotal  : Rp '.number_format($subtotal, 0, ',', '.');
+
+        if (($transaction->discount ?? 0) > 0) {
+            $lines[] = 'Diskon    : -Rp '.number_format((int) $transaction->discount, 0, ',', '.');
+        }
+        if (($transaction->tax_total ?? 0) > 0) {
+            $lines[] = 'PPN       : +Rp '.number_format((int) $transaction->tax_total, 0, ',', '.');
+        }
+        if (($transaction->shipping_cost ?? 0) > 0) {
+            $lines[] = 'Ongkir    : +Rp '.number_format((int) $transaction->shipping_cost, 0, ',', '.');
+        }
+        $lines[] = '--------------------------------';
+        $lines[] = '*TOTAL     : Rp '.number_format((int) $transaction->grand_total, 0, ',', '.').'*';
+
+        $paymentMap = [
+            'cash' => 'Tunai (Cash)',
+            'bank_transfer' => 'Transfer Bank',
+            'qris' => 'QRIS',
+            'midtrans' => 'Midtrans Gateway',
+            'xendit' => 'Xendit Gateway',
+            'pay_later' => 'Tempo / Piutang',
+        ];
+        $paymentLabel = $paymentMap[$transaction->payment_method] ?? strtoupper((string) $transaction->payment_method);
+        $lines[] = 'Metode    : '.$paymentLabel;
+
+        if ($transaction->payment_method === 'cash' && ($transaction->cash ?? 0) > 0) {
+            $lines[] = 'Bayar     : Rp '.number_format((int) $transaction->cash, 0, ',', '.');
+            if (($transaction->change ?? 0) > 0) {
+                $lines[] = 'Kembali   : Rp '.number_format((int) $transaction->change, 0, ',', '.');
+            }
+        }
+
+        if ($transaction->receivable && $transaction->payment_method === 'pay_later') {
+            $remaining = max(0, (int) $transaction->receivable->total - (int) $transaction->receivable->paid);
+            $lines[] = 'Sisa Tagihan : Rp '.number_format($remaining, 0, ',', '.');
+            if ($transaction->receivable->due_date) {
+                $lines[] = 'Jatuh Tempo  : '.$transaction->receivable->due_date->format('d/m/Y');
+            }
+        }
+
+        $lines[] = '================================';
+        $lines[] = 'Terima kasih atas kunjungan Anda!';
+        $lines[] = '--------------------------------';
+        $lines[] = '*Lihat Nota Online:*';
+        $lines[] = route('transactions.public', $transaction->invoice, true);
+
+        return implode("\n", $lines);
+    }
+
     public function generateSalesReturnReceiptText(SalesReturn $salesReturn, string $paperSize = '80mm'): string
     {
         $salesReturn->loadMissing(['transaction', 'customer', 'cashier', 'items.product', 'exchangeItems.product']);

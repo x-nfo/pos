@@ -16,6 +16,7 @@ import {
     IconUsb,
     IconBluetooth,
     IconBolt,
+    IconX,
 } from "@tabler/icons-react";
 import QRCode from "qrcode";
 import ThermalReceipt, {
@@ -23,6 +24,7 @@ import ThermalReceipt, {
 } from "@/Components/Receipt/ThermalReceipt";
 import ShippingLabel from "@/Components/Receipt/ShippingLabel";
 import { useAuthorization } from "@/Utils/authorization";
+import { shareWhatsappReceipt } from "@/Utils/whatsappReceipt";
 import { printViaWebUsb } from "@/Utils/webUsbPrinter";
 import { printViaBluetooth } from "@/Utils/webBluetoothPrinter";
 import toast from "react-hot-toast";
@@ -83,8 +85,49 @@ export default function Print({
     const [isDirectPrinting, setIsDirectPrinting] = useState(false);
     const [isWebUsbPrinting, setIsWebUsbPrinting] = useState(false);
     const [isBluetoothPrinting, setIsBluetoothPrinting] = useState(false);
+    const [isCheckingApproval, setIsCheckingApproval] = useState(false);
     const hasAutoPrinted = useRef(false);
     const canConfirmPayment = can("transactions-confirm-payment");
+    const canApproveDiscount = can("discounts-approve");
+
+    const handleCheckApprovalStatus = () => {
+        setIsCheckingApproval(true);
+        router.reload({
+            only: ["transaction"],
+            onSuccess: () => {
+                setIsCheckingApproval(false);
+                toast.success("Status transaksi diperbarui.");
+            },
+            onError: () => {
+                setIsCheckingApproval(false);
+                toast.error("Gagal memeriksa status approval.");
+            },
+        });
+    };
+
+    const handleDiscountDecision = (action) => {
+        const isApprove = action === "approve";
+        if (
+            !window.confirm(
+                `${isApprove ? "Setujui" : "Tolak"} diskon transaksi ${transaction.invoice}?`
+            )
+        )
+            return;
+
+        router.post(
+            route(`discount-approvals.${action}`, transaction.id),
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.success(
+                        isApprove ? "Diskon disetujui." : "Diskon ditolak."
+                    );
+                },
+                onError: () => toast.error("Gagal memproses approval diskon."),
+            }
+        );
+    };
 
     const handleDirectPrint = async () => {
         setIsDirectPrinting(true);
@@ -200,6 +243,7 @@ export default function Print({
     const paymentStatuses = {
         paid: "Lunas",
         pending: transaction?.payment_method === "pay_later" ? "Belum Lunas" : "Menunggu",
+        pending_approval: "Menunggu Approval Diskon",
         failed: "Gagal",
         expired: "Kedaluwarsa",
         unpaid: "Belum Lunas",
@@ -214,6 +258,8 @@ export default function Print({
         paid: "bg-success-100 text-success-700 dark:bg-success-900/50 dark:text-success-400",
         pending:
             "bg-warning-100 text-warning-700 dark:bg-warning-900/50 dark:text-warning-400",
+        pending_approval:
+            "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300",
         unpaid:
             "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
         partial:
@@ -246,15 +292,19 @@ export default function Print({
                     toast.success("Memicu auto-print via WebUSB...");
                     handleWebUsbPrint();
                 } else if (autoPrintDriver === "server") {
-                    toast.success("Auto-print dikirim via Server Spooler (CUPS)");
+                    toast.success("Memicu auto-print via Server Thermal...");
+                    handleDirectPrint();
                 } else {
-                    toast.success("Memicu cetak otomatis browser...");
-                    window.print();
+                    handlePrint();
                 }
-            }, 600);
+            }, 500);
             return () => clearTimeout(timer);
         }
-    }, [autoPrint, autoPrintDriver, paymentStatusKey]);
+    }, [autoPrint, paymentStatusKey, autoPrintDriver]);
+
+    const isPendingApproval =
+        transaction?.discount_approval_status === "pending" ||
+        transaction?.payment_status === "pending_approval";
 
     const SimpleBarcode = ({ value }) => {
         const bars = useMemo(() => {
@@ -372,36 +422,15 @@ export default function Print({
 
                             <button
                                 type="button"
-                                onClick={async () => {
-                                    try {
-                                        const url = route("portal.transaction", {
-                                            invoice: transaction.invoice,
-                                            token: transaction.access_token,
-                                        });
-                                        const shareUrl = /^https?:\/\//i.test(url)
-                                            ? url
-                                            : `${window.location.origin}${url.startsWith("/") ? "" : "/"}${url}`;
-
-                                        if (navigator.clipboard?.writeText) {
-                                            await navigator.clipboard.writeText(shareUrl);
-                                        } else {
-                                            const textarea = document.createElement("textarea");
-                                            textarea.value = shareUrl;
-                                            textarea.style.position = "fixed";
-                                            textarea.style.left = "-999999px";
-                                            textarea.style.top = "-999999px";
-                                            document.body.appendChild(textarea);
-                                            textarea.focus();
-                                            textarea.select();
-                                            document.execCommand("copy");
-                                            document.body.removeChild(textarea);
-                                        }
-                                        alert("Link invoice disalin");
-                                    } catch (e) {
-                                        alert("Gagal menyalin link: " + (e?.message || "Terjadi kesalahan"));
-                                    }
+                                onClick={() => {
+                                    shareWhatsappReceipt({
+                                        transaction,
+                                        storeProfile,
+                                        branding,
+                                    });
                                 }}
                                 className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto"
+                                title="Share Struk Transaksi"
                             >
                                 <IconShare size={18} />
                                 Share
@@ -502,6 +531,79 @@ export default function Print({
                             )}
                         </div>
                     </div>
+
+                    {/* Pending Approval Banner */}
+                    {isPendingApproval && (
+                        <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-5 shadow-sm print:hidden">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                                        <IconAlertCircle size={26} />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <h3 className="font-bold text-amber-900 dark:text-amber-200 text-base">
+                                                Menunggu Persetujuan (Approval) Diskon
+                                            </h3>
+                                            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300">
+                                                Status: Pending
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-amber-800/90 dark:text-amber-300/90 mt-1">
+                                            Diskon manual sebesar <strong>{formatPrice(transaction.discount)}</strong> memerlukan verifikasi Supervisor sebelum pembayaran diselesaikan dan struk final dicetak.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center flex-wrap">
+                                    <button
+                                        type="button"
+                                        onClick={handleCheckApprovalStatus}
+                                        disabled={isCheckingApproval}
+                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs font-semibold hover:bg-amber-100/50 dark:hover:bg-slate-700 transition-colors shadow-sm disabled:opacity-50"
+                                        title="Muat ulang status approval transaksi"
+                                    >
+                                        <IconRefresh
+                                            size={15}
+                                            className={isCheckingApproval ? "animate-spin" : ""}
+                                        />
+                                        {isCheckingApproval ? "Memeriksa..." : "Cek Status"}
+                                    </button>
+
+                                    {canApproveDiscount && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDiscountDecision("approve")}
+                                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-success-600 hover:bg-success-700 text-white text-xs font-semibold shadow-sm transition-colors"
+                                            >
+                                                <IconCheck size={16} />
+                                                Setujui Diskon
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDiscountDecision("deny")}
+                                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-danger-300 dark:border-danger-700 bg-white dark:bg-slate-800 text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-950/40 text-xs font-semibold shadow-sm transition-colors"
+                                            >
+                                                <IconX size={16} />
+                                                Tolak
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Approved Discount Banner */}
+                    {transaction?.discount_approval_status === "approved" && (
+                        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-emerald-800 dark:text-emerald-300 print:hidden">
+                            <span className="flex items-center gap-1.5">
+                                <IconCheck size={16} className="text-emerald-600 dark:text-emerald-400" />
+                                Diskon telah disetujui {transaction?.discount_approver?.name ? `oleh ${transaction.discount_approver.name}` : ""} {transaction?.discount_approved_at ? `pada ${formatDateTime(transaction.discount_approved_at)}` : ""}.
+                            </span>
+                        </div>
+                    )}
 
                     {/* Thermal Receipt Preview */}
                     {(printMode === "thermal80" || printMode === "thermal58") && (
