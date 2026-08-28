@@ -50,6 +50,7 @@ import {
 import { useAuthorization } from "@/Utils/authorization";
 import { useHaptic } from "@/Hooks/useHaptic";
 import Swal from "sweetalert2";
+import { toast } from "react-hot-toast";
 
 // Static Menu Definition with Verified Route Names & Permissions
 const MENU_SECTIONS = [
@@ -297,7 +298,7 @@ const MENU_SECTIONS = [
                 routeName: "settings.loyalty",
                 icon: IconCrown,
                 color: "text-purple-500 bg-purple-50 dark:bg-purple-950/60 dark:text-purple-400",
-                permissions: ["dashboard-access"],
+                permissions: ["loyalty-settings-access"],
             },
         ],
     },
@@ -405,7 +406,7 @@ const MENU_SECTIONS = [
                 routeName: "settings.store",
                 icon: IconSettings,
                 color: "text-blue-500 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400",
-                permissions: ["dashboard-access"],
+                permissions: ["store-settings-access"],
             },
             {
                 title: "Branding & Tampilan",
@@ -413,7 +414,7 @@ const MENU_SECTIONS = [
                 routeName: "settings.branding",
                 icon: IconPalette,
                 color: "text-purple-500 bg-purple-50 dark:bg-purple-950/60 dark:text-purple-400",
-                permissions: ["dashboard-access"],
+                permissions: ["store-settings-access"],
             },
             {
                 title: "Pengaturan Printer",
@@ -421,7 +422,7 @@ const MENU_SECTIONS = [
                 routeName: "settings.printer",
                 icon: IconPrinter,
                 color: "text-amber-500 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-400",
-                permissions: ["dashboard-access"],
+                permissions: ["printer-settings-access"],
             },
             {
                 title: "Target Penjualan",
@@ -429,7 +430,7 @@ const MENU_SECTIONS = [
                 routeName: "settings.target",
                 icon: IconTarget,
                 color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-400",
-                permissions: ["dashboard-access"],
+                permissions: ["target-settings-access"],
             },
             {
                 title: "Gudang & Cabang",
@@ -497,6 +498,25 @@ export default function MenuIndex() {
         })).filter((sec) => sec.items.length > 0);
     }, [search, canAny]);
 
+    const canKasir = canAny(["transactions-access"]);
+    const canAddProduct = canAny(["products-create"]);
+    const canLaporan = canAny(["reports-access"]);
+    const canSeting = canAny([
+        "store-settings-access",
+        "payment-settings-access",
+        "whatsapp-settings-access",
+        "warehouses-access",
+        "price-lists-access",
+        "printer-settings-access",
+        "loyalty-settings-access",
+        "target-settings-access",
+    ]);
+
+    const handleDisabledPillClick = (featureName) => {
+        triggerHaptic("warning");
+        toast.error(`Akses dibatasi: Anda tidak memiliki izin untuk ${featureName}.`);
+    };
+
     const handleLogout = () => {
         triggerHaptic("warning");
         Swal.fire({
@@ -562,49 +582,109 @@ export default function MenuIndex() {
 
                     {/* Quick Navigation Pills */}
                     <div className="mt-5 pt-4 border-t border-white/15 grid grid-cols-4 gap-2 text-center">
-                        <Link
-                            href={resolveRoute("transactions.mobile")}
-                            onClick={() => triggerHaptic("tap")}
-                            className="flex flex-col items-center gap-1.5 p-2 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all"
-                        >
-                            <div className="w-9 h-9 rounded-xl bg-white text-primary-700 flex items-center justify-center shadow-sm">
-                                <IconShoppingCart size={20} strokeWidth={2.2} />
-                            </div>
-                            <span className="text-[10px] font-bold tracking-tight">Kasir</span>
-                        </Link>
+                        {/* 1. Kasir */}
+                        {canKasir ? (
+                            <Link
+                                href={resolveRoute("transactions.mobile")}
+                                onClick={() => triggerHaptic("tap")}
+                                className="flex flex-col items-center gap-1.5 p-2 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all"
+                            >
+                                <div className="w-9 h-9 rounded-xl bg-white text-primary-700 flex items-center justify-center shadow-sm">
+                                    <IconShoppingCart size={20} strokeWidth={2.2} />
+                                </div>
+                                <span className="text-[10px] font-bold tracking-tight">Kasir</span>
+                            </Link>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => handleDisabledPillClick("mengakses Kasir POS")}
+                                className="flex flex-col items-center gap-1.5 p-2 rounded-2xl bg-white/5 opacity-35 cursor-not-allowed transition-all select-none"
+                                title="Akses dibatasi"
+                            >
+                                <div className="w-9 h-9 rounded-xl bg-white/40 text-white/60 flex items-center justify-center shadow-xs">
+                                    <IconShoppingCart size={20} strokeWidth={1.8} />
+                                </div>
+                                <span className="text-[10px] font-bold tracking-tight text-white/50">Kasir</span>
+                            </button>
+                        )}
 
-                        <Link
-                            href={resolveRoute("products.create")}
-                            onClick={() => triggerHaptic("tap")}
-                            className="flex flex-col items-center gap-1.5 p-2 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all"
-                        >
-                            <div className="w-9 h-9 rounded-xl bg-white text-blue-700 flex items-center justify-center shadow-sm">
-                                <IconBox size={20} strokeWidth={2.2} />
-                            </div>
-                            <span className="text-[10px] font-bold tracking-tight">+ Produk</span>
-                        </Link>
+                        {/* 2. + Produk */}
+                        {canAddProduct ? (
+                            <Link
+                                href={resolveRoute("products.create")}
+                                onClick={() => triggerHaptic("tap")}
+                                className="flex flex-col items-center gap-1.5 p-2 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all"
+                            >
+                                <div className="w-9 h-9 rounded-xl bg-white text-blue-700 flex items-center justify-center shadow-sm">
+                                    <IconBox size={20} strokeWidth={2.2} />
+                                </div>
+                                <span className="text-[10px] font-bold tracking-tight">+ Produk</span>
+                            </Link>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => handleDisabledPillClick("menambah produk baru")}
+                                className="flex flex-col items-center gap-1.5 p-2 rounded-2xl bg-white/5 opacity-35 cursor-not-allowed transition-all select-none"
+                                title="Akses dibatasi"
+                            >
+                                <div className="w-9 h-9 rounded-xl bg-white/40 text-white/60 flex items-center justify-center shadow-xs">
+                                    <IconBox size={20} strokeWidth={1.8} />
+                                </div>
+                                <span className="text-[10px] font-bold tracking-tight text-white/50">+ Produk</span>
+                            </button>
+                        )}
 
-                        <Link
-                            href={resolveRoute("reports.sales.index")}
-                            onClick={() => triggerHaptic("tap")}
-                            className="flex flex-col items-center gap-1.5 p-2 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all"
-                        >
-                            <div className="w-9 h-9 rounded-xl bg-white text-purple-700 flex items-center justify-center shadow-sm">
-                                <IconChartBar size={20} strokeWidth={2.2} />
-                            </div>
-                            <span className="text-[10px] font-bold tracking-tight">Laporan</span>
-                        </Link>
+                        {/* 3. Laporan */}
+                        {canLaporan ? (
+                            <Link
+                                href={resolveRoute("reports.sales.index")}
+                                onClick={() => triggerHaptic("tap")}
+                                className="flex flex-col items-center gap-1.5 p-2 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all"
+                            >
+                                <div className="w-9 h-9 rounded-xl bg-white text-purple-700 flex items-center justify-center shadow-sm">
+                                    <IconChartBar size={20} strokeWidth={2.2} />
+                                </div>
+                                <span className="text-[10px] font-bold tracking-tight">Laporan</span>
+                            </Link>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => handleDisabledPillClick("melihat laporan")}
+                                className="flex flex-col items-center gap-1.5 p-2 rounded-2xl bg-white/5 opacity-35 cursor-not-allowed transition-all select-none"
+                                title="Akses dibatasi"
+                            >
+                                <div className="w-9 h-9 rounded-xl bg-white/40 text-white/60 flex items-center justify-center shadow-xs">
+                                    <IconChartBar size={20} strokeWidth={1.8} />
+                                </div>
+                                <span className="text-[10px] font-bold tracking-tight text-white/50">Laporan</span>
+                            </button>
+                        )}
 
-                        <Link
-                            href={resolveRoute("settings.store")}
-                            onClick={() => triggerHaptic("tap")}
-                            className="flex flex-col items-center gap-1.5 p-2 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all"
-                        >
-                            <div className="w-9 h-9 rounded-xl bg-white text-slate-700 flex items-center justify-center shadow-sm">
-                                <IconSettings size={20} strokeWidth={2.2} />
-                            </div>
-                            <span className="text-[10px] font-bold tracking-tight">Seting</span>
-                        </Link>
+                        {/* 4. Seting */}
+                        {canSeting ? (
+                            <Link
+                                href={resolveRoute("settings.store")}
+                                onClick={() => triggerHaptic("tap")}
+                                className="flex flex-col items-center gap-1.5 p-2 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all"
+                            >
+                                <div className="w-9 h-9 rounded-xl bg-white text-slate-700 flex items-center justify-center shadow-sm">
+                                    <IconSettings size={20} strokeWidth={2.2} />
+                                </div>
+                                <span className="text-[10px] font-bold tracking-tight">Seting</span>
+                            </Link>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => handleDisabledPillClick("mengakses pengaturan toko")}
+                                className="flex flex-col items-center gap-1.5 p-2 rounded-2xl bg-white/5 opacity-35 cursor-not-allowed transition-all select-none"
+                                title="Akses dibatasi"
+                            >
+                                <div className="w-9 h-9 rounded-xl bg-white/40 text-white/60 flex items-center justify-center shadow-xs">
+                                    <IconSettings size={20} strokeWidth={1.8} />
+                                </div>
+                                <span className="text-[10px] font-bold tracking-tight text-white/50">Seting</span>
+                            </button>
+                        )}
                     </div>
                 </div>
 

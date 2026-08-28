@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\BrandingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class WhiteLabelBrandingTest extends TestCase
@@ -18,12 +19,15 @@ class WhiteLabelBrandingTest extends TestCase
         parent::setUp();
 
         Permission::firstOrCreate(['name' => 'dashboard-access', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'store-settings-access', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'store-settings-update', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
     }
 
     public function test_branding_settings_page_can_be_rendered(): void
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('dashboard-access');
+        $user->givePermissionTo('store-settings-access');
 
         $response = $this->actingAs($user)->get(route('settings.branding'));
 
@@ -33,7 +37,8 @@ class WhiteLabelBrandingTest extends TestCase
     public function test_branding_settings_can_be_updated(): void
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('dashboard-access');
+        $user->assignRole('super-admin');
+        $user->givePermissionTo('store-settings-update');
 
         $payload = [
             'app_name' => 'RetailPro Suite',

@@ -20,6 +20,7 @@ import {
     IconDeviceMobile,
 } from "@tabler/icons-react";
 import Notification from "@/Components/Dashboard/Notification";
+import hasAnyPermission from "@/Utils/Permission";
 
 export default function POSLayout({ children }) {
     const { auth, storeProfile, activeCashierShift, appVersion, branding } = usePage().props;
@@ -32,6 +33,8 @@ export default function POSLayout({ children }) {
 
     const appName = branding?.appName || storeProfile?.name || "KASIR";
     const appLogo = branding?.logoLight || storeProfile?.logo || null;
+    const hasDashboardAccess = hasAnyPermission(["dashboard-access"]);
+    const homeRoute = hasDashboardAccess ? route("dashboard") : route("transactions.index");
 
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
@@ -96,7 +99,7 @@ export default function POSLayout({ children }) {
                     </button>
 
                     {/* Logo */}
-                    <Link href={route("dashboard")} className="flex items-center gap-2">
+                    <Link href={homeRoute} className="flex items-center gap-2">
                         <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
                             {appLogo ? (
                                 <img
@@ -133,13 +136,15 @@ export default function POSLayout({ children }) {
                 <div className="flex items-center gap-2 lg:gap-3">
                     {/* Quick Actions */}
                     <nav className="hidden lg:flex items-center gap-1">
-                        <Link
-                            href={route("dashboard")}
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
-                        >
-                            <IconHome size={18} />
-                            <span>Dashboard</span>
-                        </Link>
+                        {hasDashboardAccess && (
+                            <Link
+                                href={route("dashboard")}
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <IconHome size={18} />
+                                <span>Dashboard</span>
+                            </Link>
+                        )}
                         <Link
                             href={route("transactions.history")}
                             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
@@ -268,13 +273,15 @@ export default function POSLayout({ children }) {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <nav className="p-4 space-y-2">
-                            <Link
-                                href={route("dashboard")}
-                                className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
-                            >
-                                <IconHome size={20} />
-                                <span className="font-medium">Dashboard</span>
-                            </Link>
+                            {hasDashboardAccess && (
+                                <Link
+                                    href={route("dashboard")}
+                                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+                                >
+                                    <IconHome size={20} />
+                                    <span className="font-medium">Dashboard</span>
+                                </Link>
+                            )}
                             <Link
                                 href={route("transactions.history")}
                                 className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
@@ -292,7 +299,7 @@ export default function POSLayout({ children }) {
                                 <span>Buka Mode Mobile POS</span>
                             </Link>
                             <Link
-                                href={auth?.user?.id ? route("users.edit", auth.user.id) : "#"}
+                                href={route("profile.edit")}
                                 className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
                             >
                                 <IconUser size={20} />

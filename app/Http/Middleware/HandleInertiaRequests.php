@@ -13,8 +13,10 @@ use App\Services\BrandingService;
 use App\Services\CashierShiftService;
 use App\Services\PayableAgingService;
 use App\Services\ReceivableService;
+use App\Services\WhatsAppService;
 use App\Support\ProductionSecurityBaseline;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Middleware;
 
@@ -170,8 +172,9 @@ class HandleInertiaRequests extends Middleware
 
         $waReady = false;
         if (Schema::hasTable('settings') && Setting::getBool('wa_enabled', false) && ! empty(Setting::get('wa_service_url'))) {
-            $waReady = \Illuminate\Support\Facades\Cache::remember('wa_connection_status', 30, function () {
-                $status = app(\App\Services\WhatsAppService::class)->status();
+            $waReady = Cache::remember('wa_connection_status', 30, function () {
+                $status = app(WhatsAppService::class)->status();
+
                 return $status['connected'] ?? false;
             });
         }

@@ -6,8 +6,11 @@ import {
     IconBox,
     IconChartBar,
     IconGridDots,
+    IconLock,
 } from "@tabler/icons-react";
 import { useHaptic } from "@/Hooks/useHaptic";
+import hasAnyPermission from "@/Utils/Permission";
+import { toast } from "react-hot-toast";
 
 export default function DashboardBottomNav() {
     const { url } = usePage();
@@ -19,79 +22,147 @@ export default function DashboardBottomNav() {
     const isReports = url.startsWith("/dashboard/reports") || url.startsWith("/dashboard/sales-reports");
     const isMenu = url.startsWith("/dashboard/menu");
 
+    const canDashboard = hasAnyPermission(["dashboard-access"]);
+    const canProducts = hasAnyPermission(["products-access"]);
+    const canPOS = hasAnyPermission(["transactions-access"]);
+    const canReports = hasAnyPermission(["reports-access"]);
+
+    const handleDisabledClick = (label) => {
+        triggerHaptic("warning");
+        toast.error(`Akses dibatasi: Anda tidak memiliki izin untuk fitur ${label}.`);
+    };
+
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 pb-safe shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
             <div className="flex items-center justify-around h-16 px-1">
                 {/* 1. Beranda */}
-                <Link
-                    href={route("dashboard")}
-                    onClick={() => triggerHaptic("tap")}
-                    className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all active:scale-95 ${
-                        isDashboard
-                            ? "text-primary-600 dark:text-primary-400 font-bold"
-                            : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                    }`}
-                >
-                    <div className="relative">
-                        <IconHome size={22} strokeWidth={isDashboard ? 2.2 : 1.7} />
-                        {isDashboard && (
-                            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary-600 dark:bg-primary-400" />
-                        )}
-                    </div>
-                    <span className="text-[10px] mt-1 tracking-tight">Beranda</span>
-                </Link>
+                {canDashboard ? (
+                    <Link
+                        href={route("dashboard")}
+                        onClick={() => triggerHaptic("tap")}
+                        className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all active:scale-95 ${
+                            isDashboard
+                                ? "text-primary-600 dark:text-primary-400 font-bold"
+                                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                        }`}
+                    >
+                        <div className="relative">
+                            <IconHome size={22} strokeWidth={isDashboard ? 2.2 : 1.7} />
+                            {isDashboard && (
+                                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary-600 dark:bg-primary-400" />
+                            )}
+                        </div>
+                        <span className="text-[10px] mt-1 tracking-tight">Beranda</span>
+                    </Link>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => handleDisabledClick("Beranda / Dashboard")}
+                        className="flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl opacity-35 cursor-not-allowed select-none transition-all"
+                        title="Akses dibatasi"
+                    >
+                        <div className="relative text-slate-400 dark:text-slate-600">
+                            <IconHome size={22} strokeWidth={1.5} />
+                        </div>
+                        <span className="text-[10px] mt-1 tracking-tight text-slate-400 dark:text-slate-600">Beranda</span>
+                    </button>
+                )}
 
                 {/* 2. Produk */}
-                <Link
-                    href={route("products.index")}
-                    onClick={() => triggerHaptic("tap")}
-                    className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all active:scale-95 ${
-                        isProducts
-                            ? "text-primary-600 dark:text-primary-400 font-bold"
-                            : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                    }`}
-                >
-                    <div className="relative">
-                        <IconBox size={22} strokeWidth={isProducts ? 2.2 : 1.7} />
-                        {isProducts && (
-                            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary-600 dark:bg-primary-400" />
-                        )}
-                    </div>
-                    <span className="text-[10px] mt-1 tracking-tight">Produk</span>
-                </Link>
+                {canProducts ? (
+                    <Link
+                        href={route("products.index")}
+                        onClick={() => triggerHaptic("tap")}
+                        className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all active:scale-95 ${
+                            isProducts
+                                ? "text-primary-600 dark:text-primary-400 font-bold"
+                                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                        }`}
+                    >
+                        <div className="relative">
+                            <IconBox size={22} strokeWidth={isProducts ? 2.2 : 1.7} />
+                            {isProducts && (
+                                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary-600 dark:bg-primary-400" />
+                            )}
+                        </div>
+                        <span className="text-[10px] mt-1 tracking-tight">Produk</span>
+                    </Link>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => handleDisabledClick("Katalog Produk")}
+                        className="flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl opacity-35 cursor-not-allowed select-none transition-all"
+                        title="Akses dibatasi"
+                    >
+                        <div className="relative text-slate-400 dark:text-slate-600">
+                            <IconBox size={22} strokeWidth={1.5} />
+                        </div>
+                        <span className="text-[10px] mt-1 tracking-tight text-slate-400 dark:text-slate-600">Produk</span>
+                    </button>
+                )}
 
                 {/* 3. Kasir POS (Center Action) */}
-                <Link
-                    href={route("transactions.mobile")}
-                    onClick={() => triggerHaptic("tap")}
-                    className="flex flex-col items-center justify-center flex-1 py-1 px-1 transition-all active:scale-95 group"
-                >
-                    <div className="w-10 h-10 -mt-5 rounded-2xl bg-gradient-to-tr from-primary-600 to-primary-700 text-white flex items-center justify-center shadow-lg shadow-primary-500/30 group-active:scale-90 transition-transform">
-                        <IconShoppingCart size={22} strokeWidth={2} />
-                    </div>
-                    <span className="text-[10px] font-bold text-primary-600 dark:text-primary-400 mt-0.5 tracking-tight">
-                        Kasir
-                    </span>
-                </Link>
+                {canPOS ? (
+                    <Link
+                        href={route("transactions.mobile")}
+                        onClick={() => triggerHaptic("tap")}
+                        className="flex flex-col items-center justify-center flex-1 py-1 px-1 transition-all active:scale-95 group"
+                    >
+                        <div className="w-10 h-10 -mt-5 rounded-2xl bg-gradient-to-tr from-primary-600 to-primary-700 text-white flex items-center justify-center shadow-lg shadow-primary-500/30 group-active:scale-90 transition-transform">
+                            <IconShoppingCart size={22} strokeWidth={2} />
+                        </div>
+                        <span className="text-[10px] font-bold text-primary-600 dark:text-primary-400 mt-0.5 tracking-tight">
+                            Kasir
+                        </span>
+                    </Link>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => handleDisabledClick("Kasir POS")}
+                        className="flex flex-col items-center justify-center flex-1 py-1 px-1 opacity-35 cursor-not-allowed select-none"
+                        title="Akses dibatasi"
+                    >
+                        <div className="w-10 h-10 -mt-5 rounded-2xl bg-slate-400 dark:bg-slate-700 text-white flex items-center justify-center shadow-sm">
+                            <IconShoppingCart size={22} strokeWidth={1.8} />
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-600 mt-0.5 tracking-tight">
+                            Kasir
+                        </span>
+                    </button>
+                )}
 
                 {/* 4. Laporan / Riwayat */}
-                <Link
-                    href={route("reports.sales.index")}
-                    onClick={() => triggerHaptic("tap")}
-                    className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all active:scale-95 ${
-                        isReports
-                            ? "text-primary-600 dark:text-primary-400 font-bold"
-                            : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                    }`}
-                >
-                    <div className="relative">
-                        <IconChartBar size={22} strokeWidth={isReports ? 2.2 : 1.7} />
-                        {isReports && (
-                            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary-600 dark:bg-primary-400" />
-                        )}
-                    </div>
-                    <span className="text-[10px] mt-1 tracking-tight">Laporan</span>
-                </Link>
+                {canReports ? (
+                    <Link
+                        href={route("reports.sales.index")}
+                        onClick={() => triggerHaptic("tap")}
+                        className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all active:scale-95 ${
+                            isReports
+                                ? "text-primary-600 dark:text-primary-400 font-bold"
+                                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                        }`}
+                    >
+                        <div className="relative">
+                            <IconChartBar size={22} strokeWidth={isReports ? 2.2 : 1.7} />
+                            {isReports && (
+                                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary-600 dark:bg-primary-400" />
+                            )}
+                        </div>
+                        <span className="text-[10px] mt-1 tracking-tight">Laporan</span>
+                    </Link>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => handleDisabledClick("Laporan")}
+                        className="flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl opacity-35 cursor-not-allowed select-none transition-all"
+                        title="Akses dibatasi"
+                    >
+                        <div className="relative text-slate-400 dark:text-slate-600">
+                            <IconChartBar size={22} strokeWidth={1.5} />
+                        </div>
+                        <span className="text-[10px] mt-1 tracking-tight text-slate-400 dark:text-slate-600">Laporan</span>
+                    </button>
+                )}
 
                 {/* 5. Menu Halaman Aplikasi */}
                 <Link
@@ -100,7 +171,7 @@ export default function DashboardBottomNav() {
                     className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all active:scale-95 ${
                         isMenu
                             ? "text-primary-600 dark:text-primary-400 font-bold"
-                            : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                                : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                     }`}
                 >
                     <div className="relative">

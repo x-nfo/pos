@@ -32,9 +32,6 @@ class WhatsappSettingTest extends TestCase
 
         Setting::set('wa_service_url', 'http://localhost:3001');
         Setting::set('wa_enabled', '1');
-        Setting::set('wa_receivable_reminder_mode', 'auto');
-        Setting::set('wa_template_due_soon', 'Custom template H-3 invoice {{invoice}}');
-        Setting::set('wa_template_overdue', 'Custom template overdue invoice {{invoice}}');
 
         $response = $this->actingAs($admin)->get(route('settings.whatsapp'));
 
@@ -43,13 +40,10 @@ class WhatsappSettingTest extends TestCase
                 ->component('Dashboard/Settings/Whatsapp')
                 ->where('settings.wa_service_url', 'http://localhost:3001')
                 ->where('settings.wa_enabled', true)
-                ->where('settings.wa_receivable_reminder_mode', 'auto')
-                ->where('settings.wa_template_due_soon', 'Custom template H-3 invoice {{invoice}}')
-                ->where('settings.wa_template_overdue', 'Custom template overdue invoice {{invoice}}')
             );
     }
 
-    public function test_admin_can_update_whatsapp_settings_and_templates(): void
+    public function test_admin_can_update_whatsapp_settings(): void
     {
         $admin = $this->createAdminUser();
 
@@ -57,16 +51,31 @@ class WhatsappSettingTest extends TestCase
             ->post(route('settings.whatsapp.update'), [
                 'wa_service_url' => 'http://127.0.0.1:3001',
                 'wa_enabled' => true,
-                'wa_auto_invoice' => true,
-                'wa_receivable_reminder_mode' => 'auto',
-                'wa_template_due_soon' => 'Pengingat {{customer_name}}, tagihan {{invoice}} sebesar Rp {{remaining}} jatuh tempo {{due_date}}.',
-                'wa_template_overdue' => 'Pemberitahuan {{customer_name}}, tagihan {{invoice}} telah melewati jatuh tempo {{due_date}}.',
             ]);
 
         $response->assertRedirect();
 
         $this->assertEquals('http://127.0.0.1:3001', Setting::get('wa_service_url'));
         $this->assertTrue(Setting::getBool('wa_enabled'));
+    }
+
+    public function test_admin_can_access_and_update_automation_settings(): void
+    {
+        $admin = $this->createAdminUser();
+
+        $response = $this->actingAs($admin)->get(route('settings.automation'));
+        $response->assertOk();
+
+        $updateResponse = $this->actingAs($admin)
+            ->post(route('settings.automation.update'), [
+                'wa_auto_invoice' => true,
+                'wa_receivable_reminder_mode' => 'auto',
+                'wa_template_due_soon' => 'Pengingat {{customer_name}}, tagihan {{invoice}} sebesar Rp {{remaining}} jatuh tempo {{due_date}}.',
+                'wa_template_overdue' => 'Pemberitahuan {{customer_name}}, tagihan {{invoice}} telah melewati jatuh tempo {{due_date}}.',
+            ]);
+
+        $updateResponse->assertRedirect();
+
         $this->assertTrue(Setting::getBool('wa_auto_invoice'));
         $this->assertTrue(Setting::getBool('wa_auto_reminder'));
         $this->assertEquals('auto', Setting::get('wa_receivable_reminder_mode'));
@@ -85,9 +94,7 @@ class WhatsappSettingTest extends TestCase
         $admin = $this->createAdminUser();
 
         $response = $this->actingAs($admin)
-            ->post(route('settings.whatsapp.update'), [
-                'wa_service_url' => 'http://localhost:3001',
-                'wa_enabled' => true,
+            ->post(route('settings.automation.update'), [
                 'wa_receivable_reminder_mode' => 'manual',
                 'wa_template_due_soon' => 'Template due soon',
                 'wa_template_overdue' => 'Template overdue',

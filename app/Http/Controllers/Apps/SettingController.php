@@ -9,6 +9,7 @@ use App\Services\BrandingService;
 use App\Services\LoyaltyService;
 use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -279,7 +280,7 @@ class SettingController extends Controller
 
         Setting::set('wa_service_url', $validated['wa_service_url'] ?? '', 'URL service WhatsApp');
         Setting::set('wa_enabled', ($validated['wa_enabled'] ?? false) ? '1' : '0', 'WhatsApp gateway aktif');
-        \Illuminate\Support\Facades\Cache::forget('wa_connection_status');
+        Cache::forget('wa_connection_status');
 
         return back()->with('success', 'Pengaturan WhatsApp disimpan.');
     }
@@ -334,7 +335,7 @@ class SettingController extends Controller
      */
     public function updateBranding(Request $request)
     {
-        abort_if(!$request->user()->isSuperAdmin(), 403, 'Unauthorized action.');
+        abort_if(! $request->user()->isSuperAdmin(), 403, 'Unauthorized action.');
 
         $request->validate([
             'app_name' => 'required|string|max:255',
@@ -417,7 +418,7 @@ class SettingController extends Controller
 
     public function startWhatsapp()
     {
-        \Illuminate\Support\Facades\Cache::forget('wa_connection_status');
+        Cache::forget('wa_connection_status');
         $result = $this->whatsAppService->start();
 
         return response()->json($result);
@@ -432,7 +433,7 @@ class SettingController extends Controller
 
     public function disconnectWhatsapp()
     {
-        \Illuminate\Support\Facades\Cache::forget('wa_connection_status');
+        Cache::forget('wa_connection_status');
         $this->whatsAppService->disconnect();
 
         return response()->json(['status' => true]);

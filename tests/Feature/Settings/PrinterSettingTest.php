@@ -16,7 +16,7 @@ class PrinterSettingTest extends TestCase
 
     public function test_admin_can_access_printer_settings_page(): void
     {
-        $perm = Permission::firstOrCreate(['name' => 'dashboard-access']);
+        $perm = Permission::firstOrCreate(['name' => 'printer-settings-access']);
         $adminRole = Role::firstOrCreate(['name' => 'admin']);
         $adminRole->givePermissionTo($perm);
         $admin = User::factory()->create();
@@ -39,7 +39,7 @@ class PrinterSettingTest extends TestCase
 
     public function test_admin_can_update_printer_driver_settings(): void
     {
-        $perm = Permission::firstOrCreate(['name' => 'dashboard-access']);
+        $perm = Permission::firstOrCreate(['name' => 'printer-settings-update']);
         $adminRole = Role::firstOrCreate(['name' => 'admin']);
         $adminRole->givePermissionTo($perm);
         $admin = User::factory()->create();

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Services\AuditLogService;
+use App\Services\Auth\LandingPageResolverService;
 use App\Support\BotGuard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,8 @@ use Inertia\Response;
 class AuthenticatedSessionController extends Controller
 {
     public function __construct(
-        private readonly AuditLogService $auditLogService
+        private readonly AuditLogService $auditLogService,
+        private readonly LandingPageResolverService $landingPageResolverService
     ) {}
 
     /**
@@ -60,25 +62,9 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('verification.notice');
         }
 
-        $routePriority = [
-            'transactions-access' => 'transactions.index',
-            'receivables-access' => 'receivables.index',
-            'payables-access' => 'payables.index',
-            'customers-access' => 'customers.index',
-            'suppliers-access' => 'suppliers.index',
-            'reports-access' => 'reports.sales.index',
-            'dashboard-access' => 'dashboard',
-        ];
+        $defaultLandingUrl = $this->landingPageResolverService->resolveUrl($user);
 
-        $defaultRoute = 'dashboard.access';
-        foreach ($routePriority as $permission => $routeName) {
-            if ($user && $user->can($permission)) {
-                $defaultRoute = $routeName;
-                break;
-            }
-        }
-
-        return redirect()->intended(route($defaultRoute, absolute: false));
+        return redirect()->intended($defaultLandingUrl);
     }
 
     /**

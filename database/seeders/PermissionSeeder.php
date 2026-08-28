@@ -168,6 +168,22 @@ class PermissionSeeder extends Seeder
         $create('dine-orders-access');
         $create('dine-orders-process');
 
+        // store identity & branding settings
+        $create('store-settings-access');
+        $create('store-settings-update');
+
+        // printer settings
+        $create('printer-settings-access');
+        $create('printer-settings-update');
+
+        // loyalty settings
+        $create('loyalty-settings-access');
+        $create('loyalty-settings-update');
+
+        // sales target settings
+        $create('target-settings-access');
+        $create('target-settings-update');
+
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

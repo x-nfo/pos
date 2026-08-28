@@ -61,13 +61,58 @@ class RoleSeeder extends Seeder
         $this->createRoleWithPermissions('dine-tables-access', '%dine-tables%');
         $this->createRoleWithPermissions('dine-orders-access', '%dine-orders%');
 
+        $this->createRoleWithPermissions('store-settings-access', '%store-settings%');
+        $this->createRoleWithPermissions('printer-settings-access', '%printer-settings%');
+        $this->createRoleWithPermissions('loyalty-settings-access', '%loyalty-settings%');
+        $this->createRoleWithPermissions('target-settings-access', '%target-settings%');
+
         $superAdminRole = Role::firstOrCreate(['name' => 'super-admin']);
         $superAdminRole->syncPermissions(Permission::all());
 
-        // Create cashier role with basic permissions for public registration
+        // 1. Manager Role (Store / Operations Manager)
+        $managerRole = Role::firstOrCreate(['name' => 'store-manager']);
+        $managerPermissions = Permission::whereIn('name', [
+            'dashboard-access',
+            'transactions-access',
+            'transactions-confirm-payment',
+            'cashier-shifts-access',
+            'cashier-shifts-open',
+            'cashier-shifts-close',
+            'cashier-shifts-force-close',
+            'discounts-approve',
+            'products-access',
+            'categories-access',
+            'pricing-rules-access',
+            'price-lists-access',
+            'customers-access',
+            'customers-create',
+            'customers-edit',
+            'customer-vouchers-access',
+            'customer-segments-access',
+            'reports-access',
+            'profits-access',
+            'stock-opnames-access',
+            'stock-opnames-create',
+            'stock-opnames-finalize',
+            'stock-mutations-access',
+            'sales-returns-access',
+            'sales-returns-create',
+            'sales-returns-complete',
+            'receivables-access',
+            'receivables-pay',
+            'receivables-approve',
+            'payables-access',
+            'payables-pay',
+            'suppliers-access',
+            'dine-tables-access',
+            'dine-orders-access',
+            'dine-orders-process',
+        ])->get();
+        $managerRole->syncPermissions($managerPermissions);
+
+        // 2. Cashier Role (POS Checkout & Daily Sales)
         $cashierRole = Role::firstOrCreate(['name' => 'cashier']);
         $cashierPermissions = Permission::whereIn('name', [
-            'dashboard-access',
             'transactions-access',
             'cashier-shifts-access',
             'cashier-shifts-open',
@@ -76,13 +121,61 @@ class RoleSeeder extends Seeder
             'customers-create',
             'receivables-access',
             'receivables-pay',
-            'payables-access',
-            'payables-pay',
-            'suppliers-access',
+            'sales-returns-access',
+            'sales-returns-create',
             'dine-orders-access',
             'dine-orders-process',
         ])->get();
         $cashierRole->syncPermissions($cashierPermissions);
+
+        // 3. Warehouse Staff Role (Procurement & Inventory)
+        $warehouseRole = Role::firstOrCreate(['name' => 'warehouse-staff']);
+        $warehousePermissions = Permission::whereIn('name', [
+            'purchase-orders-access',
+            'purchase-orders-create',
+            'purchase-orders-update',
+            'goods-receivings-access',
+            'goods-receivings-create',
+            'supplier-returns-access',
+            'supplier-returns-create',
+            'supplier-returns-update',
+            'stock-transfers-access',
+            'stock-transfers-create',
+            'stock-transfers-send',
+            'stock-transfers-receive',
+            'stock-transfers-cancel',
+            'stock-mutations-access',
+            'stock-opnames-access',
+            'stock-opnames-create',
+            'products-access',
+            'warehouses-access',
+            'suppliers-access',
+        ])->get();
+        $warehouseRole->syncPermissions($warehousePermissions);
+
+        // 4. Finance Staff Role (Accounts Receivable, Payable, & Profit Reports)
+        $financeRole = Role::firstOrCreate(['name' => 'finance-staff']);
+        $financePermissions = Permission::whereIn('name', [
+            'receivables-access',
+            'receivables-pay',
+            'receivables-approve',
+            'payables-access',
+            'payables-pay',
+            'suppliers-access',
+            'reports-access',
+            'profits-access',
+            'payment-settings-access',
+        ])->get();
+        $financeRole->syncPermissions($financePermissions);
+
+        // 5. Kitchen Staff Role (Dine-In Kitchen Display Orders)
+        $kitchenRole = Role::firstOrCreate(['name' => 'kitchen-staff']);
+        $kitchenPermissions = Permission::whereIn('name', [
+            'dine-tables-access',
+            'dine-orders-access',
+            'dine-orders-process',
+        ])->get();
+        $kitchenRole->syncPermissions($kitchenPermissions);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }

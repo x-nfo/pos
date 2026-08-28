@@ -339,15 +339,16 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::post('/settings/payments/qrisly-upload', [PaymentSettingController::class, 'uploadQris'])->middleware(['permission:payment-settings-update', 'step_up'])->name('settings.payments.qrisly-upload');
 
     // settings target penjualan
-    Route::get('/settings/target', [SettingController::class, 'target'])->middleware('permission:dashboard-access')->name('settings.target');
-    Route::post('/settings/target', [SettingController::class, 'updateTarget'])->middleware('permission:dashboard-access')->name('settings.target.update');
-    Route::get('/settings/store', [SettingController::class, 'storeIdentity'])->middleware('permission:dashboard-access')->name('settings.store');
-    Route::post('/settings/store', [SettingController::class, 'updateStoreProfile'])->middleware('permission:dashboard-access')->name('settings.store.update');
-    Route::post('/settings/branding', [SettingController::class, 'updateBranding'])->middleware('permission:dashboard-access')->name('settings.branding.update');
-    Route::get('/settings/printer', [SettingController::class, 'printer'])->middleware('permission:dashboard-access')->name('settings.printer');
-    Route::post('/settings/printer', [SettingController::class, 'updatePrinter'])->middleware('permission:dashboard-access')->name('settings.printer.update');
-    Route::get('/settings/loyalty', [SettingController::class, 'loyalty'])->middleware('permission:dashboard-access')->name('settings.loyalty');
-    Route::post('/settings/loyalty', [SettingController::class, 'updateLoyalty'])->middleware('permission:dashboard-access')->name('settings.loyalty.update');
+    Route::get('/settings/target', [SettingController::class, 'target'])->middleware('permission:target-settings-access')->name('settings.target');
+    Route::post('/settings/target', [SettingController::class, 'updateTarget'])->middleware('permission:target-settings-update')->name('settings.target.update');
+    Route::get('/settings/store', [SettingController::class, 'storeIdentity'])->middleware('permission:store-settings-access')->name('settings.store');
+    Route::get('/settings/branding', [SettingController::class, 'storeIdentity'])->middleware('permission:store-settings-access')->name('settings.branding');
+    Route::post('/settings/store', [SettingController::class, 'updateStoreProfile'])->middleware('permission:store-settings-update')->name('settings.store.update');
+    Route::post('/settings/branding', [SettingController::class, 'updateBranding'])->middleware('permission:store-settings-update')->name('settings.branding.update');
+    Route::get('/settings/printer', [SettingController::class, 'printer'])->middleware('permission:printer-settings-access')->name('settings.printer');
+    Route::post('/settings/printer', [SettingController::class, 'updatePrinter'])->middleware('permission:printer-settings-update')->name('settings.printer.update');
+    Route::get('/settings/loyalty', [SettingController::class, 'loyalty'])->middleware('permission:loyalty-settings-access')->name('settings.loyalty');
+    Route::post('/settings/loyalty', [SettingController::class, 'updateLoyalty'])->middleware('permission:loyalty-settings-update')->name('settings.loyalty.update');
 
     // settings whatsapp
     Route::get('/settings/whatsapp', [SettingController::class, 'whatsapp'])->middleware('permission:whatsapp-settings-access')->name('settings.whatsapp');
