@@ -378,11 +378,18 @@ export default function Menu() {
             title: t("sidebar.sections.settings"),
             details: [
                 {
-                    title: "Identitas & Branding",
+                    title: "Identitas Toko",
                     href: route("settings.store"),
                     active: url.startsWith("/dashboard/settings/store"),
                     icon: <IconBuildingStore size={20} strokeWidth={1.5} />,
                     permissions: hasAnyPermission(["store-settings-access"]),
+                },
+                {
+                    title: "Branding & Tampilan",
+                    href: route("settings.branding"),
+                    active: url.startsWith("/dashboard/settings/branding"),
+                    icon: <IconPalette size={20} strokeWidth={1.5} />,
+                    permissions: hasAnyPermission(["branding-settings-access"]),
                 },
                 {
                     title: t("sidebar.items.printers"),

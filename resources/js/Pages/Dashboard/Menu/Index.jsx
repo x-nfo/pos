@@ -414,7 +414,7 @@ const MENU_SECTIONS = [
                 routeName: "settings.branding",
                 icon: IconPalette,
                 color: "text-purple-500 bg-purple-50 dark:bg-purple-950/60 dark:text-purple-400",
-                permissions: ["store-settings-access"],
+                permissions: ["branding-settings-access"],
             },
             {
                 title: "Pengaturan Printer",

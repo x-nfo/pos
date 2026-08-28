@@ -62,6 +62,7 @@ class RoleSeeder extends Seeder
         $this->createRoleWithPermissions('dine-orders-access', '%dine-orders%');
 
         $this->createRoleWithPermissions('store-settings-access', '%store-settings%');
+        $this->createRoleWithPermissions('branding-settings-access', '%branding-settings%');
         $this->createRoleWithPermissions('printer-settings-access', '%printer-settings%');
         $this->createRoleWithPermissions('loyalty-settings-access', '%loyalty-settings%');
         $this->createRoleWithPermissions('target-settings-access', '%target-settings%');
@@ -107,6 +108,8 @@ class RoleSeeder extends Seeder
             'dine-tables-access',
             'dine-orders-access',
             'dine-orders-process',
+            'store-settings-access',
+            'store-settings-update',
         ])->get();
         $managerRole->syncPermissions($managerPermissions);
 

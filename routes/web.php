@@ -345,9 +345,9 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::get('/settings/target', [SettingController::class, 'target'])->middleware('permission:target-settings-access')->name('settings.target');
     Route::post('/settings/target', [SettingController::class, 'updateTarget'])->middleware('permission:target-settings-update')->name('settings.target.update');
     Route::get('/settings/store', [SettingController::class, 'storeIdentity'])->middleware('permission:store-settings-access')->name('settings.store');
-    Route::get('/settings/branding', [SettingController::class, 'storeIdentity'])->middleware('permission:store-settings-access')->name('settings.branding');
+    Route::get('/settings/branding', [SettingController::class, 'storeIdentity'])->middleware('permission:branding-settings-access')->name('settings.branding');
     Route::post('/settings/store', [SettingController::class, 'updateStoreProfile'])->middleware('permission:store-settings-update')->name('settings.store.update');
-    Route::post('/settings/branding', [SettingController::class, 'updateBranding'])->middleware('permission:store-settings-update')->name('settings.branding.update');
+    Route::post('/settings/branding', [SettingController::class, 'updateBranding'])->middleware('permission:branding-settings-update')->name('settings.branding.update');
     Route::get('/settings/printer', [SettingController::class, 'printer'])->middleware('permission:printer-settings-access')->name('settings.printer');
     Route::post('/settings/printer', [SettingController::class, 'updatePrinter'])->middleware('permission:printer-settings-update')->name('settings.printer.update');
     Route::get('/settings/loyalty', [SettingController::class, 'loyalty'])->middleware('permission:loyalty-settings-access')->name('settings.loyalty');

@@ -5,6 +5,7 @@ import LinkItem from "@/Components/Dashboard/LinkItem";
 import LinkItemDropdown from "@/Components/Dashboard/LinkItemDropdown";
 import Menu from "@/Utils/Menu";
 import hasAnyPermission from "@/Utils/Permission";
+import { normalizeStorageUrl } from "@/Utils/imageUrl";
 
 export default function Sidebar({ sidebarOpen }) {
     const { auth, storeProfile, appVersion, branding } = usePage().props;
@@ -14,8 +15,8 @@ export default function Sidebar({ sidebarOpen }) {
     const homeRoute = hasDashboardAccess ? route("dashboard") : route("dashboard.menu");
 
     const appName = branding?.appName || storeProfile?.name || "KASIR";
-    const appLogo = branding?.logoLight || storeProfile?.logo || null;
-    const appLogoMini = branding?.logoCollapsed || branding?.favicon || appLogo;
+    const appLogo = normalizeStorageUrl(branding?.logoLight || storeProfile?.logo || null);
+    const appLogoMini = normalizeStorageUrl(branding?.logoCollapsed || branding?.favicon || appLogo);
     const appInitial =
         appName?.charAt(0)?.toUpperCase() ||
         auth?.user?.name?.charAt(0)?.toUpperCase() ||
@@ -44,25 +45,43 @@ export default function Sidebar({ sidebarOpen }) {
                                 src={appLogo}
                                 alt={appName}
                                 className="w-9 h-9 rounded-lg object-contain shrink-0"
+                                onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                    if (e.currentTarget.nextElementSibling) {
+                                        e.currentTarget.nextElementSibling.style.display = "flex";
+                                    }
+                                }}
                             />
-                        ) : (
-                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shrink-0 shadow-sm shadow-primary-500/20">
-                                <span className="text-white font-bold text-sm">
-                                    {appInitial}
-                                </span>
-                            </div>
-                        )}
+                        ) : null}
+                        <div className={`w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 items-center justify-center shrink-0 shadow-sm shadow-primary-500/20 ${appLogo ? "hidden" : "flex"}`}>
+                            <span className="text-white font-bold text-sm">
+                                {appInitial}
+                            </span>
+                        </div>
                         <span className="text-lg font-bold text-slate-800 dark:text-white truncate">
                             {appName}
                         </span>
                     </div>
                 ) : (
                     appLogoMini ? (
-                        <img
-                            src={appLogoMini}
-                            alt={appName}
-                            className="w-9 h-9 rounded-lg object-contain"
-                        />
+                        <>
+                            <img
+                                src={appLogoMini}
+                                alt={appName}
+                                className="w-9 h-9 rounded-lg object-contain"
+                                onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                    if (e.currentTarget.nextElementSibling) {
+                                        e.currentTarget.nextElementSibling.style.display = "flex";
+                                    }
+                                }}
+                            />
+                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 hidden items-center justify-center shadow-sm shadow-primary-500/20">
+                                <span className="text-white font-bold text-sm">
+                                    {appInitial}
+                                </span>
+                            </div>
+                        </>
                     ) : (
                         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-sm shadow-primary-500/20">
                             <span className="text-white font-bold text-sm">

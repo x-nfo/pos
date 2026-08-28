@@ -2,10 +2,13 @@
 
 namespace Tests\Feature\Settings;
 
+use App\Models\Setting;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class StoreSettingsAuthorizationTest extends TestCase
@@ -24,6 +27,7 @@ class StoreSettingsAuthorizationTest extends TestCase
         $superAdmin->assignRole('super-admin');
 
         $this->actingAs($superAdmin)->get(route('settings.store'))->assertOk();
+        $this->actingAs($superAdmin)->get(route('settings.branding'))->assertOk();
         $this->actingAs($superAdmin)->get(route('settings.printer'))->assertOk();
         $this->actingAs($superAdmin)->get(route('settings.loyalty'))->assertOk();
         $this->actingAs($superAdmin)->get(route('settings.target'))->assertOk();
@@ -35,18 +39,35 @@ class StoreSettingsAuthorizationTest extends TestCase
         $cashier->assignRole('cashier');
 
         $this->actingAs($cashier)->get(route('settings.store'))->assertForbidden();
+        $this->actingAs($cashier)->get(route('settings.branding'))->assertForbidden();
         $this->actingAs($cashier)->get(route('settings.printer'))->assertForbidden();
         $this->actingAs($cashier)->get(route('settings.loyalty'))->assertForbidden();
         $this->actingAs($cashier)->get(route('settings.target'))->assertForbidden();
     }
 
-    public function test_user_with_store_settings_access_can_view_store_identity(): void
+    public function test_user_with_store_settings_access_can_view_store_identity_but_not_branding(): void
     {
         $user = User::factory()->create();
         $user->givePermissionTo('store-settings-access');
 
         $this->actingAs($user)->get(route('settings.store'))->assertOk();
+        $this->actingAs($user)->get(route('settings.branding'))->assertForbidden();
         $this->actingAs($user)->get(route('settings.printer'))->assertForbidden();
+    }
+
+    public function test_user_with_store_settings_update_cannot_update_branding(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo(['store-settings-access', 'store-settings-update']);
+
+        $response = $this->actingAs($user)->post(route('settings.branding.update'), [
+            'app_name' => 'Hacked App Name',
+            'theme_primary_color' => '#000000',
+            'theme_accent_color' => '#111111',
+            'landing_page_mode' => 'direct_login',
+        ]);
+
+        $response->assertForbidden();
     }
 
     public function test_user_with_store_settings_update_can_update_store_profile(): void
@@ -63,6 +84,40 @@ class StoreSettingsAuthorizationTest extends TestCase
 
         $response->assertRedirect();
         $response->assertSessionHasNoErrors();
+    }
+
+    public function test_user_can_upload_and_remove_store_logo(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        $user->givePermissionTo(['store-settings-access', 'store-settings-update']);
+
+        $file = UploadedFile::fake()->image('store_logo.png', 120, 120);
+
+        $response = $this->actingAs($user)->post(route('settings.store.update'), [
+            'store_name' => 'Toko Serba Ada',
+            'store_address' => 'Jl. Merdeka No. 45',
+            'store_logo' => $file,
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHasNoErrors();
+
+        $logoPath = Setting::get('store_logo');
+        $this->assertNotNull($logoPath);
+        Storage::disk('public')->assertExists($logoPath);
+
+        // Test removing store logo
+        $removeResponse = $this->actingAs($user)->post(route('settings.store.update'), [
+            'store_name' => 'Toko Serba Ada',
+            'store_address' => 'Jl. Merdeka No. 45',
+            'remove_store_logo' => true,
+        ]);
+
+        $removeResponse->assertRedirect();
+        $this->assertNull(Setting::get('store_logo'));
+        Storage::disk('public')->assertMissing($logoPath);
     }
 
     public function test_user_without_store_settings_update_cannot_update_store_profile(): void

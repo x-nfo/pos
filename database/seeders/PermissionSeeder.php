@@ -168,9 +168,13 @@ class PermissionSeeder extends Seeder
         $create('dine-orders-access');
         $create('dine-orders-process');
 
-        // store identity & branding settings
+        // store profile settings
         $create('store-settings-access');
         $create('store-settings-update');
+
+        // branding & white-label settings (super-admin only)
+        $create('branding-settings-access');
+        $create('branding-settings-update');
 
         // printer settings
         $create('printer-settings-access');
