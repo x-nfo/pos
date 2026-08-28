@@ -76,6 +76,7 @@ class SettingController extends Controller
             'settings' => $settings,
             'brandingSettings' => $this->brandingService->getSettingsForForm(),
             'branding' => $this->brandingService->getBranding(),
+            'initialTab' => request()->routeIs('settings.branding') ? 'branding' : 'store',
         ]);
     }
 
@@ -91,7 +92,8 @@ class SettingController extends Controller
             'store_email' => 'nullable|email|max:255',
             'store_website' => 'nullable|string|max:255',
             'store_city' => 'nullable|string|max:255',
-            'store_logo' => 'nullable|image|max:2048',
+            'store_logo' => 'nullable|image|mimes:png,jpg,jpeg,svg,webp|max:2048',
+            'remove_store_logo' => 'nullable|boolean',
             'store_npwp' => 'nullable|string|max:20',
             'store_nib' => 'nullable|string|max:30',
             'tax_default_rate' => 'nullable|numeric|min:0|max:100',
@@ -110,7 +112,13 @@ class SettingController extends Controller
         $logoPath = Setting::get('store_logo');
         $logoChanged = false;
 
-        if ($request->file('store_logo')) {
+        if ($request->boolean('remove_store_logo')) {
+            if ($logoPath) {
+                Storage::disk('public')->delete($logoPath);
+            }
+            $logoPath = null;
+            $logoChanged = true;
+        } elseif ($request->file('store_logo')) {
             if ($logoPath) {
                 Storage::disk('public')->delete($logoPath);
             }

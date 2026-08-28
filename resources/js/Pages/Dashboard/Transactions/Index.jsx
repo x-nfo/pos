@@ -22,7 +22,7 @@ import HeldTransactions, {
 import QuickAddProductModal from "@/Components/POS/QuickAddProductModal";
 import OfflineReceiptModal from "@/Components/POS/OfflineReceiptModal";
 import useBarcodeScanner from "@/Hooks/useBarcodeScanner";
-import { getProductImageUrl } from "@/Utils/imageUrl";
+import { getProductImageUrl, getBankLogoUrl } from "@/Utils/imageUrl";
 import { useAuthorization } from "@/Utils/authorization";
 import { queueTransaction, cacheProducts, cacheCustomers, cacheCategories, getCachedProducts, getCachedCustomers, getCachedCategories } from "@/Utils/offlineDb";
 import {
@@ -1445,23 +1445,24 @@ export default function Index({
                                                                 : "border-slate-200 dark:border-slate-700 hover:border-primary-200 dark:hover:border-primary-800"
                                                         }`}
                                                     >
-                                                        <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden">
-                                                            {bank.logo_url ? (
+                                                        <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center p-1 overflow-hidden shrink-0">
+                                                            {getBankLogoUrl(bank.logo_url || bank.logo) ? (
                                                                 <img
-                                                                    src={
-                                                                        bank.logo_url
-                                                                    }
-                                                                    alt={
-                                                                        bank.bank_name
-                                                                    }
+                                                                    src={getBankLogoUrl(bank.logo_url || bank.logo)}
+                                                                    alt={bank.bank_name}
                                                                     className="max-w-full max-h-full object-contain"
+                                                                    onError={(e) => {
+                                                                        e.currentTarget.style.display = "none";
+                                                                        if (e.currentTarget.nextElementSibling) {
+                                                                            e.currentTarget.nextElementSibling.style.display = "block";
+                                                                        }
+                                                                    }}
                                                                 />
-                                                            ) : (
-                                                                <IconBuildingBank
-                                                                    size={18}
-                                                                    className="text-slate-500"
-                                                                />
-                                                            )}
+                                                            ) : null}
+                                                            <IconBuildingBank
+                                                                size={18}
+                                                                className={`text-slate-500 ${getBankLogoUrl(bank.logo_url || bank.logo) ? "hidden" : ""}`}
+                                                            />
                                                         </div>
                                                         <div className="flex-1">
                                                             <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">

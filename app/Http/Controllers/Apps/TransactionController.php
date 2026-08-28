@@ -899,7 +899,7 @@ class TransactionController extends Controller
                 DiscountApprovalLog::create([
                     'transaction_id' => $transaction->id,
                     'cashier_id' => auth()->id(),
-                    'requested_discount' => $appliedManualDiscount,
+                    'requested_discount' => (int) $transaction->discount,
                     'status' => 'pending',
                 ]);
 
@@ -941,7 +941,17 @@ class TransactionController extends Controller
     public function print($invoice)
     {
         // get transaction
-        $transaction = Transaction::with('details.product', 'details.unit', 'details.pricingRule', 'cashier', 'customer', 'receivable', 'bankAccount')
+        $transaction = Transaction::with([
+            'details.product',
+            'details.unit',
+            'details.pricingRule',
+            'cashier:id,name',
+            'customer:id,name',
+            'receivable',
+            'bankAccount',
+            'discountApprover:id,name',
+            'discountApprovalLogs.responder:id,name',
+        ])
             ->where('invoice', $invoice)
             ->firstOrFail();
 
@@ -1029,8 +1039,10 @@ class TransactionController extends Controller
                 'cashier:id,name',
                 'warehouse:id,code,name',
                 'cashierShift:id,opened_at,status',
-                'customer:id,name',
+                'customer:id,name,no_telp',
                 'receivable',
+                'details.product:id,title',
+                'details.unit:id,name,symbol',
             ])
             ->withSum('details as total_items', 'qty')
             ->withSum('profits as total_profit', 'total')
