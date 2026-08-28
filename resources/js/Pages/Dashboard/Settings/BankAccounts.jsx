@@ -10,6 +10,30 @@ import {
 } from "@tabler/icons-react";
 import toast from "react-hot-toast";
 import { useAuthorization } from "@/Utils/authorization";
+import { getBankLogoUrl } from "@/Utils/imageUrl";
+
+function BankLogoItem({ bank }) {
+    const [imageError, setImageError] = React.useState(false);
+    const logoSrc = getBankLogoUrl(bank.logo_url || bank.logo);
+
+    return (
+        <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center p-1.5 overflow-hidden shrink-0">
+            {logoSrc && !imageError ? (
+                <img
+                    src={logoSrc}
+                    alt={bank.bank_name}
+                    className="max-w-full max-h-full object-contain"
+                    onError={() => setImageError(true)}
+                />
+            ) : (
+                <IconBuildingBank
+                    size={24}
+                    className="text-slate-400 dark:text-slate-500"
+                />
+            )}
+        </div>
+    );
+}
 
 export default function BankAccounts({ bankAccounts = [] }) {
     const { flash } = usePage().props;
@@ -74,20 +98,7 @@ export default function BankAccounts({ bankAccounts = [] }) {
                                     <div className="text-slate-400 cursor-move">
                                         <IconGripVertical size={20} />
                                     </div>
-                                    <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
-                                        {bank.logo_url ? (
-                                            <img
-                                                src={bank.logo_url}
-                                                alt={bank.bank_name}
-                                                className="max-w-full max-h-full object-contain"
-                                            />
-                                        ) : (
-                                            <IconBuildingBank
-                                                size={24}
-                                                className="text-slate-500"
-                                            />
-                                        )}
-                                    </div>
+                                    <BankLogoItem bank={bank} />
                                     <div className="flex-1">
                                         <p className="font-semibold text-slate-800 dark:text-white">
                                             {bank.bank_name}

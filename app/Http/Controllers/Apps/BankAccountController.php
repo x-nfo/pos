@@ -60,7 +60,7 @@ class BankAccountController extends Controller
             'bank_name' => 'required|string|max:100',
             'account_number' => 'required|string|max:50',
             'account_name' => 'required|string|max:100',
-            'logo' => 'nullable|image|mimes:png,jpg,jpeg,svg|max:1024',
+            'logo' => 'nullable|image|mimes:png,jpg,jpeg,svg,webp|max:2048',
             'is_active' => 'nullable|boolean',
         ]);
 
@@ -101,11 +101,17 @@ class BankAccountController extends Controller
             'bank_name' => 'required|string|max:100',
             'account_number' => 'required|string|max:50',
             'account_name' => 'required|string|max:100',
-            'logo' => 'nullable|image|mimes:png,jpg,jpeg,svg|max:1024',
+            'logo' => 'nullable|image|mimes:png,jpg,jpeg,svg,webp|max:2048',
             'is_active' => 'nullable|boolean',
+            'remove_logo' => 'nullable|boolean',
         ]);
 
-        if ($request->hasFile('logo')) {
+        if ($request->boolean('remove_logo')) {
+            if ($bankAccount->logo) {
+                Storage::disk('public')->delete($bankAccount->logo);
+            }
+            $validated['logo'] = null;
+        } elseif ($request->hasFile('logo')) {
             if ($bankAccount->logo) {
                 Storage::disk('public')->delete($bankAccount->logo);
             }

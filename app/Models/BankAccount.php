@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
 
 class BankAccount extends Model
 {
@@ -54,6 +53,18 @@ class BankAccount extends Model
 
     public function getLogoUrlAttribute(): ?string
     {
-        return $this->logo ? Storage::disk('public')->url($this->logo) : null;
+        if (! $this->logo) {
+            return null;
+        }
+
+        if (
+            str_starts_with($this->logo, 'http://') ||
+            str_starts_with($this->logo, 'https://') ||
+            str_starts_with($this->logo, '/storage/')
+        ) {
+            return $this->logo;
+        }
+
+        return asset('storage/'.ltrim($this->logo, '/'));
     }
 }
