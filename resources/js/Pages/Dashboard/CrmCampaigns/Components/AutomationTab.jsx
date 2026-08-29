@@ -106,7 +106,8 @@ export default function AutomationTab({ settings = {} }) {
                 )}
 
                 <form onSubmit={handleSave} className="space-y-6">
-                    {/* Card 1: Pengaturan Struk Otomatis */}
+                    {/* Card 1: Pengaturan Struk Otomatis (Hidden for now as backend is not implemented) */}
+                    {/* 
                     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
                         <div className="flex items-center gap-2 mb-2">
                             <IconBrandWhatsapp size={20} className="text-emerald-500" />
@@ -127,6 +128,7 @@ export default function AutomationTab({ settings = {} }) {
                             </span>
                         </label>
                     </div>
+                    */}
 
                     {/* Card 2: Pilihan Mode Reminder Piutang (Kirim Otomatis vs Pengingat Internal) */}
                     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">

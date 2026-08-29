@@ -111,4 +111,19 @@ class Customer extends Model
             || $this->vouchers()->where('is_used', true)->exists()
             || $this->dineOrders()->exists();
     }
+
+    public function getFormattedPhoneAttribute(): ?string
+    {
+        if (empty($this->no_telp)) {
+            return null;
+        }
+
+        $targetFormatted = preg_replace('/[^0-9]/', '', $this->no_telp);
+        
+        if ($targetFormatted && str_starts_with($targetFormatted, '0')) {
+            $targetFormatted = '62' . substr($targetFormatted, 1);
+        }
+
+        return $targetFormatted;
+    }
 }

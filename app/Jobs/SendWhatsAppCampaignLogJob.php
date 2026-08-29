@@ -40,10 +40,17 @@ class SendWhatsAppCampaignLogJob implements ShouldQueue
             return;
         }
 
-        $target = $this->log->customer?->no_telp
-            ?? $this->log->receivable?->customer?->no_telp
+        $target = $this->log->customer?->formatted_phone
+            ?? $this->log->receivable?->customer?->formatted_phone
             ?? ($this->log->payload['phone'] ?? null)
             ?? ($this->log->payload['target'] ?? null);
+
+        if ($target) {
+            $target = preg_replace('/[^0-9]/', '', $target);
+            if (str_starts_with($target, '0')) {
+                $target = '62' . substr($target, 1);
+            }
+        }
 
         $message = $this->log->payload['message'] ?? null;
 

@@ -217,11 +217,7 @@ class CrmAutomationService
             ]
         );
 
-        $target = $transaction->customer?->no_telp;
-        $targetFormatted = $target ? preg_replace('/[^0-9]/', '', $target) : '';
-        if ($targetFormatted && str_starts_with($targetFormatted, '0')) {
-            $targetFormatted = '62'.substr($targetFormatted, 1);
-        }
+        $targetFormatted = $transaction->customer?->formatted_phone;
 
         $waUrl = $targetFormatted
             ? 'https://wa.me/'.$targetFormatted.'?text='.urlencode($message)
@@ -396,7 +392,15 @@ class CrmAutomationService
                 ->with('customer:id,name,no_telp')
                 ->where('status', '!=', 'paid')
                 ->whereDate('due_date', '<', $at->toDateString())
-                ->get();
+                ->get()
+                ->filter(function ($receivable) use ($at) {
+                    if (!$receivable->due_date) {
+                        return false;
+                    }
+                    $daysOverdue = (int) $at->startOfDay()->diffInDays($receivable->due_date->copy()->startOfDay());
+                    return in_array($daysOverdue, [1, 3, 7]);
+                })
+                ->values();
 
             $this->fillReceivableReminderLogs($campaign, $receivables, 'overdue', $template);
         }
