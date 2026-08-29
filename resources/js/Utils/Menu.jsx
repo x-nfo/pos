@@ -42,7 +42,6 @@ import {
     IconBrandWhatsapp,
     IconToolsKitchen2,
     IconDeviceMobile,
-    IconPalette,
     IconPrinter,
     IconBuildingBank,
     IconTarget,
@@ -384,16 +383,14 @@ export default function Menu() {
                 {
                     title: "Identitas Toko",
                     href: route("settings.store"),
-                    active: url.startsWith("/dashboard/settings/store"),
+                    active:
+                        url.startsWith("/dashboard/settings/store") ||
+                        url.startsWith("/dashboard/settings/branding"),
                     icon: <IconBuildingStore size={20} strokeWidth={1.5} />,
-                    permissions: hasAnyPermission(["store-settings-access"]),
-                },
-                {
-                    title: "Branding & Tampilan",
-                    href: route("settings.branding"),
-                    active: url.startsWith("/dashboard/settings/branding"),
-                    icon: <IconPalette size={20} strokeWidth={1.5} />,
-                    permissions: hasAnyPermission(["branding-settings-access"]),
+                    permissions: hasAnyPermission([
+                        "store-settings-access",
+                        "branding-settings-access",
+                    ]),
                 },
                 {
                     title: t("sidebar.items.printers"),

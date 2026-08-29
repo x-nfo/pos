@@ -45,7 +45,6 @@ import {
     IconLogout,
     IconChevronRight,
     IconBuildingBank,
-    IconPalette,
 } from "@tabler/icons-react";
 import { useAuthorization } from "@/Utils/authorization";
 import { useHaptic } from "@/Hooks/useHaptic";
@@ -406,15 +405,7 @@ const MENU_SECTIONS = [
                 routeName: "settings.store",
                 icon: IconSettings,
                 color: "text-blue-500 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400",
-                permissions: ["store-settings-access"],
-            },
-            {
-                title: "Branding & Tampilan",
-                desc: "Tema warna & kustomisasi UI",
-                routeName: "settings.branding",
-                icon: IconPalette,
-                color: "text-purple-500 bg-purple-50 dark:bg-purple-950/60 dark:text-purple-400",
-                permissions: ["branding-settings-access"],
+                permissions: ["store-settings-access", "branding-settings-access"],
             },
             {
                 title: "Pengaturan Printer",
@@ -503,6 +494,7 @@ export default function MenuIndex() {
     const canLaporan = canAny(["reports-access"]);
     const canSeting = canAny([
         "store-settings-access",
+        "branding-settings-access",
         "payment-settings-access",
         "whatsapp-settings-access",
         "warehouses-access",
