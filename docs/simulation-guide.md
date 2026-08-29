@@ -171,7 +171,7 @@ Buka menu **Pengaturan > WhatsApp (`/dashboard/settings/whatsapp`)**:
 2. Klik tombol **Hubungkan WhatsApp**, sistem memunculkan QR Code live.
 3. Buka aplikasi WhatsApp di HP toko → *Perangkat Tertaut* → *Tautkan Perangkat* → *Scan QR*.
 4. Status berubah menjadi **Connected** dengan nomor telepon terdaftar.
-5. **Anti-Ban Smart Delay**: Sistem secara otomatis menjadwalkan pengiriman pesan promosi dan struk melalui antrean background (*Laravel Queue*) dengan *random jitter delay* 5–15 detik per pesan agar nomor toko tidak terblokir oleh sistem keamanan WhatsApp.
+5. **Anti-Ban Smart Delay**: Sistem secara otomatis menjadwalkan pengiriman pesan promosi dan struk melalui antrean background khusus (*Dedicated WhatsApp Queue*) dengan *random jitter delay* 3–7 detik per pesan agar nomor toko tidak terblokir oleh sistem keamanan WhatsApp.
 
 ---
 
@@ -494,7 +494,7 @@ Buka menu **CRM > Campaign WhatsApp (`/dashboard/crm-campaigns`)**:
    ```
 4. Klik **Proses & Dispatch**:
    - Sistem tidak mengirim pesan sekaligus secara beruntun.
-   - Pesan masuk ke **Background Queue Worker** dengan jeda acak 5–15 detik antar-nomor demi menjaga reputasi akun WhatsApp toko.
+   - Pesan masuk ke **Background Queue Worker** dengan jeda acak 3–7 detik antar-nomor demi menjaga reputasi akun WhatsApp toko.
 
 ### 3. Pengingat Otomatis Tagihan Piutang (*Automated Due-Date Reminders*)
 Buka menu **Pengaturan > Otomatisasi CRM (`/dashboard/settings/automation`)**:

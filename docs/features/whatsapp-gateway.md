@@ -63,4 +63,6 @@ Di `CrmAutomationService@processCampaign()`:
 - Session persistent via `LocalAuth` — tidak perlu scan ulang tiap restart
 - Rate limit: WhatsApp Web punya batas pengiriman, hindari >100 pesan berturut-turut
 - ToS: whatsapp-web.js menggunakan WhatsApp Web secara tidak resmi
-- Deploy production: jalankan dengan PM2: `pm2 start whatsapp-service/server.js --name wa-service`
+- Deploy production:
+  - Node Service: `pm2 start whatsapp-service/server.js --name wa-service --max-memory-restart 500M`
+  - Laravel Worker: `pm2 start "php artisan queue:work --queue=whatsapp --sleep=3 --tries=3 --max-time=3600" --name "laravel-worker-wa"`
