@@ -100,7 +100,7 @@ export default function Show({ campaign }) {
                 </div>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
+            <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr] min-w-0">
                 <div className="space-y-6 min-w-0">
                     <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">Delivery Logs</h2>

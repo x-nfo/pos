@@ -139,14 +139,14 @@ export default function Show({ auditLog }) {
                     </p>
                 </div>
 
-                <div className="grid gap-6 xl:grid-cols-2">
-                    <div className="space-y-3">
+                <div className="grid gap-6 xl:grid-cols-2 min-w-0">
+                    <div className="space-y-3 min-w-0">
                         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                             Before
                         </h2>
                         <KeyValueTable data={auditLog.before || {}} />
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-3 min-w-0">
                         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                             After
                         </h2>

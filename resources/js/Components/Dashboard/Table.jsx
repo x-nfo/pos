@@ -59,7 +59,7 @@ const Table = ({ className = "", children }) => {
     }, []);
 
     return (
-        <div className="relative w-full">
+        <div className="relative w-full max-w-full overflow-hidden min-w-0">
             <div
                 ref={scrollRef}
                 onScroll={checkScroll}

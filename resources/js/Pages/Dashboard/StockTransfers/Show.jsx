@@ -33,21 +33,23 @@ export default function Show({ transfer }) {
             <Head title={`Transfer ${transfer.document_number}`} />
 
             <div className="space-y-6">
-                <div className="flex items-start justify-between">
-                    <div>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between min-w-0">
+                    <div className="min-w-0">
                         <Link href={route("stock-transfers.index")} className="mb-3 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-primary-600">
                             <IconArrowLeft size={16} /> Kembali ke daftar transfer
                         </Link>
-                        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-white">
-                            <IconArrowsLeftRight size={28} className="text-primary-500" />
+                        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-white break-words">
+                            <IconArrowsLeftRight size={28} className="text-primary-500 flex-shrink-0" />
                             {transfer.document_number}
                         </h1>
                     </div>
-                    {statusBadge(transfer.status)}
+                    <div className="flex-shrink-0">
+                        {statusBadge(transfer.status)}
+                    </div>
                 </div>
 
-                <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] min-w-0">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden min-w-0">
                         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Detail Transfer</h2>
                         <div className="mt-5 grid gap-4 sm:grid-cols-2">
                             <div>
@@ -74,7 +76,7 @@ export default function Show({ transfer }) {
                             )}
                             <div className="sm:col-span-2">
                                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Catatan</p>
-                                <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">{transfer.notes || "-"}</p>
+                                <p className="mt-1 text-sm text-slate-700 dark:text-slate-300 break-words">{transfer.notes || "-"}</p>
                             </div>
                         </div>
 
@@ -102,7 +104,7 @@ export default function Show({ transfer }) {
                         </div>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-4 min-w-0">
                         {transfer.status === "draft" && (
                             <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
                                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Aksi</h2>

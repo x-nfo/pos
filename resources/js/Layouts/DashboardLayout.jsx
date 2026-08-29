@@ -77,14 +77,14 @@ export default function AppLayout({ children }) {
             />
 
             <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-                <main className="dashboard-scrollbar flex-1 overflow-y-auto overscroll-contain flex flex-col">
+                <main className="dashboard-scrollbar flex-1 overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col min-w-0">
                     <Navbar
                         toggleSidebar={toggleSidebar}
                         themeSwitcher={themeSwitcher}
                         darkMode={darkMode}
                         isDashboard={isDashboard}
                     />
-                    <div className="w-full py-4 md:py-6 px-4 md:px-6 lg:px-8 pb-36 sm:pb-32 md:pb-8 flex-1">
+                    <div className="w-full max-w-full min-w-0 py-4 md:py-6 px-4 md:px-6 lg:px-8 pb-36 sm:pb-32 md:pb-8 flex-1">
                         {showSecurityWarnings && (
                             <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
                                 <p className="text-sm font-semibold">

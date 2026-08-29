@@ -454,10 +454,10 @@ export default function SalesReturnForm({
 
                 <form
                     onSubmit={handleSaveDraft}
-                    className="grid gap-6 xl:grid-cols-[1.7fr_1fr]"
+                    className="grid gap-6 xl:grid-cols-[1.7fr_1fr] min-w-0"
                 >
                     {/* Left Column: Return Items & Exchange Items */}
-                    <div className="space-y-6 overflow-hidden">
+                    <div className="space-y-6 overflow-hidden min-w-0">
                         {/* Section 1: Return Items */}
                         <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
                             <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -815,7 +815,7 @@ export default function SalesReturnForm({
                     </div>
 
                     {/* Right Column: Settlement & Impact Preview */}
-                    <div className="space-y-6">
+                    <div className="space-y-6 min-w-0">
                         {/* Settlement Configuration Card (Grid class removed for responsive stack) */}
                         <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
                             <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">

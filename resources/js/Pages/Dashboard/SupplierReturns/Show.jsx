@@ -75,13 +75,13 @@ export default function Show({ return: ret }) {
                     <IconArrowLeft size={16} />
                     Kembali ke daftar retur
                 </Link>
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                        <div className="mb-2 flex items-center gap-2">
-                            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{ret.document_number}</h1>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between min-w-0">
+                    <div className="min-w-0">
+                        <div className="mb-2 flex items-center gap-2 flex-wrap">
+                            <h1 className="text-2xl font-bold text-slate-900 dark:text-white break-words">{ret.document_number}</h1>
                             {statusBadge(ret.status)}
                         </div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                        <p className="text-sm text-slate-500 dark:text-slate-400 break-words">
                             Supplier: {ret.supplier?.name || "-"}
                             &bull; Dibuat oleh {ret.creator?.name || "-"}
                             &bull; {formatDateTime(ret.created_at)}
@@ -92,7 +92,7 @@ export default function Show({ return: ret }) {
                             </p>
                         )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-shrink-0">
                         {ret.status === "draft" && canEdit && (
                             <>
                                 <Button
@@ -115,9 +115,9 @@ export default function Show({ return: ret }) {
                 </div>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
-                <div className="space-y-6">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr] min-w-0">
+                <div className="space-y-6 min-w-0">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">Item Retur</h2>
                         <Table>
                             <Table.Thead>
@@ -169,15 +169,15 @@ export default function Show({ return: ret }) {
                     </div>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-6 min-w-0">
                     {ret.notes && (
-                        <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                             <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">Catatan</h2>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">{ret.notes}</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 break-words">{ret.notes}</p>
                         </div>
                     )}
 
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                         <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">Informasi</h2>
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">

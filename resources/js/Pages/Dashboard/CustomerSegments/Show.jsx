@@ -60,8 +60,8 @@ export default function Show({ segment, customers = [] }) {
                 </div>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr] min-w-0">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden min-w-0">
                     <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">Anggota Segment</h2>
                     <Table>
                         <Table.Thead>
@@ -111,9 +111,9 @@ export default function Show({ segment, customers = [] }) {
                     </Table>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-6 min-w-0">
                     {isManual && (
-                        <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                             <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">Tambah Anggota Manual</h2>
                             <form onSubmit={submit} className="space-y-4">
                                 <select
@@ -139,7 +139,7 @@ export default function Show({ segment, customers = [] }) {
                         </div>
                     )}
 
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                         <div className="mb-4 flex items-center gap-2">
                             <IconUsersGroup size={18} className="text-primary-500" />
                             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Ringkasan Rule</h2>

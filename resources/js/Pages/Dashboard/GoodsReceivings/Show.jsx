@@ -54,8 +54,8 @@ export default function Show({ receiving }) {
                 </p>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr] min-w-0">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden min-w-0">
                     <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
                         Item Diterima
                     </h2>
@@ -112,14 +112,14 @@ export default function Show({ receiving }) {
                     </Table>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-6 min-w-0">
                     {receiving.notes && (
-                        <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                             <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">Catatan</h2>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">{receiving.notes}</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 break-words">{receiving.notes}</p>
                         </div>
                     )}
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                         <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">Informasi</h2>
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">

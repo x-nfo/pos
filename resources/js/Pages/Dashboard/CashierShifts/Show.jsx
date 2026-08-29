@@ -142,8 +142,8 @@ export default function Show({ cashierShift, canForceClose = false }) {
                     <MetricCard title="Refund Tunai" value={formatCurrency(cashierShift.cash_refund_total)} icon={IconRotateClockwise2} />
                 </div>
 
-                <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr] min-w-0">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden min-w-0">
                         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                             Ringkasan Shift
                         </h2>
@@ -198,7 +198,7 @@ export default function Show({ cashierShift, canForceClose = false }) {
                         </div>
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="space-y-6 min-w-0">
                         <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
                             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                                 Cash Closing

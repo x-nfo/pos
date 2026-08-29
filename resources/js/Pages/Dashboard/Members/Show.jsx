@@ -103,9 +103,9 @@ export default function Show({
                     </div>
                 </div>
 
-                <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
-                    <div className="space-y-6">
-                        <section className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr] min-w-0">
+                    <div className="space-y-6 min-w-0">
+                        <section className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                             <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
                                 Ringkasan Member
                             </h2>
@@ -246,7 +246,7 @@ export default function Show({
                         </section>
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="space-y-6 min-w-0">
                         <section className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
                             <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
                                 Informasi Member

@@ -251,10 +251,10 @@ export default function Show({
                     Kembali ke daftar stock opname
                 </Link>
 
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                        <div className="mb-2 flex items-center gap-2">
-                            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between min-w-0">
+                    <div className="min-w-0">
+                        <div className="mb-2 flex items-center gap-2 flex-wrap">
+                            <h1 className="text-2xl font-bold text-slate-900 dark:text-white break-words">
                                 {stockOpname.code}
                             </h1>
                             <span
@@ -267,12 +267,12 @@ export default function Show({
                                 {isDraft ? "Draft" : "Finalized"}
                             </span>
                         </div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                        <p className="text-sm text-slate-500 dark:text-slate-400 break-words">
                             Dibuat oleh {stockOpname.creator?.name || "-"} •{" "}
                             {formatDateTime(stockOpname.created_at)}
                         </p>
                         {!isDraft && (
-                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 break-words">
                                 Difinalisasi oleh {stockOpname.finalizer?.name || "-"} •{" "}
                                 {formatDateTime(stockOpname.finalized_at)}
                             </p>
@@ -283,7 +283,7 @@ export default function Show({
                         <Button
                             type="button"
                             icon={<IconCheck size={18} />}
-                            className="bg-success-500 hover:bg-success-600 text-white shadow-lg shadow-success-500/20 disabled:opacity-50"
+                            className="bg-success-500 hover:bg-success-600 text-white shadow-lg shadow-success-500/20 disabled:opacity-50 flex-shrink-0"
                             label="Finalize Stock Opname"
                             onClick={finalize}
                             disabled={
@@ -294,7 +294,7 @@ export default function Show({
                 </div>
             </div>
 
-            <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4 min-w-0">
                 <SummaryCard label="Total Item" value={summary.totalItems} />
                 <SummaryCard
                     label="Item Sesuai"
@@ -317,9 +317,9 @@ export default function Show({
                 />
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
-                <div className="space-y-6">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr] min-w-0">
+                <div className="space-y-6 min-w-0">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                         <div className="mb-4 flex items-center justify-between">
                             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
                                 Item Stock Opname
@@ -379,7 +379,7 @@ export default function Show({
                                                         value={item.physical_stock ?? ""}
                                                         disabled={!canManageDraft}
                                                         onChange={(event) =>
-                                                            setItemField(
+                                                             setItemField(
                                                                 item.id,
                                                                 "physical_stock",
                                                                 event.target.value
@@ -461,10 +461,10 @@ export default function Show({
                     </div>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-6 min-w-0">
                     <form
                         onSubmit={saveNotes}
-                        className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"
+                        className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden"
                     >
                         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
                             Catatan Sesi
@@ -491,7 +491,7 @@ export default function Show({
                         )}
                     </form>
 
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
                             Informasi Sesi
                         </h2>

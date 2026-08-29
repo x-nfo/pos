@@ -262,10 +262,10 @@ export default function ReceivableShow({ receivable, bankAccounts = [], approval
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-w-0">
                     <div
                         ref={printRef}
-                        className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-4 print:border-0 print:shadow-none"
+                        className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 print:border-0 print:shadow-none min-w-0 overflow-hidden"
                     >
                         <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
@@ -393,7 +393,7 @@ export default function ReceivableShow({ receivable, bankAccounts = [], approval
                         </div>
                     </div>
 
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 print:hidden">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 print:hidden min-w-0 overflow-hidden">
                         <p className="text-sm font-semibold text-slate-800 dark:text-white mb-3">
                             Detail Nota
                         </p>
