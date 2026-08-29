@@ -374,10 +374,12 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     // settings price lists
     Route::resource('/settings/price-lists', PriceListController::class)
         ->except(['create', 'edit'])
-        ->middlewareFor('index', 'permission:price-lists-access')
+        ->middlewareFor(['index', 'show'], 'permission:price-lists-access')
         ->middlewareFor('store', ['permission:price-lists-create', 'step_up'])
         ->middlewareFor('update', ['permission:price-lists-update', 'step_up'])
         ->middlewareFor('destroy', ['permission:price-lists-delete', 'step_up']);
+    Route::post('/settings/price-lists/{priceList}/items/bulk', [PriceListController::class, 'bulkUpdateItems'])->middleware(['permission:price-lists-update', 'step_up'])->name('price-lists.items.bulk-update');
+    Route::delete('/settings/price-lists/{priceList}/items/bulk', [PriceListController::class, 'bulkDestroyItems'])->middleware(['permission:price-lists-update', 'step_up'])->name('price-lists.items.bulk-destroy');
     Route::post('/settings/price-lists/{priceList}/items', [PriceListController::class, 'updateItem'])->middleware(['permission:price-lists-update', 'step_up'])->name('price-lists.items.update');
     Route::delete('/settings/price-lists/{priceList}/items/{productId}', [PriceListController::class, 'destroyItem'])->middleware(['permission:price-lists-update', 'step_up'])->name('price-lists.items.destroy');
 
