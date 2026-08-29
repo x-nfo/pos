@@ -87,6 +87,8 @@ Route::get('/dashboard/access', function () {
 Route::get('/og-image.png', [OgImageController::class, 'show'])->name('og.image');
 Route::get('/share/transactions/{invoice}', [DocumentController::class, 'publicInvoice'])
     ->name('transactions.public');
+Route::get('/share/purchase-orders/{documentNumber}', [DocumentController::class, 'publicPurchaseOrder'])
+    ->name('purchase-orders.public');
 
 // Customer portal routes (no login, token-based)
 Route::get('/portal/transactions/{invoice}', [PublicPortalController::class, 'showTransaction'])->name('portal.transaction');
@@ -282,6 +284,9 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::get('/purchase-orders/create', [PurchaseOrderController::class, 'create'])->middleware('permission:purchase-orders-create')->name('purchase-orders.create');
     Route::post('/purchase-orders', [PurchaseOrderController::class, 'store'])->middleware('permission:purchase-orders-create')->name('purchase-orders.store');
     Route::get('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show'])->middleware('permission:purchase-orders-access')->name('purchase-orders.show');
+    Route::get('/purchase-orders/{purchaseOrder}/print', [PurchaseOrderController::class, 'print'])->middleware('permission:purchase-orders-access')->name('purchase-orders.print');
+    Route::get('/purchase-orders/{purchaseOrder}/edit', [PurchaseOrderController::class, 'edit'])->middleware('permission:purchase-orders-update')->name('purchase-orders.edit');
+    Route::put('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'update'])->middleware('permission:purchase-orders-update')->name('purchase-orders.update');
     Route::post('/purchase-orders/{purchaseOrder}/place', [PurchaseOrderController::class, 'placeOrder'])->middleware('permission:purchase-orders-update')->name('purchase-orders.place');
     Route::post('/purchase-orders/{purchaseOrder}/cancel', [PurchaseOrderController::class, 'cancel'])->middleware('permission:purchase-orders-update')->name('purchase-orders.cancel');
 
@@ -336,6 +341,7 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::get('/documents/transactions/{invoice}/pdf/shipping', [DocumentController::class, 'shipping'])->middleware('permission:transactions-access')->name('pdf.transactions.shipping');
     Route::get('/documents/receivables/{receivable}/pdf', [DocumentController::class, 'receivable'])->middleware('permission:receivables-access')->name('pdf.receivables.show');
     Route::get('/documents/payables/{payable}/pdf', [DocumentController::class, 'payable'])->middleware('permission:payables-access')->name('pdf.payables.show');
+    Route::get('/documents/purchase-orders/{documentNumber}/pdf', [DocumentController::class, 'purchaseOrder'])->middleware('permission:purchase-orders-access')->name('pdf.purchase-orders.show');
 
     Route::get('/settings/payments', [PaymentSettingController::class, 'edit'])->middleware('permission:payment-settings-access')->name('settings.payments.edit');
     Route::put('/settings/payments', [PaymentSettingController::class, 'update'])->middleware(['permission:payment-settings-update', 'step_up'])->name('settings.payments.update');

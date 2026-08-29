@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import DashboardLayout from "@/Layouts/DashboardLayout";
-import { Head, Link, useForm, usePage } from "@inertiajs/react";
+import { Head, Link, useForm } from "@inertiajs/react";
 import Button from "@/Components/Dashboard/Button";
-import Table from "@/Components/Dashboard/Table";
 import ProductPickerModal from "./Components/ProductPickerModal";
 import {
     IconArrowLeft,
+    IconDeviceFloppy,
     IconPackage,
     IconPlus,
     IconSparkles,
-    IconTrash,
     IconShoppingCart,
+    IconTrash,
 } from "@tabler/icons-react";
 import toast from "react-hot-toast";
 
@@ -21,13 +21,29 @@ const formatCurrency = (value = 0) =>
         minimumFractionDigits: 0,
     }).format(value);
 
-export default function Create({ suppliers, products, categories = [], warehouses = [] }) {
-    const { data, setData, post, processing, errors } = useForm({
-        supplier_id: "",
-        warehouse_id: "",
-        document_number: "",
-        notes: "",
-        items: [],
+export default function Edit({ order, suppliers = [], categories = [], products = [], warehouses = [] }) {
+    const initialItems = (order.items || []).map((item) => {
+        const matchedProduct = products.find((p) => p.id === item.product_id);
+        const productUnits = Array.isArray(matchedProduct?.units) ? matchedProduct.units : [];
+
+        return {
+            product_id: item.product_id,
+            product_title: item.product?.title || matchedProduct?.title || `Produk #${item.product_id}`,
+            product_sku: item.product?.sku || matchedProduct?.sku || "-",
+            units: productUnits,
+            unit_id: item.unit_id || null,
+            conversion_factor: Number(item.conversion_factor) || 1.0,
+            qty_ordered: Number(item.qty_ordered) || 1,
+            unit_price: Number(item.unit_price) || 0,
+        };
+    });
+
+    const { data, setData, put, processing, errors } = useForm({
+        supplier_id: order.supplier_id || "",
+        warehouse_id: order.warehouse_id || "",
+        document_number: order.document_number || "",
+        notes: order.notes || "",
+        items: initialItems,
     });
 
     const [showPickerModal, setShowPickerModal] = useState(false);
@@ -107,7 +123,10 @@ export default function Create({ suppliers, products, categories = [], warehouse
 
     const updateItem = (index, key, value) => {
         const items = [...data.items];
-        items[index] = { ...items[index], [key]: key === "qty_ordered" ? parseInt(value) || 0 : Number(value) || 0 };
+        items[index] = {
+            ...items[index],
+            [key]: key === "qty_ordered" ? parseInt(value, 10) || 0 : Number(value) || 0,
+        };
         setData("items", items);
     };
 
@@ -117,8 +136,8 @@ export default function Create({ suppliers, products, categories = [], warehouse
             toast.error("Tambahkan minimal satu item.");
             return;
         }
-        post(route("purchase-orders.store"), {
-            onError: () => toast.error("Gagal membuat purchase order"),
+        put(route("purchase-orders.update", order.id), {
+            onError: () => toast.error("Gagal memperbarui purchase order"),
         });
     };
 
@@ -126,18 +145,18 @@ export default function Create({ suppliers, products, categories = [], warehouse
 
     return (
         <>
-            <Head title="Buat Purchase Order" />
+            <Head title={`Edit ${order.document_number}`} />
             <div className="mb-6">
                 <Link
-                    href={route("purchase-orders.index")}
+                    href={route("purchase-orders.show", order.id)}
                     className="mb-3 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-primary-600"
                 >
                     <IconArrowLeft size={16} />
-                    Kembali ke daftar PO
+                    Kembali ke detail PO
                 </Link>
                 <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-white">
                     <IconShoppingCart size={28} className="text-primary-500" />
-                    Buat Purchase Order
+                    Edit Purchase Order ({order.document_number})
                 </h1>
             </div>
 
@@ -147,7 +166,9 @@ export default function Create({ suppliers, products, categories = [], warehouse
                         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">Informasi PO</h2>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                             <div>
-                                <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Supplier</label>
+                                <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    Supplier
+                                </label>
                                 <select
                                     value={data.supplier_id}
                                     onChange={(e) => setData("supplier_id", e.target.value)}
@@ -158,9 +179,12 @@ export default function Create({ suppliers, products, categories = [], warehouse
                                         <option key={s.id} value={s.id}>{s.name}</option>
                                     ))}
                                 </select>
+                                {errors.supplier_id && <p className="mt-1 text-xs text-danger-500">{errors.supplier_id}</p>}
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Tujuan Gudang</label>
+                                <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    Tujuan Gudang
+                                </label>
                                 <select
                                     value={data.warehouse_id}
                                     onChange={(e) => setData("warehouse_id", e.target.value)}
@@ -171,19 +195,24 @@ export default function Create({ suppliers, products, categories = [], warehouse
                                         <option key={w.id} value={w.id}>{w.code} — {w.name}</option>
                                     ))}
                                 </select>
+                                {errors.warehouse_id && <p className="mt-1 text-xs text-danger-500">{errors.warehouse_id}</p>}
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Nomor Dokumen</label>
+                                <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    Nomor Dokumen
+                                </label>
                                 <input
                                     type="text"
                                     value={data.document_number}
                                     onChange={(e) => setData("document_number", e.target.value)}
-                                    placeholder="Kosongkan untuk auto-generate"
                                     className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                                 />
+                                {errors.document_number && <p className="mt-1 text-xs text-danger-500">{errors.document_number}</p>}
                             </div>
                             <div>
-                                <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Catatan</label>
+                                <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    Catatan
+                                </label>
                                 <input
                                     type="text"
                                     value={data.notes}
@@ -335,16 +364,16 @@ export default function Create({ suppliers, products, categories = [], warehouse
 
                     <div className="flex justify-end gap-3">
                         <Link
-                            href={route("purchase-orders.index")}
+                            href={route("purchase-orders.show", order.id)}
                             className="flex h-11 items-center rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                         >
                             Batal
                         </Link>
                         <Button
                             type="submit"
-                            icon={<IconPlus size={18} />}
+                            icon={<IconDeviceFloppy size={18} />}
                             className="bg-primary-500 hover:bg-primary-600 text-white shadow-lg shadow-primary-500/30"
-                            label={processing ? "Menyimpan..." : "Simpan PO"}
+                            label={processing ? "Menyimpan..." : "Simpan Perubahan"}
                             disabled={processing}
                         />
                     </div>
@@ -363,4 +392,5 @@ export default function Create({ suppliers, products, categories = [], warehouse
     );
 }
 
-Create.layout = (page) => <DashboardLayout children={page} />;
+Edit.layout = (page) => <DashboardLayout children={page} />;
+

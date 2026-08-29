@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payable;
+use App\Models\PurchaseOrder;
 use App\Models\Receivable;
 use App\Models\Setting;
 use App\Models\Transaction;
@@ -170,5 +171,36 @@ class DocumentController extends Controller
         ])->setPaper('a5', 'portrait');
 
         return $pdf->stream("hutang-{$payable->document_number}.pdf");
+    }
+
+    public function purchaseOrder(string $documentNumber)
+    {
+        $this->ensureFontDirectory();
+
+        $order = PurchaseOrder::with([
+            'supplier',
+            'warehouse',
+            'creator',
+            'items.product',
+            'items.unit',
+        ])
+            ->where('document_number', $documentNumber)
+            ->orWhere('id', $documentNumber)
+            ->firstOrFail();
+
+        $barcode = $order->document_number ? $this->barcode($order->document_number) : null;
+
+        $pdf = Pdf::loadView('pdf.purchase_order', [
+            'order' => $order,
+            'store' => $this->storeProfile(),
+            'barcode' => $barcode,
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->stream("purchase-order-{$order->document_number}.pdf");
+    }
+
+    public function publicPurchaseOrder(string $documentNumber)
+    {
+        return $this->purchaseOrder($documentNumber);
     }
 }

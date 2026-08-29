@@ -38,6 +38,9 @@ Modul pembelian formal dari supplier: Purchase Order, Goods Receiving, dan Suppl
 | Buat PO | `purchase-orders.create` | GET |
 | Simpan PO | `purchase-orders.store` | POST |
 | Detail PO | `purchase-orders.show` | GET |
+| Cetak PO | `purchase-orders.print` | GET |
+| Edit PO | `purchase-orders.edit` | GET |
+| Update PO | `purchase-orders.update` | PUT |
 | Place PO | `purchase-orders.place` | POST |
 | Cancel PO | `purchase-orders.cancel` | POST |
 | Daftar GR | `goods-receivings.index` | GET |
@@ -57,7 +60,7 @@ Modul pembelian formal dari supplier: Purchase Order, Goods Receiving, dan Suppl
 |-----------|-----------|
 | `purchase-orders-access` | Lihat daftar & detail PO |
 | `purchase-orders-create` | Buat PO |
-| `purchase-orders-update` | Place/cancel PO |
+| `purchase-orders-update` | Edit/update PO draft, place, cancel PO |
 | `goods-receivings-access` | Lihat daftar & detail GR |
 | `goods-receivings-create` | Buat GR |
 | `supplier-returns-access` | Lihat daftar & detail SR |

@@ -7,7 +7,9 @@ import Pagination from "@/Components/Dashboard/Pagination";
 import { useAuthorization } from "@/Utils/authorization";
 import {
     IconCirclePlus,
+    IconEdit,
     IconEye,
+    IconPrinter,
     IconSearch,
     IconShoppingCart,
     IconX,
@@ -37,6 +39,17 @@ const statusBadge = (status) => {
         cancelled: "Dibatalkan",
     };
     return <span className={`${base} ${map[status] || map.draft}`}>{labels[status] || status}</span>;
+};
+
+const getPrintUrl = (orderId) => {
+    try {
+        if (typeof route === "function" && route().has("purchase-orders.print")) {
+            return route("purchase-orders.print", orderId);
+        }
+    } catch {
+        // fallback to direct URI
+    }
+    return `/dashboard/purchase-orders/${orderId}/print`;
 };
 
 export default function Index({ orders, filters, suppliers }) {
@@ -137,12 +150,31 @@ export default function Index({ orders, filters, suppliers }) {
                                     <Table.Td>{order.items_count}</Table.Td>
                                     <Table.Td>{order.creator?.name || "-"}</Table.Td>
                                     <Table.Td className="text-center">
-                                        <Link
-                                            href={route("purchase-orders.show", order.id)}
-                                            className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-600 transition hover:border-primary-300 hover:text-primary-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-primary-700 dark:hover:text-primary-400"
-                                        >
-                                            <IconEye size={18} />
-                                        </Link>
+                                        <div className="inline-flex items-center gap-1.5">
+                                            <Link
+                                                href={getPrintUrl(order.id)}
+                                                className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-600 transition hover:border-slate-400 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white"
+                                                title="Cetak Dokumen PO"
+                                            >
+                                                <IconPrinter size={18} />
+                                            </Link>
+                                            {order.status === "draft" && can("purchase-orders-update") && (
+                                                <Link
+                                                    href={route("purchase-orders.edit", order.id)}
+                                                    className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-600 transition hover:border-amber-300 hover:text-amber-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-amber-700 dark:hover:text-amber-400"
+                                                    title="Edit Draft PO"
+                                                >
+                                                    <IconEdit size={18} />
+                                                </Link>
+                                            )}
+                                            <Link
+                                                href={route("purchase-orders.show", order.id)}
+                                                className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-600 transition hover:border-primary-300 hover:text-primary-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-primary-700 dark:hover:text-primary-400"
+                                                title="Lihat Detail"
+                                            >
+                                                <IconEye size={18} />
+                                            </Link>
+                                        </div>
                                     </Table.Td>
                                 </tr>
                             ))

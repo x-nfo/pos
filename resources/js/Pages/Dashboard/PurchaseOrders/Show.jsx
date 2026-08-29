@@ -1,18 +1,23 @@
 import React from "react";
 import DashboardLayout from "@/Layouts/DashboardLayout";
-import { Head, Link, router } from "@inertiajs/react";
+import { Head, Link, router, usePage } from "@inertiajs/react";
 import Button from "@/Components/Dashboard/Button";
 import Table from "@/Components/Dashboard/Table";
 import { useAuthorization } from "@/Utils/authorization";
+import { shareWhatsappPurchaseOrder } from "@/Utils/whatsappPurchaseOrder";
 import {
     IconArrowLeft,
+    IconBrandWhatsapp,
     IconCheck,
     IconCircleX,
+    IconEdit,
     IconPackage,
+    IconPrinter,
     IconShoppingCart,
     IconTruckDelivery,
 } from "@tabler/icons-react";
 import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 
 const formatCurrency = (value = 0) =>
     new Intl.NumberFormat("id-ID", {
@@ -48,27 +53,70 @@ const statusBadge = (status) => {
     return <span className={`${base} ${map[status] || map.draft}`}>{labels[status] || status}</span>;
 };
 
+const getPrintUrl = (orderId) => {
+    try {
+        if (typeof route === "function" && route().has("purchase-orders.print")) {
+            return route("purchase-orders.print", orderId);
+        }
+    } catch {
+        // fallback to direct URI
+    }
+    return `/dashboard/purchase-orders/${orderId}/print`;
+};
+
 export default function Show({ order }) {
+    const { storeProfile = {}, branding = {} } = usePage().props;
     const { can } = useAuthorization();
     const canEdit = can("purchase-orders-update");
     const canCreateReceiving = can("goods-receivings-create");
 
+    const handleShareWhatsapp = () => {
+        shareWhatsappPurchaseOrder({ order, storeProfile, branding });
+    };
+
     const placeOrder = () => {
-        router.post(route("purchase-orders.place", order.id), {}, {
-            preserveScroll: true,
-            onSuccess: () => toast.success("PO berhasil dipesan"),
-            onError: () => toast.error("Gagal memesan PO"),
+        Swal.fire({
+            title: "Pesan ke Supplier?",
+            text: `Purchase order ${order.document_number} akan diubah statusnya menjadi dipesan.`,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#6366f1",
+            cancelButtonColor: "#64748b",
+            confirmButtonText: "Ya, Pesan Sekarang",
+            cancelButtonText: "Batal",
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.post(route("purchase-orders.place", order.id), {}, {
+                    preserveScroll: true,
+                    onSuccess: () => toast.success("PO berhasil dipesan ke supplier"),
+                    onError: () => toast.error("Gagal memesan PO"),
+                });
+            }
         });
     };
 
     const cancelOrder = () => {
-        router.post(route("purchase-orders.cancel", order.id), {}, {
-            preserveScroll: true,
-            onSuccess: () => toast.success("PO dibatalkan"),
-            onError: () => toast.error("Gagal membatalkan PO"),
+        Swal.fire({
+            title: "Batalkan Purchase Order?",
+            text: `Apakah Anda yakin ingin membatalkan purchase order ${order.document_number}? Tindakan ini tidak dapat dibatalkan.`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#f43f5e",
+            cancelButtonColor: "#64748b",
+            confirmButtonText: "Ya, Batalkan PO",
+            cancelButtonText: "Kembali",
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.post(route("purchase-orders.cancel", order.id), {}, {
+                    preserveScroll: true,
+                    onSuccess: () => toast.success("PO berhasil dibatalkan"),
+                    onError: () => toast.error("Gagal membatalkan PO"),
+                });
+            }
         });
     };
 
+    const canEditDraft = order.status === "draft" && canEdit;
     const canPlace = order.status === "draft" && canEdit;
     const canCancel = ["draft", "ordered", "partial_received"].includes(order.status) && canEdit;
 
@@ -83,22 +131,45 @@ export default function Show({ order }) {
                     <IconArrowLeft size={16} />
                     Kembali ke daftar PO
                 </Link>
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                        <div className="mb-2 flex items-center gap-2">
-                            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between min-w-0">
+                    <div className="min-w-0">
+                        <div className="mb-2 flex items-center gap-2 flex-wrap">
+                            <h1 className="text-2xl font-bold text-slate-900 dark:text-white break-words">
                                 {order.document_number}
                             </h1>
                             {statusBadge(order.status)}
                         </div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                        <p className="text-sm text-slate-500 dark:text-slate-400 break-words">
                             Supplier: {order.supplier?.name || "-"} &bull; Dibuat oleh {order.creator?.name || "-"} &bull; {formatDateTime(order.created_at)}
                         </p>
                         {order.ordered_at && (
                             <p className="text-sm text-slate-500">Dipesan: {formatDateTime(order.ordered_at)}</p>
                         )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2 flex-shrink-0">
+                        <Button
+                            type="link"
+                            href={getPrintUrl(order.id)}
+                            icon={<IconPrinter size={18} />}
+                            className="bg-slate-700 hover:bg-slate-800 text-white shadow-sm"
+                            label="Cetak Dokumen PO"
+                        />
+                        <Button
+                            type="button"
+                            onClick={handleShareWhatsapp}
+                            icon={<IconBrandWhatsapp size={18} />}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                            label="Kirim ke WA Supplier"
+                        />
+                        {canEditDraft && (
+                            <Button
+                                type="link"
+                                href={route("purchase-orders.edit", order.id)}
+                                icon={<IconEdit size={18} />}
+                                className="bg-amber-500 hover:bg-amber-600 text-white"
+                                label="Edit PO"
+                            />
+                        )}
                         {canPlace && (
                             <Button
                                 type="button"
@@ -130,9 +201,9 @@ export default function Show({ order }) {
                 </div>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
-                <div className="space-y-6">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr] min-w-0">
+                <div className="space-y-6 min-w-0">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
                             Item Purchase Order
                         </h2>
@@ -194,7 +265,7 @@ export default function Show({ order }) {
                     </div>
 
                     {order.goods_receivings?.length > 0 && (
-                        <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                             <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
                                 Riwayat Penerimaan Barang
                             </h2>
@@ -229,16 +300,16 @@ export default function Show({ order }) {
                     )}
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-6 min-w-0">
                     {order.notes && (
-                        <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                             <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">Catatan</h2>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">{order.notes}</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 break-words">{order.notes}</p>
                         </div>
                     )}
 
                     {order.payable && (
-                        <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                             <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">Hutang Supplier</h2>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
@@ -263,7 +334,7 @@ export default function Show({ order }) {
                         </div>
                     )}
 
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">Informasi</h2>
                         <div className="space-y-3 text-sm text-slate-500 dark:text-slate-400">
                             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
