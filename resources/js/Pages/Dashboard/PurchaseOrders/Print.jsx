@@ -131,10 +131,10 @@ export default function Print({ order, defaultPaperSize = "a4" }) {
             </div>
 
             {/* Printable Content */}
-            <div className="min-h-screen bg-slate-100 dark:bg-slate-950 py-8 px-4 print:p-0 print:bg-white print:text-black">
+            <div className="min-h-screen bg-slate-100 dark:bg-slate-950 py-4 px-2 sm:py-8 sm:px-4 print:p-0 print:bg-white print:text-black">
                 {printMode === "a4" ? (
                     /* A4 Standard Purchase Order Document */
-                    <div className="max-w-4xl mx-auto bg-white text-slate-800 rounded-2xl shadow-xl border border-slate-200 p-8 sm:p-12 print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none print:text-black">
+                    <div className="max-w-4xl mx-auto bg-white text-slate-800 rounded-2xl shadow-xl border border-slate-200 p-4 sm:p-8 md:p-12 print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none print:text-black">
                         {/* Header Toko & Judul Dokumen */}
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between pb-6 border-b-2 border-slate-900 gap-4">
                             <div>
@@ -234,8 +234,8 @@ export default function Print({ order, defaultPaperSize = "a4" }) {
                         </div>
 
                         {/* Tabel Item PO */}
-                        <div className="py-6">
-                            <table className="w-full text-left text-xs border-collapse">
+                        <div className="py-6 overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
+                            <table className="w-full min-w-[580px] print:min-w-full text-left text-xs border-collapse">
                                 <thead>
                                     <tr className="border-y-2 border-slate-900 bg-slate-50 print:bg-transparent font-bold text-slate-900">
                                         <th className="py-3 px-2 w-10 text-center">No</th>
@@ -322,7 +322,7 @@ export default function Print({ order, defaultPaperSize = "a4" }) {
                         </div>
 
                         {/* Kolom Tanda Tangan */}
-                        <div className="grid grid-cols-3 gap-6 pt-4 text-center text-xs">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-6 pt-4 text-center text-xs">
                             <div>
                                 <p className="text-slate-500 mb-16">Dibuat Oleh (Purchasing):</p>
                                 <p className="font-bold text-slate-900 border-t border-slate-400 pt-1">

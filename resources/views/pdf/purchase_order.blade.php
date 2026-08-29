@@ -98,6 +98,7 @@
         .items-table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
             margin-top: 10px;
             margin-bottom: 16px;
         }
@@ -106,19 +107,23 @@
             background: #f1f5f9;
             color: #0f172a;
             font-weight: 700;
-            font-size: 11px;
+            font-size: 10.5px;
             text-transform: uppercase;
             letter-spacing: 0.3px;
-            padding: 8px 6px;
+            padding: 8px 5px;
             border-top: 1.5px solid #0f172a;
             border-bottom: 1.5px solid #0f172a;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .items-table td {
-            padding: 8px 6px;
+            padding: 8px 5px;
             border-bottom: 1px solid #e2e8f0;
-            font-size: 11.5px;
+            font-size: 11px;
             vertical-align: middle;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .text-left { text-align: left; }
