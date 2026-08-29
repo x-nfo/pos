@@ -554,50 +554,51 @@ export default function Print({
 
                     {/* Pending Bank Confirmation Banner */}
                     {isPendingBankConfirmation && (
-                        <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-5 shadow-sm print:hidden">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div className="flex items-start gap-3">
-                                    <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
-                                        <IconBuildingBank size={26} />
+                        <div className="rounded-xl border border-cyan-200 dark:border-cyan-800/80 bg-cyan-50/90 dark:bg-cyan-950/40 px-4 py-3 sm:px-5 sm:py-3.5 shadow-xs print:hidden">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className="w-9 h-9 rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0">
+                                        <IconBuildingBank size={20} />
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            <h3 className="font-bold text-amber-900 dark:text-amber-200 text-base">
-                                                Pembayaran Belum Dikonfirmasi (Transfer Bank)
+                                            <h3 className="font-bold text-cyan-950 dark:text-cyan-100 text-sm">
+                                                Menunggu Konfirmasi Transfer Bank
                                             </h3>
-                                            <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 uppercase tracking-wide">
-                                                Belum Dikonfirmasi
+                                            <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-cyan-200/80 dark:bg-cyan-900/60 text-cyan-900 dark:text-cyan-200">
+                                                {transaction.bank_account?.bank_name || "Bank"}
                                             </span>
                                         </div>
-                                        <p className="text-sm text-amber-800/90 dark:text-amber-300/90 mt-1">
-                                            Transaksi ini menunggu konfirmasi mutasi transfer bank ke rekening <strong>{transaction.bank_account?.bank_name || "Bank"}{transaction.bank_account?.account_number ? ` (${transaction.bank_account.account_number} a.n. ${transaction.bank_account.account_name})` : ""}</strong> sebesar <strong>{formatPrice(transaction.grand_total)}</strong> oleh Superadmin/Admin.
+                                        <p className="text-xs text-cyan-800/80 dark:text-cyan-300/80 mt-0.5 truncate">
+                                            {transaction.bank_account?.account_number ? `Rek. ${transaction.bank_account.account_number} (${transaction.bank_account.account_name}) • ` : ""}
+                                            Total: <strong className="text-cyan-950 dark:text-cyan-100">{formatPrice(transaction.grand_total)}</strong>
                                         </p>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center flex-wrap">
+                                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                                     <button
                                         type="button"
                                         onClick={handleCheckApprovalStatus}
                                         disabled={isCheckingApproval}
-                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs font-semibold hover:bg-amber-100/50 dark:hover:bg-slate-700 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-cyan-200 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200 text-xs font-semibold hover:bg-cyan-50 dark:hover:bg-slate-700 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
                                         title="Muat ulang status transaksi"
                                     >
                                         <IconRefresh
-                                            size={15}
+                                            size={14}
                                             className={isCheckingApproval ? "animate-spin" : ""}
                                         />
-                                        {isCheckingApproval ? "Memeriksa..." : "Cek Status"}
+                                        <span>{isCheckingApproval ? "Memeriksa..." : "Cek Status"}</span>
                                     </button>
 
                                     {canConfirmPayment && (
                                         <button
                                             type="button"
                                             onClick={() => setShowConfirmModal(true)}
-                                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold shadow-2xs hover:shadow-xs transition-all cursor-pointer"
                                         >
-                                            <IconCheck size={16} />
-                                            Konfirmasi Bayar
+                                            <IconCheck size={15} />
+                                            <span>Konfirmasi Bayar</span>
                                         </button>
                                     )}
                                 </div>
@@ -607,45 +608,47 @@ export default function Print({
 
                     {/* Pending Approval Banner */}
                     {isPendingApproval && (
-                        <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-5 shadow-sm print:hidden">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div className="flex items-start gap-3">
-                                    <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
-                                        <IconAlertCircle size={26} />
+                        <div className="rounded-xl border border-amber-200 dark:border-amber-800/80 bg-amber-50/90 dark:bg-amber-950/40 px-4 py-3 sm:px-5 sm:py-3.5 shadow-xs print:hidden">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                                        <IconAlertCircle size={20} />
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            <h3 className="font-bold text-amber-900 dark:text-amber-200 text-base">
-                                                Menunggu Persetujuan (Approval) Diskon
+                                            <h3 className="font-bold text-amber-950 dark:text-amber-100 text-sm">
+                                                Menunggu Persetujuan Diskon
                                             </h3>
-                                            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300">
-                                                Status: Pending
+                                            <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
+                                                Diskon {formatPrice(transaction.discount)}
                                             </span>
+                                            {paymentMethodKey === "bank_transfer" && (
+                                                <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300">
+                                                    Transfer Bank
+                                                </span>
+                                            )}
                                         </div>
-                                        <p className="text-sm text-amber-800/90 dark:text-amber-300/90 mt-1">
-                                            Diskon manual sebesar <strong>{formatPrice(transaction.discount)}</strong> memerlukan verifikasi Supervisor sebelum pembayaran diselesaikan dan struk final dicetak.
+                                        <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-0.5 truncate">
+                                            {paymentMethodKey === "bank_transfer"
+                                                ? "Perlu persetujuan Supervisor. Mutasi transfer bank tetap harus dikonfirmasi setelah diskon disetujui."
+                                                : "Memerlukan verifikasi Supervisor sebelum pembayaran diselesaikan."}
                                         </p>
-                                        {paymentMethodKey === "bank_transfer" && (
-                                            <p className="text-xs font-medium text-cyan-900 dark:text-cyan-200 mt-1.5 bg-cyan-100/70 dark:bg-cyan-950/60 p-2 rounded-lg border border-cyan-300/60 dark:border-cyan-800/60">
-                                                ℹ️ <strong>Metode Transfer Bank:</strong> Persetujuan diskon TIDAK otomatis melunaskan pembayaran. Mutasi dana bank tetap harus diverifikasi dan dikonfirmasi setelah diskon disetujui.
-                                            </p>
-                                        )}
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center flex-wrap">
+                                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                                     <button
                                         type="button"
                                         onClick={handleCheckApprovalStatus}
                                         disabled={isCheckingApproval}
-                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs font-semibold hover:bg-amber-100/50 dark:hover:bg-slate-700 transition-colors shadow-sm disabled:opacity-50"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-semibold hover:bg-amber-50 dark:hover:bg-slate-700 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
                                         title="Muat ulang status approval transaksi"
                                     >
                                         <IconRefresh
-                                            size={15}
+                                            size={14}
                                             className={isCheckingApproval ? "animate-spin" : ""}
                                         />
-                                        {isCheckingApproval ? "Memeriksa..." : "Cek Status"}
+                                        <span>{isCheckingApproval ? "Memeriksa..." : "Cek Status"}</span>
                                     </button>
 
                                     {canApproveDiscount && (
@@ -653,18 +656,18 @@ export default function Print({
                                             <button
                                                 type="button"
                                                 onClick={() => handleDiscountDecision("approve")}
-                                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-success-600 hover:bg-success-700 text-white text-xs font-semibold shadow-sm transition-colors"
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs hover:shadow-xs transition-colors cursor-pointer"
                                             >
-                                                <IconCheck size={16} />
-                                                Setujui Diskon
+                                                <IconCheck size={14} />
+                                                <span>Setujui</span>
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => handleDiscountDecision("deny")}
-                                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-danger-300 dark:border-danger-700 bg-white dark:bg-slate-800 text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-950/40 text-xs font-semibold shadow-sm transition-colors"
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-800 bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
                                             >
-                                                <IconX size={16} />
-                                                Tolak
+                                                <IconX size={14} />
+                                                <span>Tolak</span>
                                             </button>
                                         </>
                                     )}
