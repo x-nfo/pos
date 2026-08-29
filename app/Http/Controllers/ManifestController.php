@@ -7,6 +7,23 @@ use Illuminate\Http\JsonResponse;
 
 class ManifestController extends Controller
 {
+    private function getIconSizes(string $iconPath, string $defaultSize): string
+    {
+        $sizes = [$defaultSize, 'any'];
+        
+        if (str_starts_with($iconPath, '/storage/')) {
+            $path = storage_path('app/public/' . substr($iconPath, 9));
+            if (file_exists($path)) {
+                $size = @getimagesize($path);
+                if ($size) {
+                    $sizes[] = $size[0] . 'x' . $size[1];
+                }
+            }
+        }
+        
+        return implode(' ', array_unique($sizes));
+    }
+
     public function __invoke(BrandingService $brandingService): JsonResponse
     {
         $branding = $brandingService->getBranding();
@@ -29,12 +46,12 @@ class ManifestController extends Controller
             'icons' => [
                 [
                     'src' => $icon192,
-                    'sizes' => '192x192',
+                    'sizes' => $this->getIconSizes($icon192, '192x192'),
                     'type' => 'image/png',
                 ],
                 [
                     'src' => $icon512,
-                    'sizes' => '512x512',
+                    'sizes' => $this->getIconSizes($icon512, '512x512'),
                     'type' => 'image/png',
                 ],
             ],
@@ -47,7 +64,7 @@ class ManifestController extends Controller
                     'icons' => [
                         [
                             'src' => $icon192,
-                            'sizes' => '192x192',
+                            'sizes' => $this->getIconSizes($icon192, '192x192'),
                         ],
                     ],
                 ],
@@ -59,7 +76,7 @@ class ManifestController extends Controller
                     'icons' => [
                         [
                             'src' => $icon192,
-                            'sizes' => '192x192',
+                            'sizes' => $this->getIconSizes($icon192, '192x192'),
                         ],
                     ],
                 ],
