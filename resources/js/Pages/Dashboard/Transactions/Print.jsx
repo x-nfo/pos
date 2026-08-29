@@ -29,6 +29,7 @@ import { printViaWebUsb } from "@/Utils/webUsbPrinter";
 import { printViaBluetooth } from "@/Utils/webBluetoothPrinter";
 import toast from "react-hot-toast";
 import axios from "axios";
+import Swal from "sweetalert2";
 
 function QrisCode({ value, size = 180 }) {
     const [dataUrl, setDataUrl] = useState("");
@@ -107,26 +108,35 @@ export default function Print({
 
     const handleDiscountDecision = (action) => {
         const isApprove = action === "approve";
-        if (
-            !window.confirm(
-                `${isApprove ? "Setujui" : "Tolak"} diskon transaksi ${transaction.invoice}?`
-            )
-        )
-            return;
+        Swal.fire({
+            title: isApprove ? "Setujui Diskon?" : "Tolak Diskon?",
+            text: `${isApprove ? "Setujui" : "Tolak"} permintaan diskon untuk transaksi ${transaction.invoice}?`,
+            icon: isApprove ? "question" : "warning",
+            showCancelButton: true,
+            confirmButtonColor: isApprove ? "#10b981" : "#e11d48",
+            cancelButtonColor: "#64748b",
+            confirmButtonText: isApprove ? "Ya, Setujui" : "Ya, Tolak",
+            cancelButtonText: "Batal",
+            customClass: {
+                popup: "rounded-2xl dark:bg-slate-900 dark:text-white",
+            },
+        }).then((result) => {
+            if (!result.isConfirmed) return;
 
-        router.post(
-            route(`discount-approvals.${action}`, transaction.id),
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    toast.success(
-                        isApprove ? "Diskon disetujui." : "Diskon ditolak."
-                    );
-                },
-                onError: () => toast.error("Gagal memproses approval diskon."),
-            }
-        );
+            router.post(
+                route(`discount-approvals.${action}`, transaction.id),
+                {},
+                {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        toast.success(
+                            isApprove ? "Diskon disetujui." : "Diskon ditolak."
+                        );
+                    },
+                    onError: () => toast.error("Gagal memproses approval diskon."),
+                }
+            );
+        });
     };
 
     const handleDirectPrint = async () => {
@@ -242,7 +252,12 @@ export default function Print({
 
     const paymentStatuses = {
         paid: "Lunas",
-        pending: transaction?.payment_method === "pay_later" ? "Belum Lunas" : "Menunggu",
+        pending:
+            transaction?.payment_method === "pay_later"
+                ? "Belum Lunas"
+                : transaction?.payment_method === "bank_transfer"
+                ? "Belum Dikonfirmasi"
+                : "Menunggu",
         pending_approval: "Menunggu Approval Diskon",
         failed: "Gagal",
         expired: "Kedaluwarsa",
@@ -257,7 +272,9 @@ export default function Print({
     const statusColors = {
         paid: "bg-success-100 text-success-700 dark:bg-success-900/50 dark:text-success-400",
         pending:
-            "bg-warning-100 text-warning-700 dark:bg-warning-900/50 dark:text-warning-400",
+            transaction?.payment_method === "bank_transfer"
+                ? "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                : "bg-warning-100 text-warning-700 dark:bg-warning-900/50 dark:text-warning-400",
         pending_approval:
             "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300",
         unpaid:
@@ -305,6 +322,9 @@ export default function Print({
     const isPendingApproval =
         transaction?.discount_approval_status === "pending" ||
         transaction?.payment_status === "pending_approval";
+
+    const isPendingBankConfirmation =
+        paymentMethodKey === "bank_transfer" && paymentStatusKey === "pending";
 
     const SimpleBarcode = ({ value }) => {
         const bars = useMemo(() => {
@@ -532,6 +552,59 @@ export default function Print({
                         </div>
                     </div>
 
+                    {/* Pending Bank Confirmation Banner */}
+                    {isPendingBankConfirmation && (
+                        <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-5 shadow-sm print:hidden">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                                        <IconBuildingBank size={26} />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <h3 className="font-bold text-amber-900 dark:text-amber-200 text-base">
+                                                Pembayaran Belum Dikonfirmasi (Transfer Bank)
+                                            </h3>
+                                            <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 uppercase tracking-wide">
+                                                Belum Dikonfirmasi
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-amber-800/90 dark:text-amber-300/90 mt-1">
+                                            Transaksi ini menunggu konfirmasi mutasi transfer bank ke rekening <strong>{transaction.bank_account?.bank_name || "Bank"}{transaction.bank_account?.account_number ? ` (${transaction.bank_account.account_number} a.n. ${transaction.bank_account.account_name})` : ""}</strong> sebesar <strong>{formatPrice(transaction.grand_total)}</strong> oleh Superadmin/Admin.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center flex-wrap">
+                                    <button
+                                        type="button"
+                                        onClick={handleCheckApprovalStatus}
+                                        disabled={isCheckingApproval}
+                                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs font-semibold hover:bg-amber-100/50 dark:hover:bg-slate-700 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
+                                        title="Muat ulang status transaksi"
+                                    >
+                                        <IconRefresh
+                                            size={15}
+                                            className={isCheckingApproval ? "animate-spin" : ""}
+                                        />
+                                        {isCheckingApproval ? "Memeriksa..." : "Cek Status"}
+                                    </button>
+
+                                    {canConfirmPayment && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirmModal(true)}
+                                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
+                                        >
+                                            <IconCheck size={16} />
+                                            Konfirmasi Bayar
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Pending Approval Banner */}
                     {isPendingApproval && (
                         <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-5 shadow-sm print:hidden">
@@ -598,9 +671,19 @@ export default function Print({
                     {/* Approved Discount Banner */}
                     {transaction?.discount_approval_status === "approved" && (
                         <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-emerald-800 dark:text-emerald-300 print:hidden">
-                            <span className="flex items-center gap-1.5">
+                            <span className="flex items-center gap-1.5 font-medium">
                                 <IconCheck size={16} className="text-emerald-600 dark:text-emerald-400" />
                                 Diskon telah disetujui {transaction?.discount_approver?.name ? `oleh ${transaction.discount_approver.name}` : ""} {transaction?.discount_approved_at ? `pada ${formatDateTime(transaction.discount_approved_at)}` : ""}.
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Denied Discount Banner */}
+                    {transaction?.discount_approval_status === "denied" && (
+                        <div className="rounded-xl border border-rose-200 dark:border-rose-800/60 bg-rose-50 dark:bg-rose-950/30 px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-rose-800 dark:text-rose-300 print:hidden">
+                            <span className="flex items-center gap-1.5 font-medium">
+                                <IconX size={16} className="text-rose-600 dark:text-rose-400" />
+                                Pengajuan diskon telah ditolak {transaction?.discount_approver?.name ? `oleh ${transaction.discount_approver.name}` : ""} {transaction?.discount_approved_at ? `pada ${formatDateTime(transaction.discount_approved_at)}` : ""}. Total transaksi disesuaikan tanpa diskon.
                             </span>
                         </div>
                     )}

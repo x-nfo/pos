@@ -3,15 +3,31 @@ import { Head, Link, router, usePage } from "@inertiajs/react";
 import DashboardLayout from "@/Layouts/DashboardLayout";
 import { IconCheck, IconX, IconAlertCircle, IconEye } from "@tabler/icons-react";
 import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 
 const formatCurrency = (v = 0) => Number(v || 0).toLocaleString("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 });
 
 export default function DiscountApprovals({ pendingTransactions }) {
     const confirm = (action, tx) => {
-        if (!window.confirm(`${action === "approve" ? "Setujui" : "Tolak"} diskon transaksi ${tx.invoice}?`)) return;
-        router.post(route(`discount-approvals.${action}`, tx.id), {}, {
-            onSuccess: () => toast.success(action === "approve" ? "Diskon disetujui" : "Diskon ditolak"),
-            onError: () => toast.error("Gagal"),
+        const isApprove = action === "approve";
+        Swal.fire({
+            title: isApprove ? "Setujui Diskon?" : "Tolak Diskon?",
+            text: `${isApprove ? "Setujui" : "Tolak"} permintaan diskon untuk transaksi ${tx.invoice}?`,
+            icon: isApprove ? "question" : "warning",
+            showCancelButton: true,
+            confirmButtonColor: isApprove ? "#10b981" : "#e11d48",
+            cancelButtonColor: "#64748b",
+            confirmButtonText: isApprove ? "Ya, Setujui" : "Ya, Tolak",
+            cancelButtonText: "Batal",
+            customClass: {
+                popup: "rounded-2xl dark:bg-slate-900 dark:text-white",
+            },
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+            router.post(route(`discount-approvals.${action}`, tx.id), {}, {
+                onSuccess: () => toast.success(isApprove ? "Diskon disetujui" : "Diskon ditolak"),
+                onError: () => toast.error("Gagal memproses approval diskon"),
+            });
         });
     };
 

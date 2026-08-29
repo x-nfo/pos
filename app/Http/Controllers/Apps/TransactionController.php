@@ -1033,6 +1033,8 @@ class TransactionController extends Controller
             'start_date' => $request->input('start_date'),
             'end_date' => $request->input('end_date'),
             'warehouse_id' => $request->input('warehouse_id'),
+            'payment_status' => $request->input('payment_status'),
+            'payment_method' => $request->input('payment_method'),
         ];
 
         $query = Transaction::query()
@@ -1070,6 +1072,12 @@ class TransactionController extends Controller
             })
             ->when($filters['warehouse_id'], function (Builder $builder, $warehouseId) {
                 $builder->where('warehouse_id', $warehouseId);
+            })
+            ->when($filters['payment_status'], function (Builder $builder, $status) {
+                $builder->where('payment_status', $status);
+            })
+            ->when($filters['payment_method'], function (Builder $builder, $method) {
+                $builder->where('payment_method', $method);
             });
 
         $transactions = $query->paginate($this->perPage())->withQueryString();

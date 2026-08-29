@@ -54,6 +54,7 @@ export default function Menu() {
     const { t } = useTranslation();
     const { url, props } = usePage();
     const pendingApprovalCount = props?.pendingApprovalCount || 0;
+    const pendingBankPaymentCount = props?.pendingBankPaymentCount || 0;
 
     // define menu navigations
     const menuNavigation = [
@@ -122,6 +123,7 @@ export default function Menu() {
                     active: url === "/dashboard/transactions/history" ? true : false,
                     icon: <IconClockHour6 size={20} strokeWidth={1.5} />,
                     permissions: hasAnyPermission(["transactions-access"]),
+                    badge: pendingBankPaymentCount > 0 && hasAnyPermission(["transactions-confirm-payment"]) ? pendingBankPaymentCount : null,
                 },
                 {
                     title: t("sidebar.items.salesReturns"),

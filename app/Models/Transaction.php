@@ -165,15 +165,39 @@ class Transaction extends Model
 
     public function needsDiscountApproval(): bool
     {
-        $threshold = (int) Setting::get('discount_approval_threshold', 0);
-        $percentThreshold = (int) Setting::get('discount_approval_percent_threshold', 0);
+        $threshold = (float) Setting::get('discount_approval_threshold', 0);
+        $percentThreshold = (float) Setting::get('discount_approval_percent_threshold', 0);
+
+        if ($this->discount <= 0) {
+            return false;
+        }
 
         if ($threshold > 0 && $this->discount >= $threshold) {
             return true;
         }
-        if ($percentThreshold > 0 && $this->grand_total > 0) {
-            $percent = ($this->discount / $this->grand_total) * 100;
-            if ($percent >= $percentThreshold) {
+
+        if ($percentThreshold > 0) {
+            $baseAmount = $this->relationLoaded('details') && $this->details->isNotEmpty()
+                ? (float) $this->details->sum('price')
+                : (float) $this->details()->sum('price');
+
+            if ($baseAmount <= 0) {
+                $baseAmount = (float) (
+                    $this->grand_total
+                    + $this->discount
+                    - ($this->tax_total ?? 0)
+                    - ($this->shipping_cost ?? 0)
+                    + ($this->loyalty_discount_total ?? 0)
+                    + ($this->customer_voucher_discount ?? 0)
+                );
+            }
+
+            if ($baseAmount > 0) {
+                $percent = ($this->discount / $baseAmount) * 100;
+                if ($percent >= $percentThreshold) {
+                    return true;
+                }
+            } else {
                 return true;
             }
         }

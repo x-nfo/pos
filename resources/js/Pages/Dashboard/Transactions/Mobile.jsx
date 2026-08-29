@@ -88,6 +88,7 @@ export default function Mobile({
     const [selectedCustomer, setSelectedCustomer] = useState(WALK_IN_CUSTOMER);
     const [pricingPreview, setPricingPreview] = useState(initialPricingPreview);
     const [isLoadingPricing, setIsLoadingPricing] = useState(false);
+    const [discountType, setDiscountType] = useState("nominal");
     const [discountInput, setDiscountInput] = useState("");
     const [redeemPointsInput, setRedeemPointsInput] = useState("");
     const [cashInput, setCashInput] = useState("");
@@ -204,12 +205,23 @@ export default function Mobile({
         );
     }, [activeCarts]);
 
-    const discount = Number(discountInput || 0);
-    const shipping = Number(shippingInput || 0);
     const summary = pricingPreview?.summary || {};
     const baseSubtotal = Number(
         summary?.base_subtotal ?? summary?.subtotal ?? localSubtotal
     );
+    const subtotalBeforeManual = Number(
+        summary?.subtotal_after_promo ?? baseSubtotal
+    );
+    const discount = useMemo(() => {
+        const rawVal = Number(discountInput) || 0;
+        if (rawVal <= 0) return 0;
+        if (discountType === "percentage") {
+            const percent = Math.min(100, Math.max(0, rawVal));
+            return Math.min(subtotalBeforeManual, Math.round((subtotalBeforeManual * percent) / 100));
+        }
+        return Math.min(subtotalBeforeManual, Math.max(0, rawVal));
+    }, [discountInput, discountType, subtotalBeforeManual]);
+    const shipping = Number(shippingInput || 0);
     const promoDiscount = Number(
         summary?.promo_discount ?? summary?.promo_discount_total ?? 0
     );
@@ -836,6 +848,10 @@ export default function Mobile({
                             isHolding={isHolding}
                             onUpdateQty={handleUpdateQty}
                             onRemoveFromCart={handleRemoveFromCart}
+                            discountType={discountType}
+                            onDiscountTypeChange={setDiscountType}
+                            calculatedDiscount={discount}
+                            subtotalBeforeManual={subtotalBeforeManual}
                             discountInput={discountInput}
                             onDiscountChange={setDiscountInput}
                             shippingInput={shippingInput}

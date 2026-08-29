@@ -157,6 +157,8 @@ export default function PaymentPanel({
     loyaltyDiscount = 0,
     discount = 0,
     taxTotal = 0,
+    discountType = "nominal",
+    onDiscountTypeChange,
     discountInput = "",
     onDiscountChange,
     redeemPointsInput = "",
@@ -336,24 +338,75 @@ export default function PaymentPanel({
 
                 {/* Discount Input */}
                 <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        Diskon (Rp)
-                    </label>
-                    <input
-                        type="text"
-                        inputMode="numeric"
-                        value={discountInput}
-                        onChange={(e) =>
-                            onDiscountChange(
-                                e.target.value.replace(/[^\d]/g, "")
-                            )
-                        }
-                        placeholder="0"
-                        className="w-full h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700
-                            bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200
-                            focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
-                            transition-all text-base"
-                    />
+                    <div className="flex items-center justify-between mb-2">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                            Diskon
+                        </label>
+                        <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    onDiscountTypeChange?.("nominal");
+                                    onDiscountChange?.("");
+                                }}
+                                className={`px-2 py-0.5 text-xs font-medium rounded-md transition-colors ${
+                                    discountType === "nominal"
+                                        ? "bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-400 shadow-sm font-semibold"
+                                        : "text-slate-500 dark:text-slate-400"
+                                }`}
+                            >
+                                Rp
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    onDiscountTypeChange?.("percentage");
+                                    onDiscountChange?.("");
+                                }}
+                                className={`px-2 py-0.5 text-xs font-medium rounded-md transition-colors ${
+                                    discountType === "percentage"
+                                        ? "bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-400 shadow-sm font-semibold"
+                                        : "text-slate-500 dark:text-slate-400"
+                                }`}
+                            >
+                                %
+                            </button>
+                        </div>
+                    </div>
+                    <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">
+                            {discountType === "nominal" ? "Rp" : "%"}
+                        </span>
+                        <input
+                            type="text"
+                            inputMode="numeric"
+                            value={discountInput}
+                            onChange={(e) => {
+                                const val = e.target.value.replace(/[^\d]/g, "");
+                                if (discountType === "percentage" && Number(val) > 100) {
+                                    return;
+                                }
+                                onDiscountChange(val);
+                            }}
+                            placeholder={discountType === "nominal" ? "0" : "0%"}
+                            className="w-full h-11 pl-10 pr-4 rounded-xl border border-slate-200 dark:border-slate-700
+                                bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200
+                                focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
+                                transition-all text-base"
+                        />
+                    </div>
+                    {Number(discountInput) > 0 && subtotal > 0 && (
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                            <span>
+                                {discountType === "percentage"
+                                    ? `Setara Rp ${discount.toLocaleString("id-ID")}`
+                                    : `Setara ${((discount / subtotal) * 100).toFixed(1)}%`}
+                            </span>
+                            <span className="text-primary-600 dark:text-primary-400 font-medium">
+                                -Rp {discount.toLocaleString("id-ID")}
+                            </span>
+                        </p>
+                    )}
                 </div>
 
                 {/* Payment Method */}

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DiscountApprovalLog;
 use App\Models\Transaction;
 use App\Services\AuditLogService;
+use App\Services\UnitConversionService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -57,16 +58,61 @@ class DiscountApprovalController extends Controller
     private function logAndUpdate(Transaction $transaction, string $status, ?string $notes = null): void
     {
         \DB::transaction(function () use ($transaction, $status, $notes) {
+            $originalDiscount = (int) $transaction->discount;
+            $newDiscount = $status === 'approved' ? $originalDiscount : 0;
+            $newGrandTotal = $status === 'approved'
+                ? (int) $transaction->grand_total
+                : (int) $transaction->grand_total + $originalDiscount;
+
+            $isCash = $transaction->payment_method === 'cash';
+            $cashAmount = (int) $transaction->cash;
+            $changeAmount = $isCash ? max(0, $cashAmount - $newGrandTotal) : 0;
+
+            $paymentStatus = 'paid';
+            if ($status === 'denied') {
+                if ($transaction->payment_method === 'pay_later') {
+                    $paymentStatus = 'unpaid';
+                } elseif ($isCash) {
+                    $paymentStatus = $cashAmount >= $newGrandTotal ? 'paid' : 'pending';
+                } else {
+                    $paymentStatus = 'pending';
+                }
+            }
+
             $transaction->update([
+                'discount' => $newDiscount,
+                'grand_total' => $newGrandTotal,
+                'change' => $changeAmount,
                 'discount_approval_status' => $status,
                 'discount_approved_by' => auth()->id(),
                 'discount_approved_at' => now(),
-                'payment_status' => $status === 'approved' ? 'paid' : 'paid',
+                'payment_status' => $paymentStatus,
             ]);
 
-            if ($status === 'denied') {
-                $transaction->decrement('grand_total', $transaction->discount ?? 0);
-                $transaction->update(['discount' => 0]);
+            if ($transaction->receivable) {
+                $transaction->receivable->update([
+                    'total' => $newGrandTotal,
+                    'status' => $paymentStatus === 'paid' ? 'paid' : 'unpaid',
+                ]);
+            }
+
+            if ($status === 'denied' && $transaction->profits()->exists()) {
+                $details = $transaction->details()->with('product')->get();
+                $unitConversion = app(UnitConversionService::class);
+
+                $transaction->profits()->delete();
+                foreach ($details as $detail) {
+                    $unitBuyPrice = $detail->unit_id && $detail->product
+                        ? $unitConversion->getBuyPrice($detail->product, $detail->unit_id)
+                        : (int) (($detail->product?->buy_price ?? 0) * ($detail->conversion_factor ?: 1));
+                    $totalBuyPrice = $unitBuyPrice * $detail->qty;
+                    $lineTotal = (int) $detail->price;
+                    $profitTotal = $lineTotal - $totalBuyPrice;
+
+                    $transaction->profits()->create([
+                        'total' => $profitTotal,
+                    ]);
+                }
             }
 
             DiscountApprovalLog::where('transaction_id', $transaction->id)

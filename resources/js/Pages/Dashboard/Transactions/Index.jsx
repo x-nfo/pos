@@ -84,6 +84,7 @@ export default function Index({
     const [selectedCustomer, setSelectedCustomer] = useState(WALK_IN_CUSTOMER);
     const [pricingPreview, setPricingPreview] = useState(initialPricingPreview);
     const [isLoadingPricing, setIsLoadingPricing] = useState(false);
+    const [discountType, setDiscountType] = useState("nominal");
     const [discountInput, setDiscountInput] = useState("");
     const [redeemPointsInput, setRedeemPointsInput] = useState("");
     const [cashInput, setCashInput] = useState("");
@@ -209,18 +210,26 @@ export default function Index({
 
     const LowStockAlerts = () => null;
 
-    // Calculations
-    const discount = useMemo(
-        () => Math.max(0, Number(discountInput) || 0),
-        [discountInput]
-    );
-    const shipping = useMemo(
-        () => Math.max(0, Number(shippingInput) || 0),
-        [shippingInput]
-    );
     const baseSubtotal = useMemo(
         () => Number(pricingPreview?.summary?.base_subtotal ?? (activeCarts.reduce((acc, c) => acc + Number(c.price || 0), 0)) ?? 0),
         [pricingPreview, activeCarts]
+    );
+    const subtotalBeforeManual = useMemo(
+        () => Number(pricingPreview?.summary?.subtotal_after_promo ?? (activeCarts.reduce((acc, c) => acc + Number(c.price || 0), 0)) ?? 0),
+        [pricingPreview, activeCarts]
+    );
+    const discount = useMemo(() => {
+        const rawVal = Number(discountInput) || 0;
+        if (rawVal <= 0) return 0;
+        if (discountType === "percentage") {
+            const percent = Math.min(100, Math.max(0, rawVal));
+            return Math.min(subtotalBeforeManual, Math.round((subtotalBeforeManual * percent) / 100));
+        }
+        return Math.min(subtotalBeforeManual, Math.max(0, rawVal));
+    }, [discountInput, discountType, subtotalBeforeManual]);
+    const shipping = useMemo(
+        () => Math.max(0, Number(shippingInput) || 0),
+        [shippingInput]
     );
     const promoDiscount = useMemo(
         () => Number(pricingPreview?.summary?.promo_discount_total ?? 0),
@@ -1645,26 +1654,72 @@ export default function Index({
 
                                         {/* Diskon Manual */}
                                         <div>
-                                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                                                Diskon Manual (Rp)
-                                            </label>
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">
+                                                    Diskon Manual
+                                                </label>
+                                                <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setDiscountType("nominal");
+                                                            setDiscountInput("");
+                                                        }}
+                                                        className={`px-2 py-0.5 text-xs font-medium rounded-md transition-colors ${
+                                                            discountType === "nominal"
+                                                                ? "bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-400 shadow-sm font-semibold"
+                                                                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                                                        }`}
+                                                    >
+                                                        Rp
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setDiscountType("percentage");
+                                                            setDiscountInput("");
+                                                        }}
+                                                        className={`px-2 py-0.5 text-xs font-medium rounded-md transition-colors ${
+                                                            discountType === "percentage"
+                                                                ? "bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-400 shadow-sm font-semibold"
+                                                                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                                                        }`}
+                                                    >
+                                                        %
+                                                    </button>
+                                                </div>
+                                            </div>
                                             <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-                                                    Rp
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">
+                                                    {discountType === "nominal" ? "Rp" : "%"}
                                                 </span>
                                                 <input
                                                     type="text"
                                                     inputMode="numeric"
                                                     value={discountInput}
-                                                    onChange={(e) =>
-                                                        setDiscountInput(
-                                                            e.target.value.replace(/[^\d]/g, "")
-                                                        )
-                                                    }
-                                                    placeholder="0"
+                                                    onChange={(e) => {
+                                                        const val = e.target.value.replace(/[^\d]/g, "");
+                                                        if (discountType === "percentage" && Number(val) > 100) {
+                                                            return;
+                                                        }
+                                                        setDiscountInput(val);
+                                                    }}
+                                                    placeholder={discountType === "nominal" ? "0" : "0%"}
                                                     className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                                                 />
                                             </div>
+                                            {Number(discountInput) > 0 && subtotalBeforeManual > 0 && (
+                                                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                                                    <span>
+                                                        {discountType === "percentage"
+                                                            ? `Setara Rp ${discount.toLocaleString("id-ID")}`
+                                                            : `Setara ${((discount / subtotalBeforeManual) * 100).toFixed(1)}%`}
+                                                    </span>
+                                                    <span className="text-primary-600 dark:text-primary-400 font-medium">
+                                                        -Rp {discount.toLocaleString("id-ID")}
+                                                    </span>
+                                                </p>
+                                            )}
                                         </div>
 
                                         {/* Shipping Cost */}

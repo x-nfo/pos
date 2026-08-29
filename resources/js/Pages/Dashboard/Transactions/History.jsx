@@ -32,6 +32,8 @@ const defaultFilters = {
     start_date: "",
     end_date: "",
     warehouse_id: "",
+    payment_status: "",
+    payment_method: "",
 };
 
 const formatCurrency = (value = 0) =>
@@ -116,7 +118,7 @@ const History = ({ transactions, filters, warehouses = [] }) => {
         : rows.length || 1;
 
     const hasActiveFilters =
-        Boolean(filterData.invoice || filterData.start_date || filterData.end_date || filterData.warehouse_id);
+        Boolean(filterData.invoice || filterData.start_date || filterData.end_date || filterData.warehouse_id || filterData.payment_status || filterData.payment_method);
 
     return (
         <>
@@ -173,7 +175,7 @@ const History = ({ transactions, filters, warehouses = [] }) => {
                 {showFilters && (
                     <div className="hidden sm:block bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 animate-slide-up shadow-sm">
                         <form onSubmit={applyFilters}>
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">
                                         Nomor Invoice
@@ -233,6 +235,45 @@ const History = ({ transactions, filters, warehouses = [] }) => {
                                         ))}
                                     </select>
                                 </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                                        Status Pembayaran
+                                    </label>
+                                    <select
+                                        value={filterData.payment_status}
+                                        onChange={(e) =>
+                                            handleChange("payment_status", e.target.value)
+                                        }
+                                        className="w-full h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                    >
+                                        <option value="">Semua Status</option>
+                                        <option value="pending">Pending (Menunggu)</option>
+                                        <option value="paid">Lunas</option>
+                                        <option value="unpaid">Belum Lunas (Tempo)</option>
+                                        <option value="failed">Gagal</option>
+                                        <option value="expired">Kedaluwarsa</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                                        Metode Pembayaran
+                                    </label>
+                                    <select
+                                        value={filterData.payment_method}
+                                        onChange={(e) =>
+                                            handleChange("payment_method", e.target.value)
+                                        }
+                                        className="w-full h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                    >
+                                        <option value="">Semua Metode</option>
+                                        <option value="bank_transfer">Transfer Bank</option>
+                                        <option value="cash">Tunai</option>
+                                        <option value="pay_later">Bayar Nanti</option>
+                                        <option value="midtrans">Midtrans</option>
+                                        <option value="xendit">Xendit</option>
+                                        <option value="qrisly">QRISLY</option>
+                                    </select>
+                                </div>
                                 <div className="col-span-full flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                                     {hasActiveFilters && (
                                         <button
@@ -262,7 +303,7 @@ const History = ({ transactions, filters, warehouses = [] }) => {
                     isOpen={showFilters}
                     onClose={() => setShowFilters(false)}
                     title="Filter Riwayat Transaksi"
-                    subtitle="Saring berdasarkan nomor invoice, tanggal, atau gudang"
+                    subtitle="Saring berdasarkan nomor invoice, tanggal, gudang, atau status"
                     footer={
                         <div className="flex gap-2">
                             {hasActiveFilters && (
@@ -321,6 +362,44 @@ const History = ({ transactions, filters, warehouses = [] }) => {
                                     onChange={(e) => handleChange("end_date", e.target.value)}
                                     className="w-full h-11 px-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
                                 />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                                    Status
+                                </label>
+                                <select
+                                    value={filterData.payment_status}
+                                    onChange={(e) => handleChange("payment_status", e.target.value)}
+                                    className="w-full h-11 px-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                                >
+                                    <option value="">Semua Status</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="paid">Lunas</option>
+                                    <option value="unpaid">Belum Lunas</option>
+                                    <option value="failed">Gagal</option>
+                                    <option value="expired">Expired</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                                    Metode
+                                </label>
+                                <select
+                                    value={filterData.payment_method}
+                                    onChange={(e) => handleChange("payment_method", e.target.value)}
+                                    className="w-full h-11 px-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                                >
+                                    <option value="">Semua Metode</option>
+                                    <option value="bank_transfer">Transfer Bank</option>
+                                    <option value="cash">Tunai</option>
+                                    <option value="pay_later">Bayar Nanti</option>
+                                    <option value="midtrans">Midtrans</option>
+                                    <option value="xendit">Xendit</option>
+                                    <option value="qrisly">QRISLY</option>
+                                </select>
                             </div>
                         </div>
 

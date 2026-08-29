@@ -38,6 +38,10 @@ export default function MobileCartSheet({
     isHolding,
     onUpdateQty,
     onRemoveFromCart,
+    discountType = "nominal",
+    onDiscountTypeChange,
+    calculatedDiscount = 0,
+    subtotalBeforeManual = 0,
     discountInput,
     onDiscountChange,
     shippingInput,
@@ -410,26 +414,72 @@ export default function MobileCartSheet({
 
                                 {/* Manual Discount */}
                                 <div>
-                                    <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                                        Diskon Manual (Rp)
-                                    </label>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                                            Diskon Manual
+                                        </label>
+                                        <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    onDiscountTypeChange?.("nominal");
+                                                    onDiscountChange?.("");
+                                                }}
+                                                className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${
+                                                    discountType === "nominal"
+                                                        ? "bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-400 shadow-xs font-bold"
+                                                        : "text-slate-500 dark:text-slate-400"
+                                                }`}
+                                            >
+                                                Rp
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    onDiscountTypeChange?.("percentage");
+                                                    onDiscountChange?.("");
+                                                }}
+                                                className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${
+                                                    discountType === "percentage"
+                                                        ? "bg-white dark:bg-slate-700 text-primary-600 dark:text-primary-400 shadow-xs font-bold"
+                                                        : "text-slate-500 dark:text-slate-400"
+                                                }`}
+                                            >
+                                                %
+                                            </button>
+                                        </div>
+                                    </div>
                                     <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                                            Rp
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">
+                                            {discountType === "nominal" ? "Rp" : "%"}
                                         </span>
                                         <input
                                             type="text"
                                             inputMode="numeric"
                                             value={discountInput}
-                                            onChange={(e) =>
-                                                onDiscountChange(
-                                                    e.target.value.replace(/[^\d]/g, "")
-                                                )
-                                            }
-                                            placeholder="0"
-                                            className="w-full h-9 pl-8 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                                            onChange={(e) => {
+                                                const val = e.target.value.replace(/[^\d]/g, "");
+                                                if (discountType === "percentage" && Number(val) > 100) {
+                                                    return;
+                                                }
+                                                onDiscountChange(val);
+                                            }}
+                                            placeholder={discountType === "nominal" ? "0" : "0%"}
+                                            className="w-full h-9 pl-8 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                                         />
                                     </div>
+                                    {Number(discountInput) > 0 && subtotalBeforeManual > 0 && (
+                                        <p className="mt-1 text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                                            <span>
+                                                {discountType === "percentage"
+                                                    ? `Setara Rp ${calculatedDiscount.toLocaleString("id-ID")}`
+                                                    : `Setara ${((calculatedDiscount / subtotalBeforeManual) * 100).toFixed(1)}%`}
+                                            </span>
+                                            <span className="text-primary-600 dark:text-primary-400 font-medium">
+                                                -Rp {calculatedDiscount.toLocaleString("id-ID")}
+                                            </span>
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Shipping Cost */}

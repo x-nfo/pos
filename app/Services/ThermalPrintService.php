@@ -79,7 +79,7 @@ class ThermalPrintService
         if ($transaction->payment_status !== 'paid') {
             $lines[] = $this->line($maxWidth);
             $lines[] = $this->center('*** BELUM LUNAS ***', $maxWidth);
-            $lines[] = $this->center('MENUNGGU KONFIRMASI DANA', $maxWidth);
+            $lines[] = $this->center($transaction->payment_method === 'bank_transfer' ? 'BELUM DIKONFIRMASI' : 'MENUNGGU KONFIRMASI DANA', $maxWidth);
             if ($transaction->payment_method === 'bank_transfer' && $transaction->bankAccount) {
                 $lines[] = $this->center('Transfer: '.$transaction->bankAccount->bank_name, $maxWidth);
                 $lines[] = $this->center('Rek: '.$transaction->bankAccount->account_number, $maxWidth);

@@ -35,16 +35,50 @@ class HandleInertiaRequests extends Middleware
         $receivableNotifications = [];
         $payableNotifications = [];
         $discountApprovalNotifications = [];
+        $bankPaymentNotifications = [];
         $activeCashierShift = null;
         $securityWarnings = [];
         $stepUpFreshUntil = null;
         $payableAgingSummary = null;
         $receivableAgingSummary = null;
         $pendingApprovalCount = 0;
+        $pendingBankPaymentCount = 0;
         $pendingDineOrdersCount = 0;
 
         if ($request->user()) {
             $userId = $request->user()->id;
+
+            if ($request->user()->can('transactions-confirm-payment')) {
+                $pendingBankPaymentCount = Transaction::where('payment_method', 'bank_transfer')
+                    ->where('payment_status', 'pending')
+                    ->count();
+
+                $bankPaymentNotifications = Transaction::where('payment_method', 'bank_transfer')
+                    ->where('payment_status', 'pending')
+                    ->with([
+                        'cashier:id,name',
+                        'customer:id,name',
+                        'bankAccount:id,bank_name,account_name,account_number',
+                    ])
+                    ->orderByDesc('created_at')
+                    ->limit(10)
+                    ->get(['id', 'invoice', 'cashier_id', 'customer_id', 'bank_account_id', 'grand_total', 'created_at'])
+                    ->map(function ($t) {
+                        return [
+                            'id' => $t->id,
+                            'invoice' => $t->invoice,
+                            'cashier' => $t->cashier?->name ?? 'Kasir',
+                            'customer' => $t->customer?->name ?? 'Umum',
+                            'bank_name' => $t->bankAccount?->bank_name ?? 'Bank',
+                            'account_number' => $t->bankAccount?->account_number ?? '',
+                            'account_name' => $t->bankAccount?->account_name ?? '',
+                            'grand_total' => (int) $t->grand_total,
+                            'time' => optional($t->created_at)->diffForHumans(),
+                            'created_at' => $t->created_at?->toISOString(),
+                        ];
+                    })
+                    ->toArray();
+            }
 
             if ($request->user()->can('discounts-approve')) {
                 $pendingApprovalCount = Transaction::where('discount_approval_status', 'pending')->count();
@@ -221,6 +255,8 @@ class HandleInertiaRequests extends Middleware
             'receivableNotifications' => $receivableNotifications,
             'payableNotifications' => $payableNotifications,
             'discountApprovalNotifications' => $discountApprovalNotifications,
+            'bankPaymentNotifications' => $bankPaymentNotifications,
+            'pendingBankPaymentCount' => $pendingBankPaymentCount,
             'payableAgingSummary' => $payableAgingSummary,
             'receivableAgingSummary' => $receivableAgingSummary,
             'activeCashierShift' => $activeCashierShift,

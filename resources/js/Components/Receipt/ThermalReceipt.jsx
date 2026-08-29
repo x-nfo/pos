@@ -274,7 +274,11 @@ export default function ThermalReceipt({
                     <pre className="whitespace-pre-wrap">{dashLine}</pre>
                     <div className="my-1 text-center">
                         <p className="font-bold text-xs">*** BELUM LUNAS ***</p>
-                        <p className="text-[10px]">MENUNGGU KONFIRMASI DANA</p>
+                        <p className="text-[10px] font-bold">
+                            {paymentMethodKey === "bank_transfer"
+                                ? "BELUM DIKONFIRMASI (TRANSFER BANK)"
+                                : "MENUNGGU KONFIRMASI DANA"}
+                        </p>
                         {paymentMethodKey === "bank_transfer" && transaction?.bank_account && (
                             <div className="mt-1 text-[10px] border border-dashed border-slate-400 p-1 text-left">
                                 <p className="font-bold">Transfer ke:</p>
@@ -513,7 +517,11 @@ export function ThermalReceipt58mm({
                     <pre>{line}</pre>
                     <div className="text-center my-1">
                         <p className="font-bold text-[10px]">*** BELUM LUNAS ***</p>
-                        <p className="text-[9px]">MENUNGGU TRANSFER</p>
+                        <p className="text-[9px] font-bold">
+                            {paymentMethodKey === "bank_transfer"
+                                ? "BELUM DIKONFIRMASI"
+                                : "MENUNGGU TRANSFER"}
+                        </p>
                         {paymentMethodKey === "bank_transfer" && transaction?.bank_account && (
                             <div className="mt-1 text-[9px] border border-dashed border-slate-400 p-0.5 text-left">
                                 <p className="font-bold">{transaction.bank_account.bank_name}</p>
