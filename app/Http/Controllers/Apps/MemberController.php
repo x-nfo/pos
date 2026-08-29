@@ -206,31 +206,36 @@ class MemberController extends Controller
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'no_telp' => ['required', 'string', Rule::unique('customers', 'no_telp')->ignore($customer?->id)],
-            'address' => ['required', 'string'],
+            'address' => ['nullable', 'string'],
             'is_loyalty_member' => ['nullable', 'boolean'],
             'loyalty_tier' => ['nullable', 'string', Rule::in(array_keys($this->loyaltyService->tiers()))],
-            'province_id' => ['required', 'string'],
-            'regency_id' => ['required', 'string'],
-            'district_id' => ['required', 'string'],
-            'village_id' => ['required', 'string'],
+            'province_id' => ['nullable', 'string'],
+            'regency_id' => ['nullable', 'string'],
+            'district_id' => ['nullable', 'string'],
+            'village_id' => ['nullable', 'string'],
         ]);
     }
 
     private function resolveRegionPayload(array $validated): array
     {
-        $province = Province::where('code', $validated['province_id'])->first();
-        $regency = City::where('code', $validated['regency_id'])->first();
-        $district = District::where('code', $validated['district_id'])->first();
-        $village = Village::where('code', $validated['village_id'])->first();
+        $provinceId = $validated['province_id'] ?? null;
+        $regencyId = $validated['regency_id'] ?? null;
+        $districtId = $validated['district_id'] ?? null;
+        $villageId = $validated['village_id'] ?? null;
+
+        $province = $provinceId ? Province::where('code', $provinceId)->first() : null;
+        $regency = $regencyId ? City::where('code', $regencyId)->first() : null;
+        $district = $districtId ? District::where('code', $districtId)->first() : null;
+        $village = $villageId ? Village::where('code', $villageId)->first() : null;
 
         return [
-            'province_id' => $validated['province_id'],
+            'province_id' => $provinceId,
             'province_name' => $province?->name,
-            'regency_id' => $validated['regency_id'],
+            'regency_id' => $regencyId,
             'regency_name' => $regency?->name,
-            'district_id' => $validated['district_id'],
+            'district_id' => $districtId,
             'district_name' => $district?->name,
-            'village_id' => $validated['village_id'],
+            'village_id' => $villageId,
             'village_name' => $village?->name,
         ];
     }
