@@ -76,17 +76,17 @@ export function generateWhatsappPurchaseOrderText(
     lines.push("");
 
     // Metadata PO
-    lines.push(`📋 *Nomor PO:* ${order.document_number || "-"}`);
-    lines.push(`📅 *Tanggal:* ${formatDateTime(order.created_at)}`);
+    lines.push(`*Nomor PO:* ${order.document_number || "-"}`);
+    lines.push(`*Tanggal:* ${formatDateTime(order.created_at)}`);
     if (order.ordered_at) {
-        lines.push(`⏱️ *Tgl Pesan:* ${formatDateTime(order.ordered_at)}`);
+        lines.push(`*Tgl Pesan:* ${formatDateTime(order.ordered_at)}`);
     }
-    lines.push(`🏢 *Tujuan Kirim:* ${warehouseName}`);
-    lines.push(`👤 *Pembuat PO:* ${creatorName}`);
+    lines.push(`*Tujuan Kirim:* ${warehouseName}`);
+    lines.push(`*Pembuat PO:* ${creatorName}`);
     lines.push("");
 
     // Daftar Barang
-    lines.push(`📦 *Daftar Barang yang Dipesan:*`);
+    lines.push(`*Daftar Barang yang Dipesan:*`);
     const items = order.items || [];
     let grandTotal = 0;
     let totalQty = 0;
@@ -114,10 +114,10 @@ export function generateWhatsappPurchaseOrderText(
     }
 
     lines.push("");
-    lines.push(`💰 *Estimasi Total:* *${formatRupiah(grandTotal)}* (${items.length} item / ${totalQty} unit)`);
+    lines.push(`*Estimasi Total:* *${formatRupiah(grandTotal)}* (${items.length} item / ${totalQty} unit)`);
 
     if (order.notes) {
-        lines.push(`📝 *Catatan:* ${order.notes}`);
+        lines.push(`*Catatan:* ${order.notes}`);
     }
 
     // Link Publik PDF PO
@@ -136,7 +136,7 @@ export function generateWhatsappPurchaseOrderText(
 
     if (publicUrl) {
         lines.push("");
-        lines.push(`📄 *Dokumen PO Resmi (PDF):*`);
+        lines.push(`*Dokumen PO Resmi (PDF):*`);
         lines.push(publicUrl);
         lines.push(`_(Simpan nomor kontak kami atau balas pesan ini jika tautan belum bisa langsung diklik)_`);
     }
