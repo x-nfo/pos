@@ -281,7 +281,7 @@ export default function ProductUnitsInput({
                                                             type="number"
                                                             min="0.0001"
                                                             step="any"
-                                                            value={item.conversion_factor}
+                                                            value={item.conversion_factor ?? ""}
                                                             onChange={(e) =>
                                                                 handleUpdateAdditionalItem(
                                                                     index,
@@ -316,7 +316,7 @@ export default function ProductUnitsInput({
                                                     <input
                                                         type="number"
                                                         min="0"
-                                                        value={item.buy_price}
+                                                        value={item.buy_price ?? ""}
                                                         onChange={(e) =>
                                                             handleUpdateAdditionalItem(
                                                                 index,
@@ -337,7 +337,7 @@ export default function ProductUnitsInput({
                                                     <input
                                                         type="number"
                                                         min="0"
-                                                        value={item.sell_price}
+                                                        value={item.sell_price ?? ""}
                                                         onChange={(e) =>
                                                             handleUpdateAdditionalItem(
                                                                 index,

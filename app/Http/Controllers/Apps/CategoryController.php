@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Apps;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
@@ -72,6 +73,37 @@ class CategoryController extends Controller
 
         // redirect
         return to_route('categories.index');
+    }
+
+    /**
+     * Quick store a category via JSON / AJAX (e.g. from Product Create/Edit modal).
+     */
+    public function quickStore(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255', 'unique:categories,name'],
+            'description' => ['nullable', 'string'],
+            'image' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:2048'],
+        ]);
+
+        $imageName = null;
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $imageName = $image->hashName();
+            $image->storeAs('public/category', $imageName);
+        }
+
+        $category = Category::create([
+            'image' => $imageName,
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? '',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Kategori berhasil ditambahkan.',
+            'data' => $category,
+        ], 201);
     }
 
     /**

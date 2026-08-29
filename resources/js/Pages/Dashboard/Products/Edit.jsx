@@ -13,13 +13,15 @@ import {
     IconBarcode,
     IconCurrencyDollar,
     IconCamera,
+    IconPlus,
 } from "@tabler/icons-react";
 import { getProductImageUrl } from "@/Utils/imageUrl";
 import ProductUnitsInput from "@/Components/Dashboard/ProductUnitsInput";
 import ImageCaptureUpload from "@/Components/Dashboard/ImageCaptureUpload";
 import BarcodeScanner from "@/Components/POS/BarcodeScanner";
+import QuickCategoryModal from "@/Components/Dashboard/QuickCategoryModal";
 
-export default function Edit({ categories, product, units = [] }) {
+export default function Edit({ categories = [], product, units = [] }) {
     const { errors } = usePage().props;
 
     const initialUnits = (product.units || []).map((u) => ({
@@ -29,28 +31,30 @@ export default function Edit({ categories, product, units = [] }) {
             u.pivot?.conversion_factor != null
                 ? Number(u.pivot.conversion_factor) || 1
                 : 1,
-        buy_price: u.pivot?.buy_price ?? product.buy_price,
-        sell_price: u.pivot?.sell_price ?? product.sell_price,
+        buy_price: u.pivot?.buy_price ?? product.buy_price ?? "",
+        sell_price: u.pivot?.sell_price ?? product.sell_price ?? "",
         barcode: u.pivot?.barcode || "",
         sku_suffix: u.pivot?.sku_suffix || "",
     }));
 
     const { data, setData, post, processing } = useForm({
         image: "",
-        barcode: product.barcode,
-        sku: product.sku,
-        title: product.title,
-        category_id: product.category_id,
-        description: product.description,
-        buy_price: product.buy_price,
-        sell_price: product.sell_price,
+        barcode: product.barcode || "",
+        sku: product.sku || "",
+        title: product.title || "",
+        category_id: product.category_id || "",
+        description: product.description || "",
+        buy_price: product.buy_price ?? "",
+        sell_price: product.sell_price ?? "",
         min_stock: product.min_stock ?? 0,
         max_stock: product.max_stock ?? 0,
         units: initialUnits,
         _method: "PUT",
     });
 
+    const [categoriesList, setCategoriesList] = useState(categories || []);
     const [selectedCategory, setSelectedCategory] = useState(null);
+    const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
     const [imagePreview, setImagePreview] = useState(
         product.image ? getProductImageUrl(product.image) : null
     );
@@ -59,14 +63,20 @@ export default function Edit({ categories, product, units = [] }) {
     useEffect(() => {
         if (product.category_id) {
             setSelectedCategory(
-                categories.find((cat) => cat.id === product.category_id)
+                categoriesList.find((cat) => cat.id === product.category_id)
             );
         }
-    }, [product.category_id]);
+    }, [product.category_id, categoriesList]);
 
     const setSelectedCategoryHandler = (value) => {
         setSelectedCategory(value);
         setData("category_id", value?.id || "");
+    };
+
+    const handleCategoryCreated = (newCategory) => {
+        setCategoriesList((prev) => [newCategory, ...prev]);
+        setSelectedCategory(newCategory);
+        setData("category_id", newCategory.id);
     };
 
     const handleImageChange = (e) => {
@@ -134,9 +144,21 @@ export default function Edit({ categories, product, units = [] }) {
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="md:col-span-2">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                            Kategori
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowQuickCategoryModal(true)}
+                                            className="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors py-0.5 px-2 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-950/50"
+                                        >
+                                            <IconPlus size={14} strokeWidth={2.5} />
+                                            <span>+ Kategori Baru</span>
+                                        </button>
+                                    </div>
                                     <InputSelect
-                                        label="Kategori"
-                                        data={categories}
+                                        data={categoriesList}
                                         selected={selectedCategory}
                                         setSelected={setSelectedCategoryHandler}
                                         placeholder="Pilih kategori"
@@ -360,6 +382,12 @@ export default function Edit({ categories, product, units = [] }) {
                     onClose={() => setShowBarcodeScanner(false)}
                 />
             )}
+
+            <QuickCategoryModal
+                show={showQuickCategoryModal}
+                onClose={() => setShowQuickCategoryModal(false)}
+                onSuccess={handleCategoryCreated}
+            />
         </>
     );
 }

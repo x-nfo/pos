@@ -5,8 +5,10 @@ export default function Textarea({
     className,
     errors,
     rows = 4,
+    value,
     ...props
 }) {
+    const textareaValue = value === null ? "" : value;
     return (
         <div className="flex flex-col gap-2">
             {label && (
@@ -16,6 +18,7 @@ export default function Textarea({
             )}
             <textarea
                 rows={rows}
+                value={textareaValue}
                 className={`
                     w-full px-4 py-3 text-sm rounded-xl
                     border border-slate-200 dark:border-slate-700

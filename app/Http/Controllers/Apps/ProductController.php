@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Apps;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreProductRequest;
+use App\Http\Requests\UpdateProductRequest;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Unit;
@@ -12,6 +14,7 @@ use App\Services\StockMutationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -65,65 +68,58 @@ class ProductController extends Controller
      *
      * @return Response
      */
-    public function store(Request $request)
+    public function store(StoreProductRequest $request)
     {
-        /**
-         * validate
-         */
-        $request->validate([
-            'barcode' => 'required|unique:products,barcode',
-            'sku' => 'nullable|string|unique:products,sku',
-            'title' => 'required',
-            'description' => 'nullable|string',
-            'category_id' => 'required',
-            'buy_price' => 'required',
-            'sell_price' => 'required',
-            'stock' => 'required|integer|min:0',
-            'min_stock' => 'nullable|integer|min:0',
-            'max_stock' => 'nullable|integer|min:0',
-            'units' => 'nullable|array',
-            'units.*.unit_id' => 'required_with:units|exists:units,id',
-            'units.*.is_base' => 'nullable|boolean',
-            'units.*.conversion_factor' => 'nullable|numeric|min:0.0001',
-            'units.*.buy_price' => 'nullable|numeric|min:0',
-            'units.*.sell_price' => 'nullable|numeric|min:0',
-            'units.*.barcode' => 'nullable|string|max:100',
-            'units.*.sku_suffix' => 'nullable|string|max:20',
-        ]);
-        $imageName = '';
-        if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $image->storeAs('public/products', $image->hashName());
-            $imageName = $image->hashName();
-        }
+        $product = DB::transaction(function () use ($request) {
+            $imageName = '';
+            if ($request->hasFile('image')) {
+                $image = $request->file('image');
+                $image->storeAs('public/products', $image->hashName());
+                $imageName = $image->hashName();
+            }
 
-        // create product
-        $product = Product::create([
-            'image' => $imageName,
-            'barcode' => $request->barcode,
-            'sku' => $request->sku,
-            'title' => $request->title,
-            'description' => $request->description ?? '',
-            'category_id' => $request->category_id,
-            'buy_price' => $request->buy_price,
-            'sell_price' => $request->sell_price,
-            'stock' => $request->stock,
-            'min_stock' => $request->min_stock ?? 0,
-            'max_stock' => $request->max_stock ?? 0,
-        ]);
+            // create product
+            $product = Product::create([
+                'image' => $imageName,
+                'barcode' => $request->barcode,
+                'sku' => $request->sku,
+                'title' => $request->title,
+                'description' => $request->description ?? '',
+                'category_id' => $request->category_id,
+                'buy_price' => $request->buy_price,
+                'sell_price' => $request->sell_price,
+                'stock' => $request->stock,
+                'min_stock' => $request->min_stock ?? 0,
+                'max_stock' => $request->max_stock ?? 0,
+            ]);
 
-        if ($request->has('units')) {
-            $this->syncProductUnits($product, $request->input('units'));
-        }
+            if ($request->has('units')) {
+                $this->syncProductUnits($product, $request->input('units'));
+            }
 
-        $this->stockMutationService->recordInitialStock($product, $request->user()?->id);
-        $this->auditLogService->log(
-            event: 'product.created',
-            module: 'products',
-            auditable: $product,
-            description: 'Produk baru dibuat.',
-            after: $this->productAuditPayload($product->fresh())
-        );
+            $defaultWarehouse = Warehouse::active()->orderBy('code')->first();
+            if ($defaultWarehouse && (int) $request->stock > 0) {
+                $product->warehouses()->syncWithoutDetaching([
+                    $defaultWarehouse->id => ['stock' => (int) $request->stock],
+                ]);
+            }
+
+            $this->stockMutationService->recordInitialStock(
+                $product,
+                $request->user()?->id,
+                $defaultWarehouse?->id
+            );
+
+            $this->auditLogService->log(
+                event: 'product.created',
+                module: 'products',
+                auditable: $product,
+                description: 'Produk baru dibuat.',
+                after: $this->productAuditPayload($product->fresh())
+            );
+
+            return $product;
+        });
 
         // redirect
         return to_route('products.index');
@@ -148,34 +144,50 @@ class ProductController extends Controller
             'image' => 'nullable|string',
         ]);
 
-        $sku = ! empty($validated['sku'])
-            ? $validated['sku']
-            : ('PRD-'.strtoupper(Str::random(6)));
+        $product = DB::transaction(function () use ($validated, $request) {
+            $sku = ! empty($validated['sku'])
+                ? $validated['sku']
+                : ('PRD-'.strtoupper(Str::random(6)));
 
-        $image = ! empty($validated['image']) ? $validated['image'] : '';
+            $image = ! empty($validated['image']) ? $validated['image'] : '';
 
-        $product = Product::create([
-            'image' => $image,
-            'barcode' => $validated['barcode'],
-            'sku' => $sku,
-            'title' => $validated['title'],
-            'description' => $validated['description'] ?? $validated['title'],
-            'category_id' => (int) $validated['category_id'],
-            'buy_price' => (int) $validated['buy_price'],
-            'sell_price' => (int) $validated['sell_price'],
-            'stock' => (int) $validated['stock'],
-            'min_stock' => (int) ($validated['min_stock'] ?? 0),
-            'max_stock' => (int) ($validated['max_stock'] ?? 0),
-        ]);
+            $product = Product::create([
+                'image' => $image,
+                'barcode' => $validated['barcode'],
+                'sku' => $sku,
+                'title' => $validated['title'],
+                'description' => $validated['description'] ?? $validated['title'],
+                'category_id' => (int) $validated['category_id'],
+                'buy_price' => (int) $validated['buy_price'],
+                'sell_price' => (int) $validated['sell_price'],
+                'stock' => (int) $validated['stock'],
+                'min_stock' => (int) ($validated['min_stock'] ?? 0),
+                'max_stock' => (int) ($validated['max_stock'] ?? 0),
+            ]);
 
-        $this->stockMutationService->recordInitialStock($product, $request->user()?->id);
-        $this->auditLogService->log(
-            event: 'product.created',
-            module: 'products',
-            auditable: $product,
-            description: 'Produk dibuat cepat dari POS.',
-            after: $this->productAuditPayload($product->fresh())
-        );
+            $defaultWarehouse = Warehouse::active()->orderBy('code')->first();
+            if ($defaultWarehouse && (int) $validated['stock'] > 0) {
+                $product->warehouses()->syncWithoutDetaching([
+                    $defaultWarehouse->id => ['stock' => (int) $validated['stock']],
+                ]);
+            }
+
+            $this->stockMutationService->recordInitialStock(
+                $product,
+                $request->user()?->id,
+                $defaultWarehouse?->id
+            );
+
+            $this->auditLogService->log(
+                event: 'product.created',
+                module: 'products',
+                auditable: $product,
+                description: 'Produk dibuat cepat dari POS.',
+                after: $this->productAuditPayload($product->fresh())
+            );
+
+            return $product;
+        });
 
         $product->load('category');
 
@@ -211,84 +223,56 @@ class ProductController extends Controller
      * @param  int  $id
      * @return Response
      */
-    public function update(Request $request, Product $product)
+    public function update(UpdateProductRequest $request, Product $product)
     {
         $before = $this->productAuditPayload($product);
 
-        /**
-         * validate
-         */
-        $request->validate([
-            'barcode' => 'required|unique:products,barcode,'.$product->id,
-            'sku' => 'nullable|string|unique:products,sku,'.$product->id,
-            'title' => 'required',
-            'description' => 'nullable|string',
-            'category_id' => 'required',
-            'buy_price' => 'required',
-            'sell_price' => 'required',
-            'min_stock' => 'nullable|integer|min:0',
-            'max_stock' => 'nullable|integer|min:0',
-            'units' => 'nullable|array',
-            'units.*.unit_id' => 'required_with:units|exists:units,id',
-            'units.*.is_base' => 'nullable|boolean',
-            'units.*.conversion_factor' => 'nullable|numeric|min:0.0001',
-            'units.*.buy_price' => 'nullable|numeric|min:0',
-            'units.*.sell_price' => 'nullable|numeric|min:0',
-            'units.*.barcode' => 'nullable|string|max:100',
-            'units.*.sku_suffix' => 'nullable|string|max:20',
-        ]);
+        DB::transaction(function () use ($request, $product, $before) {
+            // check image update
+            if ($request->file('image')) {
+                // remove old image
+                if ($product->image) {
+                    Storage::disk('local')->delete('public/products/'.basename($product->image));
+                }
 
-        // check image update
-        if ($request->file('image')) {
+                // upload new image
+                $image = $request->file('image');
+                $image->storeAs('public/products', $image->hashName());
 
-            // remove old image
-            Storage::disk('local')->delete('public/products/'.basename($product->image));
-
-            // upload new image
-            $image = $request->file('image');
-            $image->storeAs('public/products', $image->hashName());
-
-            // update product with new image
-            $product->update([
-                'image' => $image->hashName(),
-                'barcode' => $request->barcode,
-                'sku' => $request->sku,
-                'title' => $request->title,
-                'description' => $request->description ?? '',
-                'category_id' => $request->category_id,
-                'buy_price' => $request->buy_price,
-                'sell_price' => $request->sell_price,
-                'min_stock' => $request->min_stock ?? 0,
-                'max_stock' => $request->max_stock ?? 0,
-            ]);
+                // update product with new image
+                $product->update([
+                    'image' => $image->hashName(),
+                    'barcode' => $request->barcode,
+                    'sku' => $request->sku,
+                    'title' => $request->title,
+                    'description' => $request->description ?? '',
+                    'category_id' => $request->category_id,
+                    'buy_price' => $request->buy_price,
+                    'sell_price' => $request->sell_price,
+                    'min_stock' => $request->min_stock ?? 0,
+                    'max_stock' => $request->max_stock ?? 0,
+                ]);
+            } else {
+                // update product without image
+                $product->update([
+                    'barcode' => $request->barcode,
+                    'sku' => $request->sku,
+                    'title' => $request->title,
+                    'description' => $request->description ?? '',
+                    'category_id' => $request->category_id,
+                    'buy_price' => $request->buy_price,
+                    'sell_price' => $request->sell_price,
+                    'min_stock' => $request->min_stock ?? 0,
+                    'max_stock' => $request->max_stock ?? 0,
+                ]);
+            }
 
             if ($request->has('units')) {
                 $this->syncProductUnits($product, $request->input('units'));
             }
 
             $this->logProductUpdate($product, $before);
-
-            return to_route('products.index');
-        }
-
-        // update product without image
-        $product->update([
-            'barcode' => $request->barcode,
-            'sku' => $request->sku,
-            'title' => $request->title,
-            'description' => $request->description ?? '',
-            'category_id' => $request->category_id,
-            'buy_price' => $request->buy_price,
-            'sell_price' => $request->sell_price,
-            'min_stock' => $request->min_stock ?? 0,
-            'max_stock' => $request->max_stock ?? 0,
-        ]);
-
-        if ($request->has('units')) {
-            $this->syncProductUnits($product, $request->input('units'));
-        }
-
-        $this->logProductUpdate($product, $before);
+        });
 
         // redirect
         return to_route('products.index');

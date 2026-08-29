@@ -1,6 +1,7 @@
 import React from "react";
 
-export default function Input({ label, type, className, errors, icon, ...props }) {
+export default function Input({ label, type, className, errors, icon, value, ...props }) {
+    const inputValue = value === null ? "" : value;
     return (
         <div className="flex flex-col gap-2">
             {label && (
@@ -16,6 +17,7 @@ export default function Input({ label, type, className, errors, icon, ...props }
                 )}
                 <input
                     type={type}
+                    value={inputValue}
                     className={`
                         w-full h-11 ${icon ? "pl-10 pr-4" : "px-4"} text-sm rounded-xl
                         border border-slate-200 dark:border-slate-700

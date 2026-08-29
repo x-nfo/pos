@@ -128,6 +128,9 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
         ->middlewareFor(['create', 'store'], 'permission:categories-create')
         ->middlewareFor(['edit', 'update'], 'permission:categories-edit')
         ->middlewareFor('destroy', 'permission:categories-delete');
+    Route::post('/categories/quick-store', [CategoryController::class, 'quickStore'])
+        ->middleware('permission:categories-create|products-create')
+        ->name('categories.quick-store');
     Route::resource('products', ProductController::class)
         ->middlewareFor(['index', 'show'], 'permission:products-access')
         ->middlewareFor(['create', 'store'], 'permission:products-create')

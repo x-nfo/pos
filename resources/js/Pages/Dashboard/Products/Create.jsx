@@ -21,12 +21,14 @@ import {
     IconLoader2,
     IconDatabase,
     IconCamera,
+    IconPlus,
 } from "@tabler/icons-react";
 import ProductUnitsInput from "@/Components/Dashboard/ProductUnitsInput";
 import ImageCaptureUpload from "@/Components/Dashboard/ImageCaptureUpload";
 import BarcodeScanner from "@/Components/POS/BarcodeScanner";
+import QuickCategoryModal from "@/Components/Dashboard/QuickCategoryModal";
 
-export default function Create({ categories, units = [] }) {
+export default function Create({ categories = [], units = [] }) {
     const { errors } = usePage().props;
 
     const { data, setData, post, processing } = useForm({
@@ -44,7 +46,9 @@ export default function Create({ categories, units = [] }) {
         units: [],
     });
 
+    const [categoriesList, setCategoriesList] = useState(categories || []);
     const [selectedCategory, setSelectedCategory] = useState(null);
+    const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
     const [imagePreview, setImagePreview] = useState(null);
     const [isLookingUp, setIsLookingUp] = useState(false);
     const [catalogMatch, setCatalogMatch] = useState(null);
@@ -59,6 +63,12 @@ export default function Create({ categories, units = [] }) {
     const setSelectedCategoryHandler = (value) => {
         setSelectedCategory(value);
         setData("category_id", value?.id || "");
+    };
+
+    const handleCategoryCreated = (newCategory) => {
+        setCategoriesList((prev) => [newCategory, ...prev]);
+        setSelectedCategory(newCategory);
+        setData("category_id", newCategory.id);
     };
 
     const handleImageChange = (e) => {
@@ -81,7 +91,7 @@ export default function Create({ categories, units = [] }) {
         }));
 
         if (productData.category_id) {
-            const foundCat = categories.find((c) => c.id === productData.category_id);
+            const foundCat = categoriesList.find((c) => c.id === productData.category_id);
             if (foundCat) {
                 setSelectedCategory(foundCat);
             }
@@ -223,9 +233,21 @@ export default function Create({ categories, units = [] }) {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="md:col-span-2">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                            Kategori
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowQuickCategoryModal(true)}
+                                            className="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors py-0.5 px-2 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-950/50"
+                                        >
+                                            <IconPlus size={14} strokeWidth={2.5} />
+                                            <span>+ Kategori Baru</span>
+                                        </button>
+                                    </div>
                                     <InputSelect
-                                        label="Kategori"
-                                        data={categories}
+                                        data={categoriesList}
                                         selected={selectedCategory}
                                         setSelected={setSelectedCategoryHandler}
                                         placeholder="Pilih kategori"
@@ -400,36 +422,69 @@ export default function Create({ categories, units = [] }) {
 
                             {/* Profit Estimation */}
                             {data.buy_price > 0 && data.sell_price > 0 && (
-                                <div className="mt-4 p-4 rounded-xl bg-success-50 dark:bg-success-950/30 border border-success-200 dark:border-success-900">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-success-700 dark:text-success-400 font-medium">
-                                                Estimasi Profit per Item
-                                            </p>
-                                            <p className="text-2xl font-bold text-success-600 dark:text-success-500 mt-1">
-                                                + Rp{" "}
-                                                {(
-                                                    data.sell_price -
-                                                    data.buy_price
-                                                ).toLocaleString("id-ID")}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm text-success-700 dark:text-success-400 font-medium">
-                                                Margin
-                                            </p>
-                                            <p className="text-xl font-bold text-success-600 dark:text-success-500 mt-1">
-                                                {(
-                                                    ((data.sell_price -
-                                                        data.buy_price) /
-                                                        data.buy_price) *
-                                                    100
-                                                ).toFixed(1)}
-                                                %
-                                            </p>
+                                Number(data.sell_price) >= Number(data.buy_price) ? (
+                                    <div className="mt-4 p-4 rounded-xl bg-success-50 dark:bg-success-950/30 border border-success-200 dark:border-success-900">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-sm text-success-700 dark:text-success-400 font-medium">
+                                                    Estimasi Profit per Item
+                                                </p>
+                                                <p className="text-2xl font-bold text-success-600 dark:text-success-500 mt-1">
+                                                    + Rp{" "}
+                                                    {(
+                                                        data.sell_price -
+                                                        data.buy_price
+                                                    ).toLocaleString("id-ID")}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-sm text-success-700 dark:text-success-400 font-medium">
+                                                    Margin
+                                                </p>
+                                                <p className="text-xl font-bold text-success-600 dark:text-success-500 mt-1">
+                                                    {(
+                                                        ((data.sell_price -
+                                                            data.buy_price) /
+                                                            data.buy_price) *
+                                                        100
+                                                    ).toFixed(1)}
+                                                    %
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div className="mt-4 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-sm text-rose-700 dark:text-rose-400 font-medium flex items-center gap-1.5">
+                                                    ⚠️ Peringatan: Harga Jual Di Bawah Modal (Potensi Rugi)
+                                                </p>
+                                                <p className="text-2xl font-bold text-rose-600 dark:text-rose-500 mt-1">
+                                                    - Rp{" "}
+                                                    {(
+                                                        data.buy_price -
+                                                        data.sell_price
+                                                    ).toLocaleString("id-ID")}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-sm text-rose-700 dark:text-rose-400 font-medium">
+                                                    Margin Negatif
+                                                </p>
+                                                <p className="text-xl font-bold text-rose-600 dark:text-rose-500 mt-1">
+                                                    {(
+                                                        ((data.sell_price -
+                                                            data.buy_price) /
+                                                            data.buy_price) *
+                                                        100
+                                                    ).toFixed(1)}
+                                                    %
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
                             )}
                         </div>
 
@@ -562,6 +617,12 @@ export default function Create({ categories, units = [] }) {
                     onClose={() => setShowBarcodeScanner(false)}
                 />
             )}
+
+            <QuickCategoryModal
+                show={showQuickCategoryModal}
+                onClose={() => setShowQuickCategoryModal(false)}
+                onSuccess={handleCategoryCreated}
+            />
         </>
     );
 }
