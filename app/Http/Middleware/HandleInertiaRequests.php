@@ -34,6 +34,7 @@ class HandleInertiaRequests extends Middleware
         $lowStockNotifications = [];
         $receivableNotifications = [];
         $payableNotifications = [];
+        $discountApprovalNotifications = [];
         $activeCashierShift = null;
         $securityWarnings = [];
         $stepUpFreshUntil = null;
@@ -47,6 +48,25 @@ class HandleInertiaRequests extends Middleware
 
             if ($request->user()->can('discounts-approve')) {
                 $pendingApprovalCount = Transaction::where('discount_approval_status', 'pending')->count();
+
+                $discountApprovalNotifications = Transaction::where('discount_approval_status', 'pending')
+                    ->with(['cashier:id,name', 'customer:id,name'])
+                    ->orderByDesc('created_at')
+                    ->limit(10)
+                    ->get(['id', 'invoice', 'cashier_id', 'customer_id', 'discount', 'grand_total', 'created_at'])
+                    ->map(function ($t) {
+                        return [
+                            'id' => $t->id,
+                            'invoice' => $t->invoice,
+                            'cashier' => $t->cashier?->name ?? 'Kasir',
+                            'customer' => $t->customer?->name ?? 'Umum',
+                            'discount' => (int) $t->discount,
+                            'grand_total' => (int) $t->grand_total,
+                            'time' => optional($t->created_at)->diffForHumans(),
+                            'created_at' => $t->created_at?->toISOString(),
+                        ];
+                    })
+                    ->toArray();
             }
 
             if ($request->user()->can('dine-orders-access')) {
@@ -200,6 +220,7 @@ class HandleInertiaRequests extends Middleware
             'lowStockNotifications' => $lowStockNotifications,
             'receivableNotifications' => $receivableNotifications,
             'payableNotifications' => $payableNotifications,
+            'discountApprovalNotifications' => $discountApprovalNotifications,
             'payableAgingSummary' => $payableAgingSummary,
             'receivableAgingSummary' => $receivableAgingSummary,
             'activeCashierShift' => $activeCashierShift,

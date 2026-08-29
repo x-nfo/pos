@@ -8,6 +8,7 @@ export default function LinkItem({
     access,
     title,
     sidebarOpen,
+    badge = null,
     ...props
 }) {
     const { url } = usePage();
@@ -32,17 +33,24 @@ export default function LinkItem({
         return (
             <Link
                 href={href}
-                className={`${baseClasses} ${activeClasses} px-4 py-2.5 text-sm font-medium`}
+                className={`${baseClasses} ${activeClasses} px-4 py-2.5 text-sm font-medium justify-between`}
                 {...props}
             >
-                <span
-                    className={
-                        isActive ? "text-primary-600 dark:text-primary-400" : ""
-                    }
-                >
-                    {icon}
-                </span>
-                <span className="truncate">{title}</span>
+                <div className="flex items-center gap-3 min-w-0">
+                    <span
+                        className={
+                            isActive ? "text-primary-600 dark:text-primary-400" : ""
+                        }
+                    >
+                        {icon}
+                    </span>
+                    <span className="truncate">{title}</span>
+                </div>
+                {badge > 0 && (
+                    <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-rose-500 text-white shrink-0 shadow-xs animate-pulse">
+                        {badge > 99 ? "99+" : badge}
+                    </span>
+                )}
             </Link>
         );
     }
@@ -52,7 +60,7 @@ export default function LinkItem({
         <Link
             href={href}
             className={`
-                w-full flex justify-center py-3
+                w-full flex justify-center py-3 relative
                 transition-all duration-200
                 ${
                     isActive
@@ -63,7 +71,12 @@ export default function LinkItem({
             title={title}
             {...props}
         >
-            {icon}
+            <span className="relative">
+                {icon}
+                {badge > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+                )}
+            </span>
         </Link>
     );
 }

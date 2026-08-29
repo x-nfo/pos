@@ -6,24 +6,47 @@ import {
     IconPackage,
     IconReceipt,
     IconCurrencyDollar,
+    IconDiscount2,
+    IconCheck,
+    IconX,
+    IconEye,
 } from "@tabler/icons-react";
 import { usePage, router, Link } from "@inertiajs/react";
 import { useHaptic } from "@/Hooks/useHaptic";
+import { useAuthorization } from "@/Utils/authorization";
+import toast from "react-hot-toast";
+
+const formatCurrency = (v = 0) =>
+    Number(v || 0).toLocaleString("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+    });
 
 export default function Notification() {
     const {
         lowStockNotifications = [],
         receivableNotifications = [],
         payableNotifications = [],
+        discountApprovalNotifications = [],
+        auth,
     } = usePage().props;
     const { triggerHaptic } = useHaptic();
+    const { can } = useAuthorization();
+    const [processingDiscountId, setProcessingDiscountId] = useState(null);
+
+    const canApproveDiscounts = can("discounts-approve");
 
     const mapItems = (items) =>
         items.map((item) => ({
             ...item,
             type: item.type || "stock",
             icon:
-                item.type === "receivable" ? (
+                item.type === "discount" ? (
+                    <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0 shadow-2xs">
+                        <IconDiscount2 size={18} />
+                    </span>
+                ) : item.type === "receivable" ? (
                     <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
                         <IconReceipt size={17} />
                     </span>
@@ -40,12 +63,22 @@ export default function Notification() {
 
     const mergeData = () => [
         ...mapItems(
+            discountApprovalNotifications.map((n) => ({
+                ...n,
+                id: `discount-${n.id}`,
+                originalId: n.id,
+                title: `Approval Diskon: ${n.invoice}`,
+                subtitle: `Kasir: ${n.cashier} • Diskon: ${formatCurrency(n.discount)}`,
+                type: "discount",
+            }))
+        ),
+        ...mapItems(
             lowStockNotifications.map((n) => ({
                 ...n,
                 id: `stock-${n.id}`,
                 originalId: n.id,
                 title: n.stock === 0 ? `Stok habis: ${n.title}` : `Stok menipis: ${n.title}`,
-                subtitle: `Tersisa: ${n.stock} ${n.min_stock ? `(Batas min: ${n.min_stock})` : ''}`,
+                subtitle: `Tersisa: ${n.stock} ${n.min_stock ? `(Batas min: ${n.min_stock})` : ""}`,
                 type: "stock",
             }))
         ),
@@ -72,7 +105,102 @@ export default function Notification() {
     // Sync when notifications props change
     useEffect(() => {
         setData(mergeData());
-    }, [lowStockNotifications, receivableNotifications, payableNotifications]);
+    }, [
+        discountApprovalNotifications,
+        lowStockNotifications,
+        receivableNotifications,
+        payableNotifications,
+    ]);
+
+    // Background polling for real-time discount approvals & notifications
+    useEffect(() => {
+        if (!canApproveDiscounts) return;
+
+        const interval = setInterval(() => {
+            if (document.visibilityState === "visible") {
+                router.reload({
+                    only: [
+                        "discountApprovalNotifications",
+                        "pendingApprovalCount",
+                        "lowStockNotifications",
+                        "receivableNotifications",
+                        "payableNotifications",
+                    ],
+                    preserveScroll: true,
+                    preserveState: true,
+                });
+            }
+        }, 30000);
+
+        return () => clearInterval(interval);
+    }, [canApproveDiscounts]);
+
+    const handleReloadNotifications = () => {
+        triggerHaptic("tap");
+        router.reload({
+            only: [
+                "discountApprovalNotifications",
+                "pendingApprovalCount",
+                "lowStockNotifications",
+                "receivableNotifications",
+                "payableNotifications",
+            ],
+            preserveScroll: true,
+            preserveState: true,
+        });
+    };
+
+    const handleApproveDiscount = (item) => {
+        triggerHaptic("medium");
+        setProcessingDiscountId(item.id);
+        router.post(
+            route("discount-approvals.approve", item.originalId),
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                    setData((prev) => prev.filter((d) => d.id !== item.id));
+                    toast.success(`Diskon ${item.invoice} berhasil disetujui.`);
+                    setProcessingDiscountId(null);
+                },
+                onError: () => {
+                    toast.error(`Gagal menyetujui diskon ${item.invoice}.`);
+                    setProcessingDiscountId(null);
+                },
+            }
+        );
+    };
+
+    const handleDenyDiscount = (item) => {
+        triggerHaptic("medium");
+        if (
+            !window.confirm(
+                `Tolak permintaan diskon untuk transaksi ${item.invoice}?`
+            )
+        ) {
+            return;
+        }
+
+        setProcessingDiscountId(item.id);
+        router.post(
+            route("discount-approvals.deny", item.originalId),
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                    setData((prev) => prev.filter((d) => d.id !== item.id));
+                    toast.success(`Diskon ${item.invoice} ditolak.`);
+                    setProcessingDiscountId(null);
+                },
+                onError: () => {
+                    toast.error(`Gagal menolak diskon ${item.invoice}.`);
+                    setProcessingDiscountId(null);
+                },
+            }
+        );
+    };
 
     const handleMarkRead = (id) => {
         setData((prev) => prev.filter((item) => item.id !== id));
@@ -87,7 +215,7 @@ export default function Notification() {
     };
 
     const handleMarkAllRead = () => {
-        setData([]);
+        setData((prev) => prev.filter((item) => item.type === "discount"));
         router.post(
             route("notifications.stock.readAll"),
             {},
@@ -96,6 +224,7 @@ export default function Notification() {
     };
 
     const badgeCount = data.length;
+    const discountCount = data.filter((d) => d.type === "discount").length;
 
     const NotificationList = () => (
         <div className="flex flex-col gap-2.5 items-stretch w-full">
@@ -105,44 +234,122 @@ export default function Notification() {
                     <span>Tidak ada notifikasi baru</span>
                 </div>
             )}
-            {data.map((item) => (
-                <div
-                    className="flex items-center justify-between gap-3 w-full p-3 sm:p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 hover:border-primary-200 dark:hover:border-primary-800 shadow-2xs transition-all"
-                    key={item.id}
-                >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                        {item.icon}
-                        <Link 
-                            href={
-                                item.type === "stock"
-                                    ? route("products.edit", item.originalId)
-                                    : item.type === "receivable"
-                                    ? route("receivables.show", item.originalId)
-                                    : route("payables.show", item.originalId)
-                            }
-                            className="min-w-0 flex-1 group"
+            {data.map((item) => {
+                if (item.type === "discount") {
+                    return (
+                        <div
+                            key={item.id}
+                            className="w-full p-3 sm:p-3.5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/90 dark:border-amber-800/60 shadow-2xs transition-all space-y-2.5"
                         >
-                            <div className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                                {item.title}
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-start gap-3 min-w-0 flex-1">
+                                    {item.icon}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                                                {item.invoice}
+                                            </span>
+                                            <span className="px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300">
+                                                Approval Diskon
+                                            </span>
+                                        </div>
+                                        <div className="text-slate-600 dark:text-slate-300 text-[11px] sm:text-xs mt-1 space-y-0.5">
+                                            <p className="truncate">
+                                                Kasir: <strong className="text-slate-800 dark:text-slate-100">{item.cashier}</strong>
+                                                {item.customer && item.customer !== "Umum" ? ` • ${item.customer}` : ""}
+                                            </p>
+                                            <p>
+                                                Diskon:{" "}
+                                                <strong className="text-rose-600 dark:text-rose-400 font-bold">
+                                                    {formatCurrency(item.discount)}
+                                                </strong>
+                                                <span className="mx-1.5 text-slate-300 dark:text-slate-600">|</span>
+                                                Total:{" "}
+                                                <span className="font-semibold text-slate-700 dark:text-slate-200">
+                                                    {formatCurrency(item.grand_total)}
+                                                </span>
+                                            </p>
+                                            {item.time && (
+                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                                                    {item.time}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                <Link
+                                    href={route("transactions.print", item.invoice)}
+                                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
+                                    title="Lihat Nota"
+                                >
+                                    <IconEye size={17} />
+                                </Link>
                             </div>
-                            <div className="text-slate-500 dark:text-slate-400 text-[11px] sm:text-xs truncate mt-0.5">
-                                {item.subtitle} {item.time && `• ${item.time}`}
+
+                            {/* Direct Action Buttons */}
+                            <div className="flex items-center gap-2 pt-1 border-t border-amber-200/60 dark:border-amber-900/40">
+                                <button
+                                    type="button"
+                                    disabled={processingDiscountId === item.id}
+                                    onClick={() => handleApproveDiscount(item)}
+                                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-2xs hover:shadow-xs active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+                                >
+                                    <IconCheck size={14} />
+                                    <span>Setujui</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={processingDiscountId === item.id}
+                                    onClick={() => handleDenyDiscount(item)}
+                                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-white hover:bg-rose-50 dark:bg-slate-900 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 text-[11px] font-bold active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+                                >
+                                    <IconX size={14} />
+                                    <span>Tolak</span>
+                                </button>
                             </div>
-                        </Link>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            triggerHaptic("light");
-                            handleMarkRead(item.id);
-                        }}
-                        className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-primary-600 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-950/50 border border-primary-200/60 dark:border-primary-800/80 active:scale-95 transition-all"
+                        </div>
+                    );
+                }
+
+                return (
+                    <div
+                        className="flex items-center justify-between gap-3 w-full p-3 sm:p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 hover:border-primary-200 dark:hover:border-primary-800 shadow-2xs transition-all"
+                        key={item.id}
                     >
-                        <IconCircleCheck size={14} />
-                        <span>Dibaca</span>
-                    </button>
-                </div>
-            ))}
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                            {item.icon}
+                            <Link
+                                href={
+                                    item.type === "stock"
+                                        ? route("products.edit", item.originalId)
+                                        : item.type === "receivable"
+                                        ? route("receivables.show", item.originalId)
+                                        : route("payables.show", item.originalId)
+                                }
+                                className="min-w-0 flex-1 group"
+                            >
+                                <div className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                    {item.title}
+                                </div>
+                                <div className="text-slate-500 dark:text-slate-400 text-[11px] sm:text-xs truncate mt-0.5">
+                                    {item.subtitle} {item.time && `• ${item.time}`}
+                                </div>
+                            </Link>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                triggerHaptic("light");
+                                handleMarkRead(item.id);
+                            }}
+                            className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-primary-600 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-950/50 border border-primary-200/60 dark:border-primary-800/80 active:scale-95 transition-all"
+                        >
+                            <IconCircleCheck size={14} />
+                            <span>Dibaca</span>
+                        </button>
+                    </div>
+                );
+            })}
         </div>
     );
 
@@ -151,17 +358,27 @@ export default function Notification() {
             <Menu.Button
                 className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center relative text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800 active:scale-95 transition-all"
                 aria-label="Notifikasi"
-                onClick={() => triggerHaptic("tap")}
+                onClick={handleReloadNotifications}
             >
                 {badgeCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] sm:min-w-[18px] h-[16px] sm:h-[18px] px-1 bg-rose-500 text-white text-[9px] sm:text-[10px] font-extrabold rounded-full flex items-center justify-center shadow-xs">
+                    <span
+                        className={`absolute -top-1 -right-1 min-w-[16px] sm:min-w-[18px] h-[16px] sm:h-[18px] px-1 ${
+                            discountCount > 0
+                                ? "bg-amber-500 ring-2 ring-amber-200 dark:ring-amber-900 animate-pulse"
+                                : "bg-rose-500"
+                        } text-white text-[9px] sm:text-[10px] font-extrabold rounded-full flex items-center justify-center shadow-xs`}
+                    >
                         {badgeCount > 99 ? "99+" : badgeCount}
                     </span>
                 )}
                 <IconBell
                     strokeWidth={1.8}
                     size={18}
-                    className="text-slate-500 dark:text-slate-400"
+                    className={
+                        discountCount > 0
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-slate-500 dark:text-slate-400"
+                    }
                 />
             </Menu.Button>
             <Transition
@@ -182,19 +399,34 @@ export default function Notification() {
                                     {badgeCount}
                                 </span>
                             )}
+                            {discountCount > 0 && (
+                                <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
+                                    {discountCount} Perlu Approval
+                                </span>
+                            )}
                         </div>
-                        {badgeCount > 0 && (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    triggerHaptic("light");
-                                    handleMarkAllRead();
-                                }}
-                                className="text-[11px] sm:text-xs font-semibold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 active:scale-95 transition-all"
-                            >
-                                Tandai semua dibaca
-                            </button>
-                        )}
+                        <div className="flex items-center gap-2">
+                            {canApproveDiscounts && (
+                                <Link
+                                    href={route("discount-approvals.pending")}
+                                    className="text-[11px] sm:text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline"
+                                >
+                                    Semua Approval
+                                </Link>
+                            )}
+                            {badgeCount > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        triggerHaptic("light");
+                                        handleMarkAllRead();
+                                    }}
+                                    className="text-[11px] sm:text-xs font-semibold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 active:scale-95 transition-all"
+                                >
+                                    Tandai stok dibaca
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     {/* Notification Items List */}

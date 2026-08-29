@@ -354,14 +354,21 @@ export default function MobileAppMenu({ isOpen, onClose }) {
                                                             {item.title}
                                                         </span>
                                                     </div>
-                                                    {item.active ? (
-                                                        <span className="w-2 h-2 rounded-full bg-primary-600 dark:bg-primary-400" />
-                                                    ) : (
-                                                        <IconChevronRight
-                                                            size={16}
-                                                            className="text-slate-300 dark:text-slate-600"
-                                                        />
-                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                        {item.badge > 0 && (
+                                                            <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-rose-500 text-white shadow-xs animate-pulse">
+                                                                {item.badge > 99 ? "99+" : item.badge}
+                                                            </span>
+                                                        )}
+                                                        {item.active ? (
+                                                            <span className="w-2 h-2 rounded-full bg-primary-600 dark:bg-primary-400" />
+                                                        ) : (
+                                                            <IconChevronRight
+                                                                size={16}
+                                                                className="text-slate-300 dark:text-slate-600"
+                                                            />
+                                                        )}
+                                                    </div>
                                                 </Link>
                                             );
                                         })}

@@ -52,7 +52,8 @@ import React from "react";
 
 export default function Menu() {
     const { t } = useTranslation();
-    const { url } = usePage();
+    const { url, props } = usePage();
+    const pendingApprovalCount = props?.pendingApprovalCount || 0;
 
     // define menu navigations
     const menuNavigation = [
@@ -154,6 +155,7 @@ export default function Menu() {
                     active: url.startsWith("/dashboard/discount-approvals"),
                     icon: <IconAlertCircle size={20} strokeWidth={1.5} />,
                     permissions: hasAnyPermission(["discounts-approve"]),
+                    badge: pendingApprovalCount,
                 },
             ],
         },
