@@ -15,6 +15,7 @@ import {
 import { usePage, router, Link } from "@inertiajs/react";
 import { useHaptic } from "@/Hooks/useHaptic";
 import { useAuthorization } from "@/Utils/authorization";
+import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 
@@ -42,6 +43,7 @@ export default function Notification() {
 
     const canApproveDiscounts = can("discounts-approve");
     const canConfirmBankPayments = can("transactions-confirm-payment");
+    const { requirePasswordConfirmation } = usePasswordConfirmation();
 
     const mapItems = (items) =>
         items.map((item) => ({
@@ -202,27 +204,36 @@ export default function Notification() {
         }).then((result) => {
             if (!result.isConfirmed) return;
 
-            setProcessingBankPaymentId(item.id);
-            router.patch(
-                route("transactions.confirm-payment", item.originalId),
-                {},
-                {
-                    preserveScroll: true,
-                    preserveState: true,
-                    onSuccess: () => {
-                        setData((prev) => prev.filter((d) => d.id !== item.id));
-                        toast.success(`Pembayaran ${item.invoice} berhasil dikonfirmasi.`);
-                        setProcessingBankPaymentId(null);
-                    },
-                    onError: () => {
-                        toast.error(`Gagal mengonfirmasi pembayaran ${item.invoice}.`);
-                        setProcessingBankPaymentId(null);
-                    },
-                    onFinish: () => {
-                        setProcessingBankPaymentId(null);
-                    },
-                }
-            );
+            const submitConfirm = () => {
+                setProcessingBankPaymentId(item.id);
+                router.patch(
+                    route("transactions.confirm-payment", item.originalId),
+                    {},
+                    {
+                        preserveScroll: true,
+                        preserveState: true,
+                        onSuccess: () => {
+                            setData((prev) => prev.filter((d) => d.id !== item.id));
+                            toast.success(`Pembayaran ${item.invoice} berhasil dikonfirmasi.`);
+                            setProcessingBankPaymentId(null);
+                        },
+                        onError: () => {
+                            toast.error(`Gagal mengonfirmasi pembayaran ${item.invoice}.`);
+                            setProcessingBankPaymentId(null);
+                        },
+                        onFinish: () => {
+                            setProcessingBankPaymentId(null);
+                        },
+                    }
+                );
+            };
+
+            requirePasswordConfirmation({
+                title: "Konfirmasi Pembayaran Bank",
+                description: `Masukkan password akun Anda untuk mengonfirmasi pembayaran invoice ${item.invoice}.`,
+                challenge: "Konfirmasi Pembayaran",
+                onConfirmed: submitConfirm,
+            });
         });
     };
 

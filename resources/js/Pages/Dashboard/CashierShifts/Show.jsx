@@ -9,6 +9,7 @@ import {
     IconWallet,
 } from "@tabler/icons-react";
 import { useAuthorization } from "@/Utils/authorization";
+import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
 
 const formatCurrency = (value = 0) =>
     new Intl.NumberFormat("id-ID", {
@@ -71,13 +72,29 @@ export default function Show({ cashierShift, canForceClose = false }) {
         ? null
         : actualCashNumber - Number(cashierShift.expected_cash || 0);
 
+    const { requirePasswordConfirmation } = usePasswordConfirmation();
+    const isForceClose = cashierShift.user?.id !== auth?.user?.id;
+
     const handleCloseShift = (event) => {
         event.preventDefault();
 
-        router.post(route("cashier-shifts.close", cashierShift.id), {
-            actual_cash: actualCashNumber,
-            close_notes: closeNotes,
-        });
+        const submitClose = () => {
+            router.post(route("cashier-shifts.close", cashierShift.id), {
+                actual_cash: actualCashNumber,
+                close_notes: closeNotes,
+            });
+        };
+
+        if (isForceClose) {
+            requirePasswordConfirmation({
+                title: "Konfirmasi Force Close Shift",
+                description: `Tindakan force close shift kasir ${cashierShift.user?.name ?? ""} memerlukan konfirmasi password akun.`,
+                challenge: "Force Close Shift",
+                onConfirmed: submitClose,
+            });
+        } else {
+            submitClose();
+        }
     };
 
     return (

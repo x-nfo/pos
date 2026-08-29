@@ -11,9 +11,11 @@ import Input from "@/Components/Dashboard/Input";
 import Checkbox from "@/Components/Dashboard/Checkbox";
 import toast from "react-hot-toast";
 import { useState } from "react";
+import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
 
 export default function Edit() {
     const { roles, user } = usePage().props;
+    const { requirePasswordConfirmation } = usePasswordConfirmation();
 
     const { data, setData, post, errors, processing } = useForm({
         name: user.name,
@@ -39,9 +41,17 @@ export default function Edit() {
 
     const submit = (e) => {
         e.preventDefault();
-        post(route("users.update", user.id), {
-            onSuccess: () => toast.success("Pengguna berhasil diperbarui"),
-            onError: () => toast.error("Gagal memperbarui pengguna"),
+
+        requirePasswordConfirmation({
+            title: "Konfirmasi Perbarui Pengguna",
+            description: `Masukkan password akun Anda untuk memperbarui data pengguna ${user.name}.`,
+            challenge: "Ubah Pengguna",
+            onConfirmed: () => {
+                post(route("users.update", user.id), {
+                    onSuccess: () => toast.success("Pengguna berhasil diperbarui"),
+                    onError: () => toast.error("Gagal memperbarui pengguna"),
+                });
+            },
         });
     };
 

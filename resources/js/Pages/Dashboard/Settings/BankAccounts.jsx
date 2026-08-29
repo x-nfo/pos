@@ -10,6 +10,7 @@ import {
 } from "@tabler/icons-react";
 import toast from "react-hot-toast";
 import { useAuthorization } from "@/Utils/authorization";
+import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
 import { getBankLogoUrl } from "@/Utils/imageUrl";
 
 function BankLogoItem({ bank }) {
@@ -38,6 +39,7 @@ function BankLogoItem({ bank }) {
 export default function BankAccounts({ bankAccounts = [] }) {
     const { flash } = usePage().props;
     const { can } = useAuthorization();
+    const { requirePasswordConfirmation } = usePasswordConfirmation();
     const canUpdatePaymentSettings = can("payment-settings-update");
 
     useEffect(() => {
@@ -47,12 +49,26 @@ export default function BankAccounts({ bankAccounts = [] }) {
 
     const handleDelete = (bank) => {
         if (confirm(`Hapus rekening ${bank.bank_name}?`)) {
-            router.delete(route("settings.bank-accounts.destroy", bank.id));
+            requirePasswordConfirmation({
+                title: "Konfirmasi Hapus Rekening",
+                description: `Masukkan password akun Anda untuk menghapus rekening bank ${bank.bank_name}.`,
+                challenge: "Hapus Rekening Bank",
+                onConfirmed: () => {
+                    router.delete(route("settings.bank-accounts.destroy", bank.id));
+                },
+            });
         }
     };
 
     const handleToggle = (bank) => {
-        router.patch(route("settings.bank-accounts.toggle", bank.id));
+        requirePasswordConfirmation({
+            title: "Konfirmasi Ubah Status Rekening",
+            description: `Masukkan password akun Anda untuk mengubah status aktif rekening bank ${bank.bank_name}.`,
+            challenge: "Ubah Status Rekening Bank",
+            onConfirmed: () => {
+                router.patch(route("settings.bank-accounts.toggle", bank.id));
+            },
+        });
     };
 
     return (

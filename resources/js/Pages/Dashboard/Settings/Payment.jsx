@@ -4,6 +4,7 @@ import DashboardLayout from "@/Layouts/DashboardLayout";
 import Input from "@/Components/Dashboard/Input";
 import Checkbox from "@/Components/Dashboard/Checkbox";
 import { useAuthorization } from "@/Utils/authorization";
+import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
 import {
     IconCreditCard,
     IconDeviceFloppy,
@@ -26,6 +27,7 @@ export default function Payment({
 }) {
     const { flash } = usePage().props;
     const { can } = useAuthorization();
+    const { requirePasswordConfirmation } = usePasswordConfirmation();
     const canUpdatePaymentSettings = can("payment-settings-update");
 
     const [isUploadingQris, setIsUploadingQris] = useState(false);
@@ -62,7 +64,15 @@ export default function Payment({
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        put(route("settings.payments.update"), { preserveScroll: true });
+
+        requirePasswordConfirmation({
+            title: "Konfirmasi Pengaturan Pembayaran",
+            description: "Masukkan password akun Anda untuk menyimpan perubahan pengaturan pembayaran.",
+            challenge: "Pengaturan Pembayaran",
+            onConfirmed: () => {
+                put(route("settings.payments.update"), { preserveScroll: true });
+            },
+        });
     };
 
     const isGatewaySelectable = (gateway) => {
@@ -104,32 +114,39 @@ export default function Payment({
         const file = e.target.files?.[0];
         if (!file) return;
 
-        setUploadError("");
-        setIsUploadingQris(true);
+        requirePasswordConfirmation({
+            title: "Konfirmasi Upload QRIS",
+            description: "Masukkan password akun Anda untuk mengunggah gambar QRIS toko.",
+            challenge: "Upload QRIS",
+            onConfirmed: () => {
+                setUploadError("");
+                setIsUploadingQris(true);
 
-        const formData = new FormData();
-        formData.append("qris_image", file);
-        formData.append("name", "Store QRIS");
-        if (data.qrisly_api_key) {
-            formData.append("api_key", data.qrisly_api_key);
-        }
-        formData.append("is_production", data.qrisly_production ? "1" : "0");
-
-        router.post(route("settings.payments.qrisly-upload"), formData, {
-            forceFormData: true,
-            preserveScroll: true,
-            onSuccess: (page) => {
-                setIsUploadingQris(false);
-                if (page.props?.setting?.qrisly_qris_id) {
-                    setData("qrisly_qris_id", page.props.setting.qrisly_qris_id);
+                const formData = new FormData();
+                formData.append("qris_image", file);
+                formData.append("name", "Store QRIS");
+                if (data.qrisly_api_key) {
+                    formData.append("api_key", data.qrisly_api_key);
                 }
-                if (fileInputRef.current) fileInputRef.current.value = "";
-            },
-            onError: (errs) => {
-                setIsUploadingQris(false);
-                setUploadError(errs?.qris_image || "Gagal mengunggah QRIS.");
-                toast.error(errs?.qris_image || "Gagal mengunggah QRIS.");
-                if (fileInputRef.current) fileInputRef.current.value = "";
+                formData.append("is_production", data.qrisly_production ? "1" : "0");
+
+                router.post(route("settings.payments.qrisly-upload"), formData, {
+                    forceFormData: true,
+                    preserveScroll: true,
+                    onSuccess: (page) => {
+                        setIsUploadingQris(false);
+                        if (page.props?.setting?.qrisly_qris_id) {
+                            setData("qrisly_qris_id", page.props.setting.qrisly_qris_id);
+                        }
+                        if (fileInputRef.current) fileInputRef.current.value = "";
+                    },
+                    onError: (errs) => {
+                        setIsUploadingQris(false);
+                        setUploadError(errs?.qris_image || "Gagal mengunggah QRIS.");
+                        toast.error(errs?.qris_image || "Gagal mengunggah QRIS.");
+                        if (fileInputRef.current) fileInputRef.current.value = "";
+                    },
+                });
             },
         });
     };

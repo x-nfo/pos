@@ -7,6 +7,7 @@ import MobileDataCard from "@/Components/Mobile/MobileDataCard";
 import { useHaptic } from "@/Hooks/useHaptic";
 import { useWebShare } from "@/Hooks/useWebShare";
 import { useAuthorization } from "@/Utils/authorization";
+import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
 import { shareWhatsappReceipt } from "@/Utils/whatsappReceipt";
 import {
     IconDatabaseOff,
@@ -52,6 +53,7 @@ const History = ({ transactions, filters, warehouses = [] }) => {
     const canCreateSalesReturn = can("sales-returns-create");
     const canConfirmPayment = can("transactions-confirm-payment");
     const canCreateCrmCampaign = can("crm-campaigns-create");
+    const { requirePasswordConfirmation } = usePasswordConfirmation();
 
     const [filterData, setFilterData] = useState({
         ...defaultFilters,
@@ -889,27 +891,34 @@ const History = ({ transactions, filters, warehouses = [] }) => {
                             <button
                                 type="button"
                                 onClick={() => {
-                                    triggerHaptic("success");
-                                    setIsConfirming(true);
-                                    router.patch(
-                                        route(
-                                            "transactions.confirm-payment",
-                                            confirmModal.transaction.id
-                                        ),
-                                        {},
-                                        {
-                                            onSuccess: () => {
-                                                setConfirmModal({
-                                                    open: false,
-                                                    transaction: null,
-                                                });
-                                                setIsConfirming(false);
-                                            },
-                                            onError: () => {
-                                                setIsConfirming(false);
-                                            },
-                                        }
-                                    );
+                                    requirePasswordConfirmation({
+                                        title: "Konfirmasi Pembayaran Bank",
+                                        description: `Masukkan password akun Anda untuk mengonfirmasi pembayaran invoice ${confirmModal.transaction?.invoice ?? ""}.`,
+                                        challenge: "Konfirmasi Pembayaran",
+                                        onConfirmed: () => {
+                                            triggerHaptic("success");
+                                            setIsConfirming(true);
+                                            router.patch(
+                                                route(
+                                                    "transactions.confirm-payment",
+                                                    confirmModal.transaction.id
+                                                ),
+                                                {},
+                                                {
+                                                    onSuccess: () => {
+                                                        setConfirmModal({
+                                                            open: false,
+                                                            transaction: null,
+                                                        });
+                                                        setIsConfirming(false);
+                                                    },
+                                                    onError: () => {
+                                                        setIsConfirming(false);
+                                                    },
+                                                }
+                                            );
+                                        },
+                                    });
                                 }}
                                 disabled={isConfirming}
                                 className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20"

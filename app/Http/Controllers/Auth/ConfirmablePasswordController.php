@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Services\AuditLogService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,7 +31,7 @@ class ConfirmablePasswordController extends Controller
     /**
      * Confirm the user's password.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         if (! Auth::guard('web')->validate([
             'email' => $request->user()->email,
@@ -78,6 +79,16 @@ class ConfirmablePasswordController extends Controller
                 'challenge' => $challenge,
             ],
         );
+
+        if ($request->wantsJson() || $request->ajax()) {
+            $timeout = (int) config('auth.password_timeout', 900);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Password berhasil dikonfirmasi.',
+                'step_up_fresh_until' => now()->addSeconds($timeout)->toISOString(),
+            ]);
+        }
 
         return redirect()->intended(route('dashboard', absolute: false));
     }

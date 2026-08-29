@@ -7,6 +7,7 @@ import { createInertiaApp, router } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ThemeSwitcherProvider } from './Context/ThemeSwitcherContext';
 import { OnlineStatusProvider } from './Context/OnlineStatusContext';
+import { PasswordConfirmationProvider } from './Context/PasswordConfirmationContext';
 import { applyThemeColors } from './Utils/brandingTheme';
 
 import i18n from './i18n';
@@ -49,12 +50,16 @@ createInertiaApp({
             applyThemeColors(branding.colors.primary, branding.colors.accent);
         }
 
+        const initialStepUp = props.initialPage?.props?.security?.stepUpFreshUntil ?? null;
+
         const root = createRoot(el);
 
         root.render(
             <ThemeSwitcherProvider>
                 <OnlineStatusProvider>
-                    <App {...props} />
+                    <PasswordConfirmationProvider initialFreshUntil={initialStepUp}>
+                        <App {...props} />
+                    </PasswordConfirmationProvider>
                 </OnlineStatusProvider>
             </ThemeSwitcherProvider>
         );

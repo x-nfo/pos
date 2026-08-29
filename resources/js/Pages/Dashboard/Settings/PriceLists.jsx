@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import DashboardLayout from "@/Layouts/DashboardLayout";
 import { IconListDetails, IconPlus, IconPencil, IconTrash, IconEye } from "@tabler/icons-react";
+import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
 import toast from "react-hot-toast";
 
 export default function PriceLists({ priceLists }) {
     const { flash } = usePage().props;
+    const { requirePasswordConfirmation } = usePasswordConfirmation();
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ name: "", slug: "", customer_scope: "all", notes: "", priority: 0 });
@@ -26,16 +28,32 @@ export default function PriceLists({ priceLists }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (editing) {
-            router.put(route("price-lists.update", editing.id), form, { onSuccess: () => resetForm() });
-        } else {
-            router.post(route("price-lists.store"), form, { onSuccess: () => resetForm() });
-        }
+
+        requirePasswordConfirmation({
+            title: editing ? "Konfirmasi Ubah Price List" : "Konfirmasi Tambah Price List",
+            description: "Masukkan password akun Anda untuk menyimpan pengaturan price list.",
+            challenge: editing ? "Ubah Price List" : "Tambah Price List",
+            onConfirmed: () => {
+                if (editing) {
+                    router.put(route("price-lists.update", editing.id), form, { onSuccess: () => resetForm() });
+                } else {
+                    router.post(route("price-lists.store"), form, { onSuccess: () => resetForm() });
+                }
+            },
+        });
     };
 
     const handleDelete = (pl) => {
         if (!confirm(`Hapus price list ${pl.name}?`)) return;
-        router.delete(route("price-lists.destroy", pl.id));
+
+        requirePasswordConfirmation({
+            title: "Konfirmasi Hapus Price List",
+            description: `Masukkan password akun Anda untuk menghapus price list ${pl.name}.`,
+            challenge: "Hapus Price List",
+            onConfirmed: () => {
+                router.delete(route("price-lists.destroy", pl.id));
+            },
+        });
     };
 
     const scopeLabel = { all: "Semua", walk_in: "Walk-in", registered: "Terdaftar", member: "Member", segment: "Segmen" };

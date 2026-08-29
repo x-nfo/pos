@@ -24,6 +24,7 @@ import ThermalReceipt, {
 } from "@/Components/Receipt/ThermalReceipt";
 import ShippingLabel from "@/Components/Receipt/ShippingLabel";
 import { useAuthorization } from "@/Utils/authorization";
+import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
 import { shareWhatsappReceipt } from "@/Utils/whatsappReceipt";
 import { printViaWebUsb } from "@/Utils/webUsbPrinter";
 import { printViaBluetooth } from "@/Utils/webBluetoothPrinter";
@@ -90,6 +91,7 @@ export default function Print({
     const hasAutoPrinted = useRef(false);
     const canConfirmPayment = can("transactions-confirm-payment");
     const canApproveDiscount = can("discounts-approve");
+    const { requirePasswordConfirmation } = usePasswordConfirmation();
 
     const handleCheckApprovalStatus = () => {
         setIsCheckingApproval(true);
@@ -1261,23 +1263,30 @@ export default function Print({
                             </button>
                             <button
                                 onClick={() => {
-                                    setIsConfirming(true);
-                                    router.patch(
-                                        route(
-                                            "transactions.confirm-payment",
-                                            transaction.id
-                                        ),
-                                        {},
-                                        {
-                                            onSuccess: () => {
-                                                setShowConfirmModal(false);
-                                                setIsConfirming(false);
-                                            },
-                                            onError: () => {
-                                                setIsConfirming(false);
-                                            },
-                                        }
-                                    );
+                                    requirePasswordConfirmation({
+                                        title: "Konfirmasi Pembayaran Bank",
+                                        description: `Masukkan password akun Anda untuk mengonfirmasi pembayaran invoice ${transaction.invoice}.`,
+                                        challenge: "Konfirmasi Pembayaran",
+                                        onConfirmed: () => {
+                                            setIsConfirming(true);
+                                            router.patch(
+                                                route(
+                                                    "transactions.confirm-payment",
+                                                    transaction.id
+                                                ),
+                                                {},
+                                                {
+                                                    onSuccess: () => {
+                                                        setShowConfirmModal(false);
+                                                        setIsConfirming(false);
+                                                    },
+                                                    onError: () => {
+                                                        setIsConfirming(false);
+                                                    },
+                                                }
+                                            );
+                                        },
+                                    });
                                 }}
                                 disabled={isConfirming}
                                 className="flex-1 px-4 py-3 rounded-xl bg-success-500 hover:bg-success-600 text-white font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"

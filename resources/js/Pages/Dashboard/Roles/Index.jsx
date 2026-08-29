@@ -8,6 +8,7 @@ import Modal from "@/Components/Dashboard/Modal";
 import Search from "@/Components/Dashboard/Search";
 import Pagination from "@/Components/Dashboard/Pagination";
 import { useAuthorization } from "@/Utils/authorization";
+import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
 import {
     IconDatabaseOff,
     IconCirclePlus,
@@ -92,6 +93,7 @@ function RoleCard({ role, onEdit, onDelete, canUpdate, canDelete }) {
 export default function Index() {
     const { roles, permissions, errors } = usePage().props;
     const { can } = useAuthorization();
+    const { requirePasswordConfirmation } = usePasswordConfirmation();
     const canCreateRoles = can("roles-create");
     const canUpdateRoles = can("roles-update");
     const canDeleteRoles = can("roles-delete");
@@ -123,23 +125,39 @@ export default function Index() {
 
     const saveRole = async (e) => {
         e.preventDefault();
-        post(route("roles.store"), {
-            onSuccess: () =>
-                setData({ selectedPermission: [], name: "", isOpen: false }),
+
+        requirePasswordConfirmation({
+            title: "Konfirmasi Tambah Role",
+            description: "Masukkan password akun Anda untuk menyimpan role baru.",
+            challenge: "Tambah Role",
+            onConfirmed: () => {
+                post(route("roles.store"), {
+                    onSuccess: () =>
+                        setData({ selectedPermission: [], name: "", isOpen: false }),
+                });
+            },
         });
     };
 
     const updateRole = async (e) => {
         e.preventDefault();
-        post(route("roles.update", data.id), {
-            onSuccess: () =>
-                setData({
-                    id: "",
-                    name: "",
-                    selectedPermission: [],
-                    isUpdate: false,
-                    isOpen: false,
-                }),
+
+        requirePasswordConfirmation({
+            title: "Konfirmasi Perbarui Role",
+            description: `Masukkan password akun Anda untuk memperbarui role ${data.name}.`,
+            challenge: "Ubah Role",
+            onConfirmed: () => {
+                post(route("roles.update", data.id), {
+                    onSuccess: () =>
+                        setData({
+                            id: "",
+                            name: "",
+                            selectedPermission: [],
+                            isUpdate: false,
+                            isOpen: false,
+                        }),
+                });
+            },
         });
     };
 
@@ -155,7 +173,14 @@ export default function Index() {
 
     const handleDelete = (roleId) => {
         if (confirm("Hapus role ini?")) {
-            destroy(route("roles.destroy", roleId));
+            requirePasswordConfirmation({
+                title: "Konfirmasi Hapus Role",
+                description: "Masukkan password akun Anda untuk menghapus role ini.",
+                challenge: "Hapus Role",
+                onConfirmed: () => {
+                    destroy(route("roles.destroy", roleId));
+                },
+            });
         }
     };
 

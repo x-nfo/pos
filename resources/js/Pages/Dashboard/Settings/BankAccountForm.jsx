@@ -11,12 +11,14 @@ import {
 import toast from "react-hot-toast";
 import Input from "@/Components/Dashboard/Input";
 import { useAuthorization } from "@/Utils/authorization";
+import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
 import { getBankLogoUrl } from "@/Utils/imageUrl";
 
 export default function BankAccountForm({ bankAccount = null }) {
     const isEdit = !!bankAccount;
     const { flash } = usePage().props;
     const { can } = useAuthorization();
+    const { requirePasswordConfirmation } = usePasswordConfirmation();
     const canUpdatePaymentSettings = can("payment-settings-update");
     const fileInputRef = useRef(null);
 
@@ -82,15 +84,24 @@ export default function BankAccountForm({ bankAccount = null }) {
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        if (isEdit) {
-            post(route("settings.bank-accounts.update", bankAccount.id), {
-                forceFormData: true,
-            });
-        } else {
-            post(route("settings.bank-accounts.store"), {
-                forceFormData: true,
-            });
-        }
+        const submitForm = () => {
+            if (isEdit) {
+                post(route("settings.bank-accounts.update", bankAccount.id), {
+                    forceFormData: true,
+                });
+            } else {
+                post(route("settings.bank-accounts.store"), {
+                    forceFormData: true,
+                });
+            }
+        };
+
+        requirePasswordConfirmation({
+            title: isEdit ? "Konfirmasi Ubah Rekening" : "Konfirmasi Tambah Rekening",
+            description: "Masukkan password akun Anda untuk menyimpan pengaturan rekening bank.",
+            challenge: isEdit ? "Ubah Rekening Bank" : "Tambah Rekening Bank",
+            onConfirmed: submitForm,
+        });
     };
 
     return (

@@ -38,6 +38,18 @@ class EnsureRecentPasswordConfirmation
             ],
         );
 
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'message' => 'Konfirmasi password diperlukan.',
+                'password_confirmation_required' => true,
+                'challenge' => [
+                    'route' => $request->route()?->getName(),
+                    'method' => $request->method(),
+                    'intended' => $intendedUrl,
+                ],
+            ], 423);
+        }
+
         return redirect()->route('password.confirm');
     }
 }

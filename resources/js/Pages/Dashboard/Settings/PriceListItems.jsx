@@ -2,12 +2,14 @@ import React, { useState } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
 import DashboardLayout from "@/Layouts/DashboardLayout";
 import { IconArrowLeft, IconTrash, IconPlus } from "@tabler/icons-react";
+import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
 import toast from "react-hot-toast";
 
 const formatPrice = (v = 0) => Number(v).toLocaleString("id-ID");
 
 export default function PriceListItems({ priceList, products }) {
     const { flash } = usePage().props;
+    const { requirePasswordConfirmation } = usePasswordConfirmation();
     const [search, setSearch] = useState("");
     if (flash?.success) toast.success(flash.success);
 
@@ -17,12 +19,28 @@ export default function PriceListItems({ priceList, products }) {
     const addPrice = (product) => {
         const price = prompt(`Harga untuk ${product.title}:`, String(product.sell_price));
         if (price === null) return;
-        router.post(route("price-lists.items.update", priceList.id), { product_id: product.id, price: parseInt(price) });
+
+        requirePasswordConfirmation({
+            title: "Konfirmasi Ubah Harga Produk",
+            description: `Masukkan password akun Anda untuk mengatur harga ${product.title} pada price list ini.`,
+            challenge: "Ubah Harga Produk",
+            onConfirmed: () => {
+                router.post(route("price-lists.items.update", priceList.id), { product_id: product.id, price: parseInt(price) });
+            },
+        });
     };
 
     const removeItem = (item) => {
         if (!confirm(`Hapus ${item.product?.title} dari price list?`)) return;
-        router.delete(route("price-lists.items.destroy", [priceList.id, item.product_id]));
+
+        requirePasswordConfirmation({
+            title: "Konfirmasi Hapus Item Price List",
+            description: `Masukkan password akun Anda untuk menghapus ${item.product?.title} dari price list ini.`,
+            challenge: "Hapus Item Price List",
+            onConfirmed: () => {
+                router.delete(route("price-lists.items.destroy", [priceList.id, item.product_id]));
+            },
+        });
     };
 
     return (

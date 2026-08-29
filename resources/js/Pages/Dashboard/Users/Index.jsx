@@ -19,6 +19,7 @@ import Checkbox from "@/Components/Dashboard/Checkbox";
 import Pagination from "@/Components/Dashboard/Pagination";
 import MobileDataCard from "@/Components/Mobile/MobileDataCard";
 import { useAuthorization } from "@/Utils/authorization";
+import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
 import Swal from "sweetalert2";
 
 // User Card for Grid View
@@ -133,6 +134,7 @@ export default function Index() {
     const canCreateUsers = can("users-create");
     const canUpdateUsers = can("users-update");
     const canDeleteUsers = can("users-delete");
+    const { requirePasswordConfirmation } = usePasswordConfirmation();
 
     const {
         data,
@@ -163,15 +165,25 @@ export default function Index() {
             cancelButtonText: "Batal",
         }).then((result) => {
             if (result.isConfirmed) {
-                destroy(route("users.destroy", [id]));
-                Swal.fire({
-                    title: "Berhasil!",
-                    text: "Data berhasil dihapus!",
-                    icon: "success",
-                    showConfirmButton: false,
-                    timer: 1500,
+                requirePasswordConfirmation({
+                    title: "Konfirmasi Hapus Pengguna",
+                    description: "Masukkan password akun Anda untuk menghapus pengguna ini.",
+                    challenge: "Hapus Pengguna",
+                    onConfirmed: () => {
+                        destroy(route("users.destroy", [id]), {
+                            onSuccess: () => {
+                                Swal.fire({
+                                    title: "Berhasil!",
+                                    text: "Data berhasil dihapus!",
+                                    icon: "success",
+                                    showConfirmButton: false,
+                                    timer: 1500,
+                                });
+                                setData("selectedUser", []);
+                            },
+                        });
+                    },
                 });
-                setData("selectedUser", []);
             }
         });
     };

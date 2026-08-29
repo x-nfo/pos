@@ -69,4 +69,61 @@ class PasswordConfirmationTest extends TestCase
 
         $response->assertRedirect(route('password.confirm'));
     }
+
+    public function test_password_can_be_confirmed_via_json_request(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)
+            ->postJson('/confirm-password', [
+                'password' => 'password',
+            ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+        ]);
+        $response->assertJsonStructure(['success', 'message', 'step_up_fresh_until']);
+    }
+
+    public function test_password_confirmation_fails_via_json_with_invalid_password(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)
+            ->postJson('/confirm-password', [
+                'password' => 'wrong-password',
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['password']);
+    }
+
+    public function test_sensitive_routes_return_423_when_requested_via_json(): void
+    {
+        $user = User::factory()->create();
+        Permission::firstOrCreate(['name' => 'transactions-confirm-payment', 'guard_name' => 'web']);
+        $user->givePermissionTo('transactions-confirm-payment');
+
+        $transaction = Transaction::create([
+            'cashier_id' => $user->id,
+            'invoice' => 'TRX-CONFIRM-JSON',
+            'cash' => 0,
+            'change' => 0,
+            'discount' => 0,
+            'shipping_cost' => 0,
+            'grand_total' => 10000,
+            'payment_method' => 'bank_transfer',
+            'payment_status' => 'pending',
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patchJson(route('transactions.confirm-payment', $transaction));
+
+        $response->assertStatus(423);
+        $response->assertJson([
+            'password_confirmation_required' => true,
+        ]);
+    }
 }

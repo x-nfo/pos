@@ -11,9 +11,11 @@ import Input from "@/Components/Dashboard/Input";
 import Checkbox from "@/Components/Dashboard/Checkbox";
 import toast from "react-hot-toast";
 import { useState } from "react";
+import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
 
 export default function Create() {
     const { roles } = usePage().props;
+    const { requirePasswordConfirmation } = usePasswordConfirmation();
 
     const { data, setData, post, errors, processing } = useForm({
         name: "",
@@ -38,9 +40,17 @@ export default function Create() {
 
     const submit = (e) => {
         e.preventDefault();
-        post(route("users.store"), {
-            onSuccess: () => toast.success("Pengguna berhasil ditambahkan"),
-            onError: () => toast.error("Gagal menyimpan pengguna"),
+
+        requirePasswordConfirmation({
+            title: "Konfirmasi Tambah Pengguna",
+            description: "Masukkan password akun Anda untuk menyimpan pengguna baru.",
+            challenge: "Tambah Pengguna",
+            onConfirmed: () => {
+                post(route("users.store"), {
+                    onSuccess: () => toast.success("Pengguna berhasil ditambahkan"),
+                    onError: () => toast.error("Gagal menyimpan pengguna"),
+                });
+            },
         });
     };
 
