@@ -80,7 +80,7 @@ export default function MobileCartSheet({
         summary?.loyalty_discount ?? summary?.loyalty_discount_total ?? 0
     );
     const discount = Number(
-        discountInput || summary?.manual_discount_total || 0
+        calculatedDiscount || summary?.manual_discount_total || 0
     );
     const shipping = Number(
         shippingInput || summary?.shipping_cost || 0
