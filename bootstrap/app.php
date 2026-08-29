@@ -69,6 +69,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 return redirect()->guest(route('login'));
             }
 
+            if ($exception instanceof \Illuminate\Http\Exceptions\PostTooLargeException) {
+                return back()->with('error', __('Ukuran file yang diunggah terlalu besar. Maksimal yang diizinkan telah terlampaui.'));
+            }
+
             $status = match (true) {
                 $exception instanceof UnauthorizedException => Response::HTTP_FORBIDDEN,
                 $exception instanceof HttpExceptionInterface => $exception->getStatusCode(),
