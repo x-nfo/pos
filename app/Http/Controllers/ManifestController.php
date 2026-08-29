@@ -70,6 +70,7 @@ class ManifestController extends Controller
 
         return response()->json($manifest, 200, [
             'Content-Type' => 'application/manifest+json',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
         ]);
     }
 }

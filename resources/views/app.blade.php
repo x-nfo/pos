@@ -28,12 +28,12 @@
     <meta name="twitter:image" content="{{ route('og.image') }}">
     
     @if($branding['favicon'])
-        <link rel="icon" type="image/x-icon" href="{{ $branding['favicon'] }}">
-        <link rel="apple-touch-icon" href="{{ $branding['favicon'] }}">
+        <link rel="icon" type="image/x-icon" href="{{ $branding['favicon'] }}?v={{ md5($branding['favicon']) }}">
+        <link rel="apple-touch-icon" href="{{ $branding['favicon'] }}?v={{ md5($branding['favicon']) }}">
     @else
         <link rel="icon" type="image/x-icon" href="/favicon.ico">
     @endif
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="/manifest.json?v={{ md5(json_encode($branding)) }}">
 
     <title data-inertia>{{ $branding['appName'] }}</title>
 
