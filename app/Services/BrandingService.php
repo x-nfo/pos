@@ -121,10 +121,10 @@ class BrandingService
         }
 
         if (str_starts_with($path, '/storage/')) {
-            return asset(ltrim($path, '/'));
+            return $path;
         }
 
-        return asset('storage/'.ltrim($path, '/'));
+        return '/storage/'.ltrim($path, '/');
     }
 
     /**
