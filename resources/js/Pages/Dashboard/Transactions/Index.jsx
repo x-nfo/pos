@@ -39,6 +39,10 @@ import {
     IconBuildingBank,
     IconAlertTriangle,
     IconWallet,
+    IconTag,
+    IconChevronDown,
+    IconChevronUp,
+    IconSparkles,
 } from "@tabler/icons-react";
 
 const formatPrice = (value = 0) =>
@@ -84,6 +88,7 @@ export default function Index({
     const [redeemPointsInput, setRedeemPointsInput] = useState("");
     const [cashInput, setCashInput] = useState("");
     const [shippingInput, setShippingInput] = useState("");
+    const [showDiscounts, setShowDiscounts] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState(
         defaultPaymentGateway ?? "cash"
     );
@@ -851,6 +856,7 @@ export default function Index({
                 setRedeemPointsInput("");
                 setCashInput("");
                 setShippingInput("");
+                setShowDiscounts(false);
                 setSelectedCustomer(WALK_IN_CUSTOMER);
                 setPricingPreview(initialPricingPreview);
                 window.dispatchEvent(new CustomEvent("pos:sync-change"));
@@ -884,6 +890,7 @@ export default function Index({
                     setRedeemPointsInput("");
                     setCashInput("");
                     setShippingInput("");
+                    setShowDiscounts(false);
                     setSelectedCustomer(WALK_IN_CUSTOMER);
                     setSelectedBankAccount(null);
                     setSelectedVoucherId("");
@@ -1544,156 +1551,166 @@ export default function Index({
                                 </div>
                             )}
 
-                            {selectedCustomer?.is_loyalty_member && (
-                                <div className="rounded-xl border border-primary-200 bg-primary-50 p-3 dark:border-primary-900/40 dark:bg-primary-950/20">
-                                    <div className="flex items-start justify-between gap-3">
+                            {/* Collapsible Discounts, Voucher & Shipping Options */}
+                            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden shadow-xs">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDiscounts(!showDiscounts)}
+                                    className="w-full p-3 flex items-center justify-between text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                                >
+                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+                                        <IconTag size={16} className="text-primary-500" />
+                                        <span>Diskon, Voucher & Ongkir</span>
+                                        {discount > 0 || shipping > 0 || loyaltyDiscount > 0 || voucherDiscount > 0 ? (
+                                            <span className="flex items-center gap-1">
+                                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                                    (Aktif)
+                                                </span>
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                    {showDiscounts ? (
+                                        <IconChevronUp size={16} className="text-slate-400" />
+                                    ) : (
+                                        <IconChevronDown size={16} className="text-slate-400" />
+                                    )}
+                                </button>
+
+                                {showDiscounts && (
+                                    <div className="p-3 pt-0 border-t border-slate-100 dark:border-slate-800 space-y-3 mt-2">
+                                        {/* Loyalty Member info & Redeem Poin */}
+                                        {selectedCustomer?.is_loyalty_member && (
+                                            <div className="p-3 bg-primary-50 dark:bg-primary-950/40 rounded-xl border border-primary-200 dark:border-primary-800 space-y-2">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-xs font-bold text-primary-700 dark:text-primary-300 flex items-center gap-1.5">
+                                                        <IconSparkles size={14} />
+                                                        Member Tier {selectedCustomer.loyalty_tier}
+                                                    </span>
+                                                    <span className="text-xs font-semibold text-primary-600 dark:text-primary-400">
+                                                        Saldo: {pricingPreview?.summary?.available_loyalty_points ?? 0} poin
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                                        Redeem Poin
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        value={redeemPointsInput}
+                                                        onChange={(e) =>
+                                                            setRedeemPointsInput(
+                                                                e.target.value.replace(/[^\d]/g, "")
+                                                            )
+                                                        }
+                                                        placeholder={`Maks ${
+                                                            pricingPreview?.summary
+                                                                ?.available_loyalty_points ?? 0
+                                                        } poin`}
+                                                        className="w-full h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Voucher Customer */}
+                                        {selectedCustomer?.is_loyalty_member &&
+                                            (pricingPreview?.eligible_vouchers || []).length > 0 && (
+                                                <div>
+                                                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                                                        Voucher Customer
+                                                    </label>
+                                                    <select
+                                                        value={selectedVoucherId}
+                                                        onChange={(e) =>
+                                                            setSelectedVoucherId(e.target.value)
+                                                        }
+                                                        className="w-full h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                    >
+                                                        <option value="">Tanpa voucher</option>
+                                                        {(pricingPreview?.eligible_vouchers || []).map(
+                                                            (voucher) => (
+                                                                <option
+                                                                    key={voucher.id}
+                                                                    value={voucher.id}
+                                                                >
+                                                                    {voucher.code} - {voucher.name}
+                                                                </option>
+                                                            )
+                                                        )}
+                                                    </select>
+                                                </div>
+                                            )}
+
+                                        {/* Diskon Manual */}
                                         <div>
-                                            <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">
-                                                Loyalty Member
-                                            </p>
-                                            <p className="text-xs text-primary-600/80 dark:text-primary-400/80">
-                                                Tier {selectedCustomer.loyalty_tier} | saldo{" "}
-                                                {pricingPreview?.summary
-                                                    ?.available_loyalty_points ??
-                                                    0}{" "}
-                                                poin
-                                            </p>
+                                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                                                Diskon Manual (Rp)
+                                            </label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                                                    Rp
+                                                </span>
+                                                <input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    value={discountInput}
+                                                    onChange={(e) =>
+                                                        setDiscountInput(
+                                                            e.target.value.replace(/[^\d]/g, "")
+                                                        )
+                                                    }
+                                                    placeholder="0"
+                                                    className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Shipping Cost */}
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                                                Ongkos Kirim (Rp)
+                                            </label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                                                    Rp
+                                                </span>
+                                                <input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    value={shippingInput}
+                                                    onChange={(e) =>
+                                                        setShippingInput(
+                                                            e.target.value.replace(/[^\d]/g, "")
+                                                        )
+                                                    }
+                                                    placeholder="0"
+                                                    className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                                />
+                                            </div>
+                                            {/* Quick Shipping Amounts */}
+                                            <div className="grid grid-cols-4 gap-2 mt-2">
+                                                {[10000, 15000, 20000, 25000].map((amt) => (
+                                                    <button
+                                                        key={amt}
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setShippingInput(String(amt))
+                                                        }
+                                                        className={`py-1.5 px-1 rounded-lg text-xs font-medium transition-all ${
+                                                            Number(shippingInput) === amt
+                                                                ? "bg-primary-500 text-white"
+                                                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+                                                        }`}
+                                                    >
+                                                        {formatPrice(amt)}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            )}
-
-                            {selectedCustomer?.is_loyalty_member && (
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
-                                        Redeem Poin
-                                    </label>
-                                    <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        value={redeemPointsInput}
-                                        onChange={(e) =>
-                                            setRedeemPointsInput(
-                                                e.target.value.replace(
-                                                    /[^\d]/g,
-                                                    ""
-                                                )
-                                            )
-                                        }
-                                        placeholder={`Maks ${
-                                            pricingPreview?.summary
-                                                ?.available_loyalty_points ?? 0
-                                        } poin`}
-                                        className="w-full h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                    />
-                                </div>
-                            )}
-
-                            {selectedCustomer?.is_loyalty_member &&
-                                (pricingPreview?.eligible_vouchers || [])
-                                    .length > 0 && (
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
-                                            Voucher Customer
-                                        </label>
-                                        <select
-                                            value={selectedVoucherId}
-                                            onChange={(e) =>
-                                                setSelectedVoucherId(
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="w-full h-10 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                        >
-                                            <option value="">
-                                                Tanpa voucher
-                                            </option>
-                                            {(
-                                                pricingPreview?.eligible_vouchers ||
-                                                []
-                                            ).map((voucher) => (
-                                                <option
-                                                    key={voucher.id}
-                                                    value={voucher.id}
-                                                >
-                                                    {voucher.code} -{" "}
-                                                    {voucher.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
                                 )}
-
-                            <div>
-                                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
-                                    Diskon Manual (Rp)
-                                </label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-                                        Rp
-                                    </span>
-                                    <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        value={discountInput}
-                                        onChange={(e) =>
-                                            setDiscountInput(
-                                                e.target.value.replace(
-                                                    /[^\d]/g,
-                                                    ""
-                                                )
-                                            )
-                                        }
-                                        placeholder="0"
-                                        className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Shipping Cost Input */}
-                            <div>
-                                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
-                                    Ongkos Kirim (Rp)
-                                </label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-                                        Rp
-                                    </span>
-                                    <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        value={shippingInput}
-                                        onChange={(e) =>
-                                            setShippingInput(
-                                                e.target.value.replace(
-                                                    /[^\d]/g,
-                                                    ""
-                                                )
-                                            )
-                                        }
-                                        placeholder="0"
-                                        className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
-                                    />
-                                </div>
-                                {/* Quick Shipping Amounts */}
-                                <div className="grid grid-cols-4 gap-2 mt-2">
-                                    {[10000, 15000, 20000, 25000].map((amt) => (
-                                        <button
-                                            key={amt}
-                                            type="button"
-                                            onClick={() =>
-                                                setShippingInput(String(amt))
-                                            }
-                                            className={`py-1.5 px-1 rounded-lg text-xs font-medium transition-all ${
-                                                Number(shippingInput) === amt
-                                                    ? "bg-primary-500 text-white"
-                                                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-                                            }`}
-                                        >
-                                            {formatPrice(amt)}
-                                        </button>
-                                    ))}
-                                </div>
                             </div>
 
                             {/* Cash Input - Only for cash */}
