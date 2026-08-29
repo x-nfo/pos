@@ -410,6 +410,11 @@ export default function Notification() {
                                             <span className="px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300">
                                                 Approval Diskon
                                             </span>
+                                            {item.payment_method === "bank_transfer" && (
+                                                <span className="px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-cyan-100 dark:bg-cyan-900/60 text-cyan-800 dark:text-cyan-300">
+                                                    Transfer Bank
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="text-slate-600 dark:text-slate-300 text-[11px] sm:text-xs mt-1 space-y-0.5">
                                             <p className="truncate">
@@ -427,6 +432,11 @@ export default function Notification() {
                                                     {formatCurrency(item.grand_total)}
                                                 </span>
                                             </p>
+                                            {item.payment_method === "bank_transfer" && (
+                                                <p className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">
+                                                    ℹ️ Mutasi bank {item.bank_name ? `(${item.bank_name})` : ""} tetap harus dikonfirmasi setelah diskon disetujui.
+                                                </p>
+                                            )}
                                             {item.time && (
                                                 <p className="text-[10px] text-slate-400 dark:text-slate-500">
                                                     {item.time}

@@ -4,6 +4,7 @@ namespace Tests\Feature\Notifications;
 
 use App\Models\BankAccount;
 use App\Models\Customer;
+use App\Models\DiscountApprovalLog;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -246,6 +247,86 @@ class BankPaymentNotificationTest extends TestCase
         $responseAfter->assertInertia(fn (Assert $page) => $page
             ->where('pendingBankPaymentCount', 0)
             ->has('bankPaymentNotifications', 0)
+        );
+    }
+
+    public function test_approving_discount_on_bank_transfer_does_not_auto_mark_paid_and_enters_bank_notifications(): void
+    {
+        $superAdminRole = Role::findOrCreate('super-admin', 'web');
+        $admin = User::factory()->create();
+        $admin->assignRole($superAdminRole);
+
+        $bankAccount = BankAccount::create([
+            'bank_name' => 'BCA',
+            'account_name' => 'PT Rekasir',
+            'account_number' => '55551234',
+            'is_active' => true,
+        ]);
+
+        $transaction = Transaction::create([
+            'cashier_id' => $admin->id,
+            'customer_id' => null,
+            'invoice' => 'TRX-BANK-DISC-001',
+            'cash' => 0,
+            'change' => 0,
+            'discount' => 15000,
+            'grand_total' => 100000,
+            'payment_method' => 'bank_transfer',
+            'payment_status' => 'pending_approval',
+            'discount_approval_status' => 'pending',
+            'bank_account_id' => $bankAccount->id,
+        ]);
+
+        DiscountApprovalLog::create([
+            'transaction_id' => $transaction->id,
+            'cashier_id' => $admin->id,
+            'requested_discount' => 15000,
+            'status' => 'pending',
+        ]);
+
+        // When discount is pending approval, it appears in discount approvals with payment method
+        $responseBefore = $this->actingAs($admin)->get(route('dashboard'));
+        $responseBefore->assertInertia(fn (Assert $page) => $page
+            ->where('pendingApprovalCount', 1)
+            ->has('discountApprovalNotifications', 1)
+            ->where('discountApprovalNotifications.0.payment_method', 'bank_transfer')
+            ->where('pendingBankPaymentCount', 0)
+        );
+
+        // Approve discount
+        $this->actingAs($admin)->post(route('discount-approvals.approve', $transaction->id))
+            ->assertRedirect();
+
+        $transaction->refresh();
+        $this->assertEquals('approved', $transaction->discount_approval_status);
+        // MUST BE PENDING, NOT PAID!
+        $this->assertEquals('pending', $transaction->payment_status);
+        $this->assertNull($transaction->payment_confirmed_by);
+
+        // Now it enters pending bank payment notifications!
+        $responseAfterDiscount = $this->actingAs($admin)->get(route('dashboard'));
+        $responseAfterDiscount->assertInertia(fn (Assert $page) => $page
+            ->where('pendingApprovalCount', 0)
+            ->where('pendingBankPaymentCount', 1)
+            ->has('bankPaymentNotifications', 1)
+            ->where('bankPaymentNotifications.0.invoice', 'TRX-BANK-DISC-001')
+        );
+
+        // Confirm bank payment
+        $this->withSession($this->recentlyConfirmedSession())
+            ->actingAs($admin)
+            ->patch(route('transactions.confirm-payment', $transaction))
+            ->assertRedirect();
+
+        $transaction->refresh();
+        $this->assertEquals('paid', $transaction->payment_status);
+        $this->assertEquals($admin->id, $transaction->payment_confirmed_by);
+
+        // All resolved
+        $responseFinal = $this->actingAs($admin)->get(route('dashboard'));
+        $responseFinal->assertInertia(fn (Assert $page) => $page
+            ->where('pendingApprovalCount', 0)
+            ->where('pendingBankPaymentCount', 0)
         );
     }
 }

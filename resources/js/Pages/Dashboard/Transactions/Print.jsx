@@ -625,6 +625,11 @@ export default function Print({
                                         <p className="text-sm text-amber-800/90 dark:text-amber-300/90 mt-1">
                                             Diskon manual sebesar <strong>{formatPrice(transaction.discount)}</strong> memerlukan verifikasi Supervisor sebelum pembayaran diselesaikan dan struk final dicetak.
                                         </p>
+                                        {paymentMethodKey === "bank_transfer" && (
+                                            <p className="text-xs font-medium text-cyan-900 dark:text-cyan-200 mt-1.5 bg-cyan-100/70 dark:bg-cyan-950/60 p-2 rounded-lg border border-cyan-300/60 dark:border-cyan-800/60">
+                                                ℹ️ <strong>Metode Transfer Bank:</strong> Persetujuan diskon TIDAK otomatis melunaskan pembayaran. Mutasi dana bank tetap harus diverifikasi dan dikonfirmasi setelah diskon disetujui.
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 

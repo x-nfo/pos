@@ -84,16 +84,19 @@ class HandleInertiaRequests extends Middleware
                 $pendingApprovalCount = Transaction::where('discount_approval_status', 'pending')->count();
 
                 $discountApprovalNotifications = Transaction::where('discount_approval_status', 'pending')
-                    ->with(['cashier:id,name', 'customer:id,name'])
+                    ->with(['cashier:id,name', 'customer:id,name', 'bankAccount:id,bank_name,account_number'])
                     ->orderByDesc('created_at')
                     ->limit(10)
-                    ->get(['id', 'invoice', 'cashier_id', 'customer_id', 'discount', 'grand_total', 'created_at'])
+                    ->get(['id', 'invoice', 'cashier_id', 'customer_id', 'bank_account_id', 'payment_method', 'discount', 'grand_total', 'created_at'])
                     ->map(function ($t) {
                         return [
                             'id' => $t->id,
                             'invoice' => $t->invoice,
                             'cashier' => $t->cashier?->name ?? 'Kasir',
                             'customer' => $t->customer?->name ?? 'Umum',
+                            'payment_method' => $t->payment_method,
+                            'bank_name' => $t->bankAccount?->bank_name,
+                            'account_number' => $t->bankAccount?->account_number,
                             'discount' => (int) $t->discount,
                             'grand_total' => (int) $t->grand_total,
                             'time' => optional($t->created_at)->diffForHumans(),

@@ -68,10 +68,24 @@ class DiscountApprovalController extends Controller
             $cashAmount = (int) $transaction->cash;
             $changeAmount = $isCash ? max(0, $cashAmount - $newGrandTotal) : 0;
 
-            $paymentStatus = 'paid';
-            if ($status === 'denied') {
+            $paymentStatus = 'pending';
+            if ($status === 'approved') {
+                if ($transaction->payment_method === 'bank_transfer') {
+                    $paymentStatus = 'pending';
+                } elseif ($transaction->payment_method === 'pay_later') {
+                    $paymentStatus = 'unpaid';
+                } elseif (in_array($transaction->payment_method, ['midtrans', 'xendit', 'qrisly'])) {
+                    $paymentStatus = 'pending';
+                } elseif ($isCash) {
+                    $paymentStatus = $cashAmount >= $newGrandTotal ? 'paid' : 'pending';
+                } else {
+                    $paymentStatus = 'pending';
+                }
+            } elseif ($status === 'denied') {
                 if ($transaction->payment_method === 'pay_later') {
                     $paymentStatus = 'unpaid';
+                } elseif ($transaction->payment_method === 'bank_transfer') {
+                    $paymentStatus = 'pending';
                 } elseif ($isCash) {
                     $paymentStatus = $cashAmount >= $newGrandTotal ? 'paid' : 'pending';
                 } else {
