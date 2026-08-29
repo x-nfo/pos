@@ -397,7 +397,7 @@ class CrmAutomationService
                     if (!$receivable->due_date) {
                         return false;
                     }
-                    $daysOverdue = (int) $at->startOfDay()->diffInDays($receivable->due_date->copy()->startOfDay());
+                    $daysOverdue = (int) abs($at->startOfDay()->diffInDays($receivable->due_date->copy()->startOfDay()));
                     return in_array($daysOverdue, [1, 3, 7]);
                 })
                 ->values();

@@ -26,7 +26,9 @@ class SendWhatsAppCampaignLogJob implements ShouldQueue
 
     public function __construct(
         public CustomerCampaignLog $log
-    ) {}
+    ) {
+        $this->onQueue('whatsapp');
+    }
 
     public function handle(WhatsAppService $whatsAppService, CrmAutomationService $crmAutomationService): void
     {
@@ -55,7 +57,10 @@ class SendWhatsAppCampaignLogJob implements ShouldQueue
         $message = $this->log->payload['message'] ?? null;
 
         if (! $target || ! $message) {
-            $crmAutomationService->markLog($this->log, CustomerCampaignLog::STATUS_SKIPPED);
+            $this->log->update([
+                'status' => CustomerCampaignLog::STATUS_FAILED,
+                'error_message' => 'No target phone number or message provided',
+            ]);
 
             return;
         }

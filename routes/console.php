@@ -9,4 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote')->hourly();
 
 Schedule::command('crm:sync-segments')->dailyAt('01:00');
-Schedule::command('crm:generate-reminders')->dailyAt('01:15');
+Schedule::command('crm:generate-reminders')->dailyAt('09:15');
