@@ -75,22 +75,24 @@ export function generateWhatsappReceiptText(
     const lines = [];
 
     const isPaid = transaction.payment_status === "paid";
+    const sepDouble = "======================";
+    const sepSingle = "----------------------";
 
-    // Header Toko
-    lines.push(isPaid ? "*STRUK PEMBELIAN (LUNAS)*" : "*TAGIHAN PEMBELIAN (BELUM LUNAS)*");
+    // Header Toko (Gaya Struk 58mm)
+    lines.push(isPaid ? "*STRUK PEMBELIAN (LUNAS)*" : "*TAGIHAN PEMBELIAN*");
     lines.push(`*${storeName.toUpperCase()}*`);
     if (storeAddress) lines.push(storeAddress);
     if (storePhone) lines.push(`Telp: ${storePhone}`);
-    lines.push("================================");
+    lines.push(sepDouble);
 
-    // Metadata Transaksi
-    lines.push(`No. Nota  : ${transaction.invoice || "-"}`);
-    lines.push(`Tanggal   : ${formatDateTime(transaction.created_at)}`);
-    lines.push(`Kasir     : ${cashierName}`);
-    lines.push(`Pelanggan : ${customerName}`);
-    lines.push("================================");
+    // Metadata Transaksi Ringkas
+    lines.push(`Nota  : ${transaction.invoice || "-"}`);
+    lines.push(`Tgl   : ${formatDateTime(transaction.created_at)}`);
+    lines.push(`Kasir : ${cashierName}`);
+    lines.push(`Plg   : ${customerName}`);
+    lines.push(sepDouble);
 
-    // Rincian Item
+    // Rincian Item (Compact 58mm Style)
     const items = transaction.details || [];
     if (items.length > 0) {
         items.forEach((item) => {
@@ -113,15 +115,15 @@ export function generateWhatsappReceiptText(
             );
             if (Number(item.discount_total || 0) > 0) {
                 lines.push(
-                    `(Diskon Item: -${formatRupiah(item.discount_total)})`
+                    `(Diskon: -${formatRupiah(item.discount_total)})`
                 );
             }
         });
     } else {
-        lines.push(`Total Belanja: ${formatRupiah(transaction.grand_total)}`);
+        lines.push(`Total: ${formatRupiah(transaction.grand_total)}`);
     }
 
-    lines.push("================================");
+    lines.push(sepDouble);
 
     // Ringkasan Keuangan
     const discount = Number(transaction.discount || 0);
@@ -131,40 +133,40 @@ export function generateWhatsappReceiptText(
     const subtotal =
         grandTotal + discount - taxTotal - shippingCost;
 
-    lines.push(`Subtotal  : ${formatRupiah(subtotal)}`);
+    lines.push(`Subtotal : ${formatRupiah(subtotal)}`);
     if (discount > 0) {
-        lines.push(`Diskon    : -${formatRupiah(discount)}`);
+        lines.push(`Diskon   : -${formatRupiah(discount)}`);
     }
     if (taxTotal > 0) {
-        lines.push(`PPN       : +${formatRupiah(taxTotal)}`);
+        lines.push(`PPN      : +${formatRupiah(taxTotal)}`);
     }
     if (shippingCost > 0) {
-        lines.push(`Ongkir    : +${formatRupiah(shippingCost)}`);
+        lines.push(`Ongkir   : +${formatRupiah(shippingCost)}`);
     }
 
-    lines.push("--------------------------------");
-    lines.push(`*TOTAL     : ${formatRupiah(grandTotal)}*`);
+    lines.push(sepSingle);
+    lines.push(`*TOTAL    : ${formatRupiah(grandTotal)}*`);
 
     // Metode Pembayaran & Tunai
-    lines.push(`Metode    : ${formatPaymentMethod(transaction.payment_method)}`);
-    lines.push(`Status    : ${isPaid ? "LUNAS" : "BELUM LUNAS (MENUNGGU KONFIRMASI)"}`);
+    lines.push(`Metode   : ${formatPaymentMethod(transaction.payment_method)}`);
+    lines.push(`Status   : ${isPaid ? "LUNAS" : "BELUM LUNAS"}`);
 
     const cash = Number(transaction.cash || 0);
     const change = Number(transaction.change || 0);
 
     if (transaction.payment_method === "cash" || cash > 0) {
-        lines.push(`Bayar     : ${formatRupiah(cash)}`);
+        lines.push(`Bayar    : ${formatRupiah(cash)}`);
         if (change > 0) {
-            lines.push(`Kembali   : ${formatRupiah(change)}`);
+            lines.push(`Kembali  : ${formatRupiah(change)}`);
         }
     }
 
     if (!isPaid && transaction.payment_method === "bank_transfer" && transaction.bank_account) {
-        lines.push("--------------------------------");
-        lines.push("*Petunjuk Transfer:*");
-        lines.push(`Bank      : ${transaction.bank_account.bank_name}`);
-        lines.push(`No. Rek   : ${transaction.bank_account.account_number}`);
-        lines.push(`Atas Nama : ${transaction.bank_account.account_name}`);
+        lines.push(sepSingle);
+        lines.push("*Info Transfer:*");
+        lines.push(`Bank : ${transaction.bank_account.bank_name}`);
+        lines.push(`Rek  : ${transaction.bank_account.account_number}`);
+        lines.push(`A/N  : ${transaction.bank_account.account_name}`);
     }
 
     if (transaction.receivable && transaction.payment_method === "pay_later") {
@@ -172,6 +174,7 @@ export function generateWhatsappReceiptText(
             transaction.receivable.remaining ??
                 grandTotal - (transaction.receivable.paid || 0)
         );
+        lines.push(sepSingle);
         lines.push(`Sisa Tagihan : ${formatRupiah(remaining)}`);
         if (transaction.receivable.due_date) {
             lines.push(
@@ -180,9 +183,8 @@ export function generateWhatsappReceiptText(
         }
     }
 
-    lines.push("================================");
+    lines.push(sepDouble);
     lines.push("Terima kasih atas kunjungan Anda!");
-    lines.push("--------------------------------");
 
     // Link Publik
     let publicUrl = "";
@@ -199,7 +201,8 @@ export function generateWhatsappReceiptText(
     }
 
     if (publicUrl) {
-        lines.push("*Lihat Nota Online:*");
+        lines.push(sepSingle);
+        lines.push("*Nota Online:*");
         lines.push(publicUrl);
     }
 
