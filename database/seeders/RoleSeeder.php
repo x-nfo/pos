@@ -25,6 +25,7 @@ class RoleSeeder extends Seeder
         $this->createRoleWithPermissions('permissions-access', '%permissions%');
         $this->createRoleWithPermissions('categories-access', '%categories%');
         $this->createRoleWithPermissions('products-access', '%products%');
+        $this->createRoleWithPermissions('units-access', '%units%');
         $this->createRoleWithPermissions('pricing-rules-access', '%pricing-rules%');
         $this->createRoleWithPermissions('customers-access', '%customers%');
         $this->createRoleWithPermissions('customer-vouchers-access', '%customer-vouchers%');
@@ -83,6 +84,10 @@ class RoleSeeder extends Seeder
             'discounts-approve',
             'products-access',
             'categories-access',
+            'units-access',
+            'units-create',
+            'units-edit',
+            'units-delete',
             'pricing-rules-access',
             'price-lists-access',
             'customers-access',
@@ -151,6 +156,7 @@ class RoleSeeder extends Seeder
             'stock-opnames-access',
             'stock-opnames-create',
             'products-access',
+            'units-access',
             'warehouses-access',
             'suppliers-access',
         ])->get();

@@ -45,6 +45,7 @@ import {
     IconPrinter,
     IconBuildingBank,
     IconTarget,
+    IconRulerMeasure,
 } from "@tabler/icons-react";
 import hasAnyPermission from "./Permission";
 import React from "react";
@@ -85,6 +86,13 @@ export default function Menu() {
                     active: url === "/dashboard/products" ? true : false,
                     icon: <IconBox size={20} strokeWidth={1.5} />,
                     permissions: hasAnyPermission(["products-access"]),
+                },
+                {
+                    title: t("sidebar.items.units"),
+                    href: route("units.index"),
+                    active: url.startsWith("/dashboard/units"),
+                    icon: <IconRulerMeasure size={20} strokeWidth={1.5} />,
+                    permissions: hasAnyPermission(["units-access"]),
                 },
                 {
                     title: t("sidebar.items.customers"),

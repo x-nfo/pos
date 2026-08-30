@@ -49,6 +49,10 @@ class PermissionSeeder extends Seeder
         $create('products-create');
         $create('products-edit');
         $create('products-delete');
+        $create('units-access');
+        $create('units-create');
+        $create('units-edit');
+        $create('units-delete');
         $create('pricing-rules-access');
         $create('pricing-rules-create');
         $create('pricing-rules-update');

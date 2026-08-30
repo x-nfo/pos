@@ -34,6 +34,7 @@ use App\Http\Controllers\Apps\SupplierController;
 use App\Http\Controllers\Apps\SupplierReturnController;
 use App\Http\Controllers\Apps\TransactionController;
 use App\Http\Controllers\Apps\TransactionSyncController;
+use App\Http\Controllers\Apps\UnitController;
 use App\Http\Controllers\Apps\WarehouseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DineMenuController;
@@ -142,6 +143,15 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::post('/products/quick-store', [ProductController::class, 'quickStore'])
         ->middleware('permission:products-create|transactions-access')
         ->name('products.quick-store');
+
+    Route::resource('units', UnitController::class)
+        ->middlewareFor(['index', 'show'], 'permission:units-access')
+        ->middlewareFor(['create', 'store'], 'permission:units-create')
+        ->middlewareFor(['edit', 'update'], 'permission:units-edit')
+        ->middlewareFor('destroy', 'permission:units-delete');
+    Route::post('/units/quick-store', [UnitController::class, 'quickStore'])
+        ->middleware('permission:units-create|products-create')
+        ->name('units.quick-store');
 
     // import/export
     Route::get('/export/products', [ImportExportController::class, 'exportProducts'])->middleware('permission:products-export')->name('export.products');

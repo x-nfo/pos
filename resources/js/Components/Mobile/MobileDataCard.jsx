@@ -27,6 +27,42 @@ export default function MobileDataCard({
         }
     };
 
+    const renderBadge = () => {
+        if (!badge) return null;
+        if (React.isValidElement(badge) || typeof badge === "string" || typeof badge === "number") {
+            return badge;
+        }
+        if (typeof badge === "object" && badge.label) {
+            const variantClass =
+                badge.variant === "success"
+                    ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                    : badge.variant === "primary"
+                    ? "bg-primary-50 dark:bg-primary-950/60 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800"
+                    : badge.variant === "warning"
+                    ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                    : badge.variant === "danger"
+                    ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300";
+
+            return (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium ${variantClass}`}>
+                    {badge.label}
+                </span>
+            );
+        }
+        return null;
+    };
+
+    const actionList = Array.isArray(actions)
+        ? actions
+        : typeof actions === "object" && actions !== null
+        ? Object.entries(actions).map(([key, fn]) => ({
+              label: key === "onEdit" ? "Edit" : key === "onDelete" ? "Hapus" : key,
+              variant: key === "onDelete" ? "danger" : "default",
+              onClick: fn,
+          }))
+        : [];
+
     return (
         <div
             className={`w-full rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm transition-all duration-200 active-press ${
@@ -48,7 +84,7 @@ export default function MobileDataCard({
                         <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
                             {title}
                         </h4>
-                        {badge && <div className="flex-shrink-0">{badge}</div>}
+                        {badge && <div className="flex-shrink-0">{renderBadge()}</div>}
                     </div>
 
                     {subtitle && (
@@ -107,9 +143,9 @@ export default function MobileDataCard({
             )}
 
             {/* Quick Actions Bar */}
-            {actions.length > 0 && (
+            {actionList.length > 0 && (
                 <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-end gap-2">
-                    {actions.map((action, idx) => (
+                    {actionList.map((action, idx) => (
                         <button
                             key={idx}
                             type="button"

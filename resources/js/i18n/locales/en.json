@@ -161,6 +161,7 @@
             "dashboard": "Dashboard",
             "categories": "Categories",
             "products": "Products",
+            "units": "Units",
             "customers": "Customers",
             "suppliers": "Suppliers",
             "transactions": "Transactions",

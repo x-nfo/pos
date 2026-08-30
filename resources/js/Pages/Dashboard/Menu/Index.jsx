@@ -45,6 +45,7 @@ import {
     IconLogout,
     IconChevronRight,
     IconBuildingBank,
+    IconRulerMeasure,
 } from "@tabler/icons-react";
 import { useAuthorization } from "@/Utils/authorization";
 import { useHaptic } from "@/Hooks/useHaptic";
@@ -72,6 +73,14 @@ const MENU_SECTIONS = [
                 icon: IconFolder,
                 color: "text-indigo-500 bg-indigo-50 dark:bg-indigo-950/60 dark:text-indigo-400",
                 permissions: ["categories-access"],
+            },
+            {
+                title: "Satuan (UOM)",
+                desc: "Hierarki satuan & konversi bertingkat",
+                routeName: "units.index",
+                icon: IconRulerMeasure,
+                color: "text-teal-500 bg-teal-50 dark:bg-teal-950/60 dark:text-teal-400",
+                permissions: ["units-access"],
             },
             {
                 title: "Pelanggan",
