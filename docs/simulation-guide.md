@@ -118,6 +118,9 @@ php artisan serve    # Terminal 2: Laravel Backend Server (http://localhost:8000
 
 # 3. (Opsional) Jalankan WhatsApp Gateway Service
 cd whatsapp-service && npm install && npm start   # Terminal 3: Port 3001
+
+# 4. (Opsional) Sinkronisasi Master Katalog Produk Referensi (32k+ Produk Indonesia)
+php artisan catalog:sync-google-sheet
 ```
 
 > [!NOTE]
@@ -191,9 +194,32 @@ Buka menu **Pengaturan > Gudang (`/dashboard/settings/warehouses`)**:
 - `Toko Display (Front Store)`: Lokasi rak pajangan tempat kasir bertransaksi.
 - `Resto Pantry / Kitchen`: Lokasi penyimpanan bahan baku makanan & minuman.
 
-### 3. Master Produk & Barcode
+### 3. Master Produk, Barcode & Katalog Referensi (32k+ Data)
 Buka menu **Produk (`/dashboard/products`)**:
-Tambahkan produk contoh:
+
+Sistem menyediakan database bawaan **Katalog Produk Referensi (32.000+ data barang di Indonesia)** agar proses input produk baru berjalan sangat cepat tanpa mengetik manual.
+
+#### A. Sinkronisasi Master Katalog Referensi (Opsional / Admin Setup)
+Jika ingin memperbarui atau menyinkronkan ulang database referensi produk dari Google Sheets:
+1. Pastikan URL Google Sheet CSV sudah terpasang di file `.env`:
+   ```env
+   GOOGLE_SHEET_CATALOG_URL="https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/export?format=csv&gid=0"
+   ```
+2. Jalankan perintah artisan:
+   ```bash
+   php artisan catalog:sync-google-sheet
+   # Atau dengan URL kustom:
+   php artisan catalog:sync-google-sheet --url="https://docs.google.com/spreadsheets/d/XXX/export?format=csv&gid=0"
+   ```
+   > **Format Kolom CSV:** `KODE_BARCODE`, `NAMA`, `KODE_BARANG`, `KATEGORI`, `SATUAN_1`, `HPP`, `HARGA_TOKO_1`, `SUPPLIER`.
+
+#### B. Menambahkan Produk Menggunakan Katalog Referensi
+1. Buka halaman **Tambah Produk (`/dashboard/products/create`)**.
+2. **Cara 1 (Scan / Ketik Barcode):** Masukkan barcode pada kolom *Barcode*. Jika produk ada di katalog referensi, sistem otomatis mengisi Nama Produk, Kategori, Satuan, dan Estimasi Harga.
+3. **Cara 2 (Pencarian Katalog):** Klik tombol **"Cari di Katalog Referensi (32k+ Data)"** di bagian kanan atas $\rightarrow$ cari berdasarkan nama/merek/barcode $\rightarrow$ klik produk yang sesuai.
+4. Sesuaikan harga beli (HPP), harga jual toko, stok awal, dan foto produk, lalu klik **Simpan**.
+
+#### C. Contoh Master Produk Toko:
 
 | Nama Produk | Kategori | Barcode / SKU | Satuan | Harga Beli (HPP) | Harga Jual Retail | Min Stock | Gudang |
 |---|---|---|---|---|---|---|---|
@@ -202,7 +228,7 @@ Tambahkan produk contoh:
 | **Biskuit Kaleng Roma** | Makanan Ringan | `8991001200300` | Pcs, Box (1 Box=12 Pcs) | Rp 15.000 / Pcs | Rp 20.000 / Pcs | 10 Pcs | Toko Display |
 
 > [!TIP]
-> Fitur **Quick Store Produk (`/dashboard/products/quick-store`)** memungkinkan kasir menambahkan produk baru yang belum terdaftar secara kilat langsung dari layar POS tanpa keluar dari halaman kasir.
+> **Quick Add di Layar Kasir POS (`/pos`):** Saat kasir melakukan scan barcode produk baru yang belum ada di database toko, sistem otomatis mencari barcode di katalog referensi dan memunculkan modal **Quick Add Product** dengan data yang sudah terisi otomatis. Kasir/admin cukup konfirmasi harga & stok awal untuk langsung menjualnya.
 
 ### 4. Setup Multi-Price List (Daftar Harga Bertingkat)
 Buka menu **Pengaturan > Daftar Harga (`/dashboard/settings/price-lists`)**:
