@@ -31,22 +31,38 @@ class DatabaseSeeder extends Seeder
 
     private function seedDefaultWarehouse(): void
     {
-        if (Warehouse::where('code', 'PUSAT')->exists()) {
-            return;
+        $pusat = Warehouse::where('code', 'PUSAT')->first();
+
+        if (! $pusat) {
+            $pusat = Warehouse::create([
+                'code' => 'PUSAT',
+                'name' => 'Gudang Pusat',
+                'type' => 'main',
+                'is_active' => true,
+                'sort_order' => 0,
+            ]);
         }
 
-        $pusat = Warehouse::create([
-            'code' => 'PUSAT',
-            'name' => 'Gudang Pusat',
-            'type' => 'main',
-            'is_active' => true,
-            'sort_order' => 0,
-        ]);
+        $defaultWarehouse = Warehouse::active()->orderBy('sort_order')->orderBy('code')->first() ?? $pusat;
 
-        // Migrate existing stock to pivot
-        DB::statement("
-            INSERT INTO product_warehouse (product_id, warehouse_id, stock, created_at, updated_at)
-            SELECT id, {$pusat->id}, stock, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP FROM products
-        ");
+        // Ensure all products have product_warehouse records for the default warehouse
+        $missingProductIds = DB::table('products')
+            ->whereNotIn('id', function ($query) use ($defaultWarehouse) {
+                $query->select('product_id')
+                    ->from('product_warehouse')
+                    ->where('warehouse_id', $defaultWarehouse->id);
+            })
+            ->pluck('id');
+
+        foreach ($missingProductIds as $productId) {
+            $prodStock = (int) (DB::table('products')->where('id', $productId)->value('stock') ?? 0);
+            DB::table('product_warehouse')->insert([
+                'product_id' => $productId,
+                'warehouse_id' => $defaultWarehouse->id,
+                'stock' => $prodStock,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 }

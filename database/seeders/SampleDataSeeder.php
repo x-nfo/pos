@@ -12,6 +12,7 @@ use App\Models\LoyaltyPointHistory;
 use App\Models\Payable;
 use App\Models\PayablePayment;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\Profit;
 use App\Models\Receivable;
 use App\Models\ReceivablePayment;
@@ -22,8 +23,10 @@ use App\Models\Supplier;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -133,6 +136,8 @@ class SampleDataSeeder extends Seeder
             ['name' => 'Nanda Pradipta', 'no_telp' => '62123425566', 'address' => 'Jl. Kaktus No. 7, Medan'],
             ['name' => 'Novia Putri', 'no_telp' => '6224234766', 'address' => 'Jl. Krisan No. 12, Malang'],
             ['name' => 'Lukman Sarmudi', 'no_telp' => '6287987332211', 'address' => 'Jl. Aster No. 8, Denpasar'],
+            ['name' => 'Gina Putri', 'no_telp' => '628123334455', 'address' => 'Jl. Kenanga No. 10, Bandung'],
+            ['name' => 'Hendra Wijaya', 'no_telp' => '628129988776', 'address' => 'Jl. Flamboyan No. 14, Bogor'],
         ]);
 
         return $customers
@@ -351,17 +356,22 @@ class SampleDataSeeder extends Seeder
      */
     private function seedTransactions(Collection $customers, Collection $products): void
     {
-        $cashier = User::where('email', 'cashier@gmail.com')->first() ?? User::first();
+        $cashier = User::where('email', 'kasir@mail.com')->first()
+            ?? User::where('email', 'admin@mail.com')->first()
+            ?? User::first();
 
         if (! $cashier) {
             return;
         }
 
+        $defaultWarehouse = Warehouse::active()->orderBy('sort_order')->orderBy('code')->first();
+
         $blueprints = [
             [
-                'customer' => 'Andi Nugraha',
+                'customer' => 'Aldi Hutagalung',
                 'discount' => 5000,
                 'cash' => 100000,
+                'days_ago' => 5,
                 'items' => [
                     ['barcode' => 'MNM-0001', 'qty' => 3],
                     ['barcode' => 'SNK-0001', 'qty' => 2],
@@ -369,9 +379,10 @@ class SampleDataSeeder extends Seeder
                 ],
             ],
             [
-                'customer' => 'Bunga Maharani',
+                'customer' => 'Bunga Amelia',
                 'discount' => 0,
                 'cash' => 150000,
+                'days_ago' => 4,
                 'items' => [
                     ['barcode' => 'SSU-0001', 'qty' => 2],
                     ['barcode' => 'RTI-0002', 'qty' => 3],
@@ -379,9 +390,10 @@ class SampleDataSeeder extends Seeder
                 ],
             ],
             [
-                'customer' => 'Cici Amelia',
+                'customer' => 'Cici Kadarsih',
                 'discount' => 10000,
                 'cash' => 200000,
+                'days_ago' => 3,
                 'items' => [
                     ['barcode' => 'MKN-0002', 'qty' => 2],
                     ['barcode' => 'BMB-0002', 'qty' => 1],
@@ -389,9 +401,10 @@ class SampleDataSeeder extends Seeder
                 ],
             ],
             [
-                'customer' => 'Davin Pradipta',
+                'customer' => 'Edi Subagio',
                 'discount' => 0,
                 'cash' => 80000,
+                'days_ago' => 2,
                 'items' => [
                     ['barcode' => 'MNM-0003', 'qty' => 2],
                     ['barcode' => 'SNK-0003', 'qty' => 5],
@@ -399,9 +412,10 @@ class SampleDataSeeder extends Seeder
                 ],
             ],
             [
-                'customer' => 'Fitri Lestari',
+                'customer' => 'Nanda Pradipta',
                 'discount' => 15000,
                 'cash' => 250000,
+                'days_ago' => 1,
                 'items' => [
                     ['barcode' => 'PRW-0002', 'qty' => 1],
                     ['barcode' => 'BMB-0001', 'qty' => 2],
@@ -413,6 +427,7 @@ class SampleDataSeeder extends Seeder
                 'customer' => null,
                 'discount' => 0,
                 'cash' => 50000,
+                'days_ago' => 0,
                 'items' => [
                     ['barcode' => 'MNM-0002', 'qty' => 2],
                     ['barcode' => 'SNK-0002', 'qty' => 1],
@@ -420,64 +435,83 @@ class SampleDataSeeder extends Seeder
             ],
         ];
 
-        foreach ($blueprints as $blueprint) {
-            $customer = $blueprint['customer']
-                ? $customers->get($blueprint['customer'])
-                : null;
+        DB::transaction(function () use ($blueprints, $customers, $products, $cashier, $defaultWarehouse) {
+            foreach ($blueprints as $blueprint) {
+                $customer = $blueprint['customer']
+                    ? $customers->get($blueprint['customer'])
+                    : null;
 
-            $items = collect($blueprint['items'])
-                ->map(function ($item) use ($products) {
-                    $product = $products->get($item['barcode']);
+                $items = collect($blueprint['items'])
+                    ->map(function ($item) use ($products) {
+                        $product = $products->get($item['barcode']);
 
-                    if (! $product) {
-                        return null;
-                    }
+                        if (! $product) {
+                            return null;
+                        }
 
-                    $lineTotal = $product->sell_price * $item['qty'];
+                        $lineTotal = $product->sell_price * $item['qty'];
 
-                    return [
-                        'product' => $product,
+                        return [
+                            'product' => $product,
+                            'qty' => $item['qty'],
+                            'line_total' => $lineTotal,
+                            'profit' => ($product->sell_price - $product->buy_price) * $item['qty'],
+                        ];
+                    })
+                    ->filter();
+
+                if ($items->isEmpty()) {
+                    continue;
+                }
+
+                $discount = max(0, $blueprint['discount']);
+                $gross = $items->sum('line_total');
+                $grandTotal = max(0, $gross - $discount);
+                $cashPaid = max($grandTotal, $blueprint['cash']);
+                $change = $cashPaid - $grandTotal;
+                $timestamp = now()->subDays($blueprint['days_ago'] ?? 0)->setTime(10 + rand(0, 8), rand(0, 59));
+
+                $transaction = Transaction::create([
+                    'cashier_id' => $cashier->id,
+                    'customer_id' => $customer?->id,
+                    'warehouse_id' => $defaultWarehouse?->id,
+                    'invoice' => 'TRX-'.$timestamp->format('Ymd').'-'.Str::upper(Str::random(4)),
+                    'cash' => $cashPaid,
+                    'change' => $change,
+                    'discount' => $discount,
+                    'grand_total' => $grandTotal,
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp,
+                ]);
+
+                foreach ($items as $item) {
+                    $transaction->details()->create([
+                        'product_id' => $item['product']->id,
                         'qty' => $item['qty'],
-                        'line_total' => $lineTotal,
-                        'profit' => ($product->sell_price - $product->buy_price) * $item['qty'],
-                    ];
-                })
-                ->filter();
+                        'price' => $item['line_total'],
+                        'created_at' => $timestamp,
+                        'updated_at' => $timestamp,
+                    ]);
 
-            if ($items->isEmpty()) {
-                continue;
+                    $transaction->profits()->create([
+                        'total' => $item['profit'],
+                        'created_at' => $timestamp,
+                        'updated_at' => $timestamp,
+                    ]);
+
+                    $stockBefore = (int) $item['product']->stock;
+                    $stockAfter = max(0, $stockBefore - $item['qty']);
+                    $item['product']->update(['stock' => $stockAfter]);
+
+                    if ($defaultWarehouse) {
+                        ProductWarehouse::where([
+                            'product_id' => $item['product']->id,
+                            'warehouse_id' => $defaultWarehouse->id,
+                        ])->decrement('stock', $item['qty']);
+                    }
+                }
             }
-
-            $discount = max(0, $blueprint['discount']);
-            $gross = $items->sum('line_total');
-            $grandTotal = max(0, $gross - $discount);
-            $cashPaid = max($grandTotal, $blueprint['cash']);
-            $change = $cashPaid - $grandTotal;
-
-            $transaction = Transaction::create([
-                'cashier_id' => $cashier->id,
-                'customer_id' => $customer?->id,
-                'invoice' => 'TRX-'.Str::upper(Str::random(8)),
-                'cash' => $cashPaid,
-                'change' => $change,
-                'discount' => $discount,
-                'grand_total' => $grandTotal,
-            ]);
-
-            foreach ($items as $item) {
-                $transaction->details()->create([
-                    'product_id' => $item['product']->id,
-                    'qty' => $item['qty'],
-                    'price' => $item['line_total'],
-                ]);
-
-                $transaction->profits()->create([
-                    'total' => $item['profit'],
-                ]);
-
-                $item['product']->decrement('stock', $item['qty']);
-            }
-        }
+        });
     }
 
     /**
@@ -485,7 +519,9 @@ class SampleDataSeeder extends Seeder
      */
     private function seedReceivables(Collection $customers): void
     {
-        $cashier = User::where('email', 'cashier@gmail.com')->first() ?? User::first();
+        $cashier = User::where('email', 'kasir@mail.com')->first()
+            ?? User::where('email', 'admin@mail.com')->first()
+            ?? User::first();
 
         $sourceTransactions = Transaction::with('customer')
             ->whereNotNull('customer_id')

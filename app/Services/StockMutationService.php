@@ -87,6 +87,7 @@ class StockMutationService
 
         $mutation = StockMutation::create([
             'product_id' => $product->id,
+            'warehouse_id' => $stockOpname->warehouse_id,
             'reference_type' => 'stock_opname',
             'reference_id' => $stockOpname->id,
             'mutation_type' => 'adjustment',
@@ -104,6 +105,7 @@ class StockMutationService
             description: 'Stok produk disesuaikan melalui stock opname.',
             before: [
                 'product_id' => $product->id,
+                'warehouse_id' => $stockOpname->warehouse_id,
                 'stock_before' => $stockBefore,
                 'stock_after' => $stockBefore,
                 'difference' => 0,
@@ -112,6 +114,7 @@ class StockMutationService
             ],
             after: [
                 'product_id' => $product->id,
+                'warehouse_id' => $stockOpname->warehouse_id,
                 'stock_before' => $stockBefore,
                 'stock_after' => $stockAfter,
                 'difference' => $stockAfter - $stockBefore,
@@ -122,6 +125,7 @@ class StockMutationService
                 'stock_mutation_id' => $mutation->id,
                 'stock_opname_id' => $stockOpname->id,
                 'stock_opname_code' => $stockOpname->code,
+                'warehouse_id' => $stockOpname->warehouse_id,
                 'mutation_type' => $mutation->mutation_type,
                 'qty' => (int) $mutation->qty,
             ],

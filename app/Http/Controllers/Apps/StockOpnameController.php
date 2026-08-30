@@ -7,6 +7,7 @@ use App\Http\Requests\StoreStockOpnameItemRequest;
 use App\Http\Requests\StoreStockOpnameRequest;
 use App\Http\Requests\UpdateStockOpnameItemRequest;
 use App\Http\Requests\UpdateStockOpnameRequest;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductWarehouse;
 use App\Models\StockOpname;
@@ -119,7 +120,9 @@ class StockOpnameController extends Controller
                     $pivotStock = 0;
                     if ($stockOpname->warehouse_id) {
                         $wh = $product->warehouses()->where('warehouse_id', $stockOpname->warehouse_id)->first();
-                        $pivotStock = $wh?->pivot->stock ?? 0;
+                        $pivotStock = $wh !== null ? (int) $wh->pivot->stock : (int) ($product->stock ?? 0);
+                    } else {
+                        $pivotStock = (int) $product->stockTotal();
                     }
 
                     return [
@@ -132,6 +135,7 @@ class StockOpnameController extends Controller
             'stockOpname' => $stockOpname,
             'availableProducts' => $availableProducts,
             'productFilters' => $productFilters,
+            'categories' => Category::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -142,6 +146,53 @@ class StockOpnameController extends Controller
         $stockOpname->update($request->validated());
 
         return back()->with('success', 'Catatan stock opname berhasil diperbarui.');
+    }
+
+    public function populateItems(Request $request, StockOpname $stockOpname): RedirectResponse
+    {
+        $this->ensureDraft($stockOpname);
+
+        $categoryId = $request->input('category_id');
+
+        $query = Product::query()
+            ->when($categoryId, fn ($q, $catId) => $q->where('category_id', $catId));
+
+        $products = $query->get();
+        $existingProductIds = $stockOpname->items()->pluck('product_id')->flip();
+
+        $addedCount = 0;
+
+        DB::transaction(function () use ($products, $stockOpname, $existingProductIds, &$addedCount) {
+            foreach ($products as $product) {
+                if (isset($existingProductIds[$product->id])) {
+                    continue;
+                }
+
+                $systemStock = 0;
+                if ($stockOpname->warehouse_id) {
+                    $wh = $product->warehouses()->where('warehouse_id', $stockOpname->warehouse_id)->first();
+                    if ($wh !== null) {
+                        $systemStock = (int) $wh->pivot->stock;
+                    } else {
+                        $systemStock = (int) ($product->stock ?? 0);
+                        $product->warehouses()->syncWithoutDetaching([
+                            $stockOpname->warehouse_id => ['stock' => $systemStock],
+                        ]);
+                    }
+                } else {
+                    $systemStock = (int) $product->stockTotal();
+                }
+
+                $stockOpname->items()->create([
+                    'product_id' => $product->id,
+                    'system_stock' => $systemStock,
+                ]);
+
+                $addedCount++;
+            }
+        });
+
+        return back()->with('success', "{$addedCount} produk berhasil ditambahkan ke sesi stock opname.");
     }
 
     public function storeItem(StoreStockOpnameItemRequest $request, StockOpname $stockOpname): RedirectResponse
@@ -159,7 +210,16 @@ class StockOpnameController extends Controller
         $systemStock = 0;
         if ($stockOpname->warehouse_id) {
             $wh = $product->warehouses()->where('warehouse_id', $stockOpname->warehouse_id)->first();
-            $systemStock = $wh?->pivot->stock ?? 0;
+            if ($wh !== null) {
+                $systemStock = (int) $wh->pivot->stock;
+            } else {
+                $systemStock = (int) ($product->stock ?? 0);
+                $product->warehouses()->syncWithoutDetaching([
+                    $stockOpname->warehouse_id => ['stock' => $systemStock],
+                ]);
+            }
+        } else {
+            $systemStock = (int) $product->stockTotal();
         }
 
         $stockOpname->items()->create([
@@ -241,10 +301,13 @@ class StockOpnameController extends Controller
 
                 // Update pivot stock for warehouse
                 if ($stockOpname->warehouse_id) {
-                    ProductWarehouse::where([
-                        'product_id' => $product->id,
-                        'warehouse_id' => $stockOpname->warehouse_id,
-                    ])->update(['stock' => $stockAfter]);
+                    ProductWarehouse::updateOrCreate(
+                        [
+                            'product_id' => $product->id,
+                            'warehouse_id' => $stockOpname->warehouse_id,
+                        ],
+                        ['stock' => $stockAfter]
+                    );
                 }
 
                 $this->stockMutationService->recordStockOpnameAdjustment(

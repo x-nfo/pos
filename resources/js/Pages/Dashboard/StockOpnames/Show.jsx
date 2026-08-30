@@ -13,6 +13,9 @@ import {
     IconPlus,
     IconSearch,
     IconCalculator,
+    IconLayersLinked,
+    IconBarcode,
+    IconBuildingWarehouse,
 } from "@tabler/icons-react";
 import toast from "react-hot-toast";
 import { useAuthorization } from "@/Utils/authorization";
@@ -25,6 +28,14 @@ const formatDateTime = (value) =>
           }).format(new Date(value))
         : "-";
 
+const formatCurrency = (value) =>
+    new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(value || 0);
+
 function SummaryCard({ label, value, tone = "default" }) {
     const toneClasses = {
         default:
@@ -33,6 +44,8 @@ function SummaryCard({ label, value, tone = "default" }) {
             "border-success-200 bg-success-50 text-success-700 dark:border-success-900 dark:bg-success-950/30 dark:text-success-400",
         warning:
             "border-warning-200 bg-warning-50 text-warning-700 dark:border-warning-900 dark:bg-warning-950/30 dark:text-warning-400",
+        danger:
+            "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-400",
     };
 
     return (
@@ -49,6 +62,7 @@ export default function Show({
     stockOpname,
     availableProducts,
     productFilters,
+    categories = [],
 }) {
     const { can } = useAuthorization();
     const canEditStockOpname = can("stock-opnames-create");
@@ -58,6 +72,10 @@ export default function Show({
     const [localItems, setLocalItems] = useState(stockOpname.items);
     const [savingItemId, setSavingItemId] = useState(null);
     const [showProductModal, setShowProductModal] = useState(false);
+    const [showPopulateModal, setShowPopulateModal] = useState(false);
+    const [selectedPopulateCategory, setSelectedPopulateCategory] = useState("");
+    const [isPopulating, setIsPopulating] = useState(false);
+    const [itemTableSearch, setItemTableSearch] = useState("");
     const [productSearchInput, setProductSearchInput] = useState(
         productFilters.search || ""
     );
@@ -132,17 +150,32 @@ export default function Show({
             (carry, item) => carry + Number(item.difference || 0),
             0
         );
+        const totalFinancialImpact = countedItems.reduce(
+            (carry, item) => carry + (Number(item.difference || 0) * Number(item.product?.buy_price || 0)),
+            0
+        );
 
         return {
             totalItems,
             matchedItems: matchedItems.length,
             differentItems: differentItems.length,
             totalAdjustment,
+            totalFinancialImpact,
             hasMissingReasons: differentItems.some(
                 (item) => !item.adjustment_reason
             ),
         };
     }, [localItems]);
+
+    const filteredItems = useMemo(() => {
+        if (!itemTableSearch.trim()) return localItems;
+        const term = itemTableSearch.toLowerCase().trim();
+        return localItems.filter((item) =>
+            item.product?.title?.toLowerCase().includes(term) ||
+            item.product?.barcode?.toLowerCase().includes(term) ||
+            item.product?.sku?.toLowerCase().includes(term)
+        );
+    }, [localItems, itemTableSearch]);
 
     useEffect(() => {
         if (!showProductModal) {
@@ -258,6 +291,28 @@ export default function Show({
         );
     };
 
+    const populateProducts = (categoryId = null) => {
+        setIsPopulating(true);
+        const url =
+            typeof route === "function" && route().has("stock-opnames.populate")
+                ? route("stock-opnames.populate", stockOpname.id)
+                : `/dashboard/stock-opnames/${stockOpname.id}/populate`;
+
+        router.post(
+            url,
+            { category_id: categoryId || null },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setShowPopulateModal(false);
+                    toast.success("Produk berhasil dimuat ke sesi");
+                },
+                onError: () => toast.error("Gagal memuat produk massal"),
+                onFinish: () => setIsPopulating(false),
+            }
+        );
+    };
+
     const finalize = () => {
         router.post(
             route("stock-opnames.finalize", stockOpname.id),
@@ -327,7 +382,7 @@ export default function Show({
                 </div>
             </div>
 
-            <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4 min-w-0">
+            <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 min-w-0">
                 <SummaryCard label="Total Item" value={summary.totalItems} />
                 <SummaryCard
                     label="Item Sesuai"
@@ -343,30 +398,76 @@ export default function Show({
                     label="Total Adjustment"
                     value={
                         summary.totalAdjustment > 0
-                            ? `+${summary.totalAdjustment}`
-                            : summary.totalAdjustment
+                            ? `+${summary.totalAdjustment} unit`
+                            : `${summary.totalAdjustment} unit`
                     }
                     tone={summary.totalAdjustment === 0 ? "default" : "warning"}
+                />
+                <SummaryCard
+                    label="Valuasi Selisih (HPP)"
+                    value={
+                        summary.totalFinancialImpact > 0
+                            ? `+${formatCurrency(summary.totalFinancialImpact)}`
+                            : formatCurrency(summary.totalFinancialImpact)
+                    }
+                    tone={
+                        summary.totalFinancialImpact < 0
+                            ? "danger"
+                            : summary.totalFinancialImpact > 0
+                              ? "success"
+                              : "default"
+                    }
                 />
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr] min-w-0">
                 <div className="space-y-6 min-w-0">
                     <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
-                        <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                                Item Stock Opname
-                            </h2>
+                        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                                    Item Stock Opname
+                                </h2>
+                                <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                    {localItems.length} produk
+                                </span>
+                            </div>
                             {canManageDraft && (
-                                <Button
-                                    type="button"
-                                    icon={<IconPlus size={18} />}
-                                    className="bg-primary-500 hover:bg-primary-600 text-white"
-                                    label="Tambah Produk"
-                                    onClick={() => setShowProductModal(true)}
-                                />
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <Button
+                                        type="button"
+                                        icon={<IconLayersLinked size={18} />}
+                                        className="bg-slate-800 hover:bg-slate-900 text-white dark:bg-slate-700 dark:hover:bg-slate-600"
+                                        label="Muat Massal"
+                                        onClick={() => setShowPopulateModal(true)}
+                                    />
+                                    <Button
+                                        type="button"
+                                        icon={<IconPlus size={18} />}
+                                        className="bg-primary-500 hover:bg-primary-600 text-white"
+                                        label="Tambah Produk"
+                                        onClick={() => setShowProductModal(true)}
+                                    />
+                                </div>
                             )}
                         </div>
+
+                        {/* Quick filter within session */}
+                        {localItems.length > 0 && (
+                            <div className="mb-4 relative">
+                                <IconSearch
+                                    size={18}
+                                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                                />
+                                <input
+                                    type="text"
+                                    value={itemTableSearch}
+                                    onChange={(e) => setItemTableSearch(e.target.value)}
+                                    placeholder="Cari nama produk, barcode, atau SKU dalam sesi ini..."
+                                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                />
+                            </div>
+                        )}
 
                         <Table>
                             <Table.Thead>
@@ -380,8 +481,8 @@ export default function Show({
                                 </tr>
                             </Table.Thead>
                             <Table.Tbody>
-                                {localItems.length > 0 ? (
-                                    localItems.map((item) => {
+                                {filteredItems.length > 0 ? (
+                                    filteredItems.map((item) => {
                                         const difference = Number(item.difference || 0);
                                         const isDifferent =
                                             item.physical_stock !== null && difference !== 0;
@@ -434,21 +535,42 @@ export default function Show({
                                                     </div>
                                                 </Table.Td>
                                                 <Table.Td>
-                                                    <span
-                                                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                                                            item.physical_stock === null
-                                                                ? "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                                                                : difference === 0
-                                                                  ? "bg-success-100 text-success-700 dark:bg-success-950/30 dark:text-success-400"
-                                                                  : "bg-warning-100 text-warning-700 dark:bg-warning-950/30 dark:text-warning-400"
-                                                        }`}
-                                                    >
-                                                        {item.physical_stock === null
-                                                            ? "Belum dihitung"
-                                                            : difference > 0
-                                                              ? `+${difference}`
-                                                              : difference}
-                                                    </span>
+                                                    <div>
+                                                        <span
+                                                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                                                item.physical_stock === null
+                                                                    ? "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                                                                    : difference === 0
+                                                                      ? "bg-success-100 text-success-700 dark:bg-success-950/30 dark:text-success-400"
+                                                                      : difference > 0
+                                                                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                                                                        : "bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400"
+                                                            }`}
+                                                        >
+                                                            {item.physical_stock === null
+                                                                ? "Belum dihitung"
+                                                                : difference > 0
+                                                                  ? `+${difference}`
+                                                                  : difference}
+                                                        </span>
+                                                        {item.physical_stock !== null && difference !== 0 && (
+                                                            <p
+                                                                className={`mt-0.5 text-[11px] font-medium ${
+                                                                    difference > 0
+                                                                        ? "text-emerald-600 dark:text-emerald-400"
+                                                                        : "text-rose-600 dark:text-rose-400"
+                                                                }`}
+                                                            >
+                                                                {difference > 0 ? "+" : ""}
+                                                                {formatCurrency(
+                                                                    difference *
+                                                                        Number(
+                                                                            item.product?.buy_price || 0
+                                                                        )
+                                                                )}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </Table.Td>
                                                 <Table.Td>
                                                     <input
@@ -607,7 +729,7 @@ export default function Show({
                                                 {product.category?.name || "-"} • {product.barcode || product.sku || "-"}
                                             </p>
                                             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                                Stok sistem: {product.stock}
+                                                Stok sistem: {product.warehouse_stock !== undefined ? product.warehouse_stock : product.stock}
                                             </p>
                                         </div>
                                         <span className="inline-flex rounded-lg bg-primary-500 px-3 py-2 text-xs font-semibold text-white">
@@ -725,6 +847,69 @@ export default function Show({
                         >
                             Terapkan ke Stok Fisik ({calculatedTotalPhysical})
                         </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Bulk Populate Modal */}
+            <Modal
+                show={showPopulateModal && canManageDraft}
+                onClose={() => setShowPopulateModal(false)}
+                title={
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center">
+                            <IconLayersLinked size={18} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                                Muat Massal Produk ke Sesi Opname
+                            </h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
+                                Tambahkan produk secara massal dengan stok sistem otomatis terisi
+                            </p>
+                        </div>
+                    </div>
+                }
+                maxWidth="md"
+            >
+                <div className="space-y-4">
+                    <div className="rounded-xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/60 dark:bg-blue-950/30 p-3.5 text-xs text-blue-800 dark:text-blue-300">
+                        Sistem akan memasukkan semua produk aktif (atau berdasarkan kategori yang dipilih) yang belum ada di sesi opname ini.
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Filter Kategori (Opsional)
+                        </label>
+                        <select
+                            value={selectedPopulateCategory}
+                            onChange={(e) => setSelectedPopulateCategory(e.target.value)}
+                            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        >
+                            <option value="">Semua Kategori (Seluruh Produk)</option>
+                            {categories.map((cat) => (
+                                <option key={cat.id} value={cat.id}>
+                                    {cat.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                        <button
+                            type="button"
+                            onClick={() => setShowPopulateModal(false)}
+                            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        >
+                            Batal
+                        </button>
+                        <Button
+                            type="button"
+                            onClick={() => populateProducts(selectedPopulateCategory)}
+                            disabled={isPopulating}
+                            className="bg-primary-500 hover:bg-primary-600 text-white"
+                            label={isPopulating ? "Memuat Produk..." : "Muat ke Sesi Opname"}
+                        />
                     </div>
                 </div>
             </Modal>
