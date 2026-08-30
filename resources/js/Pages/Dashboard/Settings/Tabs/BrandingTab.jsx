@@ -93,36 +93,7 @@ export default function BrandingTab({ settings, branding }) {
     };
 
     return (
-        <>
-
-            <div className="space-y-8 max-w-7xl mx-auto pb-12">
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                        <div className="flex items-center gap-2 text-primary-600 dark:text-primary-400 font-semibold text-sm mb-1">
-                            <IconPalette size={20} />
-                            <span>Kustomisasi Identitas & White Label</span>
-                        </div>
-                        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                            Branding & Tampilan Aplikasi
-                        </h1>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                            Ubah nama platform, logo, favicon, palet warna, dan mode halaman utama tanpa menyentuh kode.
-                        </p>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={submit}
-                        disabled={processing}
-                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-medium shadow-lg shadow-primary-500/25 transition-all duration-150 disabled:opacity-50"
-                    >
-                        <IconDeviceFloppy size={20} />
-                        <span>{processing ? "Menyimpan..." : "Simpan Perubahan"}</span>
-                    </button>
-                </div>
-
-                <form onSubmit={submit} className="space-y-8">
+        <form onSubmit={submit} className="space-y-8 pb-12">
                     {/* Section 1: Identitas Aplikasi */}
                     <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
                         <div className="flex items-center gap-3 pb-6 border-b border-slate-100 dark:border-slate-800">
@@ -704,9 +675,7 @@ export default function BrandingTab({ settings, branding }) {
                             <span>{processing ? "Menyimpan..." : "Simpan Semua Pengaturan Branding"}</span>
                         </button>
                     </div>
-                </form>
-            </div>
-        </>
+        </form>
     );
 }
 

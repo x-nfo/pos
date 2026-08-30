@@ -99,19 +99,8 @@ export default function StoreTab({ settings }) {
     };
 
     return (
-        <>
-            <div className="space-y-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                        Pengaturan Toko
-                    </h1>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Atur identitas toko yang muncul di struk dan laporan.
-                    </p>
-                </div>
-
-                <form onSubmit={submit} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-6">
-                    <div className="flex flex-col lg:flex-row gap-6">
+        <form onSubmit={submit} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-6">
+            <div className="flex flex-col lg:flex-row gap-6">
                         {/* Logo */}
                         <div className="lg:w-1/3">
                             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
@@ -281,9 +270,7 @@ export default function StoreTab({ settings }) {
                             {processing ? "Menyimpan..." : "Simpan Profil"}
                         </button>
                     </div>
-                </form>
-            </div>
-        </>
+        </form>
     );
 }
 

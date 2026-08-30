@@ -21,20 +21,22 @@ export default function StoreIdentity({ settings, brandingSettings, branding, in
             <Head title={canBranding && activeTab === "branding" ? "Branding & Tema" : "Profil Toko"} />
 
             <div className="space-y-6">
-                {canBranding && (
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div>
-                            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {activeTab === "branding" ? "Branding & Tema Aplikasi" : "Identitas & Profil Toko"}
-                            </h1>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
-                                {activeTab === "branding"
-                                    ? "Kustomisasi nama brand, logo, favicon, dan palet warna White-Label."
-                                    : "Kelola informasi profil usaha, alamat, dan logo pada nota/laporan."}
-                            </p>
-                        </div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                            {canBranding && activeTab === "branding"
+                                ? "Branding & Tema Aplikasi"
+                                : "Profil Toko"}
+                        </h1>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                            {canBranding && activeTab === "branding"
+                                ? "Kustomisasi nama brand, logo, favicon, dan palet warna White-Label."
+                                : "Kelola informasi profil usaha, alamat, dan logo pada nota/laporan."}
+                        </p>
+                    </div>
 
-                        {/* Tabs Navigation */}
+                    {/* Tabs Navigation */}
+                    {canBranding && (
                         <div className="flex space-x-1 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl w-max border border-slate-200 dark:border-slate-800">
                             {canStore && (
                                 <button
@@ -61,8 +63,8 @@ export default function StoreIdentity({ settings, brandingSettings, branding, in
                                 Branding & Tema
                             </button>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
 
                 {/* Tab Content */}
                 <div>
