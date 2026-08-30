@@ -87,6 +87,11 @@ export default function Edit({ categories = [], product, units = [] }) {
         }
     };
 
+    // Derive current base unit symbol
+    const baseUnitId = data.units?.find((u) => u.is_base)?.unit_id;
+    const currentBaseUnit = units.find((u) => u.id === Number(baseUnitId)) || units.find((u) => u.code === "PCS") || units[0] || null;
+    const baseUnitSymbol = currentBaseUnit?.symbol || currentBaseUnit?.code || "PCS";
+
     const submit = (e) => {
         e.preventDefault();
         post(route("products.update", product.id), {
@@ -232,14 +237,19 @@ export default function Edit({ categories = [], product, units = [] }) {
                         </div>
 
                         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
-                            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
-                                <IconCurrencyDollar size={18} />
-                                Harga Produk
-                            </h3>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                    <IconCurrencyDollar size={18} />
+                                    Harga Produk
+                                </h3>
+                                <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-primary-50 dark:bg-primary-950/50 text-primary-600 dark:text-primary-400 border border-primary-100 dark:border-primary-900/50">
+                                    Satuan Dasar: <strong>{baseUnitSymbol}</strong>
+                                </span>
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <Input
                                     type="number"
-                                    label="Harga Beli"
+                                    label={`Harga Beli (per ${baseUnitSymbol})`}
                                     value={data.buy_price}
                                     onChange={(e) =>
                                         setData("buy_price", e.target.value)
@@ -249,7 +259,7 @@ export default function Edit({ categories = [], product, units = [] }) {
                                 />
                                 <Input
                                     type="number"
-                                    label="Harga Jual"
+                                    label={`Harga Jual (per ${baseUnitSymbol})`}
                                     value={data.sell_price}
                                     onChange={(e) =>
                                         setData("sell_price", e.target.value)
@@ -264,7 +274,7 @@ export default function Edit({ categories = [], product, units = [] }) {
                                     Stok Saat Ini
                                 </p>
                                 <p className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">
-                                    {product.stock}
+                                    {product.stock} {baseUnitSymbol}
                                 </p>
                                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                                     Perubahan stok dilakukan melalui transaksi atau stock opname.
@@ -276,7 +286,7 @@ export default function Edit({ categories = [], product, units = [] }) {
                                 <div>
                                     <Input
                                         type="number"
-                                        label="Stok Minimum (Peringatan)"
+                                        label={`Stok Minimum (${baseUnitSymbol})`}
                                         value={data.min_stock}
                                         onChange={(e) =>
                                             setData("min_stock", e.target.value)
@@ -291,7 +301,7 @@ export default function Edit({ categories = [], product, units = [] }) {
                                 <div>
                                     <Input
                                         type="number"
-                                        label="Stok Maksimal (Target Reorder)"
+                                        label={`Stok Maksimal (${baseUnitSymbol})`}
                                         value={data.max_stock}
                                         onChange={(e) =>
                                             setData("max_stock", e.target.value)

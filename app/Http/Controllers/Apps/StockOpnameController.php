@@ -92,6 +92,7 @@ class StockOpnameController extends Controller
             'creator:id,name',
             'finalizer:id,name',
             'items.product.category:id,name',
+            'items.product.units',
         ]);
 
         $productFilters = [

@@ -12,6 +12,7 @@ import {
     IconPackage,
     IconPlus,
     IconSearch,
+    IconCalculator,
 } from "@tabler/icons-react";
 import toast from "react-hot-toast";
 import { useAuthorization } from "@/Utils/authorization";
@@ -60,6 +61,38 @@ export default function Show({
     const [productSearchInput, setProductSearchInput] = useState(
         productFilters.search || ""
     );
+
+    // Multi-UOM Calculator state
+    const [calcItem, setCalcItem] = useState(null);
+    const [calcQuantities, setCalcQuantities] = useState({});
+
+    const openCalcModal = (item) => {
+        setCalcItem(item);
+        const initial = {};
+        if (item.product?.units) {
+            item.product.units.forEach((u) => {
+                initial[u.id] = "";
+            });
+        }
+        setCalcQuantities(initial);
+    };
+
+    const calculatedTotalPhysical = useMemo(() => {
+        if (!calcItem?.product?.units) return 0;
+        return calcItem.product.units.reduce((acc, u) => {
+            const factor = Number(u.pivot?.conversion_factor || 1);
+            const qty = Number(calcQuantities[u.id] || 0);
+            return acc + qty * factor;
+        }, 0);
+    }, [calcItem, calcQuantities]);
+
+    const applyCalculatedStock = () => {
+        if (calcItem) {
+            setItemField(calcItem.id, "physical_stock", calculatedTotalPhysical);
+            setCalcItem(null);
+            toast.success(`Stok fisik ${calcItem.product.title} diisi: ${calculatedTotalPhysical}`);
+        }
+    };
 
     const notesForm = useForm({
         notes: stockOpname.notes || "",
@@ -373,20 +406,32 @@ export default function Show({
                                                 </Table.Td>
                                                 <Table.Td>{item.system_stock}</Table.Td>
                                                 <Table.Td>
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        value={item.physical_stock ?? ""}
-                                                        disabled={!canManageDraft}
-                                                        onChange={(event) =>
-                                                             setItemField(
-                                                                item.id,
-                                                                "physical_stock",
-                                                                event.target.value
-                                                            )
-                                                        }
-                                                        className="h-10 w-24 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                                                    />
+                                                    <div className="flex items-center gap-1.5">
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            value={item.physical_stock ?? ""}
+                                                            disabled={!canManageDraft}
+                                                            onChange={(event) =>
+                                                                setItemField(
+                                                                    item.id,
+                                                                    "physical_stock",
+                                                                    event.target.value
+                                                                )
+                                                            }
+                                                            className="h-10 w-24 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                                        />
+                                                        {item.product?.units?.length > 1 && canManageDraft && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openCalcModal(item)}
+                                                                title="Kalkulator Kemasan (Multi-UOM)"
+                                                                className="h-10 w-10 flex items-center justify-center shrink-0 rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-primary-500 hover:text-primary-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-primary-500 transition-colors shadow-xs"
+                                                            >
+                                                                <IconCalculator size={18} />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </Table.Td>
                                                 <Table.Td>
                                                     <span
@@ -581,6 +626,106 @@ export default function Show({
                             Ketik kata kunci, lalu tunggu sebentar untuk menampilkan hasil pencarian produk.
                         </div>
                     )}
+                </div>
+            </Modal>
+
+            {/* Multi-UOM Calculator Modal */}
+            <Modal
+                show={Boolean(calcItem) && canManageDraft}
+                onClose={() => setCalcItem(null)}
+                title={
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-950/50 text-primary-600 dark:text-primary-400 flex items-center justify-center">
+                            <IconCalculator size={18} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                                Kalkulator Kemasan (Multi-UOM)
+                            </h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
+                                {calcItem?.product?.title}
+                            </p>
+                        </div>
+                    </div>
+                }
+                maxWidth="lg"
+            >
+                <div className="space-y-4">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Masukkan jumlah fisik per kemasan. Sistem akan otomatis menghitung total dalam satuan dasar.
+                    </p>
+
+                    <div className="space-y-3">
+                        {calcItem?.product?.units?.map((u) => {
+                            const isBase = Boolean(u.pivot?.is_base);
+                            const factor = Number(u.pivot?.conversion_factor || 1);
+                            const count = Number(calcQuantities[u.id] || 0);
+                            const subtotal = count * factor;
+
+                            return (
+                                <div
+                                    key={u.id}
+                                    className="flex items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40"
+                                >
+                                    <div>
+                                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                            {u.name} ({u.symbol})
+                                        </p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                                            {isBase
+                                                ? "Satuan Dasar (1 : 1)"
+                                                : `1 ${u.symbol} = ${factor} unit dasar`}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            placeholder="0"
+                                            value={calcQuantities[u.id] ?? ""}
+                                            onChange={(e) =>
+                                                setCalcQuantities((prev) => ({
+                                                    ...prev,
+                                                    [u.id]: e.target.value,
+                                                }))
+                                            }
+                                            className="h-9 w-24 rounded-lg border border-slate-200 bg-white px-2.5 text-right text-sm font-bold text-slate-800 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                                        />
+                                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 min-w-16 text-right">
+                                            = {subtotal}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Total Summary */}
+                    <div className="rounded-xl border border-primary-100 dark:border-primary-900/50 bg-primary-50/60 dark:bg-primary-950/30 p-3.5 flex items-center justify-between">
+                        <span className="text-xs font-semibold text-primary-900 dark:text-primary-300">
+                            Total Stok Fisik Terhitung:
+                        </span>
+                        <span className="text-lg font-bold text-primary-600 dark:text-primary-400">
+                            {calculatedTotalPhysical} unit
+                        </span>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                        <button
+                            type="button"
+                            onClick={() => setCalcItem(null)}
+                            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="button"
+                            onClick={applyCalculatedStock}
+                            className="px-4 py-2 rounded-xl bg-primary-500 hover:bg-primary-600 text-xs font-semibold text-white transition-colors shadow-xs"
+                        >
+                            Terapkan ke Stok Fisik ({calculatedTotalPhysical})
+                        </button>
+                    </div>
                 </div>
             </Modal>
         </>

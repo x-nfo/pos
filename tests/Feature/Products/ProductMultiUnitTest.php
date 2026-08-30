@@ -258,4 +258,101 @@ class ProductMultiUnitTest extends TestCase
             'sell_price' => 7500,
         ]);
     }
+
+    public function test_cannot_create_product_with_duplicate_units(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo(['products-access', 'products-create']);
+
+        $category = Category::create([
+            'name' => 'Snack',
+            'description' => 'Kategori Snack',
+            'image' => 'snack.jpg',
+        ]);
+
+        $pcs = Unit::where('code', 'PCS')->first();
+
+        $payload = [
+            'barcode' => '899999000111',
+            'sku' => 'SNK-DUP',
+            'title' => 'Duplicate Unit Snack',
+            'category_id' => $category->id,
+            'buy_price' => 1000,
+            'sell_price' => 2000,
+            'stock' => 10,
+            'units' => [
+                [
+                    'unit_id' => $pcs->id,
+                    'is_base' => true,
+                    'conversion_factor' => 1,
+                    'buy_price' => 1000,
+                    'sell_price' => 2000,
+                ],
+                [
+                    'unit_id' => $pcs->id, // DUPLICATE UNIT
+                    'is_base' => false,
+                    'conversion_factor' => 10,
+                    'buy_price' => 10000,
+                    'sell_price' => 20000,
+                ],
+            ],
+        ];
+
+        $response = $this->actingAs($user)->post(route('products.store'), $payload);
+        $response->assertSessionHasErrors(['units.0.unit_id', 'units.1.unit_id']);
+    }
+
+    public function test_cannot_create_product_with_colliding_unit_barcode(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo(['products-access', 'products-create']);
+
+        $category = Category::create([
+            'name' => 'Minuman',
+            'description' => 'Kategori Minuman',
+            'image' => 'minuman.jpg',
+        ]);
+
+        $existingProduct = Product::create([
+            'image' => 'teh.jpg',
+            'barcode' => '899123456789',
+            'sku' => 'MIN-001',
+            'title' => 'Teh Botol 450ml',
+            'description' => 'Minuman teh segar',
+            'category_id' => $category->id,
+            'buy_price' => 3000,
+            'sell_price' => 4000,
+            'stock' => 20,
+        ]);
+
+        $pcs = Unit::where('code', 'PCS')->first();
+        $box = Unit::where('code', 'BOX')->first();
+
+        $payload = [
+            'barcode' => '899000888999',
+            'sku' => 'MIN-002',
+            'title' => 'Teh Kotak',
+            'category_id' => $category->id,
+            'buy_price' => 3000,
+            'sell_price' => 4000,
+            'stock' => 20,
+            'units' => [
+                [
+                    'unit_id' => $pcs->id,
+                    'is_base' => true,
+                    'conversion_factor' => 1,
+                    'barcode' => '899000888999',
+                ],
+                [
+                    'unit_id' => $box->id,
+                    'is_base' => false,
+                    'conversion_factor' => 24,
+                    'barcode' => '899123456789', // COLLIDES WITH EXISTING PRODUCT BARCODE
+                ],
+            ],
+        ];
+
+        $response = $this->actingAs($user)->post(route('products.store'), $payload);
+        $response->assertSessionHasErrors(['units.1.barcode']);
+    }
 }
