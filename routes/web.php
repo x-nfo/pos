@@ -347,6 +347,7 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::get('/payables/supplier-statement', [PayableController::class, 'supplierStatement'])->middleware('permission:payables-access')->name('payables.supplier-statement');
     Route::get('/payables/{payable}', [PayableController::class, 'show'])->middleware('permission:payables-access')->name('payables.show');
     Route::post('/payables/{payable}/pay', [PayableController::class, 'pay'])->middleware('permission:payables-pay')->name('payables.pay');
+    Route::delete('/payables/{payable}/payments/{payment}', [PayableController::class, 'destroyPayment'])->middleware('permission:payables-pay')->name('payables.payments.destroy');
 
     // pdf documents
     Route::get('/documents/transactions/{invoice}/pdf/invoice', [DocumentController::class, 'invoice'])->middleware('permission:transactions-access')->name('pdf.transactions.invoice');

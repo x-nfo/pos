@@ -267,4 +267,3 @@ class ProductCreationBestPracticeTest extends TestCase
         );
     }
 }
-

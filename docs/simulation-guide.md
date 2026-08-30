@@ -473,12 +473,13 @@ Jika pelanggan membayar piutang dalam jumlah besar atau non-tunai secara manual 
    - Saldo piutang pelanggan resmi terpotong lunas.
    - Status transaksi induk terupdate menjadi *Paid*.
 
-### 4. Pembayaran Hutang Tagihan Supplier (*Payables Settlement*)
+### 4. Pembayaran & Koreksi Hutang Supplier (*Payables Settlement & Void Payment*)
 Buka menu **Hutang Usaha (`/dashboard/payables`)**:
-1. Cek daftar faktur supplier dari penerimaan barang PO di Fase 3.
+1. Cek daftar faktur supplier dari penerimaan barang PO di Fase 3 atau input hutang dengan nomor faktur supplier (*Vendor Invoice Number*).
 2. Klik **Catat Pembayaran Hutang (`/dashboard/payables/{id}/pay`)**.
 3. Masukkan nominal transfer keluar dari Rekening Bank BCA toko ke rekening PT Sumber Alfaria.
-4. Status hutang berubah menjadi *Lunas (Paid)* dan mutasi kas keluar tercatat rapi.
+4. Status hutang berubah menjadi *Lunas (Paid)* atau *Parsial (Partial)* dan sisa tagihan terupdate.
+5. **Koreksi / Batal Pembayaran (*Void*)**: Jika kasir/staf salah input nominal (misal typo), staf berwenang dapat mengklik ikon tempat sampah pada riwayat pembayaran, memasukkan password akun, dan sistem akan memulihkan saldo hutang seketika.
 
 ---
 

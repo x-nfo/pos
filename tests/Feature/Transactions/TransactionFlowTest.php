@@ -12,6 +12,7 @@ use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -618,8 +619,8 @@ class TransactionFlowTest extends TestCase
     public function test_cashier_can_fetch_real_time_product_stock_breakdown(): void
     {
         $cashier = $this->createCashier();
-        $wh1 = \App\Models\Warehouse::create(['code' => 'WH-PST', 'name' => 'Pusat', 'is_active' => true]);
-        $wh2 = \App\Models\Warehouse::create(['code' => 'TK-B', 'name' => 'Cabang B', 'is_active' => true]);
+        $wh1 = Warehouse::create(['code' => 'WH-PST', 'name' => 'Pusat', 'is_active' => true]);
+        $wh2 = Warehouse::create(['code' => 'TK-B', 'name' => 'Cabang B', 'is_active' => true]);
         $this->openShiftFor($cashier, 100000, $wh1->id);
 
         $product = $this->createProduct();
@@ -651,4 +652,3 @@ class TransactionFlowTest extends TestCase
             ]);
     }
 }
-

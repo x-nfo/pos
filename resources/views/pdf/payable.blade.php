@@ -52,7 +52,10 @@
             <div class="doc">
                 <div class="badge">Hutang</div>
                 <div class="doc-number">{{ $payable->document_number }}</div>
-                <div class="muted">Jatuh tempo: {{ $payable->due_date ?? '-' }}</div>
+                @if($payable->vendor_invoice_number)
+                    <div class="muted">Faktur: {{ $payable->vendor_invoice_number }}</div>
+                @endif
+                <div class="muted">Jatuh tempo: {{ $payable->due_date ? \Carbon\Carbon::parse($payable->due_date)->format('d M Y') : '-' }}</div>
             </div>
         </div>
 

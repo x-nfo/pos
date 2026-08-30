@@ -12,6 +12,7 @@ class Payable extends Model
     protected $fillable = [
         'supplier_id',
         'document_number',
+        'vendor_invoice_number',
         'total',
         'paid',
         'due_date',
@@ -58,7 +59,7 @@ class Payable extends Model
         }
 
         if (! $this->due_date) {
-            return 'no_due_date';
+            return 'current';
         }
 
         if (! now()->gt($this->due_date)) {

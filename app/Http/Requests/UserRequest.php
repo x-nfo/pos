@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Role;
 
 class UserRequest extends FormRequest
 {
@@ -15,7 +17,7 @@ class UserRequest extends FormRequest
     {
         $targetUser = $this->route('user');
         if ($targetUser) {
-            $userModel = $targetUser instanceof \App\Models\User ? $targetUser : \App\Models\User::find($targetUser);
+            $userModel = $targetUser instanceof User ? $targetUser : User::find($targetUser);
             if ($userModel && $userModel->isSuperAdmin() && ! $this->user()?->isSuperAdmin()) {
                 return false;
             }
@@ -60,7 +62,7 @@ class UserRequest extends FormRequest
                     }
 
                     $userPermissionNames = $currentUser ? $currentUser->getAllPermissions()->pluck('name')->all() : [];
-                    $selectedRoleModels = \Spatie\Permission\Models\Role::with('permissions:id,name')->whereIn('name', $value)->get();
+                    $selectedRoleModels = Role::with('permissions:id,name')->whereIn('name', $value)->get();
 
                     foreach ($selectedRoleModels as $roleModel) {
                         $rolePermissions = $roleModel->permissions->pluck('name')->all();

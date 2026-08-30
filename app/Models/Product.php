@@ -48,12 +48,12 @@ class Product extends Model
     {
         static::deleting(function (Product $product) {
             if (! $product->isForceDeleting()) {
-                $suffix = '_del_' . time() . '_' . $product->id;
+                $suffix = '_del_'.time().'_'.$product->id;
                 if (! str_contains($product->barcode, '_del_')) {
-                    $product->barcode = substr($product->barcode, 0, 70) . $suffix;
+                    $product->barcode = substr($product->barcode, 0, 70).$suffix;
                 }
                 if ($product->sku && ! str_contains($product->sku, '_del_')) {
-                    $product->sku = substr($product->sku, 0, 70) . $suffix;
+                    $product->sku = substr($product->sku, 0, 70).$suffix;
                 }
                 $product->saveQuietly();
             }

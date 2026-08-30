@@ -7,15 +7,18 @@ use App\Models\BankAccount;
 use App\Models\Payable;
 use App\Models\PayablePayment;
 use App\Models\Supplier;
+use App\Services\AuditLogService;
 use App\Services\DocumentNumberService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class PayableController extends Controller
 {
     public function __construct(
-        private readonly DocumentNumberService $documentNumberService
+        private readonly DocumentNumberService $documentNumberService,
+        private readonly AuditLogService $auditLogService
     ) {}
 
     public function index(Request $request)
@@ -37,7 +40,10 @@ class PayableController extends Controller
         })->when($filters['supplier'], function ($q, $supplier) {
             $q->where('supplier_id', $supplier);
         })->when($filters['invoice'], function ($q, $invoice) {
-            $q->where('document_number', 'like', '%'.$invoice.'%');
+            $q->where(function ($sub) use ($invoice) {
+                $sub->where('document_number', 'like', '%'.$invoice.'%')
+                    ->orWhere('vendor_invoice_number', 'like', '%'.$invoice.'%');
+            });
         })->when($filters['due_from'], function ($q, $date) {
             $q->whereDate('due_date', '>=', $date);
         })->when($filters['due_to'], function ($q, $date) {
@@ -67,12 +73,13 @@ class PayableController extends Controller
         $data = $request->validate([
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'document_number' => ['nullable', 'string', 'max:100'],
+            'vendor_invoice_number' => ['nullable', 'string', 'max:100'],
             'total' => ['required', 'numeric', 'min:1'],
             'due_date' => ['nullable', 'date'],
             'note' => ['nullable', 'string'],
         ]);
 
-        if (! $data['document_number']) {
+        if (empty($data['document_number'])) {
             $data['document_number'] = $this->documentNumberService->generatePayableDocumentNumber();
         }
         $data['status'] = 'unpaid';
@@ -139,9 +146,9 @@ class PayableController extends Controller
             return [
                 'bucket' => $bucket,
                 'count' => $group->count(),
-                'total' => $group->sum('total'),
-                'paid' => $group->sum('total_paid'),
-                'remaining' => $group->sum(fn ($p) => max(0, $p->total - $p->total_paid)),
+                'total' => (float) $group->sum('total'),
+                'paid' => (float) $group->sum(fn ($p) => (float) ($p->total_paid ?? $p->paid ?? 0)),
+                'remaining' => (float) $group->sum(fn ($p) => max(0, (float) $p->total - (float) ($p->total_paid ?? $p->paid ?? 0))),
             ];
         })->values();
 
@@ -149,7 +156,7 @@ class PayableController extends Controller
             'supplier' => $supplier,
             'payables' => $payables,
             'aging_summary' => $agingSummary,
-            'total_outstanding' => $payables->where('status', '!=', 'paid')->sum(fn ($p) => max(0, $p->total - $p->total_paid)),
+            'total_outstanding' => (float) $payables->where('status', '!=', 'paid')->sum(fn ($p) => max(0, (float) $p->total - (float) ($p->total_paid ?? $p->paid ?? 0))),
         ]);
     }
 
@@ -168,28 +175,91 @@ class PayableController extends Controller
             return back()->with('error', 'Nominal melebihi sisa hutang.');
         }
 
-        DB::transaction(function () use ($validated, $payable, $request) {
-            PayablePayment::create([
-                'payable_id' => $payable->id,
-                'paid_at' => $validated['paid_at'],
-                'amount' => $validated['amount'],
-                'method' => $validated['method'],
-                'bank_account_id' => $validated['bank_account_id'] ?? null,
-                'note' => $validated['note'] ?? null,
-                'user_id' => $request->user()->id,
-            ]);
+        try {
+            DB::transaction(function () use ($validated, $payable, $request) {
+                $lockedPayable = Payable::where('id', $payable->id)->lockForUpdate()->firstOrFail();
+                $currentRemaining = $lockedPayable->remaining;
 
-            $payable->paid = ($payable->paid ?? 0) + $validated['amount'];
-            $remaining = max(0, ($payable->total ?? 0) - ($payable->paid ?? 0));
-            $payable->status = $remaining <= 0 ? 'paid' : 'partial';
-            if ($payable->status !== 'paid' && $payable->due_date && now()->gt($payable->due_date)) {
-                $payable->status = 'overdue';
-            }
-            $payable->save();
-        });
+                if ($validated['amount'] > $currentRemaining) {
+                    throw new \RuntimeException('Nominal melebihi sisa hutang terkini.');
+                }
+
+                PayablePayment::create([
+                    'payable_id' => $lockedPayable->id,
+                    'paid_at' => $validated['paid_at'],
+                    'amount' => $validated['amount'],
+                    'method' => $validated['method'],
+                    'bank_account_id' => $validated['bank_account_id'] ?? null,
+                    'note' => $validated['note'] ?? null,
+                    'user_id' => $request->user()->id,
+                ]);
+
+                $lockedPayable->paid = (float) ($lockedPayable->paid ?? 0) + (float) $validated['amount'];
+                $newRemaining = max(0, (float) ($lockedPayable->total ?? 0) - (float) ($lockedPayable->paid ?? 0));
+                $lockedPayable->status = $newRemaining <= 0 ? 'paid' : 'partial';
+                if ($lockedPayable->status !== 'paid' && $lockedPayable->due_date && now()->gt($lockedPayable->due_date)) {
+                    $lockedPayable->status = 'overdue';
+                }
+                $lockedPayable->save();
+            });
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return redirect()
             ->route('payables.show', $payable)
             ->with('success', 'Pembayaran hutang berhasil dicatat.');
+    }
+
+    public function destroyPayment(Request $request, Payable $payable, PayablePayment $payment)
+    {
+        if ($payment->payable_id !== $payable->id) {
+            abort(404);
+        }
+
+        $request->validate([
+            'password' => ['required', 'string'],
+        ]);
+
+        if (! Hash::check($request->input('password'), $request->user()->password)) {
+            return back()->with('error', 'Password yang Anda masukkan salah.');
+        }
+
+        DB::transaction(function () use ($payable, $payment) {
+            $lockedPayable = Payable::where('id', $payable->id)->lockForUpdate()->firstOrFail();
+            $paymentAmount = (float) $payment->amount;
+
+            $this->auditLogService->log(
+                event: 'payable.payment_deleted',
+                module: 'payable',
+                auditable: $lockedPayable,
+                description: 'Pembayaran hutang '.$lockedPayable->document_number.' senilai Rp '.number_format($paymentAmount, 0, ',', '.').' dihapus/dibatalkan.',
+                before: [
+                    'payment_id' => $payment->id,
+                    'amount' => $paymentAmount,
+                    'paid_at' => $payment->paid_at?->toDateString(),
+                    'method' => $payment->method,
+                    'payable_paid_before' => $lockedPayable->paid,
+                ],
+                after: [
+                    'payable_paid_after' => max(0, (float) ($lockedPayable->paid ?? 0) - $paymentAmount),
+                ],
+                meta: ['payable_payment_id' => $payment->id],
+            );
+
+            $lockedPayable->paid = max(0, (float) ($lockedPayable->paid ?? 0) - $paymentAmount);
+            $newRemaining = max(0, (float) ($lockedPayable->total ?? 0) - (float) ($lockedPayable->paid ?? 0));
+            $lockedPayable->status = $newRemaining <= 0 ? 'paid' : ($lockedPayable->paid > 0 ? 'partial' : 'unpaid');
+            if ($lockedPayable->status !== 'paid' && $lockedPayable->due_date && now()->gt($lockedPayable->due_date)) {
+                $lockedPayable->status = 'overdue';
+            }
+            $lockedPayable->save();
+
+            $payment->delete();
+        });
+
+        return redirect()
+            ->route('payables.show', $payable)
+            ->with('success', 'Pembayaran hutang berhasil dihapus dan saldo dipulihkan.');
     }
 }

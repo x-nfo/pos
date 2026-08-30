@@ -36,6 +36,7 @@ export default function PayablesIndex({ payables, filters = {}, suppliers = [] }
     const { data, setData, post, processing, reset, errors } = useForm({
         supplier_id: "",
         document_number: "",
+        vendor_invoice_number: "",
         total: "",
         due_date: "",
         note: "",
@@ -97,7 +98,7 @@ export default function PayablesIndex({ payables, filters = {}, suppliers = [] }
                 {/* Create form */}
                 <form
                     onSubmit={submitCreate}
-                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-5 gap-3"
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-6 gap-3"
                 >
                     <div>
                         <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -124,7 +125,18 @@ export default function PayablesIndex({ payables, filters = {}, suppliers = [] }
                             value={data.document_number}
                             onChange={(e) => setData("document_number", e.target.value)}
                             className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
-                            placeholder="Opsional"
+                            placeholder="Auto jika kosong"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                            No. Faktur Supplier
+                        </label>
+                        <input
+                            value={data.vendor_invoice_number}
+                            onChange={(e) => setData("vendor_invoice_number", e.target.value)}
+                            className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
+                            placeholder="Contoh: INV-SUPP-01"
                         />
                     </div>
                     <div>
@@ -156,13 +168,13 @@ export default function PayablesIndex({ payables, filters = {}, suppliers = [] }
                         <button
                             type="submit"
                             disabled={processing}
-                            className="w-full h-11 rounded-xl bg-primary-500 text-white text-sm font-semibold flex items-center justify-center gap-2"
+                            className="w-full h-11 rounded-xl bg-primary-500 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary-600 transition-colors disabled:opacity-50"
                         >
                             <IconPlus size={16} />
                             Simpan
                         </button>
                     </div>
-                    <div className="md:col-span-5">
+                    <div className="md:col-span-6">
                         <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                             Catatan
                         </label>
@@ -255,6 +267,11 @@ export default function PayablesIndex({ payables, filters = {}, suppliers = [] }
                                             <p className="text-sm font-semibold text-slate-800 dark:text-white">
                                                 {item.document_number}
                                             </p>
+                                            {item.vendor_invoice_number && (
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                    Faktur: {item.vendor_invoice_number}
+                                                </p>
+                                            )}
                                         </div>
                                         <div className="col-span-2">
                                             <p className="text-sm text-slate-700 dark:text-slate-200">
@@ -304,6 +321,11 @@ export default function PayablesIndex({ payables, filters = {}, suppliers = [] }
                                             <p className="text-base font-semibold text-slate-900 dark:text-white">
                                                 {item.document_number || "-"}
                                             </p>
+                                            {item.vendor_invoice_number && (
+                                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                    Faktur: {item.vendor_invoice_number}
+                                                </p>
+                                            )}
                                             <p className="text-xs text-slate-500 dark:text-slate-400">
                                                 Jatuh tempo: {formatDate(item.due_date)}
                                             </p>

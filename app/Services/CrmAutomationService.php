@@ -394,10 +394,11 @@ class CrmAutomationService
                 ->whereDate('due_date', '<', $at->toDateString())
                 ->get()
                 ->filter(function ($receivable) use ($at) {
-                    if (!$receivable->due_date) {
+                    if (! $receivable->due_date) {
                         return false;
                     }
                     $daysOverdue = (int) abs($at->startOfDay()->diffInDays($receivable->due_date->copy()->startOfDay()));
+
                     return in_array($daysOverdue, [1, 3, 7]);
                 })
                 ->values();

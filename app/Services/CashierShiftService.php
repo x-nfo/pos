@@ -6,6 +6,7 @@ use App\Models\CashierShift;
 use App\Models\SalesReturn;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -58,7 +59,7 @@ class CashierShiftService
         }
 
         if (! $warehouseId) {
-            $warehouseId = \App\Models\Warehouse::active()->orderBy('sort_order')->orderBy('code')->first()?->id;
+            $warehouseId = Warehouse::active()->orderBy('sort_order')->orderBy('code')->first()?->id;
         }
 
         return CashierShift::create([

@@ -589,12 +589,13 @@ class SampleDataSeeder extends Seeder
      */
     private function seedPayables(Collection $suppliers): void
     {
-        $cashier = User::where('email', 'cashier@gmail.com')->first() ?? User::first();
+        $admin = User::where('email', 'admin@mail.com')->first() ?? User::first();
 
         $blueprints = [
             [
                 'supplier' => 'PT Sumber Pangan Nusantara',
                 'document_number' => 'PYB-0001',
+                'vendor_invoice_number' => 'INV/SPN/2026/0801',
                 'total' => 450000,
                 'paid' => 150000,
                 'due_date' => now()->addDays(14)->toDateString(),
@@ -604,6 +605,7 @@ class SampleDataSeeder extends Seeder
             [
                 'supplier' => 'CV Makmur Jaya Distribusi',
                 'document_number' => 'PYB-0002',
+                'vendor_invoice_number' => 'INV/MJD/2026/0802',
                 'total' => 720000,
                 'paid' => 0,
                 'due_date' => now()->addDays(21)->toDateString(),
@@ -613,6 +615,7 @@ class SampleDataSeeder extends Seeder
             [
                 'supplier' => 'PT Segar Sentosa Abadi',
                 'document_number' => 'PYB-0003',
+                'vendor_invoice_number' => 'INV/SSA/2026/0803',
                 'total' => 390000,
                 'paid' => 390000,
                 'due_date' => now()->subDays(2)->toDateString(),
@@ -622,6 +625,7 @@ class SampleDataSeeder extends Seeder
             [
                 'supplier' => 'UD Berkah Retail Grosir',
                 'document_number' => 'PYB-0004',
+                'vendor_invoice_number' => 'INV/BRG/2026/0804',
                 'total' => 510000,
                 'paid' => 100000,
                 'due_date' => now()->subDays(5)->toDateString(),
@@ -640,6 +644,7 @@ class SampleDataSeeder extends Seeder
             $payable = Payable::create([
                 'supplier_id' => $supplier->id,
                 'document_number' => $item['document_number'],
+                'vendor_invoice_number' => $item['vendor_invoice_number'] ?? null,
                 'total' => $item['total'],
                 'paid' => $item['paid'],
                 'due_date' => $item['due_date'],
@@ -653,7 +658,7 @@ class SampleDataSeeder extends Seeder
                     'paid_at' => now()->subDays(3)->toDateString(),
                     'amount' => $item['paid'],
                     'method' => 'bank_transfer',
-                    'user_id' => $cashier?->id,
+                    'user_id' => $admin?->id,
                     'note' => 'Pembayaran hutang supplier',
                 ]);
             }

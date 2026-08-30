@@ -10,17 +10,17 @@ class ManifestController extends Controller
     private function getIconSizes(string $iconPath, string $defaultSize): string
     {
         $sizes = [$defaultSize, 'any'];
-        
+
         if (str_starts_with($iconPath, '/storage/')) {
-            $path = storage_path('app/public/' . substr($iconPath, 9));
+            $path = storage_path('app/public/'.substr($iconPath, 9));
             if (file_exists($path)) {
                 $size = @getimagesize($path);
                 if ($size) {
-                    $sizes[] = $size[0] . 'x' . $size[1];
+                    $sizes[] = $size[0].'x'.$size[1];
                 }
             }
         }
-        
+
         return implode(' ', array_unique($sizes));
     }
 

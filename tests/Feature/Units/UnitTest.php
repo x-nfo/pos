@@ -17,6 +17,7 @@ class UnitTest extends TestCase
     use RefreshDatabase;
 
     protected User $admin;
+
     protected User $cashier;
 
     protected function setUp(): void

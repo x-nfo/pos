@@ -1,14 +1,16 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Head, Link, useForm, usePage } from "@inertiajs/react";
+import { Head, Link, router, useForm, usePage } from "@inertiajs/react";
 import DashboardLayout from "@/Layouts/DashboardLayout";
 import {
     IconArrowLeft,
     IconCreditCard,
     IconCash,
     IconPrinter,
-    IconChevronLeft
+    IconChevronLeft,
+    IconTrash,
 } from "@tabler/icons-react";
 import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 import { useAuthorization } from "@/Utils/authorization";
 
 const formatCurrency = (value = 0) =>
@@ -87,6 +89,44 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                 reset();
                 setShowForm(false);
             },
+        });
+    };
+
+    const handleDeletePayment = (payment) => {
+        Swal.fire({
+            title: "Hapus Pembayaran?",
+            text: `Masukkan password akun Anda untuk membatalkan pembayaran senilai ${formatCurrency(payment.amount)}:`,
+            icon: "warning",
+            input: "password",
+            inputPlaceholder: "Masukkan password Anda...",
+            inputAttributes: {
+                autocapitalize: "off",
+                autocorrect: "off",
+                autocomplete: "current-password",
+            },
+            showCancelButton: true,
+            confirmButtonColor: "#ef4444",
+            cancelButtonColor: "#64748b",
+            confirmButtonText: "Konfirmasi & Hapus",
+            cancelButtonText: "Batal",
+            preConfirm: (password) => {
+                if (!password) {
+                    Swal.showValidationMessage("Password wajib diisi!");
+                }
+                return password;
+            },
+        }).then((result) => {
+            if (result.isConfirmed && result.value) {
+                router.delete(
+                    route("payables.payments.destroy", [payable.id, payment.id]),
+                    {
+                        data: { password: result.value },
+                        preserveScroll: true,
+                        onSuccess: () => toast.success("Pembayaran berhasil dihapus dan saldo dipulihkan"),
+                        onError: (errs) => toast.error(errs?.password || errs?.message || "Gagal menghapus pembayaran"),
+                    }
+                );
+            }
         });
     };
 
@@ -204,9 +244,21 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                                                 </p>
                                             )}
                                         </div>
-                                        <span className="text-xs text-slate-500">
-                                            {pay.user?.name || "-"}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-slate-500">
+                                                {pay.user?.name || "-"}
+                                            </span>
+                                            {canPayPayable && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeletePayment(pay)}
+                                                    title="Hapus Pembayaran"
+                                                    className="p-1.5 rounded-lg text-slate-400 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-950/30 transition-colors"
+                                                >
+                                                    <IconTrash size={16} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 ))
                             ) : (
@@ -228,6 +280,14 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                                     {payable.document_number}
                                 </span>
                             </div>
+                            {payable.vendor_invoice_number && (
+                                <div className="flex justify-between">
+                                    <span>No. Faktur Supplier</span>
+                                    <span className="font-semibold text-slate-800 dark:text-white">
+                                        {payable.vendor_invoice_number}
+                                    </span>
+                                </div>
+                            )}
                             <div className="flex justify-between">
                                 <span>Jatuh Tempo</span>
                                 <span>{formatDate(payable.due_date)}</span>
@@ -409,6 +469,11 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                                         <p className="text-lg font-bold text-slate-900 dark:text-white">
                                             {payable.document_number}
                                         </p>
+                                        {payable.vendor_invoice_number && (
+                                            <p className="text-xs text-slate-500">
+                                                Faktur: {payable.vendor_invoice_number}
+                                            </p>
+                                        )}
                                         <p className="text-xs text-slate-500">
                                             Jatuh tempo: {formatDate(payable.due_date)}
                                         </p>

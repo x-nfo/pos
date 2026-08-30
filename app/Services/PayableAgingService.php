@@ -11,7 +11,6 @@ class PayableAgingService
     public function getAgingSummary(): Collection
     {
         $payables = Payable::where('status', '!=', 'paid')
-            ->whereNotNull('due_date')
             ->get();
 
         $buckets = ['current', '0-30', '31-60', '61-90', '90+'];
@@ -22,9 +21,9 @@ class PayableAgingService
             return [
                 'bucket' => $bucket,
                 'count' => $filtered->count(),
-                'total' => $filtered->sum('total'),
-                'paid' => $filtered->sum('paid'),
-                'remaining' => $filtered->sum(fn ($p) => max(0, $p->total - $p->paid)),
+                'total' => (float) $filtered->sum('total'),
+                'paid' => (float) $filtered->sum('paid'),
+                'remaining' => (float) $filtered->sum(fn ($p) => max(0, $p->total - $p->paid)),
             ];
         });
     }

@@ -135,22 +135,31 @@ class GoodsReceivingService
 
     private function createOrUpdatePayable(PurchaseOrder $order, GoodsReceiving $receiving, int $userId): void
     {
-        $total = $receiving->items()->sum(\DB::raw('qty_received * (SELECT unit_price FROM purchase_order_items WHERE id = goods_receiving_items.purchase_order_item_id)'));
+        $total = (float) $order->items()->sum(\DB::raw('qty_received * unit_price'));
 
         if ($total <= 0) {
-            $total = $order->items()->sum(\DB::raw('qty_ordered * unit_price'));
+            $total = (float) $order->items()->sum(\DB::raw('qty_ordered * unit_price'));
+        }
+
+        $existingPayable = Payable::where('purchase_order_id', $order->id)->first();
+        $paid = $existingPayable ? (float) ($existingPayable->paid ?? 0) : 0.0;
+        $dueDate = $existingPayable?->due_date ?? now()->addDays(30);
+
+        $status = $paid >= $total && $total > 0 ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid');
+        if ($status !== 'paid' && $dueDate && now()->gt($dueDate)) {
+            $status = 'overdue';
         }
 
         $payable = Payable::updateOrCreate(
             ['purchase_order_id' => $order->id],
             [
                 'supplier_id' => $order->supplier_id,
-                'document_number' => $receiving->document_number,
+                'document_number' => $existingPayable?->document_number ?? $receiving->document_number,
                 'total' => $total,
-                'paid' => 0,
-                'due_date' => now()->addDays(30),
-                'status' => 'unpaid',
-                'note' => 'Otomatis dari penerimaan PO '.$order->document_number,
+                'paid' => $paid,
+                'due_date' => $dueDate,
+                'status' => $status,
+                'note' => $existingPayable?->note ?? ('Otomatis dari penerimaan PO '.$order->document_number),
             ]
         );
 

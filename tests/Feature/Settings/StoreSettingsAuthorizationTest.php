@@ -9,6 +9,7 @@ use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
 class StoreSettingsAuthorizationTest extends TestCase
@@ -52,7 +53,7 @@ class StoreSettingsAuthorizationTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('settings.store'));
         $response->assertOk();
-        $response->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+        $response->assertInertia(fn (AssertableInertia $page) => $page
             ->component('Dashboard/Settings/StoreIdentity')
             ->where('brandingSettings', null)
         );

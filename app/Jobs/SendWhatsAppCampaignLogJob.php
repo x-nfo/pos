@@ -50,7 +50,7 @@ class SendWhatsAppCampaignLogJob implements ShouldQueue
         if ($target) {
             $target = preg_replace('/[^0-9]/', '', $target);
             if (str_starts_with($target, '0')) {
-                $target = '62' . substr($target, 1);
+                $target = '62'.substr($target, 1);
             }
         }
 
