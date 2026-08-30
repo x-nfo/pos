@@ -57,8 +57,15 @@ class SettingController extends Controller
     /**
      * Store profile & Branding settings page
      */
-    public function storeIdentity()
+    public function storeIdentity(Request $request)
     {
+        $currentUser = $request->user();
+        $isSuperAdmin = (bool) $currentUser?->isSuperAdmin();
+
+        if ($request->routeIs('settings.branding') && ! $isSuperAdmin) {
+            abort(403, 'Anda tidak memiliki wewenang untuk mengakses pengaturan branding.');
+        }
+
         $settings = [
             'store_name' => Setting::get('store_name', ''),
             'store_logo' => Setting::get('store_logo', ''),
@@ -74,9 +81,9 @@ class SettingController extends Controller
 
         return Inertia::render('Dashboard/Settings/StoreIdentity', [
             'settings' => $settings,
-            'brandingSettings' => $this->brandingService->getSettingsForForm(),
+            'brandingSettings' => $isSuperAdmin ? $this->brandingService->getSettingsForForm() : null,
             'branding' => $this->brandingService->getBranding(),
-            'initialTab' => request()->routeIs('settings.branding') ? 'branding' : 'store',
+            'initialTab' => ($request->routeIs('settings.branding') && $isSuperAdmin) ? 'branding' : 'store',
         ]);
     }
 

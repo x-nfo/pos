@@ -58,7 +58,7 @@ class SendWhatsAppCampaignLogJob implements ShouldQueue
 
         if (! $target || ! $message) {
             $this->log->update([
-                'status' => CustomerCampaignLog::STATUS_FAILED,
+                'status' => CustomerCampaignLog::STATUS_SKIPPED,
                 'error_message' => 'No target phone number or message provided',
             ]);
 

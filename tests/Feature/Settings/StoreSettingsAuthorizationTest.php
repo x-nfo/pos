@@ -50,9 +50,32 @@ class StoreSettingsAuthorizationTest extends TestCase
         $user = User::factory()->create();
         $user->givePermissionTo('store-settings-access');
 
-        $this->actingAs($user)->get(route('settings.store'))->assertOk();
+        $response = $this->actingAs($user)->get(route('settings.store'));
+        $response->assertOk();
+        $response->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+            ->component('Dashboard/Settings/StoreIdentity')
+            ->where('brandingSettings', null)
+        );
+
         $this->actingAs($user)->get(route('settings.branding'))->assertForbidden();
         $this->actingAs($user)->get(route('settings.printer'))->assertForbidden();
+    }
+
+    public function test_non_super_admin_with_branding_permission_cannot_access_branding(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo(['branding-settings-access', 'branding-settings-update']);
+
+        $this->actingAs($user)->get(route('settings.branding'))->assertForbidden();
+
+        $response = $this->actingAs($user)->post(route('settings.branding.update'), [
+            'app_name' => 'Hacked App Name',
+            'theme_primary_color' => '#000000',
+            'theme_accent_color' => '#111111',
+            'landing_page_mode' => 'direct_login',
+        ]);
+
+        $response->assertForbidden();
     }
 
     public function test_user_with_store_settings_update_cannot_update_branding(): void

@@ -389,7 +389,6 @@ export default function Menu() {
                     icon: <IconBuildingStore size={20} strokeWidth={1.5} />,
                     permissions: hasAnyPermission([
                         "store-settings-access",
-                        "branding-settings-access",
                     ]),
                 },
                 {

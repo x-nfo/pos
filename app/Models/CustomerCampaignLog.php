@@ -17,6 +17,8 @@ class CustomerCampaignLog extends Model
 
     public const STATUS_SKIPPED = 'skipped';
 
+    public const STATUS_FAILED = 'failed';
+
     protected $fillable = [
         'customer_campaign_id',
         'customer_id',

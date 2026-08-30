@@ -33,8 +33,21 @@ class RoleRequest extends FormRequest
                 'string',
                 'max:255',
                 Rule::unique('roles', 'name')->ignore($roleId),
+                Rule::notIn(['super-admin']),
             ],
-            'selectedPermission' => ['nullable', 'array'],
+            'selectedPermission' => [
+                'nullable',
+                'array',
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if (! empty($value) && is_array($value) && ! $this->user()?->isSuperAdmin()) {
+                        $userPermissionIds = $this->user()->getAllPermissions()->pluck('id')->all();
+                        $unauthorizedIds = array_diff($value, $userPermissionIds);
+                        if (! empty($unauthorizedIds)) {
+                            $fail('Anda hanya dapat memberikan hak akses yang Anda miliki.');
+                        }
+                    }
+                },
+            ],
             'selectedPermission.*' => ['nullable'],
         ];
     }

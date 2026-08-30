@@ -128,8 +128,10 @@ function UserCard({
 }
 
 export default function Index() {
-    const { users } = usePage().props;
-    const { can } = useAuthorization();
+    const { users, auth } = usePage().props;
+    const { can, isSuperAdmin } = useAuthorization();
+    const isSuper = isSuperAdmin();
+    const currentUserId = auth?.user?.id;
     const [viewMode, setViewMode] = useState("grid");
     const canCreateUsers = can("users-create");
     const canUpdateUsers = can("users-update");
@@ -267,81 +269,106 @@ export default function Index() {
                     </button>
                 </div>
             </div>
-
             {/* Content */}
             {users.data.length > 0 ? (
                 viewMode === "grid" ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {users.data.map((user) => (
-                            <UserCard
-                                key={user.id}
-                                user={user}
-                                isSelected={data.selectedUser.includes(
-                                    user.id.toString()
-                                )}
-                                onSelect={setSelectedUser}
-                                onDelete={deleteData}
-                                canUpdate={canUpdateUsers}
-                                canDelete={canDeleteUsers}
-                            />
-                        ))}
+                        {users.data.map((user) => {
+                            const isTargetSuperAdmin = user.roles.some(
+                                (r) => r.name === "super-admin"
+                            );
+                            const isSelf = user.id === currentUserId;
+                            const canUpdateUser =
+                                canUpdateUsers && (!isTargetSuperAdmin || isSuper);
+                            const canDeleteUser =
+                                canDeleteUsers &&
+                                !isSelf &&
+                                (!isTargetSuperAdmin || isSuper);
+
+                            return (
+                                <UserCard
+                                    key={user.id}
+                                    user={user}
+                                    isSelected={data.selectedUser.includes(
+                                        user.id.toString()
+                                    )}
+                                    onSelect={setSelectedUser}
+                                    onDelete={deleteData}
+                                    canUpdate={canUpdateUser}
+                                    canDelete={canDeleteUser}
+                                />
+                            );
+                        })}
                     </div>
                 ) : (
                     <div>
                         {/* Mobile Cards (< sm) */}
                         <div className="sm:hidden space-y-3">
-                            {users.data.map((user) => (
-                                <MobileDataCard
-                                    key={user.id}
-                                    title={user.name}
-                                    subtitle={user.email}
-                                    avatar={
-                                        user.avatar ? (
-                                            <img
-                                                src={user.avatar}
-                                                alt={user.name}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white text-base font-bold">
-                                                {(user.name || user.email || "?")
-                                                    .charAt(0)
-                                                    .toUpperCase()}
-                                            </div>
-                                        )
-                                    }
-                                    meta={user.roles.map((role) => ({
-                                        label: role.name,
-                                        variant: "primary",
-                                    }))}
-                                    actions={[
-                                        ...(canUpdateUsers
-                                            ? [
-                                                  {
-                                                      label: "Edit",
-                                                      onClick: () =>
-                                                          router.get(
-                                                              route(
-                                                                  "users.edit",
-                                                                  user.id
-                                                              )
-                                                          ),
-                                                  },
-                                              ]
-                                            : []),
-                                        ...(canDeleteUsers
-                                            ? [
-                                                  {
-                                                      label: "Hapus",
-                                                      variant: "danger",
-                                                      onClick: () =>
-                                                          deleteData(user.id),
-                                                  },
-                                              ]
-                                            : []),
-                                    ]}
-                                />
-                            ))}
+                            {users.data.map((user) => {
+                                const isTargetSuperAdmin = user.roles.some(
+                                    (r) => r.name === "super-admin"
+                                );
+                                const isSelf = user.id === currentUserId;
+                                const canUpdateUser =
+                                    canUpdateUsers && (!isTargetSuperAdmin || isSuper);
+                                const canDeleteUser =
+                                    canDeleteUsers &&
+                                    !isSelf &&
+                                    (!isTargetSuperAdmin || isSuper);
+
+                                return (
+                                    <MobileDataCard
+                                        key={user.id}
+                                        title={user.name}
+                                        subtitle={user.email}
+                                        avatar={
+                                            user.avatar ? (
+                                                <img
+                                                    src={user.avatar}
+                                                    alt={user.name}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white text-base font-bold">
+                                                    {(user.name || user.email || "?")
+                                                        .charAt(0)
+                                                        .toUpperCase()}
+                                                </div>
+                                            )
+                                        }
+                                        meta={user.roles.map((role) => ({
+                                            label: role.name,
+                                            variant: "primary",
+                                        }))}
+                                        actions={[
+                                            ...(canUpdateUser
+                                                ? [
+                                                      {
+                                                          label: "Edit",
+                                                          onClick: () =>
+                                                              router.get(
+                                                                  route(
+                                                                      "users.edit",
+                                                                      user.id
+                                                                  )
+                                                              ),
+                                                      },
+                                                  ]
+                                                : []),
+                                            ...(canDeleteUser
+                                                ? [
+                                                      {
+                                                          label: "Hapus",
+                                                          variant: "danger",
+                                                          onClick: () =>
+                                                              deleteData(user.id),
+                                                      },
+                                                  ]
+                                                : []),
+                                        ]}
+                                    />
+                                );
+                            })}
                         </div>
 
                         {/* Desktop Table (>= sm) */}
@@ -354,9 +381,20 @@ export default function Index() {
                                                 {canDeleteUsers && (
                                                     <Checkbox
                                                         onChange={(e) => {
-                                                            const allUserIds =
-                                                                users.data.map((user) =>
-                                                                    user.id.toString()
+                                                            const allUserIds = users.data
+                                                                .filter(
+                                                                    (u) =>
+                                                                        (!u.roles.some(
+                                                                            (r) =>
+                                                                                r.name ===
+                                                                                "super-admin"
+                                                                        ) ||
+                                                                            isSuper) &&
+                                                                        u.id !==
+                                                                            currentUserId
+                                                                )
+                                                                .map((u) =>
+                                                                    u.id.toString()
                                                                 );
                                                             setData(
                                                                 "selectedUser",
@@ -366,8 +404,21 @@ export default function Index() {
                                                             );
                                                         }}
                                                         checked={
-                                                            data.selectedUser.length ===
-                                                            users.data.length
+                                                            data.selectedUser.length >
+                                                                0 &&
+                                                            data.selectedUser
+                                                                .length ===
+                                                                users.data.filter(
+                                                                    (u) =>
+                                                                        (!u.roles.some(
+                                                                            (r) =>
+                                                                                r.name ===
+                                                                                "super-admin"
+                                                                        ) ||
+                                                                            isSuper) &&
+                                                                        u.id !==
+                                                                            currentUserId
+                                                                ).length
                                                         }
                                                     />
                                                 )}
@@ -379,112 +430,133 @@ export default function Index() {
                                         </tr>
                                     </Table.Thead>
                                     <Table.Tbody>
-                                        {users.data.map((user, i) => (
-                                            <tr
-                                                className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                                                key={user.id}
-                                            >
-                                                <Table.Td>
-                                                    {canDeleteUsers && (
-                                                        <Checkbox
-                                                            value={user.id}
-                                                            onChange={setSelectedUser}
-                                                            checked={data.selectedUser.includes(
-                                                                user.id.toString()
+                                        {users.data.map((user, i) => {
+                                            const isTargetSuperAdmin = user.roles.some(
+                                                (r) => r.name === "super-admin"
+                                            );
+                                            const isSelf = user.id === currentUserId;
+                                            const canUpdateUser =
+                                                canUpdateUsers &&
+                                                (!isTargetSuperAdmin || isSuper);
+                                            const canDeleteUser =
+                                                canDeleteUsers &&
+                                                !isSelf &&
+                                                (!isTargetSuperAdmin || isSuper);
+
+                                            return (
+                                                <tr
+                                                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                                                    key={user.id}
+                                                >
+                                                    <Table.Td>
+                                                        {canDeleteUser ? (
+                                                            <Checkbox
+                                                                value={user.id}
+                                                                onChange={setSelectedUser}
+                                                                checked={data.selectedUser.includes(
+                                                                    user.id.toString()
+                                                                )}
+                                                            />
+                                                        ) : (
+                                                            <span className="w-4 h-4 inline-block" />
+                                                        )}
+                                                    </Table.Td>
+                                                    <Table.Td className={"text-center"}>
+                                                        {++i +
+                                                            (users.current_page - 1) *
+                                                                users.per_page}
+                                                    </Table.Td>
+                                                    <Table.Td>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-bold overflow-hidden">
+                                                                {user.avatar ? (
+                                                                    <img
+                                                                        src={user.avatar}
+                                                                        alt={user.name}
+                                                                        className="w-full h-full object-cover"
+                                                                    />
+                                                                ) : (
+                                                                    user.name
+                                                                        .charAt(0)
+                                                                        .toUpperCase()
+                                                                )}
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                                                    {user.name}
+                                                                </p>
+                                                                <p className="text-xs text-slate-500">
+                                                                    {user.email}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </Table.Td>
+                                                    <Table.Td>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {user.roles.map(
+                                                                (role, index) => (
+                                                                    <span
+                                                                        key={index}
+                                                                        className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                                                                            role.name ===
+                                                                            "super-admin"
+                                                                                ? "bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 font-semibold"
+                                                                                : "bg-accent-100 dark:bg-accent-900/50 text-accent-700 dark:text-accent-400"
+                                                                        }`}
+                                                                    >
+                                                                        {role.name}
+                                                                    </span>
+                                                                )
                                                             )}
-                                                        />
-                                                    )}
-                                                </Table.Td>
-                                                <Table.Td className={"text-center"}>
-                                                    {++i +
-                                                        (users.current_page - 1) *
-                                                            users.per_page}
-                                                </Table.Td>
-                                                <Table.Td>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-bold overflow-hidden">
-                                                            {user.avatar ? (
-                                                                <img
-                                                                    src={user.avatar}
-                                                                    alt={user.name}
-                                                                    className="w-full h-full object-cover"
+                                                        </div>
+                                                    </Table.Td>
+                                                    <Table.Td>
+                                                        <div className="flex gap-2">
+                                                            {canUpdateUser && (
+                                                                <Button
+                                                                    type={"edit"}
+                                                                    icon={
+                                                                        <IconPencilCog
+                                                                            size={16}
+                                                                            strokeWidth={
+                                                                                1.5
+                                                                            }
+                                                                        />
+                                                                    }
+                                                                    className={
+                                                                        "border bg-warning-100 border-warning-200 text-warning-600 hover:bg-warning-200 dark:bg-warning-900/50 dark:border-warning-800 dark:text-warning-400"
+                                                                    }
+                                                                    href={route(
+                                                                        "users.edit",
+                                                                        user.id
+                                                                    )}
                                                                 />
-                                                            ) : (
-                                                                user.name
-                                                                    .charAt(0)
-                                                                    .toUpperCase()
+                                                            )}
+                                                            {canDeleteUser && (
+                                                                <Button
+                                                                    type={"delete"}
+                                                                    icon={
+                                                                        <IconTrash
+                                                                            size={16}
+                                                                            strokeWidth={
+                                                                                1.5
+                                                                            }
+                                                                        />
+                                                                    }
+                                                                    className={
+                                                                        "border bg-danger-100 border-danger-200 text-danger-600 hover:bg-danger-200 dark:bg-danger-900/50 dark:border-danger-800 dark:text-danger-400"
+                                                                    }
+                                                                    url={route(
+                                                                        "users.destroy",
+                                                                        user.id
+                                                                    )}
+                                                                />
                                                             )}
                                                         </div>
-                                                        <div>
-                                                            <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                                                                {user.name}
-                                                            </p>
-                                                            <p className="text-xs text-slate-500">
-                                                                {user.email}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </Table.Td>
-                                                <Table.Td>
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {user.roles.map(
-                                                            (role, index) => (
-                                                                <span
-                                                                    key={index}
-                                                                    className="px-2 py-0.5 text-xs font-medium bg-accent-100 dark:bg-accent-900/50 text-accent-700 dark:text-accent-400 rounded-full"
-                                                                >
-                                                                    {role.name}
-                                                                </span>
-                                                            )
-                                                        )}
-                                                    </div>
-                                                </Table.Td>
-                                                <Table.Td>
-                                                    <div className="flex gap-2">
-                                                        {canUpdateUsers && (
-                                                            <Button
-                                                                type={"edit"}
-                                                                icon={
-                                                                    <IconPencilCog
-                                                                        size={16}
-                                                                        strokeWidth={
-                                                                            1.5
-                                                                        }
-                                                                    />
-                                                                }
-                                                                className={
-                                                                    "border bg-warning-100 border-warning-200 text-warning-600 hover:bg-warning-200 dark:bg-warning-900/50 dark:border-warning-800 dark:text-warning-400"
-                                                                }
-                                                                href={route(
-                                                                    "users.edit",
-                                                                    user.id
-                                                                )}
-                                                            />
-                                                        )}
-                                                        {canDeleteUsers && (
-                                                            <Button
-                                                                type={"delete"}
-                                                                icon={
-                                                                    <IconTrash
-                                                                        size={16}
-                                                                        strokeWidth={
-                                                                            1.5
-                                                                        }
-                                                                    />
-                                                                }
-                                                                className={
-                                                                    "border bg-danger-100 border-danger-200 text-danger-600 hover:bg-danger-200 dark:bg-danger-900/50 dark:border-danger-800 dark:text-danger-400"
-                                                                }
-                                                                url={route(
-                                                                    "users.destroy",
-                                                                    user.id
-                                                                )}
-                                                            />
-                                                        )}
-                                                    </div>
-                                                </Table.Td>
-                                            </tr>
-                                        ))}
+                                                    </Table.Td>
+                                                </tr>
+                                            );
+                                        })}
                                     </Table.Tbody>
                                 </Table>
                             </Table.Card>

@@ -21,6 +21,8 @@ import {
 
 // Role Card Component
 function RoleCard({ role, onEdit, onDelete, canUpdate, canDelete }) {
+    const isProtected = role.name === "super-admin";
+
     return (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-lg transition-all">
             {/* Header */}
@@ -30,9 +32,17 @@ function RoleCard({ role, onEdit, onDelete, canUpdate, canDelete }) {
                         <IconUserShield size={24} />
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 capitalize">
-                            {role.name}
-                        </h3>
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 capitalize">
+                                {role.name}
+                            </h3>
+                            {isProtected && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-md bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400">
+                                    <IconShield size={12} />
+                                    Sistem
+                                </span>
+                            )}
+                        </div>
                         <p className="text-sm text-slate-500 dark:text-slate-400">
                             {role.permissions.length} hak akses
                         </p>
@@ -61,30 +71,37 @@ function RoleCard({ role, onEdit, onDelete, canUpdate, canDelete }) {
             </div>
 
             {/* Actions */}
-            {(canUpdate || canDelete) && (
-                <div className="flex border-t border-slate-100 dark:border-slate-800">
-                    {canUpdate && (
-                        <button
-                            onClick={onEdit}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-3 text-warning-600 hover:bg-warning-50 dark:hover:bg-warning-950/50 text-sm font-medium transition-colors"
-                        >
-                            <IconPencilCog size={16} />
-                            <span>Edit</span>
-                        </button>
-                    )}
-                    {canUpdate && canDelete && (
-                        <div className="w-px bg-slate-100 dark:bg-slate-800" />
-                    )}
-                    {canDelete && (
-                        <button
-                            onClick={onDelete}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-3 text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-950/50 text-sm font-medium transition-colors"
-                        >
-                            <IconTrash size={16} />
-                            <span>Hapus</span>
-                        </button>
-                    )}
+            {isProtected ? (
+                <div className="p-3 text-center text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center gap-1.5">
+                    <IconShield size={14} className="text-primary-500" />
+                    <span>Role sistem terlindungi</span>
                 </div>
+            ) : (
+                (canUpdate || canDelete) && (
+                    <div className="flex border-t border-slate-100 dark:border-slate-800">
+                        {canUpdate && (
+                            <button
+                                onClick={onEdit}
+                                className="flex-1 flex items-center justify-center gap-1.5 py-3 text-warning-600 hover:bg-warning-50 dark:hover:bg-warning-950/50 text-sm font-medium transition-colors"
+                            >
+                                <IconPencilCog size={16} />
+                                <span>Edit</span>
+                            </button>
+                        )}
+                        {canUpdate && canDelete && (
+                            <div className="w-px bg-slate-100 dark:bg-slate-800" />
+                        )}
+                        {canDelete && (
+                            <button
+                                onClick={onDelete}
+                                className="flex-1 flex items-center justify-center gap-1.5 py-3 text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-950/50 text-sm font-medium transition-colors"
+                            >
+                                <IconTrash size={16} />
+                                <span>Hapus</span>
+                            </button>
+                        )}
+                    </div>
+                )
             )}
         </div>
     );
@@ -217,7 +234,13 @@ export default function Index() {
                                 "bg-primary-500 hover:bg-primary-600 text-white shadow-lg shadow-primary-500/30"
                             }
                             label={"Tambah Group"}
-                            onClick={() => setData("isOpen", true)}
+                            onClick={() => setData({
+                                id: "",
+                                name: "",
+                                selectedPermission: [],
+                                isUpdate: false,
+                                isOpen: true,
+                            })}
                         />
                     )}
                 </div>
@@ -234,15 +257,7 @@ export default function Index() {
             {/* Modal */}
             <Modal
                 show={data.isOpen}
-                onClose={() =>
-                    setData({
-                        isOpen: false,
-                        id: "",
-                        name: "",
-                        selectedPermission: [],
-                        isUpdate: false,
-                    })
-                }
+                onClose={() => setData("isOpen", false)}
                 title={
                     data.isUpdate ? "Ubah Akses Group" : "Tambah Akses Group"
                 }
@@ -333,7 +348,13 @@ export default function Index() {
                             "bg-primary-500 hover:bg-primary-600 text-white"
                         }
                         label={"Tambah Group"}
-                        onClick={() => setData("isOpen", true)}
+                        onClick={() => setData({
+                                id: "",
+                                name: "",
+                                selectedPermission: [],
+                                isUpdate: false,
+                                isOpen: true,
+                            })}
                     />
                 </div>
             )}

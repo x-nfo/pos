@@ -13,6 +13,14 @@ class UserRequest extends FormRequest
      */
     public function authorize(): bool
     {
+        $targetUser = $this->route('user');
+        if ($targetUser) {
+            $userModel = $targetUser instanceof \App\Models\User ? $targetUser : \App\Models\User::find($targetUser);
+            if ($userModel && $userModel->isSuperAdmin() && ! $this->user()?->isSuperAdmin()) {
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -31,7 +39,41 @@ class UserRequest extends FormRequest
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($userId)],
             'password' => [$isCreate ? 'required' : 'nullable', 'string', 'min:8', 'confirmed'],
             'avatar' => ['nullable', 'image', 'max:2048'],
-            'selectedRoles' => ['required', 'array', 'min:1'],
+            'selectedRoles' => [
+                'required',
+                'array',
+                'min:1',
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if (! is_array($value)) {
+                        return;
+                    }
+
+                    $currentUser = $this->user();
+                    if ($currentUser?->isSuperAdmin()) {
+                        return;
+                    }
+
+                    if (in_array('super-admin', $value, true)) {
+                        $fail('Hanya Super Admin yang dapat menetapkan role Super Admin.');
+
+                        return;
+                    }
+
+                    $userPermissionNames = $currentUser ? $currentUser->getAllPermissions()->pluck('name')->all() : [];
+                    $selectedRoleModels = \Spatie\Permission\Models\Role::with('permissions:id,name')->whereIn('name', $value)->get();
+
+                    foreach ($selectedRoleModels as $roleModel) {
+                        $rolePermissions = $roleModel->permissions->pluck('name')->all();
+                        $diff = array_diff($rolePermissions, $userPermissionNames);
+
+                        if (! empty($diff)) {
+                            $fail("Anda tidak memiliki wewenang untuk menetapkan group akses '{$roleModel->name}' karena memiliki hak akses di luar wewenang Anda.");
+
+                            return;
+                        }
+                    }
+                },
+            ],
             'selectedRoles.*' => ['string'],
         ];
     }

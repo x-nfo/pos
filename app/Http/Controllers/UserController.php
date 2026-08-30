@@ -39,13 +39,10 @@ class UserController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
-        // get all role data
-        $roles = Role::query()
-            ->select('id', 'name')
-            ->orderBy('name')
-            ->get();
+        // get assignable role data (filter unowned permissions/super-admin for non-super-admin users)
+        $roles = $this->getAssignableRoles($request->user());
 
         // render view
         return Inertia::render('Dashboard/Users/Create', [
@@ -94,13 +91,15 @@ class UserController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(User $user)
+    public function edit(Request $request, User $user)
     {
-        // get all role data
-        $roles = Role::query()
-            ->select('id', 'name')
-            ->orderBy('name')
-            ->get();
+        $currentUser = $request->user();
+        if ($user->isSuperAdmin() && ! $currentUser?->isSuperAdmin()) {
+            abort(403, 'Anda tidak memiliki wewenang untuk mengedit akun Super Admin.');
+        }
+
+        // get assignable role data (filter unowned permissions/super-admin for non-super-admin users)
+        $roles = $this->getAssignableRoles($currentUser);
 
         // load relationship
         $user->load(['roles' => fn ($query) => $query->select('id', 'name'), 'roles.permissions' => fn ($query) => $query->select('id', 'name')]);
@@ -117,6 +116,21 @@ class UserController extends Controller
      */
     public function update(UserRequest $request, User $user)
     {
+        $currentUser = $request->user();
+        if ($user->isSuperAdmin() && ! $currentUser?->isSuperAdmin()) {
+            abort(403, 'Anda tidak memiliki wewenang untuk memperbarui akun Super Admin.');
+        }
+
+        // Prevent removing the super-admin role from the last remaining super-admin
+        if ($user->isSuperAdmin() && ! in_array('super-admin', $request->selectedRoles, true)) {
+            $superAdminCount = User::role('super-admin')->count();
+            if ($superAdminCount <= 1) {
+                return back()->withErrors([
+                    'selectedRoles' => 'Tidak dapat mencabut role Super Admin dari akun Super Admin terakhir di sistem.',
+                ]);
+            }
+        }
+
         $beforeRoles = $user->roles()->pluck('name')->all();
         $before = $this->userPayload($user, $beforeRoles, false);
         $avatarPath = $user->getRawOriginal('avatar');
@@ -179,10 +193,32 @@ class UserController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $ids = explode(',', $id);
+        $currentUserId = $request->user()?->id;
+        $isSuperAdmin = (bool) $request->user()?->isSuperAdmin();
+        $ids = array_values(array_filter(explode(',', (string) $id)));
+
+        if (in_array((string) $currentUserId, array_map('strval', $ids), true)) {
+            return back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri.');
+        }
+
         $users = User::query()->with('roles')->whereIn('id', $ids)->get();
+
+        $hasSuperAdminTarget = $users->contains(fn (User $u) => $u->isSuperAdmin());
+        if ($hasSuperAdminTarget && ! $isSuperAdmin) {
+            abort(403, 'Anda tidak memiliki wewenang untuk menghapus akun Super Admin.');
+        }
+
+        if ($hasSuperAdminTarget) {
+            $allSuperAdminIds = User::role('super-admin')->pluck('id')->all();
+            $deletedSuperAdminIds = $users->filter(fn (User $u) => $u->isSuperAdmin())->pluck('id')->all();
+            $remainingSuperAdmins = array_diff($allSuperAdminIds, $deletedSuperAdminIds);
+
+            if (empty($remainingSuperAdmins)) {
+                return back()->with('error', 'Tidak dapat menghapus semua akun Super Admin. Minimal harus tersisa 1 akun Super Admin.');
+            }
+        }
 
         foreach ($users as $user) {
             $this->auditLogService->log(
@@ -208,5 +244,30 @@ class UserController extends Controller
             'avatar_changed' => $avatarChanged,
             'roles' => array_values($roles),
         ];
+    }
+
+    private function getAssignableRoles(?User $currentUser)
+    {
+        if ($currentUser?->isSuperAdmin()) {
+            return Role::query()
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get();
+        }
+
+        $userPermissionNames = $currentUser ? $currentUser->getAllPermissions()->pluck('name')->all() : [];
+
+        return Role::query()
+            ->with('permissions:id,name')
+            ->where('name', '!=', 'super-admin')
+            ->get()
+            ->filter(function ($role) use ($userPermissionNames) {
+                $rolePermissions = $role->permissions->pluck('name')->all();
+
+                return empty(array_diff($rolePermissions, $userPermissionNames));
+            })
+            ->map(fn ($r) => ['id' => $r->id, 'name' => $r->name])
+            ->sortBy('name')
+            ->values();
     }
 }

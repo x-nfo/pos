@@ -20,6 +20,8 @@ class RoleController extends Controller
      */
     public function index(Request $request)
     {
+        $isSuperAdmin = (bool) $request->user()?->isSuperAdmin();
+
         // get all role data
         $roles = Role::query()
             ->with('permissions')
@@ -29,11 +31,17 @@ class RoleController extends Controller
             ->paginate(7)
             ->withQueryString();
 
-        // get all permission data
-        $permissions = Permission::query()
-            ->select('id', 'name')
-            ->orderBy('name')
-            ->get();
+        // get all permission data (non-super-admin can only assign permissions they already have)
+        $permissions = $isSuperAdmin
+            ? Permission::query()
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get()
+            : $request->user()
+                ->getAllPermissions()
+                ->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])
+                ->sortBy('name')
+                ->values();
 
         // render view
         return Inertia::render('Dashboard/Roles/Index', [
@@ -75,6 +83,10 @@ class RoleController extends Controller
      */
     public function update(RoleRequest $request, Role $role)
     {
+        if ($role->name === 'super-admin') {
+            abort(403, 'Role Super Admin adalah role sistem yang dilindungi dan tidak dapat diubah.');
+        }
+
         $beforePermissions = $role->permissions()->pluck('name')->all();
         $before = [
             'name' => $role->name,
@@ -121,6 +133,10 @@ class RoleController extends Controller
      */
     public function destroy(Role $role)
     {
+        if ($role->name === 'super-admin') {
+            abort(403, 'Role Super Admin adalah role sistem yang dilindungi dan tidak dapat dihapus.');
+        }
+
         $before = [
             'name' => $role->name,
             'permissions' => $role->permissions()->pluck('name')->all(),

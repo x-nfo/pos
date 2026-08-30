@@ -405,7 +405,7 @@ const MENU_SECTIONS = [
                 routeName: "settings.store",
                 icon: IconSettings,
                 color: "text-blue-500 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400",
-                permissions: ["store-settings-access", "branding-settings-access"],
+                permissions: ["store-settings-access"],
             },
             {
                 title: "Pengaturan Printer",
@@ -494,7 +494,6 @@ export default function MenuIndex() {
     const canLaporan = canAny(["reports-access"]);
     const canSeting = canAny([
         "store-settings-access",
-        "branding-settings-access",
         "payment-settings-access",
         "whatsapp-settings-access",
         "warehouses-access",
@@ -502,7 +501,7 @@ export default function MenuIndex() {
         "printer-settings-access",
         "loyalty-settings-access",
         "target-settings-access",
-    ]);
+    ]) || auth?.super === true;
 
     const handleDisabledPillClick = (featureName) => {
         triggerHaptic("warning");
