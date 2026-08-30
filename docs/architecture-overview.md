@@ -43,7 +43,7 @@ Kembali ke indeks dokumentasi: `docs/README.md`
 |-------|-------|--------|
 | `permission` | Spatie PermissionMiddleware | Proteksi route berbasis permission string |
 | `active_shift` | EnsureActiveCashierShift | Wajibkan shift aktif untuk operasi POS (cart, hold, checkout) |
-| `step_up` | EnsureRecentPasswordConfirmation | Minta konfirmasi password untuk aksi sensitif (role/user CRUD, payment settings, bank accounts, payment confirmation) |
+| `step_up` | EnsureRecentPasswordConfirmation | Minta konfirmasi password untuk aksi sensitif (role/user CRUD, payment settings, bank accounts, pricelist, payment confirm) dengan session window 15 menit (900 detik, via `AUTH_PASSWORD_TIMEOUT`) |
 | `bot.guard` | EnsureBotGuard | Honeypot + timer anti-bot di form login/register/forgot-password |
 | `registration.enabled` | EnsurePublicRegistrationEnabled | Matikan registrasi publik (default: off) |
 | `SecureHeaders` | — | Security response headers |

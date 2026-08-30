@@ -65,10 +65,24 @@ Helper frontend utama:
 - backend tetap menjadi sumber kebenaran utama
 - frontend hanya untuk gating UI, bukan keamanan final
 
+## Proteksi Step-Up Authentication (Password Confirmation)
+
+Selain proteksi permission dasar, aksi-aksi bertaraf sensitif (*privileged actions*) diwajibkan melewati middleware `step_up` (`EnsureRecentPasswordConfirmation`):
+
+- **Aksi Terproteksi**: Create/Update/Delete Role & User, Pengaturan Payment Gateway & Rekening Bank, Update Price List & Diskon, Force Close Shift Kasir, Pembatalan/Konfirmasi Pembayaran.
+- **Session Timeout Window**: **15 Menit (900 detik)** secara default. Dapat diubah lewat environment variable `AUTH_PASSWORD_TIMEOUT`.
+- **Mekanisme**:
+  1. Waktu konfirmasi terakhir disimpan di session `auth.password_confirmed_at`.
+  2. Frontend menerima timestamp `stepUpFreshUntil` via `HandleInertiaRequests.php`.
+  3. Jika window 15 menit masih berlaku, aksi sensitif langsung diizinkan.
+  4. Jika window telah habis/kedaluwarsa, API request mengembalikan response HTTP `423` (Locked/Challenge) atau mengarahkan ke halaman `/confirm-password`.
+  5. Setiap tantangan konfirmasi dicatat di audit log (`security.privileged_action_challenged`).
+
 ## File Sentral
 
 - `database/seeders/PermissionSeeder.php`
 - `database/seeders/RoleSeeder.php`
 - `database/seeders/UserSeeder.php`
+- `app/Http/Middleware/EnsureRecentPasswordConfirmation.php`
 - `app/Http/Middleware/HandleInertiaRequests.php`
 - `resources/js/Utils/Menu.jsx`

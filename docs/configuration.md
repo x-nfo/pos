@@ -15,7 +15,19 @@ Kembali ke indeks dokumentasi: `docs/README.md`
 | `XENDIT_PUBLIC_KEY` | Public key Xendit |
 | `XENDIT_CALLBACK_TOKEN` | Callback token verifikasi webhook Xendit |
 | `AUTH_PUBLIC_REGISTRATION` | Aktifkan registrasi publik (`true`/`false`, default: `false`) |
+| `AUTH_PASSWORD_TIMEOUT` | Durasi window konfirmasi password / step-up auth dalam detik (default: `900` = 15 menit) |
 | `WA_SERVICE_URL` | Alamat Node.js WhatsApp service (default: `http://localhost:3001`) |
+
+## Step-Up Authentication & Password Timeout
+
+Sistem menerapkan proteksi *step-up authentication* untuk aksi-aksi sensitif (seperti mengubah role/user, mengedit payment settings, menambah rekening bank, manajemen pricelist, dan konfirmasi/pembatalan pembayaran).
+
+- **Durasi Default**: **900 detik (15 menit)**
+- **Variabel Konfigurasi**: `AUTH_PASSWORD_TIMEOUT` di `.env` (atau `config/auth.php` & `config/security.php`)
+- **Mekanisme**:
+  - Saat user berhasil mengonfirmasi password, timestamp disimpan di session `auth.password_confirmed_at`.
+  - Selama masih dalam rentang 15 menit sejak konfirmasi terakhir, aksi sensitif dapat langsung dijalankan tanpa meminta password lagi.
+  - Setelah melewati rentang waktu tersebut, middleware `step_up` (`EnsureRecentPasswordConfirmation`) akan mencegat request dan meminta konfirmasi password ulang (merespons `423` pada AJAX/JSON atau redirect ke `/confirm-password`).
 
 ## APP_URL
 
