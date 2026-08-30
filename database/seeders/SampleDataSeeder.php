@@ -125,14 +125,14 @@ class SampleDataSeeder extends Seeder
     private function seedCustomers(): Collection
     {
         $customers = collect([
-            ['name' => 'Andi Nugraha', 'no_telp' => '6281211111111', 'address' => 'Jl. Melati No. 21, Bandung', 'is_loyalty_member' => true, 'member_code' => 'MEM-ANDI001', 'loyalty_tier' => 'gold', 'loyalty_points' => 180, 'loyalty_total_spent' => 1800000, 'loyalty_transaction_count' => 12, 'loyalty_member_since' => now()->subMonths(8)],
-            ['name' => 'Bunga Maharani', 'no_telp' => '6281312345678', 'address' => 'Jl. Mawar No. 5, Jakarta', 'is_loyalty_member' => true, 'member_code' => 'MEM-BUNGA01', 'loyalty_tier' => 'silver', 'loyalty_points' => 60, 'loyalty_total_spent' => 780000, 'loyalty_transaction_count' => 6, 'loyalty_member_since' => now()->subMonths(4)],
-            ['name' => 'Cici Amelia', 'no_telp' => '6281512340000', 'address' => 'Jl. Anggrek No. 17, Surabaya'],
-            ['name' => 'Davin Pradipta', 'no_telp' => '6285612349911', 'address' => 'Jl. Kenanga No. 2, Yogyakarta'],
-            ['name' => 'Eko Saputra', 'no_telp' => '6287712348822', 'address' => 'Jl. Cemara No. 45, Semarang', 'is_loyalty_member' => true, 'member_code' => 'MEM-EKO0001', 'loyalty_tier' => 'platinum', 'loyalty_points' => 420, 'loyalty_total_spent' => 3600000, 'loyalty_transaction_count' => 21, 'loyalty_member_since' => now()->subYear()],
-            ['name' => 'Fitri Lestari', 'no_telp' => '6282213345566', 'address' => 'Jl. Sakura No. 7, Medan'],
-            ['name' => 'Gina Putri', 'no_telp' => '6281399887766', 'address' => 'Jl. Dahlia No. 12, Malang'],
-            ['name' => 'Hendra Wijaya', 'no_telp' => '6285544332211', 'address' => 'Jl. Flamboyan No. 8, Denpasar'],
+            ['name' => 'Aldi Hutagalung', 'no_telp' => '6281211111111', 'address' => 'Jl. Mekar Sari No. 21, Cirebon', 'is_loyalty_member' => true, 'member_code' => 'MEM-ANDI001', 'loyalty_tier' => 'gold', 'loyalty_points' => 180, 'loyalty_total_spent' => 1800000, 'loyalty_transaction_count' => 12, 'loyalty_member_since' => now()->subMonths(8)],
+            ['name' => 'Bunga Amelia', 'no_telp' => '628122222', 'address' => 'Jl. Kamboja No. 5, Jakarta', 'is_loyalty_member' => true, 'member_code' => 'MEM-BUNGA01', 'loyalty_tier' => 'silver', 'loyalty_points' => 60, 'loyalty_total_spent' => 780000, 'loyalty_transaction_count' => 6, 'loyalty_member_since' => now()->subMonths(4)],
+            ['name' => 'Cici Kadarsih', 'no_telp' => '6284234250000', 'address' => 'Jl. Mangga No. 17, Surabaya'],
+            ['name' => 'Randi Oktavia', 'no_telp' => '628523429911', 'address' => 'Jl. Kemangi No. 2, Yogyakarta'],
+            ['name' => 'Edi Subagio', 'no_telp' => '62872342822', 'address' => 'Jl. Bougenville No. 45, Semarang', 'is_loyalty_member' => true, 'member_code' => 'MEM-EKO0001', 'loyalty_tier' => 'platinum', 'loyalty_points' => 420, 'loyalty_total_spent' => 3600000, 'loyalty_transaction_count' => 21, 'loyalty_member_since' => now()->subYear()],
+            ['name' => 'Nanda Pradipta', 'no_telp' => '62123425566', 'address' => 'Jl. Kaktus No. 7, Medan'],
+            ['name' => 'Novia Putri', 'no_telp' => '6224234766', 'address' => 'Jl. Krisan No. 12, Malang'],
+            ['name' => 'Lukman Sarmudi', 'no_telp' => '6287987332211', 'address' => 'Jl. Aster No. 8, Denpasar'],
         ]);
 
         return $customers
@@ -144,24 +144,24 @@ class SampleDataSeeder extends Seeder
     {
         $blueprints = [
             [
-                'customer' => 'Andi Nugraha',
-                'code' => 'VCR-ANDI10',
+                'customer' => 'Aldi Hutagalung',
+                'code' => 'VCR-ALDI10',
                 'name' => 'Voucher Loyal Gold',
                 'discount_type' => 'fixed_amount',
                 'discount_value' => 10000,
                 'minimum_order' => 75000,
             ],
             [
-                'customer' => 'Bunga Maharani',
-                'code' => 'VCR-BUNGA5',
+                'customer' => 'Bunga Amelia',
+                'code' => 'VCR-AMEL5',
                 'name' => 'Voucher Repeat Order',
                 'discount_type' => 'percentage',
                 'discount_value' => 5,
                 'minimum_order' => 50000,
             ],
             [
-                'customer' => 'Eko Saputra',
-                'code' => 'VCR-EKO25',
+                'customer' => 'Edi Subagio',
+                'code' => 'VCR-EDI25',
                 'name' => 'Voucher Platinum',
                 'discount_type' => 'fixed_amount',
                 'discount_value' => 25000,

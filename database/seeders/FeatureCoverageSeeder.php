@@ -41,8 +41,8 @@ class FeatureCoverageSeeder extends Seeder
             return;
         }
 
-        $admin = User::where('email', 'admin@mail.com')->first() ?? User::where('email', 'arya@gmail.com')->first() ?? User::first();
-        $cashier = User::where('email', 'cashier@gmail.com')->first() ?? $admin;
+        $admin = User::where('email', 'admin@mail.com')->first() ?? User::where('email', 'ruslisanda63@gmail.com')->first() ?? User::first();
+        $cashier = User::where('email', 'kasir@mail.com')->first() ?? $admin;
 
         if (! $admin || ! $cashier) {
             $this->command?->warn('Skipping FeatureCoverageSeeder because sample users are missing.');
@@ -156,13 +156,13 @@ class FeatureCoverageSeeder extends Seeder
     {
         $settings = [
             'monthly_sales_target' => ['value' => '15000000', 'description' => 'Target penjualan bulanan'],
-            'store_name' => ['value' => 'Toko Maju Bersama', 'description' => 'Nama toko'],
+            'store_name' => ['value' => 'Toko Rekasir', 'description' => 'Nama toko'],
             'store_logo' => ['value' => null, 'description' => 'Logo toko'],
-            'store_address' => ['value' => 'Jl. Sukajadi No. 88, Bandung', 'description' => 'Alamat lengkap toko'],
-            'store_phone' => ['value' => '022-6012345', 'description' => 'Nomor telepon toko'],
-            'store_email' => ['value' => 'halo@majubersama.test', 'description' => 'Email toko'],
-            'store_website' => ['value' => 'https://majubersama.test', 'description' => 'Website atau sosial media'],
-            'store_city' => ['value' => 'Bandung', 'description' => 'Kota/Kabupaten toko'],
+            'store_address' => ['value' => 'Jl. Ciangsana Raya No. 008, Gn Putri Kab. Bogor', 'description' => 'Alamat lengkap toko'],
+            'store_phone' => ['value' => '021-87885611594', 'description' => 'Nomor telepon toko'],
+            'store_email' => ['value' => 'halo@rekasir.site', 'description' => 'Email toko'],
+            'store_website' => ['value' => 'https://rekasir.site', 'description' => 'Website atau sosial media'],
+            'store_city' => ['value' => 'Kab. Bogor', 'description' => 'Kota/Kabupaten toko'],
         ];
 
         foreach ($settings as $key => $payload) {
@@ -182,21 +182,21 @@ class FeatureCoverageSeeder extends Seeder
             [
                 'bank_name' => 'BCA',
                 'account_number' => '0149988776',
-                'account_name' => 'PT Maju Bersama Retail',
+                'account_name' => 'PT Sumber Teknologi Indonesia',
                 'is_active' => true,
                 'sort_order' => 0,
             ],
             [
                 'bank_name' => 'Mandiri',
                 'account_number' => '1370012345678',
-                'account_name' => 'PT Maju Bersama Retail',
+                'account_name' => 'PT Sumber Teknologi Indonesia',
                 'is_active' => true,
                 'sort_order' => 1,
             ],
             [
                 'bank_name' => 'BRI',
                 'account_number' => '002401998877503',
-                'account_name' => 'PT Maju Bersama Retail',
+                'account_name' => 'PT Sumber Teknologi Indonesia',
                 'is_active' => false,
                 'sort_order' => 2,
             ],
@@ -281,7 +281,7 @@ class FeatureCoverageSeeder extends Seeder
 
         $cancelledOrder = $purchaseOrderService->createOrder(
             [
-                'supplier_id' => $suppliers->get('UD Berkah Retail Grosir')?->id,
+                'supplier_id' => $suppliers->get('UD Maju Retail Grosir')?->id,
                 'notes' => 'PO dibatalkan karena harga supplier berubah.',
             ],
             [
@@ -309,7 +309,7 @@ class FeatureCoverageSeeder extends Seeder
 
         $partialOrder = $purchaseOrderService->createOrder(
             [
-                'supplier_id' => $suppliers->get('PT Sumber Pangan Nusantara')?->id,
+                'supplier_id' => $suppliers->get('PT Sumber Snack Indonesia')?->id,
                 'notes' => 'PO barang cepat laku untuk restock mingguan.',
             ],
             [
@@ -365,7 +365,7 @@ class FeatureCoverageSeeder extends Seeder
 
         $completedOrder = $purchaseOrderService->createOrder(
             [
-                'supplier_id' => $suppliers->get('PT Segar Sentosa Abadi')?->id,
+                'supplier_id' => $suppliers->get('PT Fresh Food Sentosa')?->id,
                 'notes' => 'PO lengkap untuk frozen food dan produk susu.',
             ],
             [
