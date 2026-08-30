@@ -1,6 +1,6 @@
 import { Head, Link, useForm } from "@inertiajs/react";
 import {
-    IconShoppingCart,
+    IconBuildingStore,
     IconMail,
     IconLoader2,
     IconArrowLeft,
@@ -35,7 +35,7 @@ export default function ForgotPassword({ status, botGuard }) {
                                 className="inline-flex items-center gap-3 mb-6"
                             >
                                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
-                                    <IconShoppingCart size={24} className="text-white" />
+                                    <IconBuildingStore size={24} className="text-white" />
                                 </div>
                                 <span className="text-2xl font-bold text-slate-900 dark:text-white">
                                     Aplikasi Kasir

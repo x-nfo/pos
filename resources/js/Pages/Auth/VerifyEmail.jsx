@@ -1,7 +1,7 @@
 import { Head, Link, useForm } from "@inertiajs/react";
 import AuthBotGuardFields from "@/Components/AuthBotGuardFields";
 import {
-    IconShoppingCart,
+    IconBuildingStore,
     IconMailCheck,
     IconLoader2,
     IconLogout,
@@ -34,7 +34,7 @@ export default function VerifyEmail({ status, botGuard }) {
                                 className="inline-flex items-center gap-3 mb-6"
                             >
                                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
-                                    <IconShoppingCart
+                                    <IconBuildingStore
                                         size={24}
                                         className="text-white"
                                     />
