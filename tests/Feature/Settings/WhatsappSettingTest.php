@@ -70,6 +70,7 @@ class WhatsappSettingTest extends TestCase
             ->post(route('crm-campaigns.automation.update'), [
                 'wa_auto_invoice' => true,
                 'wa_receivable_reminder_mode' => 'auto',
+                'wa_reminder_schedule_time' => '08:30',
                 'wa_template_due_soon' => 'Pengingat {{customer_name}}, tagihan {{invoice}} sebesar Rp {{remaining}} jatuh tempo {{due_date}}.',
                 'wa_template_overdue' => 'Pemberitahuan {{customer_name}}, tagihan {{invoice}} telah melewati jatuh tempo {{due_date}}.',
             ]);
@@ -79,6 +80,7 @@ class WhatsappSettingTest extends TestCase
         $this->assertTrue(Setting::getBool('wa_auto_invoice'));
         $this->assertTrue(Setting::getBool('wa_auto_reminder'));
         $this->assertEquals('auto', Setting::get('wa_receivable_reminder_mode'));
+        $this->assertEquals('08:30', Setting::get('wa_reminder_schedule_time'));
         $this->assertEquals(
             'Pengingat {{customer_name}}, tagihan {{invoice}} sebesar Rp {{remaining}} jatuh tempo {{due_date}}.',
             Setting::get('wa_template_due_soon')

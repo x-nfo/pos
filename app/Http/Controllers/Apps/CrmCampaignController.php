@@ -42,6 +42,7 @@ class CrmCampaignController extends Controller
                 'wa_auto_reminder' => Setting::getBool('wa_auto_reminder', false),
                 'wa_auto_invoice' => Setting::getBool('wa_auto_invoice', false),
                 'wa_receivable_reminder_mode' => Setting::get('wa_receivable_reminder_mode', 'manual'),
+                'wa_reminder_schedule_time' => Setting::get('wa_reminder_schedule_time', '09:15'),
                 'wa_template_due_soon' => Setting::get(
                     'wa_template_due_soon',
                     'Halo {{customer_name}}, ini pengingat tagihan invoice {{invoice}} sebesar Rp {{remaining}} akan jatuh tempo pada {{due_date}}. Mohon dapat melakukan pembayaran sebelum jatuh tempo. Terima kasih.'
@@ -169,6 +170,7 @@ class CrmCampaignController extends Controller
             'wa_auto_reminder' => ['boolean'],
             'wa_auto_invoice' => ['boolean'],
             'wa_receivable_reminder_mode' => ['nullable', 'string', 'in:manual,auto'],
+            'wa_reminder_schedule_time' => ['nullable', 'string', 'regex:/^(?:[01]\d|2[0-3]):[0-5]\d$/'],
             'wa_template_due_soon' => ['nullable', 'string', 'max:2000'],
             'wa_template_overdue' => ['nullable', 'string', 'max:2000'],
         ]);
@@ -179,6 +181,9 @@ class CrmCampaignController extends Controller
         Setting::set('wa_auto_reminder', $isAuto ? '1' : '0', 'Auto-kirim reminder via WA');
         Setting::set('wa_auto_invoice', ($validated['wa_auto_invoice'] ?? false) ? '1' : '0', 'Auto-kirim invoice via WA');
         Setting::set('wa_receivable_reminder_mode', $mode, 'Mode pengiriman reminder piutang (manual/auto)');
+        if (! empty($validated['wa_reminder_schedule_time'])) {
+            Setting::set('wa_reminder_schedule_time', $validated['wa_reminder_schedule_time'], 'Jadwal jam pengiriman reminder piutang harian');
+        }
         if (array_key_exists('wa_template_due_soon', $validated) && $validated['wa_template_due_soon'] !== null) {
             Setting::set('wa_template_due_soon', $validated['wa_template_due_soon'], 'Template WA reminder piutang jatuh tempo H-3');
         }

@@ -48,9 +48,11 @@ class SendWhatsAppCampaignLogJob implements ShouldQueue
             ?? ($this->log->payload['target'] ?? null);
 
         if ($target) {
-            $target = preg_replace('/[^0-9]/', '', $target);
+            $target = preg_replace('/[^0-9]/', '', (string) $target);
             if (str_starts_with($target, '0')) {
                 $target = '62'.substr($target, 1);
+            } elseif (str_starts_with($target, '8')) {
+                $target = '62'.$target;
             }
         }
 

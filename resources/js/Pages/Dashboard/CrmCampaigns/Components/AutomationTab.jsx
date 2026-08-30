@@ -10,6 +10,7 @@ import {
     IconInfoCircle,
     IconDeviceFloppy,
     IconBrandWhatsapp,
+    IconClock,
 } from "@tabler/icons-react";
 
 const PLACEHOLDERS = [
@@ -29,6 +30,7 @@ export default function AutomationTab({ settings = {} }) {
         wa_auto_reminder: settings?.wa_auto_reminder || false,
         wa_auto_invoice: settings?.wa_auto_invoice || false,
         wa_receivable_reminder_mode: settings?.wa_receivable_reminder_mode || (settings?.wa_auto_reminder ? "auto" : "manual"),
+        wa_reminder_schedule_time: settings?.wa_reminder_schedule_time || "09:15",
         wa_template_due_soon:
             settings?.wa_template_due_soon ||
             "Halo {{customer_name}}, ini pengingat tagihan invoice {{invoice}} sebesar Rp {{remaining}} akan jatuh tempo pada {{due_date}}. Mohon dapat melakukan pembayaran sebelum jatuh tempo. Terima kasih.",
@@ -139,7 +141,7 @@ export default function AutomationTab({ settings = {} }) {
                                     Mode Pengiriman Reminder Piutang
                                 </h2>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                    Tentukan bagaimana pengingat jatuh tempo H-3 dan overdue diproses setiap hari (01:15 WIB).
+                                    Tentukan bagaimana pengingat jatuh tempo H-3 dan overdue diproses setiap hari ({data.wa_reminder_schedule_time || "09:15"} WIB).
                                 </p>
                             </div>
                         </div>
@@ -191,7 +193,7 @@ export default function AutomationTab({ settings = {} }) {
                             </div>
 
                             {/* Pilihan 2: Kirim Otomatis via WA Gateway */}
-                                <div
+                            <div
                                 onClick={() => {
                                     if (wa_ready || data.wa_receivable_reminder_mode === "auto") {
                                         setData((prev) => ({
@@ -236,6 +238,52 @@ export default function AutomationTab({ settings = {} }) {
                                         </p>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* Pengaturan Jam Pengiriman Otomatis */}
+                        <div className="mt-4 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <label className="flex items-center gap-1.5 text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                        <IconClock size={18} className="text-primary-500" />
+                                        Jam Pengiriman Otomatis (WIB)
+                                    </label>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                        Pilih jam eksekusi cronjob harian untuk memicu pengingat piutang otomatis.
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="time"
+                                        value={data.wa_reminder_schedule_time}
+                                        onChange={(e) => setData("wa_reminder_schedule_time", e.target.value)}
+                                        className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 shadow-2xs focus:ring-2 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 cursor-pointer"
+                                    />
+                                </div>
+                            </div>
+                            <div className="mt-3 flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Pilihan cepat:</span>
+                                {[
+                                    { label: "08:00 (Pagi)", value: "08:00" },
+                                    { label: "09:15 (Standar)", value: "09:15" },
+                                    { label: "10:00 (Siang)", value: "10:00" },
+                                    { label: "14:00 (Siang)", value: "14:00" },
+                                    { label: "16:00 (Sore)", value: "16:00" },
+                                ].map((preset) => (
+                                    <button
+                                        key={preset.value}
+                                        type="button"
+                                        onClick={() => setData("wa_reminder_schedule_time", preset.value)}
+                                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                                            data.wa_reminder_schedule_time === preset.value
+                                                ? "bg-primary-500 text-white font-bold shadow-2xs"
+                                                : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600"
+                                        }`}
+                                    >
+                                        {preset.label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     </div>

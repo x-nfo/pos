@@ -91,7 +91,10 @@ app.post('/send', async (req, res) => {
     if (!target || !message) return res.status(400).json({ status: false, reason: 'target and message required' });
 
     try {
-        const formatted = target.startsWith('0') ? '62' + target.slice(1) : target;
+        let formatted = target.startsWith('0') ? '62' + target.slice(1) : target;
+        if (formatted.startsWith('8')) {
+            formatted = '62' + formatted;
+        }
         const chatId = formatted.includes('@c.us') ? formatted : `${formatted}@c.us`;
         await client.sendMessage(chatId, message);
         res.json({ status: true });
