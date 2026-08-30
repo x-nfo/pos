@@ -146,6 +146,54 @@ class MasterDataProtectionTest extends TestCase
         $this->assertNotNull(Product::withTrashed()->find($product->id));
     }
 
+    public function test_can_recreate_product_with_same_barcode_after_soft_delete(): void
+    {
+        $category = Category::create(['name' => 'Snack', 'image' => '', 'description' => '']);
+        $product = Product::create([
+            'image' => '',
+            'barcode' => '089686010824',
+            'sku' => 'SKU-SAME-1',
+            'title' => 'Produk Awal',
+            'description' => 'Deskripsi',
+            'category_id' => $category->id,
+            'buy_price' => 1000,
+            'sell_price' => 2000,
+            'stock' => 0,
+            'tax_rate' => 0,
+        ]);
+
+        // Delete the product
+        $this->actingAs($this->admin)
+            ->from(route('products.index'))
+            ->delete(route('products.destroy', $product->id))
+            ->assertSessionHas('success');
+
+        $this->assertSoftDeleted('products', ['id' => $product->id]);
+
+        // Now create a new product with the same barcode
+        $response = $this->actingAs($this->admin)
+            ->post(route('products.store'), [
+                'barcode' => '089686010824',
+                'sku' => 'SKU-SAME-1',
+                'title' => 'Produk Baru Barcode Sama',
+                'description' => 'Deskripsi baru',
+                'category_id' => $category->id,
+                'buy_price' => 1500,
+                'sell_price' => 2500,
+                'stock' => 10,
+            ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect(route('products.index'));
+
+        $this->assertDatabaseHas('products', [
+            'barcode' => '089686010824',
+            'sku' => 'SKU-SAME-1',
+            'title' => 'Produk Baru Barcode Sama',
+            'deleted_at' => null,
+        ]);
+    }
+
     public function test_cannot_delete_category_with_products(): void
     {
         $category = Category::create(['name' => 'Kategori Terkait', 'image' => '', 'description' => '']);

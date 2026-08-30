@@ -44,6 +44,31 @@ class Product extends Model
         'is_composite',
     ];
 
+    protected static function booted(): void
+    {
+        static::deleting(function (Product $product) {
+            if (! $product->isForceDeleting()) {
+                $suffix = '_del_' . time() . '_' . $product->id;
+                if (! str_contains($product->barcode, '_del_')) {
+                    $product->barcode = substr($product->barcode, 0, 70) . $suffix;
+                }
+                if ($product->sku && ! str_contains($product->sku, '_del_')) {
+                    $product->sku = substr($product->sku, 0, 70) . $suffix;
+                }
+                $product->saveQuietly();
+            }
+        });
+
+        static::restoring(function (Product $product) {
+            if (str_contains($product->barcode, '_del_')) {
+                $product->barcode = explode('_del_', $product->barcode)[0];
+            }
+            if ($product->sku && str_contains($product->sku, '_del_')) {
+                $product->sku = explode('_del_', $product->sku)[0];
+            }
+        });
+    }
+
     public function category()
     {
         return $this->belongsTo(Category::class)->withTrashed();
