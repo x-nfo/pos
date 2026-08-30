@@ -266,4 +266,25 @@ class ReceivableApprovalTest extends TestCase
 
         $response->assertSessionHasErrors('approval_notes');
     }
+
+    public function test_receivable_pdf_download_succeeds(): void
+    {
+        $customer = Customer::create([
+            'name' => 'Customer PDF',
+            'no_telp' => '081299999999',
+            'address' => 'Jakarta',
+        ]);
+        $receivable = Receivable::create([
+            'customer_id' => $customer->id,
+            'invoice' => 'REC-PDF-001',
+            'total' => 500000,
+            'paid' => 200000,
+            'status' => 'partial',
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('pdf.receivables.show', $receivable));
+
+        $response->assertOk();
+    }
 }
