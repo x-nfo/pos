@@ -117,7 +117,7 @@ class TransactionController extends Controller
         $customers = Customer::latest()->get();
 
         // get products with stock > 0 in active warehouse
-        $products = Product::with(['category:id,name', 'units'])
+        $products = Product::with(['category:id,name', 'units', 'warehouses'])
             ->select('id', 'barcode', 'title', 'description', 'image', 'buy_price', 'sell_price', 'stock', 'category_id')
             ->when($warehouseId, function ($q) use ($warehouseId) {
                 $q->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $warehouseId)
@@ -128,8 +128,11 @@ class TransactionController extends Controller
             ->orderBy('title')
             ->get();
         $pricingBadges = $this->pricingService->previewProducts($products, null);
-        $products = $products->map(function (Product $product) use ($pricingBadges) {
+        $products = $products->map(function (Product $product) use ($pricingBadges, $warehouseId) {
             $pricing = $pricingBadges->get($product->id);
+            $warehouseStock = $warehouseId
+                ? (int) ($product->warehouses->firstWhere('id', $warehouseId)?->pivot->stock ?? 0)
+                : (int) $product->stock;
 
             $units = $product->units->map(function ($u) use ($product) {
                 $isBase = (bool) ($u->pivot->is_base ?? false);
@@ -156,8 +159,25 @@ class TransactionController extends Controller
                 ];
             })->values()->toArray();
 
+            $warehouseStocks = $product->warehouses->map(function ($w) {
+                return [
+                    'id' => $w->id,
+                    'code' => $w->code,
+                    'name' => $w->name,
+                    'stock' => (int) ($w->pivot->stock ?? 0),
+                ];
+            });
+
+            $otherWarehouses = $warehouseStocks
+                ->filter(fn ($w) => $w['id'] !== (int) $warehouseId && $w['stock'] > 0)
+                ->values()
+                ->toArray();
+
             return [
                 ...$product->toArray(),
+                'stock' => $warehouseStock,
+                'other_warehouses' => $otherWarehouses,
+                'warehouse_stocks' => $warehouseStocks->values()->toArray(),
                 'units' => $units,
                 'pricing_badge' => $pricing && ! empty($pricing['pricing_rule']) ? [
                     'label' => $pricing['pricing_rule']['label'],
@@ -193,6 +213,8 @@ class TransactionController extends Controller
         // Get active bank accounts for bank transfer
         $bankAccounts = BankAccount::active()->ordered()->get();
 
+        $warehouses = Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name', 'type']);
+
         return [
             'carts' => $carts,
             'carts_total' => $carts_total,
@@ -204,6 +226,7 @@ class TransactionController extends Controller
             'paymentGateways' => $paymentSetting?->enabledGateways() ?? [],
             'defaultPaymentGateway' => $defaultGateway,
             'bankAccounts' => $bankAccounts,
+            'warehouses' => $warehouses,
             'shiftSummary' => $this->cashierShiftService->summarizeForDisplay($activeShift),
             'loyaltyTierOptions' => $this->loyaltyService->tierOptions(),
         ];
@@ -221,16 +244,20 @@ class TransactionController extends Controller
         $warehouseId = $activeShift?->warehouse_id;
         $barcode = (string) $request->barcode;
 
-        $product = Product::with('units')
+        $product = Product::with(['units', 'warehouses'])
             ->where(function ($q) use ($barcode) {
                 $q->where('barcode', $barcode)
                     ->orWhereHas('units', fn ($uq) => $uq->where('product_units.barcode', $barcode));
             })
-            ->whereHas('warehouses', fn ($q) => $q->where('product_warehouse.warehouse_id', $warehouseId))
+            ->when($warehouseId, function ($q) use ($warehouseId) {
+                $q->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $warehouseId));
+            })
             ->first();
 
         if ($product) {
-            $pivotStock = $product->warehouses()->where('warehouse_id', $warehouseId)->first()?->pivot->stock ?? 0;
+            $pivotStock = $warehouseId
+                ? (int) ($product->warehouses()->where('warehouse_id', $warehouseId)->first()?->pivot->stock ?? 0)
+                : (int) $product->stock;
             $matchedUnit = $product->units->firstWhere('pivot.barcode', $barcode);
 
             return response()->json([
@@ -246,6 +273,57 @@ class TransactionController extends Controller
         return response()->json([
             'success' => false,
             'data' => null,
+        ]);
+    }
+
+    /**
+     * Get real-time stock breakdown across all active branches/warehouses for a product.
+     */
+    public function stockBreakdown($product): JsonResponse
+    {
+        $productModel = $product instanceof Product ? $product : Product::find($product);
+        if (! $productModel) {
+            return response()->json([
+                'success' => false,
+                'data' => null,
+            ], 404);
+        }
+
+        $activeShift = $this->cashierShiftService->getActiveShiftForUser(auth()->user()->id);
+        $currentWarehouseId = $activeShift?->warehouse_id;
+
+        $warehouses = Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name', 'type']);
+        $productModel->load('warehouses:id,code,name,type');
+
+        $activeWarehouseStock = $currentWarehouseId
+            ? (int) ($productModel->warehouses->firstWhere('id', $currentWarehouseId)?->pivot->stock ?? 0)
+            : (int) $productModel->stock;
+
+        $otherWarehouses = $warehouses
+            ->filter(fn ($w) => $w->id !== (int) $currentWarehouseId)
+            ->map(function ($w) use ($productModel) {
+                $whPivot = $productModel->warehouses->firstWhere('id', $w->id);
+
+                return [
+                    'id' => $w->id,
+                    'code' => $w->code,
+                    'name' => $w->name,
+                    'type' => $w->type,
+                    'stock' => (int) ($whPivot?->pivot->stock ?? 0),
+                ];
+            })
+            ->filter(fn ($w) => $w['stock'] > 0)
+            ->values()
+            ->toArray();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'product_id' => $productModel->id,
+                'active_warehouse_stock' => $activeWarehouseStock,
+                'other_warehouses' => $otherWarehouses,
+                'total_other_stock' => array_sum(array_column($otherWarehouses, 'stock')),
+            ],
         ]);
     }
 

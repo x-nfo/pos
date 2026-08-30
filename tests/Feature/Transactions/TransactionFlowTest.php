@@ -499,15 +499,16 @@ class TransactionFlowTest extends TestCase
         $checkoutResponse->assertStatus(422);
     }
 
-    protected function openShiftFor(User $cashier)
+    protected function openShiftFor(User $cashier, int $openingCash = 100000, ?int $warehouseId = null)
     {
         return CashierShift::create([
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,
             'opened_at' => now(),
-            'opening_cash' => 100000,
-            'expected_cash' => 100000,
+            'opening_cash' => $openingCash,
+            'expected_cash' => $openingCash,
             'status' => 'open',
+            'warehouse_id' => $warehouseId,
         ]);
     }
 
@@ -613,4 +614,41 @@ class TransactionFlowTest extends TestCase
                     ->where('autoPrintDriver', 'browser')
             );
     }
+
+    public function test_cashier_can_fetch_real_time_product_stock_breakdown(): void
+    {
+        $cashier = $this->createCashier();
+        $wh1 = \App\Models\Warehouse::create(['code' => 'WH-PST', 'name' => 'Pusat', 'is_active' => true]);
+        $wh2 = \App\Models\Warehouse::create(['code' => 'TK-B', 'name' => 'Cabang B', 'is_active' => true]);
+        $this->openShiftFor($cashier, 100000, $wh1->id);
+
+        $product = $this->createProduct();
+        $product->warehouses()->sync([
+            $wh1->id => ['stock' => 10],
+            $wh2->id => ['stock' => 25],
+        ]);
+
+        $response = $this
+            ->actingAs($cashier)
+            ->get(route('transactions.stock-breakdown', $product->id));
+
+        $response
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'product_id' => $product->id,
+                    'active_warehouse_stock' => 10,
+                    'other_warehouses' => [
+                        [
+                            'id' => $wh2->id,
+                            'name' => 'Cabang B',
+                            'stock' => 25,
+                        ],
+                    ],
+                    'total_other_stock' => 25,
+                ],
+            ]);
+    }
 }
+

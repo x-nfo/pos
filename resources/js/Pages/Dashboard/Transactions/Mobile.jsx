@@ -16,6 +16,7 @@ import MobilePaymentSheet from "@/Components/POS/Mobile/MobilePaymentSheet";
 import { WALK_IN_CUSTOMER } from "@/Components/POS/CustomerSelect";
 import QuickAddProductModal from "@/Components/POS/QuickAddProductModal";
 import OfflineReceiptModal from "@/Components/POS/OfflineReceiptModal";
+import WarehouseSelect from "@/Components/POS/WarehouseSelect";
 import useBarcodeScanner from "@/Hooks/useBarcodeScanner";
 import { useHaptic } from "@/Hooks/useHaptic";
 import { useWebShare } from "@/Hooks/useWebShare";
@@ -48,6 +49,7 @@ export default function Mobile({
     paymentGateways = [],
     defaultPaymentGateway = "cash",
     bankAccounts = [],
+    warehouses = [],
     loyaltyTierOptions = [],
 }) {
     const { auth, activeCashierShift, flash, errors } = usePage().props;
@@ -109,6 +111,15 @@ export default function Mobile({
     const [shiftModalOpen, setShiftModalOpen] = useState(false);
     const [openingCashInput, setOpeningCashInput] = useState("");
     const [shiftNotesInput, setShiftNotesInput] = useState("");
+    const [shiftWarehouseId, setShiftWarehouseId] = useState(
+        warehouses.length > 0 ? String(warehouses[0].id) : ""
+    );
+
+    useEffect(() => {
+        if (warehouses.length > 0 && !shiftWarehouseId) {
+            setShiftWarehouseId(String(warehouses[0].id));
+        }
+    }, [warehouses]);
 
     // Local cached lists
     const [productList, setProductList] = useState(products);
@@ -765,6 +776,7 @@ export default function Mobile({
             route("cashier-shifts.store"),
             {
                 opening_cash: Number(openingCashInput || 0),
+                warehouse_id: shiftWarehouseId ? Number(shiftWarehouseId) : undefined,
                 notes: shiftNotesInput,
                 redirect_to: "transactions.mobile",
             },
@@ -923,6 +935,15 @@ export default function Mobile({
                             </p>
 
                             <div className="space-y-3">
+                                {warehouses.length > 0 && (
+                                    <WarehouseSelect
+                                        warehouses={warehouses}
+                                        selectedId={shiftWarehouseId}
+                                        onChange={(id) => setShiftWarehouseId(String(id))}
+                                        size="sm"
+                                    />
+                                )}
+
                                 <div>
                                     <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
                                         Modal Awal (Kas Fisik)

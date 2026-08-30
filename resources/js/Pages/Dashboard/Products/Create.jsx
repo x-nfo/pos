@@ -22,14 +22,22 @@ import {
     IconDatabase,
     IconCamera,
     IconPlus,
+    IconBuildingStore,
 } from "@tabler/icons-react";
 import ProductUnitsInput from "@/Components/Dashboard/ProductUnitsInput";
 import ImageCaptureUpload from "@/Components/Dashboard/ImageCaptureUpload";
 import BarcodeScanner from "@/Components/POS/BarcodeScanner";
 import QuickCategoryModal from "@/Components/Dashboard/QuickCategoryModal";
 
-export default function Create({ categories = [], units = [] }) {
+export default function Create({ categories = [], units = [], warehouses = [] }) {
     const { errors } = usePage().props;
+
+    const initialWarehouseStocks = {};
+    if (warehouses && warehouses.length > 0) {
+        warehouses.forEach((w) => {
+            initialWarehouseStocks[w.id] = "";
+        });
+    }
 
     const { data, setData, post, processing } = useForm({
         image: "",
@@ -41,6 +49,7 @@ export default function Create({ categories = [], units = [] }) {
         buy_price: "",
         sell_price: "",
         stock: "",
+        warehouse_stocks: initialWarehouseStocks,
         min_stock: "",
         max_stock: "",
         units: [],
@@ -353,7 +362,7 @@ export default function Create({ categories = [], units = [] }) {
                                 <IconCurrencyDollar size={18} />
                                 Harga & Stok
                             </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <Input
                                     type="number"
                                     label="Harga Beli"
@@ -374,16 +383,96 @@ export default function Create({ categories = [], units = [] }) {
                                     errors={errors.sell_price}
                                     placeholder="0"
                                 />
-                                <Input
-                                    type="number"
-                                    label="Stok Awal"
-                                    value={data.stock}
-                                    onChange={(e) =>
-                                        setData("stock", e.target.value)
-                                    }
-                                    errors={errors.stock}
-                                    placeholder="0"
-                                />
+                            </div>
+
+                            {/* Stock Allocation Section */}
+                            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                {warehouses && warehouses.length > 1 ? (
+                                    <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-4 border border-slate-200 dark:border-slate-700">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                                            <div>
+                                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                                    <IconBuildingStore size={16} className="text-primary-500" />
+                                                    Alokasi Stok Awal per Cabang / Gudang
+                                                </label>
+                                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                                    Masukkan jumlah stok fisik awal untuk masing-masing cabang.
+                                                </p>
+                                            </div>
+                                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
+                                                <span className="text-xs text-slate-500 dark:text-slate-400">Total:</span>
+                                                <span className="text-sm font-bold text-primary-600 dark:text-primary-400">
+                                                    {Object.values(data.warehouse_stocks || {}).reduce(
+                                                        (acc, curr) => acc + (parseInt(curr, 10) || 0),
+                                                        0
+                                                    )}{" "}
+                                                    pcs
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                            {warehouses.map((w) => (
+                                                <div
+                                                    key={w.id}
+                                                    className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs"
+                                                >
+                                                    <div className="flex items-center justify-between gap-2 mb-2">
+                                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">
+                                                            {w.name}
+                                                        </span>
+                                                        <div className="flex items-center gap-1 shrink-0">
+                                                            <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                                                {w.code}
+                                                            </span>
+                                                            {w.type === "main" && (
+                                                                <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-primary-100 text-primary-700 dark:bg-primary-900/60 dark:text-primary-300">
+                                                                    Utama
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        value={data.warehouse_stocks[w.id] ?? ""}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            const updated = {
+                                                                ...data.warehouse_stocks,
+                                                                [w.id]: val,
+                                                            };
+                                                            const total = Object.values(updated).reduce(
+                                                                (acc, curr) => acc + (parseInt(curr, 10) || 0),
+                                                                0
+                                                            );
+                                                            setData((prev) => ({
+                                                                ...prev,
+                                                                warehouse_stocks: updated,
+                                                                stock: total,
+                                                            }));
+                                                        }}
+                                                        placeholder="0"
+                                                        className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="max-w-xs">
+                                        <Input
+                                            type="number"
+                                            label="Stok Awal"
+                                            value={data.stock}
+                                            onChange={(e) =>
+                                                setData("stock", e.target.value)
+                                            }
+                                            errors={errors.stock}
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             {/* Batas Stok Minimal & Maksimal */}

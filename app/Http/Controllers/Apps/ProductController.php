@@ -33,15 +33,65 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $products = Product::when($request->search, function ($products, $search) {
-            $products = $products->where('title', 'like', '%'.$search.'%');
-        })->with('category')->latest()->paginate($this->perPage())->withQueryString();
+        $filters = [
+            'search' => $request->input('search'),
+            'warehouse_id' => $request->input('warehouse_id'),
+        ];
 
-        $warehouses = Warehouse::active()->orderBy('code')->get(['id', 'code', 'name']);
+        $warehouseId = $filters['warehouse_id'] ? (int) $filters['warehouse_id'] : null;
+
+        $products = Product::query()
+            ->when($filters['search'], function ($q, $search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('title', 'like', '%'.$search.'%')
+                        ->orWhere('barcode', 'like', '%'.$search.'%')
+                        ->orWhere('sku', 'like', '%'.$search.'%');
+                });
+            })
+            ->when($warehouseId, function ($q) use ($warehouseId) {
+                $q->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $warehouseId));
+            })
+            ->with(['category:id,name', 'warehouses:id,code,name,type', 'units'])
+            ->latest()
+            ->paginate($this->perPage())
+            ->withQueryString();
+
+        $warehouses = Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name', 'type']);
+
+        $products->through(function (Product $product) use ($warehouseId, $warehouses) {
+            $warehouseStocks = $warehouses->map(function ($w) use ($product) {
+                $whPivot = $product->warehouses->firstWhere('id', $w->id);
+
+                return [
+                    'id' => $w->id,
+                    'code' => $w->code,
+                    'name' => $w->name,
+                    'type' => $w->type,
+                    'stock' => (int) ($whPivot?->pivot->stock ?? 0),
+                ];
+            });
+
+            $totalStock = (int) $warehouseStocks->sum('stock');
+            if ($totalStock === 0 && ! $product->warehouses->isNotEmpty()) {
+                $totalStock = (int) $product->stock;
+            }
+
+            $currentStock = $warehouseId
+                ? (int) ($product->warehouses->firstWhere('id', $warehouseId)?->pivot->stock ?? 0)
+                : $totalStock;
+
+            return [
+                ...$product->toArray(),
+                'stock' => $currentStock,
+                'total_stock' => $totalStock,
+                'warehouse_stocks' => $warehouseStocks->values()->toArray(),
+            ];
+        });
 
         return Inertia::render('Dashboard/Products/Index', [
             'products' => $products,
             'warehouses' => $warehouses,
+            'filters' => $filters,
         ]);
     }
 
@@ -55,11 +105,13 @@ class ProductController extends Controller
         // get categories
         $categories = Category::all();
         $units = Unit::orderBy('name')->get(['id', 'code', 'name', 'symbol']);
+        $warehouses = Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name', 'type']);
 
         // return inertia
         return Inertia::render('Dashboard/Products/Create', [
             'categories' => $categories,
             'units' => $units,
+            'warehouses' => $warehouses,
         ]);
     }
 
@@ -78,6 +130,30 @@ class ProductController extends Controller
                 $imageName = $image->hashName();
             }
 
+            $warehouseStocksInput = $request->input('warehouse_stocks', []);
+            $calculatedTotalStock = 0;
+            $normalizedWarehouseStocks = [];
+
+            if (is_array($warehouseStocksInput) && count($warehouseStocksInput) > 0) {
+                foreach ($warehouseStocksInput as $key => $val) {
+                    if (is_array($val) && isset($val['warehouse_id'])) {
+                        $wId = (int) $val['warehouse_id'];
+                        $qty = max(0, (int) ($val['stock'] ?? 0));
+                    } else {
+                        $wId = (int) $key;
+                        $qty = max(0, (int) $val);
+                    }
+                    if ($wId > 0) {
+                        $normalizedWarehouseStocks[$wId] = $qty;
+                        $calculatedTotalStock += $qty;
+                    }
+                }
+            }
+
+            $finalStock = count($normalizedWarehouseStocks) > 0
+                ? $calculatedTotalStock
+                : (int) ($request->input('stock') ?? 0);
+
             // create product
             $product = Product::create([
                 'image' => $imageName,
@@ -88,7 +164,7 @@ class ProductController extends Controller
                 'category_id' => $request->category_id,
                 'buy_price' => $request->buy_price,
                 'sell_price' => $request->sell_price,
-                'stock' => $request->stock,
+                'stock' => $finalStock,
                 'min_stock' => $request->min_stock ?? 0,
                 'max_stock' => $request->max_stock ?? 0,
             ]);
@@ -97,18 +173,45 @@ class ProductController extends Controller
                 $this->syncProductUnits($product, $request->input('units'));
             }
 
-            $defaultWarehouse = Warehouse::active()->orderBy('code')->first();
-            if ($defaultWarehouse && (int) $request->stock > 0) {
-                $product->warehouses()->syncWithoutDetaching([
-                    $defaultWarehouse->id => ['stock' => (int) $request->stock],
-                ]);
-            }
+            $allActiveWarehouses = Warehouse::active()->orderBy('sort_order')->orderBy('code')->get();
 
-            $this->stockMutationService->recordInitialStock(
-                $product,
-                $request->user()?->id,
-                $defaultWarehouse?->id
-            );
+            if (count($normalizedWarehouseStocks) > 0) {
+                $syncPayload = [];
+                foreach ($allActiveWarehouses as $w) {
+                    $qty = $normalizedWarehouseStocks[$w->id] ?? 0;
+                    $syncPayload[$w->id] = ['stock' => $qty];
+                }
+                $product->warehouses()->sync($syncPayload);
+
+                foreach ($normalizedWarehouseStocks as $wId => $qty) {
+                    if ($qty > 0) {
+                        $this->stockMutationService->recordInitialStock(
+                            product: $product,
+                            userId: $request->user()?->id,
+                            warehouseId: $wId,
+                            qty: $qty
+                        );
+                    }
+                }
+            } else {
+                $defaultWarehouse = $allActiveWarehouses->first();
+                if ($defaultWarehouse) {
+                    $syncPayload = [];
+                    foreach ($allActiveWarehouses as $w) {
+                        $syncPayload[$w->id] = ['stock' => $w->id === $defaultWarehouse->id ? $finalStock : 0];
+                    }
+                    $product->warehouses()->sync($syncPayload);
+                }
+
+                if ($finalStock > 0) {
+                    $this->stockMutationService->recordInitialStock(
+                        product: $product,
+                        userId: $request->user()?->id,
+                        warehouseId: $defaultWarehouse?->id,
+                        qty: $finalStock
+                    );
+                }
+            }
 
             $this->auditLogService->log(
                 event: 'product.created',

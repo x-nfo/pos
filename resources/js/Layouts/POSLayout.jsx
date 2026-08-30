@@ -230,7 +230,7 @@ export default function POSLayout({ children }) {
                             >
                                 <IconWallet size={16} />
                                 <span>
-                                    Shift aktif •{" "}
+                                    {activeCashierShift.warehouse?.name ? `${activeCashierShift.warehouse.name} • ` : ""}Shift aktif •{" "}
                                     {new Intl.NumberFormat("id-ID").format(
                                         activeCashierShift.expected_cash || 0
                                     )}

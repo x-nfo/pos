@@ -99,7 +99,7 @@ export default function MobileHeader({
                                     className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded-full border border-emerald-200/50 dark:border-emerald-800/50 flex-shrink-0 active:scale-95 transition-transform hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
                                 >
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    Shift #{activeShift.id}
+                                    {activeShift.warehouse?.name ? activeShift.warehouse.name : `Shift #${activeShift.id}`}
                                 </Link>
                             ) : (
                                 <button

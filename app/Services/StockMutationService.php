@@ -19,9 +19,9 @@ class StockMutationService
         private readonly AuditLogService $auditLogService
     ) {}
 
-    public function recordInitialStock(Product $product, ?int $userId = null, ?int $warehouseId = null): ?StockMutation
+    public function recordInitialStock(Product $product, ?int $userId = null, ?int $warehouseId = null, ?int $qty = null): ?StockMutation
     {
-        $initialStock = (int) $product->stock;
+        $initialStock = $qty !== null ? (int) $qty : (int) $product->stock;
 
         if ($initialStock <= 0) {
             return null;

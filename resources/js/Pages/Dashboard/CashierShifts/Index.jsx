@@ -3,6 +3,7 @@ import { Head, Link, router, usePage } from "@inertiajs/react";
 import DashboardLayout from "@/Layouts/DashboardLayout";
 import Table from "@/Components/Dashboard/Table";
 import Pagination from "@/Components/Dashboard/Pagination";
+import WarehouseSelect from "@/Components/POS/WarehouseSelect";
 import { useAuthorization } from "@/Utils/authorization";
 import {
     IconCashBanknote,
@@ -135,20 +136,13 @@ export default function Index({
                                 )}
                             </div>
                             <div>
-                                <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                                    Gudang / Cabang
-                                </label>
-                                <select
-                                    value={warehouseId}
-                                    onChange={(event) => setWarehouseId(event.target.value)}
-                                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                                >
-                                    {warehouses.map((w) => (
-                                        <option key={w.id} value={w.id}>
-                                            {w.code} — {w.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                <WarehouseSelect
+                                    warehouses={warehouses}
+                                    selectedId={warehouseId}
+                                    onChange={(id) => setWarehouseId(id)}
+                                    size="sm"
+                                    buttonClassName="!h-11"
+                                />
                             </div>
                             <div className="md:col-span-2">
                                 <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">

@@ -21,6 +21,7 @@ import HeldTransactions, {
 } from "@/Components/POS/HeldTransactions";
 import QuickAddProductModal from "@/Components/POS/QuickAddProductModal";
 import OfflineReceiptModal from "@/Components/POS/OfflineReceiptModal";
+import WarehouseSelect from "@/Components/POS/WarehouseSelect";
 import useBarcodeScanner from "@/Hooks/useBarcodeScanner";
 import { getProductImageUrl, getBankLogoUrl } from "@/Utils/imageUrl";
 import { useAuthorization } from "@/Utils/authorization";
@@ -63,6 +64,7 @@ export default function Index({
     paymentGateways = [],
     defaultPaymentGateway = "cash",
     bankAccounts = [],
+    warehouses = [],
     loyaltyTierOptions = [],
 }) {
     const {
@@ -103,6 +105,9 @@ export default function Index({
     const [selectedVoucherId, setSelectedVoucherId] = useState("");
     const [openingCashInput, setOpeningCashInput] = useState("");
     const [shiftNotesInput, setShiftNotesInput] = useState("");
+    const [shiftWarehouseId, setShiftWarehouseId] = useState(
+        warehouses.length > 0 ? String(warehouses[0].id) : ""
+    );
     const [productList, setProductList] = useState(products);
     const [customerList, setCustomerList] = useState(customers);
     const [categoryList, setCategoryList] = useState(categories);
@@ -112,6 +117,12 @@ export default function Index({
     const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
     const [quickAddInitialData, setQuickAddInitialData] = useState({});
     const [offlineReceiptData, setOfflineReceiptData] = useState(null);
+
+    useEffect(() => {
+        if (warehouses.length > 0 && !shiftWarehouseId) {
+            setShiftWarehouseId(String(warehouses[0].id));
+        }
+    }, [warehouses]);
 
     useEffect(() => {
         setProductList(products);
@@ -424,6 +435,7 @@ export default function Index({
     const handleOpenShift = () => {
         router.post(route("cashier-shifts.store"), {
             opening_cash: Number(openingCashInput || 0),
+            warehouse_id: shiftWarehouseId ? Number(shiftWarehouseId) : undefined,
             notes: shiftNotesInput,
             redirect_to: "transactions",
         });
@@ -952,7 +964,14 @@ export default function Index({
                             Buka shift terlebih dulu untuk mengaktifkan transaksi, keranjang, dan cash closing.
                         </p>
 
-                        <div className="mt-6 grid gap-4 md:grid-cols-2">
+                        <div className="mt-6 grid gap-4 md:grid-cols-3">
+                            {warehouses.length > 0 && (
+                                <WarehouseSelect
+                                    warehouses={warehouses}
+                                    selectedId={shiftWarehouseId}
+                                    onChange={(id) => setShiftWarehouseId(String(id))}
+                                />
+                            )}
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                                     Modal Awal

@@ -57,6 +57,10 @@ class CashierShiftService
             ]);
         }
 
+        if (! $warehouseId) {
+            $warehouseId = \App\Models\Warehouse::active()->orderBy('sort_order')->orderBy('code')->first()?->id;
+        }
+
         return CashierShift::create([
             'user_id' => $cashier->id,
             'opened_by' => $actor->id,
