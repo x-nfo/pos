@@ -109,7 +109,7 @@ Sistem membutuhkan server backend Laravel, dev server Vite HMR, dan background s
 cp .env.example .env
 composer install && npm install
 php artisan key:generate
-php artisan migrate --seed
+php artisan migrate --seed (PermissionSeeder, RoleSeeder, UserSeeder, PaymentSettingSeeder, SampleDataSeeder, OperationalCoreSeeder, FeatureCoverageSeeder)
 php artisan storage:link
 
 # 2. Jalankan Dev Server (Buka 2 Terminal terpisah)
