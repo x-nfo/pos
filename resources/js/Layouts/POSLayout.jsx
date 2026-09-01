@@ -49,9 +49,9 @@ export default function POSLayout({ children }) {
 
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+            document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => { });
         } else {
-            document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+            document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => { });
         }
     };
 
@@ -84,6 +84,7 @@ export default function POSLayout({ children }) {
             year: "numeric",
         });
     };
+
 
     return (
         <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
@@ -381,9 +382,8 @@ export default function POSLayout({ children }) {
                         style: {
                             background: darkMode ? "#1e293b" : "#fff",
                             color: darkMode ? "#f1f5f9" : "#1e293b",
-                            border: `1px solid ${
-                                darkMode ? "#334155" : "#e2e8f0"
-                            }`,
+                            border: `1px solid ${darkMode ? "#334155" : "#e2e8f0"
+                                }`,
                         },
                     }}
                 />

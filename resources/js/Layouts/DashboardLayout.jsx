@@ -65,6 +65,8 @@ export default function AppLayout({ children }) {
             ? route().current("dashboard")
             : url === "/dashboard" || url.startsWith("/dashboard?");
 
+    console.log(usePage().props);
+
     return (
         <div className="flex h-screen h-[100dvh] overflow-hidden bg-slate-100 dark:bg-slate-950 transition-colors duration-200 touch-action-manipulation">
             {/* Desktop Sidebar (>= 768px) */}
@@ -107,9 +109,8 @@ export default function AppLayout({ children }) {
                                 style: {
                                     background: darkMode ? "#1e293b" : "#fff",
                                     color: darkMode ? "#f1f5f9" : "#1e293b",
-                                    border: `1px solid ${
-                                        darkMode ? "#334155" : "#e2e8f0"
-                                    }`,
+                                    border: `1px solid ${darkMode ? "#334155" : "#e2e8f0"
+                                        }`,
                                     borderRadius: "12px",
                                 },
                             }}

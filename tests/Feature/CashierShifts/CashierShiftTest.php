@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\CashierShifts;
 
+use App\Models\Cart;
 use App\Models\CashierShift;
 use App\Models\Category;
 use App\Models\Customer;
@@ -278,6 +279,93 @@ class CashierShiftTest extends TestCase
                 'actual_cash' => 80000,
             ])
             ->assertRedirect(route('password.confirm'));
+    }
+
+    public function test_show_shift_page_returns_pending_held_carts_when_present(): void
+    {
+        $cashier = $this->createUserWithPermissions([
+            'cashier-shifts-access',
+            'cashier-shifts-close',
+        ]);
+
+        $shift = CashierShift::create([
+            'user_id' => $cashier->id,
+            'opened_by' => $cashier->id,
+            'opened_at' => now(),
+            'opening_cash' => 50000,
+            'expected_cash' => 50000,
+            'status' => CashierShift::STATUS_OPEN,
+        ]);
+
+        $category = Category::create([
+            'name' => 'Kategori Hold',
+            'description' => 'Kategori Hold',
+            'image' => 'hold.png',
+        ]);
+
+        $product = Product::create([
+            'category_id' => $category->id,
+            'image' => 'hold-product.png',
+            'barcode' => 'BRCD-'.Str::upper(Str::random(8)),
+            'sku' => 'SKU-'.Str::upper(Str::random(8)),
+            'title' => 'Produk Tertahan',
+            'description' => 'Produk Tertahan',
+            'buy_price' => 10000,
+            'sell_price' => 25000,
+            'stock' => 20,
+        ]);
+
+        Cart::create([
+            'cashier_id' => $cashier->id,
+            'product_id' => $product->id,
+            'qty' => 2,
+            'price' => 50000,
+            'hold_id' => 'HOLD-TEST1234',
+            'hold_label' => 'Meja 5',
+            'held_at' => now(),
+        ]);
+
+        $response = $this
+            ->actingAs($cashier)
+            ->get(route('cashier-shifts.show', $shift));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('Dashboard/CashierShifts/Show')
+            ->has('pendingHeldCarts', 1)
+            ->where('pendingHeldCarts.0.hold_id', 'HOLD-TEST1234')
+            ->where('pendingHeldCarts.0.label', 'Meja 5')
+            ->where('pendingHeldCarts.0.items_count', 2)
+            ->where('pendingHeldCarts.0.total', 50000)
+            ->where('pendingHeldCarts.0.items.0.product_title', 'Produk Tertahan')
+        );
+    }
+
+    public function test_show_shift_page_returns_empty_pending_held_carts_when_none(): void
+    {
+        $cashier = $this->createUserWithPermissions([
+            'cashier-shifts-access',
+            'cashier-shifts-close',
+        ]);
+
+        $shift = CashierShift::create([
+            'user_id' => $cashier->id,
+            'opened_by' => $cashier->id,
+            'opened_at' => now(),
+            'opening_cash' => 50000,
+            'expected_cash' => 50000,
+            'status' => CashierShift::STATUS_OPEN,
+        ]);
+
+        $response = $this
+            ->actingAs($cashier)
+            ->get(route('cashier-shifts.show', $shift));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('Dashboard/CashierShifts/Show')
+            ->has('pendingHeldCarts', 0)
+        );
     }
 
     private function createUserWithPermissions(array $permissions): User

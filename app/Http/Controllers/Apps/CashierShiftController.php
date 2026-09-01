@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CloseCashierShiftRequest;
 use App\Http\Requests\ConfirmPasswordForForceCloseRequest;
 use App\Http\Requests\StoreCashierShiftRequest;
+use App\Models\Cart;
 use App\Models\CashierShift;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -67,8 +68,35 @@ class CashierShiftController extends Controller
     {
         $cashierShift = $this->resolveVisibleShift($request, $cashierShift);
 
+        $pendingHeldCarts = Cart::with(['product:id,title,sell_price,image', 'unit:id,name'])
+            ->where('cashier_id', $cashierShift->user_id)
+            ->held()
+            ->get()
+            ->groupBy('hold_id')
+            ->map(function ($items, $holdId) {
+                $first = $items->first();
+
+                return [
+                    'hold_id' => $holdId,
+                    'label' => $first->hold_label,
+                    'held_at' => $first->held_at?->toISOString(),
+                    'items_count' => (int) $items->sum('qty'),
+                    'total' => (int) $items->sum('price'),
+                    'items' => $items->map(fn ($item) => [
+                        'id' => $item->id,
+                        'product_id' => $item->product_id,
+                        'product_title' => $item->product?->title,
+                        'qty' => (int) $item->qty,
+                        'price' => (int) $item->price,
+                        'unit_name' => $item->unit?->name,
+                    ])->values(),
+                ];
+            })
+            ->values();
+
         return Inertia::render('Dashboard/CashierShifts/Show', [
             'cashierShift' => $this->transformShift($cashierShift),
+            'pendingHeldCarts' => $pendingHeldCarts,
             'canForceClose' => $request->user()->isSuperAdmin() || $request->user()->can('cashier-shifts-force-close'),
         ]);
     }

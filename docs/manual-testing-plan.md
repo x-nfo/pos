@@ -92,11 +92,11 @@ Gunakan kolom **Status** pada setiap tabel untuk menandai progres pengujian:
 
 | Status | Test ID | Fitur / Skenario | Langkah Pengujian & Data Uji | Expected Result | Tipe |
 | :---: | :--- | :--- | :--- | :--- | :--- |
-| [ ] | **TC-SHIFT-01** | Buka Shift (Open Shift) Normal | Buka shift dengan Modal Awal (Starting Cash) = Rp 200.000. | Shift status: `open`; `active_shift` terdeteksi di shared Inertia props. | *Positive* |
-| [ ] | **TC-SHIFT-02** | Akses POS Tanpa Buka Shift | Kasir mencoba akses `/transactions/addToCart` atau checkout tanpa shift aktif. | Terblokir oleh middleware `active_shift`; diarahkan wajib buka shift terlebih dahulu. | *Negative* |
-| [ ] | **TC-SHIFT-03** | Buka Shift Ganda di Kasir Sama | User membuka shift kedua saat shift pertama masih berstatus `open`. | Ditolak dengan pesan "Sesi shift kasir masih aktif". | **Edge Case** |
-| [ ] | **TC-SHIFT-04** | Tutup Shift - Selisih Kas (Discrepancy) | Kas sistem tercatat Rp 1.500.000. Kasir input fisik Rp 1.450.000 (Selisih -Rp 50.000). | Shift tertutup; tercatat `difference = -50000`; flag selisih tersimpan di audit log. | **Edge Case** |
-| [ ] | **TC-SHIFT-05** | Tutup Shift dengan Pending Hold Cart | Kasir menutup shift saat masih ada keranjang yang di-`hold`. | Sistem memunculkan dialog konfirmasi daftar transaksi tertahan sebelum tutup. | **Edge Case** |
+| [X] | **TC-SHIFT-01** | Buka Shift (Open Shift) Normal | Buka shift dengan Modal Awal (Starting Cash) = Rp 200.000. | Shift status: `open`; `active_shift` terdeteksi di shared Inertia props. | *Positive* |
+| [X] | **TC-SHIFT-02** | Akses POS Tanpa Buka Shift | Kasir mencoba akses `/transactions/addToCart` atau checkout tanpa shift aktif. | Terblokir oleh middleware `active_shift`; diarahkan wajib buka shift terlebih dahulu. | *Negative* |
+| [X] | **TC-SHIFT-03** | Buka Shift Ganda di Kasir Sama | User membuka shift kedua saat shift pertama masih berstatus `open`. | Ditolak dengan pesan "Sesi shift kasir masih aktif". | **Edge Case** |
+| [X] | **TC-SHIFT-04** | Tutup Shift - Selisih Kas (Discrepancy) | Kas sistem tercatat Rp 1.500.000. Kasir input fisik Rp 1.450.000 (Selisih -Rp 50.000). | Shift tertutup; tercatat `difference = -50000`; flag selisih tersimpan di audit log. | **Edge Case** |
+| [X] | **TC-SHIFT-05** | Tutup Shift dengan Pending Hold Cart | Kasir menutup shift saat masih ada keranjang yang di-`hold`. | Sistem memunculkan dialog konfirmasi daftar transaksi tertahan sebelum tutup. | **Edge Case** |
 | [ ] | **TC-SHIFT-06** | Rekap Multi-Metode Pembayaran | Selesaikan transaksi via Cash, Midtrans, Xendit, QRISly, Transfer, dan Piutang dalam 1 shift. | Ringkasan shift memisahkan total per metode secara presisi (tanpa selisih 1 rupiah). | *Integrity* |
 
 ---
@@ -108,7 +108,7 @@ Gunakan kolom **Status** pada setiap tabel untuk menandai progres pengujian:
 | :---: | :--- | :--- | :--- | :--- | :--- |
 | [ ] | **TC-POS-01** | Scan Barcode & Text Lookup | Scan barcode via scanner fisik dan pencarian teks nama/SKU. | Produk masuk ke keranjang dalam < 300ms dengan harga & stok real-time. | *Positive* |
 | [ ] | **TC-POS-02** | Konversi Satuan (Unit Conversion) | Tambah produk satuan "Box" (faktor konversi = 24 Pcs) sebanyak 2 Box. | Subtotal = 2 × Harga Box; saat checkout, stok master terpotong 48 Pcs. | *Positive* |
-| [ ] | **TC-POS-03** | Pembelian Melebihi Stok Tersedia | Tambah qty = 10 untuk produk dengan sisa stok = 5 (tanpa izin minus stock). | Ditolak dengan notifikasi "Stok tidak mencukupi". | *Negative* |
+| [X] | **TC-POS-03** | Pembelian Melebihi Stok Tersedia | Tambah qty = 10 untuk produk dengan sisa stok = 5 (tanpa izin minus stock). | Ditolak dengan notifikasi "Stok tidak mencukupi". | *Negative* |
 | [ ] | **TC-POS-04** | Produk Kit / Bundling (Komposit) | Jual 1 Paket Hemat (berisi 1 Pcs Item A, 2 Pcs Item B). | Stok Paket terjual 1; stok Item A terpotong 1, stok Item B terpotong 2. | *Positive* |
 | [ ] | **TC-POS-05** | Produk Kit dengan Komponen Kosong | Jual Paket Hemat saat salah satu komponennya memiliki stok = 0. | Checkout diblokir dengan rincian komponen yang habis. | **Edge Case** |
 | [ ] | **TC-POS-06** | Pemilihan Batch / Expiry (FEFO) | Jual produk obat ber-batch; pilih batch yang mendekati kadaluarsa. | Stok batch terpilih berkurang; tanggal kadaluarsa tercetak di struk jika diaktifkan. | *Positive* |
@@ -293,7 +293,7 @@ Gunakan kolom **Status** pada setiap tabel untuk menandai progres pengujian:
 
 | Status | Test ID | Fitur / Skenario | Langkah Pengujian & Data Uji | Expected Result | Tipe |
 | :---: | :--- | :--- | :--- | :--- | :--- |
-| [ ] | **TC-IMP-01** | Download Template Import Excel & CSV | Download template produk di `/import/template/products`. | File spreadsheet valid ter-download dengan header kolom lengkap. | *Positive* |
+| [X] | **TC-IMP-01** | Download Template Import Excel & CSV | Download template produk di `/import/template/products`. | File spreadsheet valid ter-download dengan header kolom lengkap. | *Positive* |
 | [ ] | **TC-IMP-02** | Import 1.000 Produk Sekaligus | Upload file Excel berisi 1.000 produk dengan beberapa kategori baru. | Semua produk masuk ke DB; kategori baru auto-create jika belum ada; tidak timeout. | *Performance* |
 | [ ] | **TC-IMP-03** | Import Data Duplikat / SKU Kembar | Upload file dengan barcode / SKU yang sudah ada di database. | Sistem menampilkan error list baris yang gagal dengan keterangan "SKU sudah digunakan". | **Negative / Edge** |
 | [ ] | **TC-IMP-04** | Export Data Pelanggan & Transaksi | Export 10.000 transaksi ke format Excel & CSV dengan filter tahun berjalan. | File ter-download sempurna tanpa memori overflow (*chunked streaming export*). | *Positive* |
