@@ -57,6 +57,33 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_login_attempts_are_throttled_after_too_many_failed_attempts(): void
+    {
+        $user = User::factory()->create();
+
+        for ($i = 0; $i < 5; $i++) {
+            $response = $this->post('/login', [
+                'email' => $user->email,
+                'password' => 'wrong-password',
+            ] + $this->botGuardPayload());
+
+            $response->assertSessionHasErrors('email');
+            $this->assertGuest();
+        }
+
+        // 6th attempt must be throttled (locked out)
+        $blockedResponse = $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'wrong-password',
+        ] + $this->botGuardPayload());
+
+        $blockedResponse->assertSessionHasErrors('email');
+        $this->assertDatabaseHas('audit_logs', [
+            'event' => 'auth.locked_out',
+            'module' => 'auth',
+        ]);
+    }
+
     public function test_users_can_logout(): void
     {
         $user = User::factory()->create();

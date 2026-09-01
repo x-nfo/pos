@@ -5,6 +5,8 @@ return [
         'public_registration' => env('AUTH_PUBLIC_REGISTRATION', false),
         'register_throttle' => env('AUTH_REGISTER_THROTTLE', '3,10'),
         'forgot_password_throttle' => env('AUTH_FORGOT_PASSWORD_THROTTLE', '5,10'),
+        'login_max_attempts' => (int) env('AUTH_LOGIN_MAX_ATTEMPTS', 5),
+        'login_decay_seconds' => (int) env('AUTH_LOGIN_DECAY_SECONDS', 60),
     ],
     'bot_guard' => [
         'enabled' => env('SECURITY_BOT_GUARD_ENABLED', true),

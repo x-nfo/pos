@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Head, Link, useForm, usePage } from "@inertiajs/react";
 import { useTranslation } from "react-i18next";
 import AuthBotGuardFields from "@/Components/AuthBotGuardFields";
@@ -9,8 +9,9 @@ import {
     IconEye,
     IconEyeOff,
     IconLoader2,
+    IconShieldLock,
+    IconClock,
 } from "@tabler/icons-react";
-import { useState } from "react";
 
 export default function Login({ status, canResetPassword, canRegister, botGuard }) {
     const { t } = useTranslation();
@@ -25,6 +26,37 @@ export default function Login({ status, canResetPassword, canRegister, botGuard 
         [tokenField]: botGuard?.token || "",
     });
     const [showPassword, setShowPassword] = useState(false);
+    const [countdown, setCountdown] = useState(0);
+
+    const isRateLimited = Boolean(
+        errors.email &&
+        (errors.email.toLowerCase().includes("terlalu banyak") ||
+         errors.email.toLowerCase().includes("too many") ||
+         errors.email.toLowerCase().includes("detik") ||
+         errors.email.toLowerCase().includes("seconds"))
+    );
+
+    useEffect(() => {
+        if (isRateLimited && errors.email) {
+            const match = errors.email.match(/(\d+)\s*(?:detik|seconds)/i);
+            const seconds = match ? parseInt(match[1], 10) : 60;
+            setCountdown(seconds);
+        }
+    }, [errors.email, isRateLimited]);
+
+    useEffect(() => {
+        if (countdown <= 0) return;
+        const timer = setInterval(() => {
+            setCountdown((prev) => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [countdown]);
 
     useEffect(() => {
         return () => reset("password");
@@ -32,6 +64,7 @@ export default function Login({ status, canResetPassword, canRegister, botGuard 
 
     const submit = (e) => {
         e.preventDefault();
+        if (countdown > 0) return;
         post(route("login"));
     };
 
@@ -96,6 +129,36 @@ export default function Login({ status, canResetPassword, canRegister, botGuard 
                                     {errors.human}
                                 </div>
                             )}
+
+                            {/* Rate Limiting / Lockout Alert Banner */}
+                            {isRateLimited && (
+                                <div className="rounded-2xl border border-rose-200 bg-rose-50/95 p-4 dark:border-rose-900/50 dark:bg-rose-950/50 text-rose-900 dark:text-rose-200 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <div className="flex items-start gap-3.5">
+                                        <div className="p-2.5 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 shrink-0">
+                                            <IconShieldLock size={24} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="text-sm font-bold text-rose-900 dark:text-rose-100">
+                                                Akses Login Terkunci Sementara
+                                            </h4>
+                                            <p className="text-xs text-rose-700 dark:text-rose-300 mt-1 leading-relaxed">
+                                                Terlalu banyak percobaan login gagal. Demi keamanan sistem, akses diblokir sementara.
+                                            </p>
+                                            {countdown > 0 ? (
+                                                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-200/80 dark:bg-rose-900/80 text-xs font-semibold text-rose-950 dark:text-rose-100 border border-rose-300/60 dark:border-rose-800">
+                                                    <IconClock size={15} className="animate-spin text-rose-600 dark:text-rose-400" />
+                                                    <span>Coba lagi dalam <strong className="font-extrabold text-rose-950 dark:text-white">{countdown}</strong> detik</span>
+                                                </div>
+                                            ) : (
+                                                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-xs font-semibold text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                                    <span>Waktu tunggu selesai. Silakan coba login kembali.</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Email */}
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -120,7 +183,7 @@ export default function Login({ status, canResetPassword, canRegister, botGuard 
                                         } bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-4 focus:ring-primary-500/20 transition-all`}
                                     />
                                 </div>
-                                {errors.email && (
+                                {errors.email && !isRateLimited && (
                                     <p className="mt-1.5 text-sm text-danger-500">
                                         {errors.email}
                                     </p>
@@ -160,7 +223,7 @@ export default function Login({ status, canResetPassword, canRegister, botGuard 
                                         className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                                     >
                                         {showPassword ? (
-                                            <IconEyeOff size={20} />
+                                             <IconEyeOff size={20} />
                                         ) : (
                                             <IconEye size={20} />
                                         )}
@@ -205,8 +268,8 @@ export default function Login({ status, canResetPassword, canRegister, botGuard 
                             {/* Submit */}
                             <button
                                 type="submit"
-                                disabled={processing}
-                                className="w-full h-12 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold hover:from-primary-600 hover:to-primary-700 focus:ring-4 focus:ring-primary-500/30 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                                disabled={processing || countdown > 0}
+                                className="w-full h-12 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold hover:from-primary-600 hover:to-primary-700 focus:ring-4 focus:ring-primary-500/30 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary-500/25"
                             >
                                 {processing ? (
                                     <>
@@ -215,6 +278,11 @@ export default function Login({ status, canResetPassword, canRegister, botGuard 
                                             className="animate-spin"
                                         />
                                         {t("common.labels.processing")}
+                                    </>
+                                ) : countdown > 0 ? (
+                                    <>
+                                        <IconShieldLock size={20} />
+                                        <span>Terkunci ({countdown}s)</span>
                                     </>
                                 ) : (
                                     t("auth.login.submit")

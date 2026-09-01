@@ -6,6 +6,7 @@ Dokumentasi ini ditujukan untuk developer yang ingin setup, memahami alur modul,
 
 ### Onboarding
 - `docs/getting-started.md` — setup dari awal
+- `docs/manual-testing-plan.md` — master manual testing plan & edge test matrix 🆕
 - `docs/deployment.md` — panduan deployment ke production 🆕
 - `docs/simulation-guide.md` — alur & simulasi urutan penggunaan (setup → harian → laporan) 🆕
 - `docs/configuration.md` — environment, payment, tax, printer
