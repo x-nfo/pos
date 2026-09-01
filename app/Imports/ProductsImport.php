@@ -14,6 +14,8 @@ class ProductsImport implements OnEachRow, WithChunkReading, WithHeadingRow, Wit
 {
     private int $rowCount = 0;
 
+    public function __construct(private int $warehouseId) {}
+
     public function prepareForValidation(array $data, int $index): array
     {
         if (isset($data['barcode'])) {
@@ -68,7 +70,7 @@ class ProductsImport implements OnEachRow, WithChunkReading, WithHeadingRow, Wit
             ? (float) $data['tarif_pajak']
             : null;
 
-        Product::create([
+        $product = Product::create([
             'image' => '',
             'barcode' => $barcode,
             'sku' => $sku,
@@ -83,6 +85,14 @@ class ProductsImport implements OnEachRow, WithChunkReading, WithHeadingRow, Wit
             'tax_type' => $taxType,
             'tax_rate' => $taxRate,
         ]);
+
+        if ($stock > 0) {
+            \App\Models\ProductWarehouse::create([
+                'product_id' => $product->id, 
+                'warehouse_id' => $this->warehouseId,
+                'stock' => $stock
+            ]);
+        }
     }
 
     public function rules(): array

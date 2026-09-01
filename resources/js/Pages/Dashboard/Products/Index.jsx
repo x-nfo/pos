@@ -25,6 +25,7 @@ import Pagination from "@/Components/Dashboard/Pagination";
 import { getProductImageUrl } from "@/Utils/imageUrl";
 import BarcodePrintModal from "@/Components/Barcode/BarcodePrintModal";
 import MobileDataCard from "@/Components/Mobile/MobileDataCard";
+import Modal from "@/Components/Dashboard/Modal";
 import { useAuthorization } from "@/Utils/authorization";
 import { router } from "@inertiajs/react";
 
@@ -186,6 +187,11 @@ export default function Index({ products, warehouses = [], filters = {} }) {
     const canEditProducts = can("products-edit");
     const canDeleteProducts = can("products-delete");
 
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importData, setImportData] = useState({ file: null, warehouse_id: "" });
+    const [importing, setImporting] = useState(false);
+    const [importError, setImportError] = useState("");
+
     const selectedWarehouseId = filters.warehouse_id || "";
     const selectedWarehouse = warehouses.find(
         (w) => String(w.id) === String(selectedWarehouseId)
@@ -248,6 +254,31 @@ export default function Index({ products, warehouses = [], filters = {} }) {
         router.delete(route("products.destroy", productId));
     };
 
+    const handleImportSubmit = (e) => {
+        e.preventDefault();
+        if (!importData.file || !importData.warehouse_id) {
+            setImportError("File dan gudang tujuan wajib diisi.");
+            return;
+        }
+        setImportError("");
+        setImporting(true);
+        router.post(
+            route("import.products"),
+            { file: importData.file, warehouse_id: importData.warehouse_id },
+            {
+                forceFormData: true,
+                onFinish: () => setImporting(false),
+                onSuccess: () => {
+                    setShowImportModal(false);
+                    setImportData({ file: null, warehouse_id: "" });
+                },
+                onError: (errors) => {
+                    setImportError(errors.file || errors.warehouse_id || "Gagal mengimport produk.");
+                }
+            }
+        );
+    };
+
     return (
         <>
             <Head title="Produk" />
@@ -283,33 +314,12 @@ export default function Index({ products, warehouses = [], filters = {} }) {
                                 </a>
                                 <button
                                     type="button"
-                                    onClick={() => document.getElementById("import-products-input")?.click()}
+                                    onClick={() => setShowImportModal(true)}
                                     className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto"
                                 >
                                     <IconUpload size={18} />
                                     Import
                                 </button>
-                                <input
-                                    id="import-products-input"
-                                    type="file"
-                                    accept=".xlsx,.xls,.csv"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                        const file = e.target.files && e.target.files[0];
-                                        if (file) {
-                                            router.post(
-                                                route("import.products"),
-                                                { file },
-                                                {
-                                                    forceFormData: true,
-                                                    onFinish: () => {
-                                                        e.target.value = "";
-                                                    },
-                                                }
-                                            );
-                                        }
-                                    }}
-                                />
                             </>
                         )}
                         {canCreateProducts && (
@@ -721,9 +731,60 @@ export default function Index({ products, warehouses = [], filters = {} }) {
                     setShowBarcodeModal(false);
                     setSingleProductBarcode(null);
                 }}
-                products={selectedProducts}
-                singleProduct={singleProductBarcode}
+                products={
+                    singleProductBarcode
+                        ? [singleProductBarcode]
+                        : selectedProducts
+                }
             />
+
+            {/* Import Products Modal */}
+            <Modal
+                show={showImportModal}
+                title="Import Produk"
+                icon={<IconUpload size={20} />}
+                onClose={() => setShowImportModal(false)}
+                maxWidth="md"
+            >
+                <form onSubmit={handleImportSubmit} className="space-y-4">
+                    {importError && (
+                        <div className="p-3 text-sm text-danger-600 bg-danger-50 rounded-xl">
+                            {importError}
+                        </div>
+                    )}
+                    <div>
+                        <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Gudang Tujuan <span className="text-danger-500">*</span></label>
+                        <select
+                            value={importData.warehouse_id}
+                            onChange={(e) => setImportData({ ...importData, warehouse_id: e.target.value })}
+                            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        >
+                            <option value="">Pilih Gudang</option>
+                            {warehouses.map((w) => (
+                                <option key={w.id} value={w.id}>{w.code} — {w.name}</option>
+                            ))}
+                        </select>
+                        <p className="mt-1 text-xs text-slate-500">Stok awal pada file import akan dialokasikan ke gudang ini.</p>
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">File Excel/CSV <span className="text-danger-500">*</span></label>
+                        <input
+                            type="file"
+                            accept=".xlsx,.xls,.csv"
+                            onChange={(e) => setImportData({ ...importData, file: e.target.files[0] })}
+                            className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                        />
+                    </div>
+                    <div className="flex justify-end pt-2">
+                        <Button 
+                            type="submit" 
+                            disabled={importing}
+                            className="bg-primary-500 hover:bg-primary-600 text-white shadow-lg shadow-primary-500/30"
+                            label={importing ? "Mengimport..." : "Import Produk"}
+                        />
+                    </div>
+                </form>
+            </Modal>
         </>
     );
 }

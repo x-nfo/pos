@@ -73,6 +73,10 @@ class GoodsReceivingController extends Controller
 
         $order = PurchaseOrder::with('items')->findOrFail($data['purchase_order_id']);
 
+        if (is_null($order->warehouse_id)) {
+            return back()->with('error', 'Purchase order ini tidak memiliki gudang tujuan. Silakan edit PO terlebih dahulu untuk menentukan gudang.');
+        }
+
         foreach ($data['items'] as $item) {
             $poItem = $order->items->firstWhere('id', $item['purchase_order_item_id']);
             if (! $poItem) {

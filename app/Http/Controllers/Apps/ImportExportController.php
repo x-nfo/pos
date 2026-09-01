@@ -36,10 +36,11 @@ class ImportExportController extends Controller
     {
         $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv,txt', 'max:5120'],
+            'warehouse_id' => ['required', 'exists:warehouses,id'],
         ]);
 
         try {
-            $import = new ProductsImport;
+            $import = new ProductsImport($request->warehouse_id);
             DB::transaction(function () use ($import, $request) {
                 Excel::import($import, $request->file('file'));
             });

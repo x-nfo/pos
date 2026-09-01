@@ -183,7 +183,7 @@ export default function Edit({ order, suppliers = [], categories = [], products 
                             </div>
                             <div>
                                 <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                    Tujuan Gudang
+                                    Tujuan Gudang <span className="text-danger-500">*</span>
                                 </label>
                                 <select
                                     value={data.warehouse_id}
@@ -324,7 +324,7 @@ export default function Edit({ order, suppliers = [], categories = [], products 
                                                     <input
                                                         type="number"
                                                         min="0"
-                                                        step="100"
+                                                        step="any"
                                                         value={item.unit_price}
                                                         onChange={(e) => updateItem(index, "unit_price", e.target.value)}
                                                         className="h-10 w-28 rounded-lg border border-slate-200 bg-slate-50 px-3 text-right text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
