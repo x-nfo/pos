@@ -151,10 +151,25 @@ export default function Index({ customers }) {
                                 <IconUpload size={18} />
                                 Import
                             </button>
-                            <input id="import-customers-input" type="file" accept=".xlsx,.xls,.csv" className="hidden"
-                                onChange={function(e) {
+                            <input
+                                id="import-customers-input"
+                                type="file"
+                                accept=".xlsx,.xls,.csv"
+                                className="hidden"
+                                onChange={(e) => {
                                     const file = e.target.files && e.target.files[0];
-                                    if (file) router.post(route("import.customers"), { file });
+                                    if (file) {
+                                        router.post(
+                                            route("import.customers"),
+                                            { file },
+                                            {
+                                                forceFormData: true,
+                                                onFinish: () => {
+                                                    e.target.value = "";
+                                                },
+                                            }
+                                        );
+                                    }
                                 }}
                             />
                             <Button

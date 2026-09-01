@@ -295,7 +295,7 @@ Gunakan kolom **Status** pada setiap tabel untuk menandai progres pengujian:
 | :---: | :--- | :--- | :--- | :--- | :--- |
 | [X] | **TC-IMP-01** | Download Template Import Excel & CSV | Download template produk di `/import/template/products`. | File spreadsheet valid ter-download dengan header kolom lengkap. | *Positive* |
 | [ ] | **TC-IMP-02** | Import 1.000 Produk Sekaligus | Upload file Excel berisi 1.000 produk dengan beberapa kategori baru. | Semua produk masuk ke DB; kategori baru auto-create jika belum ada; tidak timeout. | *Performance* |
-| [ ] | **TC-IMP-03** | Import Data Duplikat / SKU Kembar | Upload file dengan barcode / SKU yang sudah ada di database. | Sistem menampilkan error list baris yang gagal dengan keterangan "SKU sudah digunakan". | **Negative / Edge** |
+| [X] | **TC-IMP-03** | Import Data Duplikat / SKU Kembar | Upload file dengan barcode / SKU yang sudah ada di database. | Sistem menampilkan error list baris yang gagal dengan keterangan "SKU sudah digunakan". | **Negative / Edge** |
 | [ ] | **TC-IMP-04** | Export Data Pelanggan & Transaksi | Export 10.000 transaksi ke format Excel & CSV dengan filter tahun berjalan. | File ter-download sempurna tanpa memori overflow (*chunked streaming export*). | *Positive* |
 | [ ] | **TC-SET-01** | Update Pengaturan Pajak (PPN Dinamis) | Ubah tarif PPN dari 11% menjadi 12% dan toggle "Harga Termasuk Pajak (Inclusive)". | Transaksi POS baru langsung menghitung PPN 12% sesuai mode inklusif/eksklusif. | *Positive* |
 | [ ] | **TC-SET-02** | Ganti Bahasa (Localization ID / EN) | Ubah bahasa di dropdown header dari Bahasa Indonesia ke English. | Seluruh label navigasi, tombol, dan pesan validasi beralih ke Bahasa Inggris. | *Positive* |

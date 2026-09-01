@@ -294,9 +294,20 @@ export default function Index({ products, warehouses = [], filters = {} }) {
                                     type="file"
                                     accept=".xlsx,.xls,.csv"
                                     className="hidden"
-                                    onChange={function(e) {
+                                    onChange={(e) => {
                                         const file = e.target.files && e.target.files[0];
-                                        if (file) router.post(route("import.products"), { file });
+                                        if (file) {
+                                            router.post(
+                                                route("import.products"),
+                                                { file },
+                                                {
+                                                    forceFormData: true,
+                                                    onFinish: () => {
+                                                        e.target.value = "";
+                                                    },
+                                                }
+                                            );
+                                        }
                                     }}
                                 />
                             </>
