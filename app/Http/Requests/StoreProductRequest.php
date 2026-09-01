@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Product;
+use App\Models\ProductUnit;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreProductRequest extends FormRequest
@@ -22,7 +24,7 @@ class StoreProductRequest extends FormRequest
                 function ($attribute, $value, $fail) {
                     if (! empty($value)) {
                         $barcode = trim($value);
-                        if (\App\Models\ProductUnit::where('barcode', $barcode)->exists()) {
+                        if (ProductUnit::where('barcode', $barcode)->exists()) {
                             $fail("Barcode '{$barcode}' sudah digunakan pada satuan produk lain.");
                         }
                     }
@@ -56,14 +58,14 @@ class StoreProductRequest extends FormRequest
                         $mainBarcode = trim((string) $this->input('barcode'));
 
                         if ($barcode !== $mainBarcode) {
-                            if (\App\Models\Product::where('barcode', $barcode)->exists()) {
+                            if (Product::where('barcode', $barcode)->exists()) {
                                 $fail("Barcode '{$barcode}' sudah digunakan oleh produk lain.");
 
                                 return;
                             }
                         }
 
-                        if (\App\Models\ProductUnit::where('barcode', $barcode)->exists()) {
+                        if (ProductUnit::where('barcode', $barcode)->exists()) {
                             $fail("Barcode '{$barcode}' sudah digunakan pada satuan produk lain.");
                         }
                     }

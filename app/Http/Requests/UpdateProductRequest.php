@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Product;
+use App\Models\ProductUnit;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -27,7 +28,7 @@ class UpdateProductRequest extends FormRequest
                 function ($attribute, $value, $fail) use ($productId) {
                     if (! empty($value)) {
                         $barcode = trim($value);
-                        if (\App\Models\ProductUnit::where('barcode', $barcode)->where('product_id', '!=', $productId)->exists()) {
+                        if (ProductUnit::where('barcode', $barcode)->where('product_id', '!=', $productId)->exists()) {
                             $fail("Barcode '{$barcode}' sudah digunakan pada satuan produk lain.");
                         }
                     }
@@ -59,14 +60,14 @@ class UpdateProductRequest extends FormRequest
                         $mainBarcode = trim((string) $this->input('barcode'));
 
                         if ($barcode !== $mainBarcode) {
-                            if (\App\Models\Product::where('barcode', $barcode)->where('id', '!=', $productId)->exists()) {
+                            if (Product::where('barcode', $barcode)->where('id', '!=', $productId)->exists()) {
                                 $fail("Barcode '{$barcode}' sudah digunakan oleh produk lain.");
 
                                 return;
                             }
                         }
 
-                        if (\App\Models\ProductUnit::where('barcode', $barcode)->where('product_id', '!=', $productId)->exists()) {
+                        if (ProductUnit::where('barcode', $barcode)->where('product_id', '!=', $productId)->exists()) {
                             $fail("Barcode '{$barcode}' sudah digunakan pada satuan produk lain.");
                         }
                     }
