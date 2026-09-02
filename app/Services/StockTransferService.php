@@ -146,7 +146,7 @@ class StockTransferService
         });
     }
 
-    public function receive(StockTransfer $transfer, int $userId): void
+    public function receive(StockTransfer $transfer, int $userId, array $receivedData = []): void
     {
         if (! $transfer->isInTransit()) {
             throw ValidationException::withMessages([
@@ -154,33 +154,67 @@ class StockTransferService
             ]);
         }
 
-        DB::transaction(function () use ($transfer, $userId) {
+        DB::transaction(function () use ($transfer, $userId, $receivedData) {
             $transfer->load('items.product');
             $before = $transfer->replicate();
 
-            // Increment destination warehouse stock + legacy stock
+            $receivedMap = [];
+            foreach ($receivedData as $entry) {
+                if (isset($entry['id'])) {
+                    $receivedMap[(int) $entry['id']] = $entry;
+                }
+            }
+
             foreach ($transfer->items as $item) {
                 $product = $item->product;
 
-                ProductWarehouse::updateOrCreate(
-                    ['product_id' => $item->product_id, 'warehouse_id' => $transfer->destination_warehouse_id],
-                    ['stock' => 0]
-                )->increment('stock', $item->qty);
+                // Determine received_qty (default to sent qty if not provided)
+                $entry = $receivedMap[$item->id] ?? null;
+                $receivedQty = isset($entry['received_qty']) ? max(0, (int) $entry['received_qty']) : $item->qty;
+                $itemNotes = isset($entry['notes']) ? trim((string) $entry['notes']) : null;
 
-                $product->increment('stock', $item->qty);
+                if ($receivedQty > $item->qty) {
+                    throw ValidationException::withMessages([
+                        'transfer' => "Jumlah diterima untuk {$product->title} tidak boleh melebihi jumlah kirim ({$item->qty}).",
+                    ]);
+                }
 
-                StockMutation::create([
-                    'product_id' => $product->id,
-                    'warehouse_id' => $transfer->destination_warehouse_id,
-                    'reference_type' => 'stock_transfer',
-                    'reference_id' => $transfer->id,
-                    'mutation_type' => 'in',
-                    'qty' => $item->qty,
-                    'stock_before' => (int) $product->stock - $item->qty,
-                    'stock_after' => (int) $product->stock,
-                    'notes' => 'Transfer dari '.$transfer->sourceWarehouse->code,
-                    'created_by' => $userId,
+                $item->update([
+                    'received_qty' => $receivedQty,
+                    'notes' => $itemNotes,
                 ]);
+
+                // Increment destination warehouse stock & legacy stock by receivedQty
+                if ($receivedQty > 0) {
+                    $pwDest = ProductWarehouse::firstOrCreate(
+                        ['product_id' => $item->product_id, 'warehouse_id' => $transfer->destination_warehouse_id],
+                        ['stock' => 0]
+                    );
+                    $destStockBefore = (int) $pwDest->stock;
+                    $destStockAfter = $destStockBefore + $receivedQty;
+
+                    $pwDest->increment('stock', $receivedQty);
+                    $product->increment('stock', $receivedQty);
+
+                    $diff = $item->qty - $receivedQty;
+                    $mutationNotes = 'Transfer dari '.$transfer->sourceWarehouse->code;
+                    if ($diff > 0) {
+                        $mutationNotes .= " (Diterima {$receivedQty}/{$item->qty}, Selisih: {$diff}".($itemNotes ? " - {$itemNotes}" : '').')';
+                    }
+
+                    StockMutation::create([
+                        'product_id' => $product->id,
+                        'warehouse_id' => $transfer->destination_warehouse_id,
+                        'reference_type' => 'stock_transfer',
+                        'reference_id' => $transfer->id,
+                        'mutation_type' => 'in',
+                        'qty' => $receivedQty,
+                        'stock_before' => $destStockBefore,
+                        'stock_after' => $destStockAfter,
+                        'notes' => $mutationNotes,
+                        'created_by' => $userId,
+                    ]);
+                }
             }
 
             $transfer->update([
@@ -208,22 +242,39 @@ class StockTransferService
             ]);
         }
 
-        DB::transaction(function () use ($transfer) {
+        DB::transaction(function () use ($transfer, $userId) {
             $before = $transfer->replicate();
             $returnStock = $transfer->isInTransit();
 
-            // If sent but not received, return stock to source
+            // If sent but not received, return stock to source and record mutation
             if ($returnStock) {
                 $transfer->load('items.product');
 
                 foreach ($transfer->items as $item) {
-                    ProductWarehouse::updateOrCreate(
+                    $pw = ProductWarehouse::firstOrCreate(
                         ['product_id' => $item->product_id, 'warehouse_id' => $transfer->source_warehouse_id],
                         ['stock' => 0]
-                    )->increment('stock', $item->qty);
+                    );
+                    $stockBefore = (int) $pw->stock;
+                    $stockAfter = $stockBefore + $item->qty;
+
+                    $pw->increment('stock', $item->qty);
 
                     $product = $item->product;
                     $product->increment('stock', $item->qty);
+
+                    StockMutation::create([
+                        'product_id' => $product->id,
+                        'warehouse_id' => $transfer->source_warehouse_id,
+                        'reference_type' => 'stock_transfer',
+                        'reference_id' => $transfer->id,
+                        'mutation_type' => 'in',
+                        'qty' => $item->qty,
+                        'stock_before' => $stockBefore,
+                        'stock_after' => $stockAfter,
+                        'notes' => 'Pembatalan transfer '.$transfer->document_number,
+                        'created_by' => $userId,
+                    ]);
                 }
             }
 

@@ -14,12 +14,15 @@ class StockTransferItem extends Model
         'stock_transfer_id',
         'product_id',
         'qty',
+        'received_qty',
+        'notes',
     ];
 
     protected function casts(): array
     {
         return [
             'qty' => 'integer',
+            'received_qty' => 'integer',
         ];
     }
 
