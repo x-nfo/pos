@@ -267,6 +267,7 @@ Gunakan kolom **Status** pada setiap tabel untuk menandai progres pengujian:
 | [X] | **TC-WA-02** | Kirim Struk Transaksi Otomatis via WA | Selesaikan transaksi customer dengan nomor WA terdaftar. Klik Share WhatsApp. | Pesan struk + link PDF invoice terkirim ke nomor WA customer dalam hitungan detik. | *Integration* |
 | [X] | **TC-WA-03** | Penanganan Layanan WA Down / Disconnect | Layanan Node.js WA service mati (port 3001 down). Lakukan transaksi di kasir. | Kasir tetap bisa checkout tanpa blocking/crash (graceful degradation; log error di backend). | **Resilience / Edge** |
 | [X] | **TC-WA-04** | Nomor HP Tidak Valid (Karakter Aneh) | Kirim broadcast ke nomor `0812-abc-!@#` atau nomor tanpa format internasional `+62`. | Sistem melakukan sanitasi format otomatis menjadi `62812...` atau mencatat log `Skipped`. | **Boundary** |
+| [X] | **TC-WA-05** | Pengingat Otomatis Piutang (Auto-Reminder WA) | Aktifkan Auto-Reminder di Settings > WA. Buat piutang H-3. Jalankan scheduler `php artisan crm:generate-reminders`. | Pesan WA pengingat tagihan piutang otomatis terbuat di campaign log & terkirim ke nomor WA customer. | *Integration* |
 
 ---
 
@@ -357,12 +358,12 @@ Gunakan kolom **Status** pada setiap tabel untuk menandai progres pengujian:
 | 8. Purchasing & PO | 7 | 5 | 0 | 0 | 71.4% |
 | 9. Hutang & Piutang | 9 | 6 | 0 | 0 | 66.7% |
 | 10. Promo, Diskon & Loyalty | 6 | 5 | 0 | 0 | 83.3% |
-| 11. CRM & WhatsApp Gateway | 6 | 5 | 0 | 0 | 83.3% |
+| 11. CRM & WhatsApp Gateway | 7 | 6 | 0 | 0 | 85.7% |
 | 12. Laporan & Thermal Print | 7 | 5 | 0 | 0 | 71.4% |
 | 13. Import/Export & Settings | 6 | 6 | 0 | 0 | 100% |
 | 14. REST API & Webhooks | 5 | 5 | 0 | 0 | 100% |
 | 15. Chaos & Cross-Cutting Edges | 8 | 8 | 0 | 0 | 100% |
-| **TOTAL** | **120** | **93** | **0** | **0** | **77.5%** |
+| **TOTAL** | **121** | **94** | **0** | **0** | **77.7%** |
 
 ### 18.2. Kriteria Kelulusan Rilis (Sign-Off Criteria)
 Aplikasi dinyatakan **siap untuk rilis produksi (Ready for Production)** apabila:

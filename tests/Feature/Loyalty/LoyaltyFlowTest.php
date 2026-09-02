@@ -281,7 +281,6 @@ class LoyaltyFlowTest extends TestCase
         $this->assertDatabaseCount('transactions', 0);
     }
 
-
     private function createUserWithPermissions(array $permissions): User
     {
         $user = User::factory()->create();
