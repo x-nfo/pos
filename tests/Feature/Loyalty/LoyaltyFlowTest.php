@@ -238,6 +238,50 @@ class LoyaltyFlowTest extends TestCase
         $this->assertSame(LoyaltyService::TIER_GOLD, $customer->loyalty_tier);
     }
 
+    public function test_checkout_fails_when_redeem_points_exceeds_available_balance(): void
+    {
+        $cashier = $this->createUserWithPermissions([
+            'transactions-access',
+            'cashier-shifts-access',
+            'cashier-shifts-open',
+            'cashier-shifts-close',
+        ]);
+        $this->openShiftFor($cashier);
+        $product = $this->createProduct();
+        $customer = Customer::create([
+            'name' => 'Member Exceed Points',
+            'no_telp' => '628777000444',
+            'address' => 'Jl. Exceed Points',
+            'is_loyalty_member' => true,
+            'member_code' => 'MEM-EXCEED',
+            'loyalty_tier' => LoyaltyService::TIER_SILVER,
+            'loyalty_points' => 30,
+            'loyalty_member_since' => now()->subMonths(2),
+        ]);
+
+        Cart::create([
+            'cashier_id' => $cashier->id,
+            'product_id' => $product->id,
+            'qty' => 1,
+            'price' => $product->sell_price,
+        ]);
+
+        $response = $this
+            ->actingAs($cashier)
+            ->post(route('transactions.store'), [
+                'customer_id' => $customer->id,
+                'discount' => 0,
+                'redeem_points' => 50,
+                'shipping_cost' => 0,
+                'grand_total' => 999999,
+                'cash' => 60000,
+            ]);
+
+        $response->assertSessionHasErrors(['redeem_points' => 'Saldo poin tidak mencukupi.']);
+        $this->assertDatabaseCount('transactions', 0);
+    }
+
+
     private function createUserWithPermissions(array $permissions): User
     {
         $user = User::factory()->create();

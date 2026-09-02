@@ -83,6 +83,13 @@ class CheckoutService
             ? CustomerVoucher::find($payload['customer_voucher_id'])
             : null;
 
+        if ($requestedRedeemPoints > 0) {
+            $availablePoints = ($customer && $customer->is_loyalty_member) ? (int) $customer->loyalty_points : 0;
+            if ($requestedRedeemPoints > $availablePoints) {
+                abort(422, 'Saldo poin tidak mencukupi.');
+            }
+        }
+
         $transaction = DB::transaction(function () use (
             $cashier,
             $payload,
