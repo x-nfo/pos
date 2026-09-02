@@ -118,7 +118,7 @@ export default function SalesReturnThermalReceipt({
                             </p>
                             <div className="flex justify-between">
                                 <span>
-                                    {qty}x @ {formatPrice(unitPrice)}
+                                    {qty} {item.unit_name || item.product?.unit_name || "x"} @ {formatPrice(unitPrice)}
                                 </span>
                                 <span>-{formatPrice(subtotal)}</span>
                             </div>
@@ -154,7 +154,7 @@ export default function SalesReturnThermalReceipt({
                                     </p>
                                     <div className="flex justify-between">
                                         <span>
-                                            {qty}x @ {formatPrice(unitPrice)}
+                                            {qty} {item.unit_name || item.product?.unit_name || "x"} @ {formatPrice(unitPrice)}
                                         </span>
                                         <span>{formatPrice(subtotal)}</span>
                                     </div>
@@ -405,7 +405,7 @@ export function SalesReturnThermalReceipt58mm({
                         <p className="truncate">{item.product?.title}</p>
                         <div className="flex justify-between">
                             <span>
-                                {qty}x @ {formatPrice(unitPrice)}
+                                {qty} {item.unit_name || item.product?.unit_name || "x"} @ {formatPrice(unitPrice)}
                             </span>
                             <span>-{formatPrice(subtotal)}</span>
                         </div>
@@ -432,7 +432,7 @@ export function SalesReturnThermalReceipt58mm({
                                 </p>
                                 <div className="flex justify-between">
                                     <span>
-                                        {qty}x @ {formatPrice(unitPrice)}
+                                        {qty} {item.unit_name || item.product?.unit_name || "x"} @ {formatPrice(unitPrice)}
                                     </span>
                                     <span>{formatPrice(subtotal)}</span>
                                 </div>

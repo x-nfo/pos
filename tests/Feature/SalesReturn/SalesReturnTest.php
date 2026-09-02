@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Receivable;
 use App\Models\SalesReturn;
 use App\Models\Transaction;
+use App\Models\Unit;
 use App\Models\User;
 use App\Services\CashierShiftService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -610,6 +611,87 @@ class SalesReturnTest extends TestCase
             ->post(route('sales-returns.complete', $salesReturn));
 
         $response->assertInvalid(['sales_return']);
+    }
+
+    public function test_complete_sales_return_with_multi_unit_exchange_deducts_converted_stock(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'transactions-access',
+            'sales-returns-access',
+            'sales-returns-create',
+            'sales-returns-complete',
+        ]);
+
+        [$transaction, $detail, $oldProduct] = $this->createTransaction($user, qty: 1, stock: 10);
+        $newProduct = $this->createProduct(sellPrice: 10000, stock: 100);
+        $boxUnit = Unit::firstOrCreate(
+            ['code' => 'BOX'],
+            ['name' => 'Box', 'symbol' => 'box']
+        );
+        $newProduct->units()->attach($boxUnit->id, [
+            'is_base' => false,
+            'conversion_factor' => 12,
+            'buy_price' => 80000,
+            'sell_price' => 120000,
+        ]);
+
+        $this->openShiftFor($user);
+
+        $salesReturn = SalesReturn::create([
+            'code' => 'SR-TEST-EXCHANGE-MULTI-UOM',
+            'transaction_id' => $transaction->id,
+            'customer_id' => $transaction->customer_id,
+            'cashier_id' => $user->id,
+            'status' => 'draft',
+            'return_type' => 'product_exchange',
+            'refund_amount' => 0,
+            'credited_amount' => 0,
+            'total_return_amount' => 60000,
+            'exchange_amount' => 120000,
+            'difference_amount' => 60000,
+            'exchange_payment_method' => 'cash',
+            'exchange_cash' => 60000,
+            'exchange_change' => 0,
+        ]);
+
+        $salesReturn->items()->create([
+            'transaction_detail_id' => $detail->id,
+            'product_id' => $oldProduct->id,
+            'qty_sold' => 1,
+            'qty_returned_before' => 0,
+            'qty_return' => 1,
+            'unit_price' => 60000,
+            'subtotal' => 60000,
+            'return_reason' => 'Tukar box',
+            'restock_to_inventory' => true,
+        ]);
+
+        // Exchange for 1 BOX (which equals 12 base units)
+        $salesReturn->exchangeItems()->create([
+            'product_id' => $newProduct->id,
+            'unit_id' => $boxUnit->id,
+            'conversion_factor' => 12,
+            'qty' => 1,
+            'unit_price' => 120000,
+            'subtotal' => 120000,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->post(route('sales-returns.complete', $salesReturn));
+
+        $response->assertSessionDoesntHaveErrors();
+
+        // 100 base stock - (1 box * 12) = 88
+        $this->assertEquals(88, $newProduct->fresh()->stock);
+
+        $this->assertDatabaseHas('stock_mutations', [
+            'product_id' => $newProduct->id,
+            'reference_type' => 'sales_return_exchange',
+            'reference_id' => $salesReturn->id,
+            'mutation_type' => 'out',
+            'qty' => 12,
+        ]);
     }
 
     public function test_sales_return_receipt_is_accessible(): void

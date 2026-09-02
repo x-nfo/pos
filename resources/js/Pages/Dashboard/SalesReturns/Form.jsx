@@ -62,6 +62,10 @@ export default function SalesReturnForm({
         return salesReturn.exchange_items.map((item) => ({
             product_id: item.product_id,
             product: item.product,
+            unit_id: item.unit_id,
+            unit_name: item.unit_name,
+            unit_code: item.unit_code,
+            conversion_factor: item.conversion_factor,
             qty: item.qty,
             unit_price: item.unit_price,
             subtotal: item.subtotal,
@@ -237,14 +241,25 @@ export default function SalesReturnForm({
     };
 
     const addExchangeProduct = (product) => {
+        const defaultUnit = product.units?.find((u) => u.is_base) || product.units?.[0] || {
+            id: product.unit_id || null,
+            name: product.unit_name || "Pieces",
+            code: product.unit_code || "PCS",
+            conversion_factor: 1,
+            sell_price: product.sell_price,
+        };
+
+        const unitPrice = Number(defaultUnit.sell_price || product.sell_price);
+
         const existing = form.data.exchange_items.find(
-            (item) => item.product_id === product.id
+            (item) => item.product_id === product.id && (item.unit_id === defaultUnit.id || (!item.unit_id && !defaultUnit.id))
         );
+
         if (existing) {
             form.setData(
                 "exchange_items",
                 form.data.exchange_items.map((item) =>
-                    item.product_id === product.id
+                    item === existing
                         ? {
                             ...item,
                             qty: item.qty + 1,
@@ -259,9 +274,13 @@ export default function SalesReturnForm({
                 {
                     product_id: product.id,
                     product,
+                    unit_id: defaultUnit.id,
+                    unit_name: defaultUnit.name || defaultUnit.code || "Pieces",
+                    unit_code: defaultUnit.code || "PCS",
+                    conversion_factor: defaultUnit.conversion_factor || 1,
                     qty: 1,
-                    unit_price: product.sell_price,
-                    subtotal: product.sell_price,
+                    unit_price: unitPrice,
+                    subtotal: unitPrice,
                 },
             ]);
         }
@@ -269,12 +288,36 @@ export default function SalesReturnForm({
         setIsProductDropdownOpen(false);
     };
 
-    const updateExchangeItemQty = (productId, newQty) => {
+    const updateExchangeItemUnit = (index, unitId) => {
+        form.setData(
+            "exchange_items",
+            form.data.exchange_items.map((item, idx) => {
+                if (idx !== index) return item;
+
+                const availableUnits = item.product?.units || [];
+                const newUnit = availableUnits.find((u) => String(u.id) === String(unitId)) || availableUnits[0];
+                if (!newUnit) return item;
+
+                const newPrice = Number(newUnit.sell_price || item.product?.sell_price || item.unit_price);
+                return {
+                    ...item,
+                    unit_id: newUnit.id,
+                    unit_name: newUnit.name || newUnit.code || "Pieces",
+                    unit_code: newUnit.code || "PCS",
+                    conversion_factor: newUnit.conversion_factor || 1,
+                    unit_price: newPrice,
+                    subtotal: item.qty * newPrice,
+                };
+            })
+        );
+    };
+
+    const updateExchangeItemQty = (index, newQty) => {
         const qty = Math.max(1, Number(newQty || 1));
         form.setData(
             "exchange_items",
-            form.data.exchange_items.map((item) =>
-                item.product_id === productId
+            form.data.exchange_items.map((item, idx) =>
+                idx === index
                     ? {
                         ...item,
                         qty,
@@ -285,12 +328,10 @@ export default function SalesReturnForm({
         );
     };
 
-    const removeExchangeItem = (productId) => {
+    const removeExchangeItem = (index) => {
         form.setData(
             "exchange_items",
-            form.data.exchange_items.filter(
-                (item) => item.product_id !== productId
-            )
+            form.data.exchange_items.filter((_, idx) => idx !== index)
         );
     };
 
@@ -514,28 +555,41 @@ export default function SalesReturnForm({
                                                         </p>
                                                     </div>
                                                 </Table.Td>
-                                                <Table.Td>{item.qty}</Table.Td>
                                                 <Table.Td>
-                                                    {item.remaining_returnable_qty}
+                                                    <div className="flex items-baseline gap-1 whitespace-nowrap">
+                                                        <span className="font-semibold text-slate-800 dark:text-slate-200">{item.qty}</span>
+                                                        <span className="text-xs font-normal text-slate-500 dark:text-slate-400">{item.unit_name || item.product?.unit_name || "Pcs"}</span>
+                                                    </div>
                                                 </Table.Td>
                                                 <Table.Td>
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        max={
-                                                            item.remaining_returnable_qty
-                                                        }
-                                                        value={item.qty_return}
-                                                        disabled={!canEdit}
-                                                        onChange={(event) =>
-                                                            updateItem(
-                                                                item.id,
-                                                                "qty_return",
-                                                                event.target.value
-                                                            )
-                                                        }
-                                                        className="h-10 w-20 rounded-lg border border-slate-200 bg-slate-50 px-2 text-center text-sm font-semibold text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                                                    />
+                                                    <div className="flex items-baseline gap-1 whitespace-nowrap">
+                                                        <span className="font-semibold text-slate-800 dark:text-slate-200">{item.remaining_returnable_qty}</span>
+                                                        <span className="text-xs font-normal text-slate-500 dark:text-slate-400">{item.unit_name || item.product?.unit_name || "Pcs"}</span>
+                                                    </div>
+                                                </Table.Td>
+                                                <Table.Td>
+                                                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            max={
+                                                                item.remaining_returnable_qty
+                                                            }
+                                                            value={item.qty_return}
+                                                            disabled={!canEdit}
+                                                            onChange={(event) =>
+                                                                updateItem(
+                                                                    item.id,
+                                                                    "qty_return",
+                                                                    event.target.value
+                                                                )
+                                                            }
+                                                            className="h-10 w-20 rounded-lg border border-slate-200 bg-slate-50 px-2 text-center text-sm font-semibold text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                                        />
+                                                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                                            {item.unit_name || item.product?.unit_name || "Pcs"}
+                                                        </span>
+                                                    </div>
                                                 </Table.Td>
                                                 <Table.Td>
                                                     <input
@@ -675,7 +729,8 @@ export default function SalesReturnForm({
                                                                             >
                                                                                 {
                                                                                     p.stock
-                                                                                }
+                                                                                }{" "}
+                                                                                {p.unit_name || p.unit_code || "Pcs"}
                                                                             </span>
                                                                         </p>
                                                                     </div>
@@ -714,6 +769,7 @@ export default function SalesReturnForm({
                                             <Table.Thead>
                                                 <tr className="whitespace-nowrap">
                                                     <Table.Th>Produk Pengganti</Table.Th>
+                                                    <Table.Th>Satuan (Unit)</Table.Th>
                                                     <Table.Th>Harga Satuan</Table.Th>
                                                     <Table.Th>Qty</Table.Th>
                                                     <Table.Th>Subtotal</Table.Th>
@@ -724,81 +780,108 @@ export default function SalesReturnForm({
                                             </Table.Thead>
                                             <Table.Tbody>
                                                 {form.data.exchange_items.map(
-                                                    (item) => (
-                                                        <tr key={item.product_id}>
-                                                            <Table.Td>
-                                                                <div className="min-w-[150px]">
-                                                                    <p className="font-medium text-slate-800 line-clamp-2 dark:text-slate-100">
-                                                                        {item.product
-                                                                            ?.title ||
-                                                                            `Produk #${item.product_id}`}
-                                                                    </p>
-                                                                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                                                                        {item.product
-                                                                            ?.barcode ||
-                                                                            item.product
-                                                                                ?.sku ||
-                                                                            "-"}
-                                                                    </p>
-                                                                </div>
-                                                            </Table.Td>
-                                                            <Table.Td>
-                                                                <span className="whitespace-nowrap">
-                                                                    {formatCurrency(
-                                                                        item.unit_price
-                                                                    )}
-                                                                </span>
-                                                            </Table.Td>
-                                                            <Table.Td>
-                                                                <input
-                                                                    type="number"
-                                                                    min="1"
-                                                                    value={
-                                                                        item.qty
-                                                                    }
-                                                                    disabled={
-                                                                        !canEdit
-                                                                    }
-                                                                    onChange={(
-                                                                        e
-                                                                    ) =>
-                                                                        updateExchangeItemQty(
-                                                                            item.product_id,
-                                                                            e
-                                                                                .target
-                                                                                .value
-                                                                        )
-                                                                    }
-                                                                    className="h-10 w-20 rounded-lg border border-slate-200 bg-white px-2 text-center text-sm font-semibold text-slate-800 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                                                                />
-                                                            </Table.Td>
-                                                            <Table.Td>
-                                                                <span className="font-semibold text-cyan-900 whitespace-nowrap dark:text-cyan-200">
-                                                                    {formatCurrency(
-                                                                        item.qty *
-                                                                        item.unit_price
-                                                                    )}
-                                                                </span>
-                                                            </Table.Td>
-                                                            {canEdit && (
+                                                    (item, index) => {
+                                                        const productUnits = item.product?.units || [];
+                                                        return (
+                                                            <tr key={`${item.product_id}-${index}`}>
                                                                 <Table.Td>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() =>
-                                                                            removeExchangeItem(
-                                                                                item.product_id
-                                                                            )
-                                                                        }
-                                                                        className="rounded-lg p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                                                                    >
-                                                                        <IconTrash
-                                                                            size={16}
-                                                                        />
-                                                                    </button>
+                                                                    <div className="min-w-[150px]">
+                                                                        <p className="font-medium text-slate-800 line-clamp-2 dark:text-slate-100">
+                                                                            {item.product
+                                                                                ?.title ||
+                                                                                `Produk #${item.product_id}`}
+                                                                        </p>
+                                                                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                                            {item.product
+                                                                                ?.barcode ||
+                                                                                item.product
+                                                                                    ?.sku ||
+                                                                                "-"}
+                                                                        </p>
+                                                                    </div>
                                                                 </Table.Td>
-                                                            )}
-                                                        </tr>
-                                                    )
+                                                                <Table.Td>
+                                                                    {productUnits.length > 1 && canEdit ? (
+                                                                        <select
+                                                                            value={item.unit_id || ""}
+                                                                            onChange={(e) => updateExchangeItemUnit(index, e.target.value)}
+                                                                            className="h-10 rounded-lg border border-cyan-300 bg-white px-2.5 text-xs font-semibold text-slate-800 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-cyan-800 dark:bg-slate-900 dark:text-slate-200"
+                                                                        >
+                                                                            {productUnits.map((u) => (
+                                                                                <option key={u.id} value={u.id}>
+                                                                                    {u.name || u.code} ({formatCurrency(u.sell_price)})
+                                                                                </option>
+                                                                            ))}
+                                                                        </select>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center rounded-md bg-cyan-100 px-2.5 py-1 text-xs font-medium text-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-300">
+                                                                            {item.unit_name || item.product?.unit_name || "Pieces"}
+                                                                        </span>
+                                                                    )}
+                                                                </Table.Td>
+                                                                <Table.Td>
+                                                                    <span className="whitespace-nowrap font-medium text-slate-800 dark:text-slate-200">
+                                                                        {formatCurrency(
+                                                                            item.unit_price
+                                                                        )}
+                                                                    </span>
+                                                                </Table.Td>
+                                                                <Table.Td>
+                                                                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                                                        <input
+                                                                            type="number"
+                                                                            min="1"
+                                                                            value={
+                                                                                item.qty
+                                                                            }
+                                                                            disabled={
+                                                                                !canEdit
+                                                                            }
+                                                                            onChange={(
+                                                                                e
+                                                                            ) =>
+                                                                                updateExchangeItemQty(
+                                                                                    index,
+                                                                                    e
+                                                                                        .target
+                                                                                        .value
+                                                                                )
+                                                                            }
+                                                                            className="h-10 w-20 rounded-lg border border-slate-200 bg-white px-2 text-center text-sm font-semibold text-slate-800 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                                                        />
+                                                                        <span className="text-xs font-medium text-cyan-700 dark:text-cyan-400">
+                                                                            {item.unit_name || item.product?.unit_name || "Pcs"}
+                                                                        </span>
+                                                                    </div>
+                                                                </Table.Td>
+                                                                <Table.Td>
+                                                                    <span className="font-semibold text-cyan-900 whitespace-nowrap dark:text-cyan-200">
+                                                                        {formatCurrency(
+                                                                            item.qty *
+                                                                            item.unit_price
+                                                                        )}
+                                                                    </span>
+                                                                </Table.Td>
+                                                                {canEdit && (
+                                                                    <Table.Td>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() =>
+                                                                                removeExchangeItem(
+                                                                                    index
+                                                                                )
+                                                                            }
+                                                                            className="rounded-lg p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                                                                        >
+                                                                            <IconTrash
+                                                                                size={16}
+                                                                            />
+                                                                        </button>
+                                                                    </Table.Td>
+                                                                )}
+                                                            </tr>
+                                                        );
+                                                    }
                                                 )}
                                             </Table.Tbody>
                                         </Table>

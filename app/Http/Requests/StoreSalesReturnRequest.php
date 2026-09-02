@@ -23,6 +23,7 @@ class StoreSalesReturnRequest extends FormRequest
             'items.*.restock_to_inventory' => ['nullable', 'boolean'],
             'exchange_items' => ['nullable', 'array'],
             'exchange_items.*.product_id' => ['required_with:exchange_items', 'integer', 'exists:products,id'],
+            'exchange_items.*.unit_id' => ['nullable', 'integer', 'exists:units,id'],
             'exchange_items.*.qty' => ['required_with:exchange_items', 'integer', 'min:1'],
             'exchange_payment_method' => ['nullable', 'string', 'in:cash,bank_transfer,qris,edc'],
             'exchange_cash' => ['nullable', 'integer', 'min:0'],
