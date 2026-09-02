@@ -19,13 +19,18 @@ class SalesReportController extends Controller
      */
     public function index(Request $request)
     {
+        $user = $request->user();
+        $warehouseId = $user && ! $user->isHQ()
+            ? $user->warehouse_id
+            : $request->input('warehouse_id');
+
         $filters = [
             'start_date' => $request->input('start_date'),
             'end_date' => $request->input('end_date'),
             'invoice' => $request->input('invoice'),
             'cashier_id' => $request->input('cashier_id'),
             'customer_id' => $request->input('customer_id'),
-            'warehouse_id' => $request->input('warehouse_id'),
+            'warehouse_id' => $warehouseId,
         ];
 
         $baseListQuery = $this->applyFilters(
@@ -71,13 +76,24 @@ class SalesReportController extends Controller
                 : 0,
         ];
 
+        $user = $request->user();
+        if ($user && ! $user->isHQ()) {
+            $filters['warehouse_id'] = $user->warehouse_id;
+            $warehouses = Warehouse::where('id', $user->warehouse_id)->get(['id', 'code', 'name']);
+            $cashiers = User::where('warehouse_id', $user->warehouse_id)->select('id', 'name')->orderBy('name')->get();
+        } else {
+            $warehouses = Warehouse::active()->orderBy('code')->get(['id', 'code', 'name']);
+            $cashiers = User::select('id', 'name')->orderBy('name')->get();
+        }
+
         return Inertia::render('Dashboard/Reports/Sales', [
             'transactions' => $transactions,
             'summary' => $summary,
             'filters' => $filters,
-            'cashiers' => User::select('id', 'name')->orderBy('name')->get(),
+            'cashiers' => $cashiers,
             'customers' => Customer::select('id', 'name')->orderBy('name')->get(),
-            'warehouses' => Warehouse::active()->orderBy('code')->get(['id', 'code', 'name']),
+            'warehouses' => $warehouses,
+            'is_locked_branch' => $user && ! $user->isHQ(),
         ]);
     }
 

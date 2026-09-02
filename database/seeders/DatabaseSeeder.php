@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +44,24 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        $cabang = Warehouse::where('code', 'CABANG-1')->first();
+        if (! $cabang) {
+            $cabang = Warehouse::create([
+                'code' => 'CABANG-1',
+                'name' => 'Cabang 1 (Retail)',
+                'type' => 'branch',
+                'is_active' => true,
+                'sort_order' => 1,
+            ]);
+        }
+
         $defaultWarehouse = Warehouse::active()->orderBy('sort_order')->orderBy('code')->first() ?? $pusat;
+
+        // Assign default cashier to branch warehouse if not set
+        $cashier = User::where('email', 'kasir@mail.com')->first();
+        if ($cashier && is_null($cashier->warehouse_id)) {
+            $cashier->update(['warehouse_id' => $cabang->id]);
+        }
 
         // Ensure all products have product_warehouse records for the default warehouse
         $missingProductIds = DB::table('products')

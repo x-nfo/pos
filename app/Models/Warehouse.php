@@ -96,6 +96,11 @@ class Warehouse extends Model
         return $this->hasMany(SalesReturn::class);
     }
 
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class);
+    }
+
     public function hasHistoricalRelations(): bool
     {
         if ($this->type === 'main') {
@@ -116,7 +121,8 @@ class Warehouse extends Model
             || $this->stockTransfersDestination()->exists()
             || $this->stockOpnames()->exists()
             || $this->stockMutations()->exists()
-            || $this->salesReturns()->exists();
+            || $this->salesReturns()->exists()
+            || $this->users()->exists();
     }
 
     public function scopeActive($query)

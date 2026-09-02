@@ -25,12 +25,18 @@ class AdvancedSalesInsightsController extends Controller
 {
     public function index(Request $request)
     {
+        $user = $request->user();
+        $warehouseId = $user && ! $user->isHQ()
+            ? $user->warehouse_id
+            : $request->input('warehouse_id');
+
         $filters = [
             'start_date' => $request->input('start_date'),
             'end_date' => $request->input('end_date'),
             'cashier_id' => $request->input('cashier_id'),
             'customer_id' => $request->input('customer_id'),
             'category_id' => $request->input('category_id'),
+            'warehouse_id' => $warehouseId,
         ];
 
         $transactionQuery = $this->applyTransactionFilters(
@@ -107,6 +113,7 @@ class AdvancedSalesInsightsController extends Controller
             ->when($filters['customer_id'] ?? null, fn (Builder $q, $customerId) => $q->where('transactions.customer_id', $customerId))
             ->when($filters['start_date'] ?? null, fn (Builder $q, $startDate) => $q->whereDate('transactions.created_at', '>=', $startDate))
             ->when($filters['end_date'] ?? null, fn (Builder $q, $endDate) => $q->whereDate('transactions.created_at', '<=', $endDate))
+            ->when($filters['warehouse_id'] ?? null, fn (Builder $q, $warehouseId) => $q->where('transactions.warehouse_id', $warehouseId))
             ->when($filters['category_id'] ?? null, function (Builder $q, $categoryId) {
                 $q->whereHas('details.product', fn (Builder $productQuery) => $productQuery->where('category_id', $categoryId));
             });
@@ -122,6 +129,7 @@ class AdvancedSalesInsightsController extends Controller
             ->when($filters['customer_id'] ?? null, fn ($q, $customerId) => $q->where('t.customer_id', $customerId))
             ->when($filters['start_date'] ?? null, fn ($q, $startDate) => $q->whereDate('t.created_at', '>=', $startDate))
             ->when($filters['end_date'] ?? null, fn ($q, $endDate) => $q->whereDate('t.created_at', '<=', $endDate))
+            ->when($filters['warehouse_id'] ?? null, fn ($q, $warehouseId) => $q->where('t.warehouse_id', $warehouseId))
             ->when($filters['category_id'] ?? null, fn ($q, $categoryId) => $q->where('p.category_id', $categoryId));
     }
 

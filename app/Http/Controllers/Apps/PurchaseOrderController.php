@@ -21,6 +21,7 @@ class PurchaseOrderController extends Controller
 
     public function index(Request $request)
     {
+        $user = $request->user();
         $filters = [
             'status' => $request->input('status'),
             'supplier' => $request->input('supplier'),
@@ -31,8 +32,13 @@ class PurchaseOrderController extends Controller
             'supplier:id,name',
             'items',
             'creator:id,name',
+            'warehouse:id,code,name',
         ])->withCount('items as items_count')
             ->orderByDesc('created_at');
+
+        if ($user && ! $user->isHQ()) {
+            $query->where('warehouse_id', $user->warehouse_id);
+        }
 
         $query->when($filters['status'], fn ($q, $s) => $q->where('status', $s))
             ->when($filters['supplier'], fn ($q, $s) => $q->where('supplier_id', $s))
@@ -50,6 +56,7 @@ class PurchaseOrderController extends Controller
 
     public function create()
     {
+        $user = auth()->user();
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
         $categories = Category::orderBy('name')->get(['id', 'name']);
         $products = Product::with(['units', 'category:id,name'])
@@ -79,7 +86,9 @@ class PurchaseOrderController extends Controller
                     ])->values()->toArray(),
                 ];
             });
-        $warehouses = Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name']);
+        $warehouses = $user && ! $user->isHQ()
+            ? Warehouse::where('id', $user->warehouse_id)->get(['id', 'code', 'name'])
+            : Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name']);
 
         return Inertia::render('Dashboard/PurchaseOrders/Create', [
             'suppliers' => $suppliers,
@@ -91,6 +100,7 @@ class PurchaseOrderController extends Controller
 
     public function store(Request $request)
     {
+        $user = $request->user();
         $data = $request->validate([
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'warehouse_id' => ['required', 'exists:warehouses,id'],
@@ -104,15 +114,21 @@ class PurchaseOrderController extends Controller
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $order = $this->purchaseOrderService->createOrder($data, $data['items'], $request->user()->id);
+        if ($user && ! $user->isHQ()) {
+            $data['warehouse_id'] = $user->warehouse_id;
+        }
+
+        $order = $this->purchaseOrderService->createOrder($data, $data['items'], $user->id);
 
         return redirect()
             ->route('purchase-orders.show', $order)
             ->with('success', 'Purchase order berhasil dibuat.');
     }
 
-    public function show(PurchaseOrder $purchaseOrder)
+    public function show(Request $request, PurchaseOrder $purchaseOrder)
     {
+        $this->authorizeWarehouseAccess($request, $purchaseOrder);
+
         $purchaseOrder->load([
             'supplier:id,name,phone,email,address',
             'warehouse:id,code,name',
@@ -135,6 +151,8 @@ class PurchaseOrderController extends Controller
 
     public function print(Request $request, PurchaseOrder $purchaseOrder)
     {
+        $this->authorizeWarehouseAccess($request, $purchaseOrder);
+
         $purchaseOrder->load([
             'supplier:id,name,phone,email,address',
             'warehouse:id,code,name',
@@ -151,8 +169,10 @@ class PurchaseOrderController extends Controller
         ]);
     }
 
-    public function edit(PurchaseOrder $purchaseOrder)
+    public function edit(Request $request, PurchaseOrder $purchaseOrder)
     {
+        $this->authorizeWarehouseAccess($request, $purchaseOrder);
+
         if ($purchaseOrder->status !== 'draft') {
             return redirect()
                 ->route('purchase-orders.show', $purchaseOrder)
@@ -168,6 +188,7 @@ class PurchaseOrderController extends Controller
             'items.unit:id,code,name,symbol',
         ]);
 
+        $user = $request->user();
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
         $categories = Category::orderBy('name')->get(['id', 'name']);
         $products = Product::with(['units', 'category:id,name'])
@@ -197,7 +218,9 @@ class PurchaseOrderController extends Controller
                     ])->values()->toArray(),
                 ];
             });
-        $warehouses = Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name']);
+        $warehouses = $user && ! $user->isHQ()
+            ? Warehouse::where('id', $user->warehouse_id)->get(['id', 'code', 'name'])
+            : Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name']);
 
         return Inertia::render('Dashboard/PurchaseOrders/Edit', [
             'order' => $purchaseOrder,
@@ -210,12 +233,15 @@ class PurchaseOrderController extends Controller
 
     public function update(Request $request, PurchaseOrder $purchaseOrder)
     {
+        $this->authorizeWarehouseAccess($request, $purchaseOrder);
+
         if ($purchaseOrder->status !== 'draft') {
             return redirect()
                 ->route('purchase-orders.show', $purchaseOrder)
                 ->with('error', 'Hanya PO dengan status draft yang dapat diperbarui.');
         }
 
+        $user = $request->user();
         $data = $request->validate([
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'warehouse_id' => ['required', 'exists:warehouses,id'],
@@ -229,7 +255,11 @@ class PurchaseOrderController extends Controller
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $this->purchaseOrderService->updateOrder($purchaseOrder, $data, $data['items'], $request->user()->id);
+        if ($user && ! $user->isHQ()) {
+            $data['warehouse_id'] = $user->warehouse_id;
+        }
+
+        $this->purchaseOrderService->updateOrder($purchaseOrder, $data, $data['items'], $user->id);
 
         return redirect()
             ->route('purchase-orders.show', $purchaseOrder)
@@ -238,6 +268,8 @@ class PurchaseOrderController extends Controller
 
     public function placeOrder(Request $request, PurchaseOrder $purchaseOrder)
     {
+        $this->authorizeWarehouseAccess($request, $purchaseOrder);
+
         if ($purchaseOrder->status !== 'draft') {
             return back()->with('error', 'Hanya PO dengan status draft yang bisa dipesan.');
         }
@@ -251,6 +283,8 @@ class PurchaseOrderController extends Controller
 
     public function cancel(Request $request, PurchaseOrder $purchaseOrder)
     {
+        $this->authorizeWarehouseAccess($request, $purchaseOrder);
+
         if (! in_array($purchaseOrder->status, ['draft', 'ordered', 'partial_received'])) {
             return back()->with('error', 'PO tidak dapat dibatalkan.');
         }
@@ -260,5 +294,13 @@ class PurchaseOrderController extends Controller
         return redirect()
             ->route('purchase-orders.index')
             ->with('success', 'Purchase order dibatalkan.');
+    }
+
+    private function authorizeWarehouseAccess(Request $request, PurchaseOrder $purchaseOrder): void
+    {
+        $user = $request->user();
+        if ($user && ! $user->isHQ() && $purchaseOrder->warehouse_id && (int) $purchaseOrder->warehouse_id !== (int) $user->warehouse_id) {
+            abort(403, 'Anda tidak memiliki akses ke Purchase Order cabang ini.');
+        }
     }
 }

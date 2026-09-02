@@ -30,6 +30,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'avatar',
         'locale',
+        'warehouse_id',
     ];
 
     /**
@@ -115,6 +116,28 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         return $this->spatieCheckPermissionTo($permission, $guardName);
+    }
+
+    /**
+     * Check if user has HQ (Headquarters / Global) access.
+     * True for Super Admin or when no specific warehouse is assigned.
+     */
+    public function isHQ(): bool
+    {
+        return $this->isSuperAdmin() || is_null($this->warehouse_id);
+    }
+
+    /**
+     * Get the assigned warehouse ID, or null if HQ.
+     */
+    public function getAssignedWarehouseId(): ?int
+    {
+        return $this->warehouse_id;
+    }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class)->withTrashed();
     }
 
     public function cashierShifts()

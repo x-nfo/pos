@@ -46,15 +46,20 @@ class HandleInertiaRequests extends Middleware
         $pendingDineOrdersCount = 0;
 
         if ($request->user()) {
-            $userId = $request->user()->id;
+            $user = $request->user();
+            $user->loadMissing('warehouse:id,code,name');
+            $userId = $user->id;
+            $scopedWarehouseId = ! $user->isHQ() ? $user->warehouse_id : null;
 
-            if ($request->user()->can('transactions-confirm-payment')) {
+            if ($user->can('transactions-confirm-payment')) {
                 $pendingBankPaymentCount = Transaction::where('payment_method', 'bank_transfer')
                     ->where('payment_status', 'pending')
+                    ->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
                     ->count();
 
                 $bankPaymentNotifications = Transaction::where('payment_method', 'bank_transfer')
                     ->where('payment_status', 'pending')
+                    ->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
                     ->with([
                         'cashier:id,name',
                         'customer:id,name',
@@ -80,10 +85,13 @@ class HandleInertiaRequests extends Middleware
                     ->toArray();
             }
 
-            if ($request->user()->can('discounts-approve')) {
-                $pendingApprovalCount = Transaction::where('discount_approval_status', 'pending')->count();
+            if ($user->can('discounts-approve')) {
+                $pendingApprovalCount = Transaction::where('discount_approval_status', 'pending')
+                    ->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
+                    ->count();
 
                 $discountApprovalNotifications = Transaction::where('discount_approval_status', 'pending')
+                    ->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
                     ->with(['cashier:id,name', 'customer:id,name', 'bankAccount:id,bank_name,account_number'])
                     ->orderByDesc('created_at')
                     ->limit(10)
@@ -106,7 +114,7 @@ class HandleInertiaRequests extends Middleware
                     ->toArray();
             }
 
-            if ($request->user()->can('dine-orders-access')) {
+            if ($user->can('dine-orders-access')) {
                 $pendingDineOrdersCount = DineOrder::pending()->count();
             }
 
@@ -245,6 +253,12 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
                 'permissions' => $request->user() ? $request->user()->getPermissions() : [],
                 'super' => $request->user() ? $request->user()->isSuperAdmin() : false,
+                'is_hq' => $request->user() ? $request->user()->isHQ() : false,
+                'warehouse' => $request->user()?->warehouse ? [
+                    'id' => $request->user()->warehouse->id,
+                    'code' => $request->user()->warehouse->code,
+                    'name' => $request->user()->warehouse->name,
+                ] : null,
             ],
             'locale' => [
                 'current' => app()->getLocale(),

@@ -127,7 +127,7 @@ class PayableController extends Controller
                 $item->status = 'overdue';
             }
             $daysOverdue = $item->status === 'overdue' && $item->due_date
-                ? now()->diffInDays($item->due_date)
+                ? (int) abs(now()->diffInDays($item->due_date))
                 : 0;
 
             $item->aging_bucket = match (true) {

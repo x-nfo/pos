@@ -12,6 +12,7 @@ import {
     IconMail,
     IconLayoutGrid,
     IconList,
+    IconBuildingWarehouse,
 } from "@tabler/icons-react";
 import Search from "@/Components/Dashboard/Search";
 import Table from "@/Components/Dashboard/Table";
@@ -40,13 +41,12 @@ function UserCard({
     return (
         <div
             className={`
-            group bg-white dark:bg-slate-900 rounded-2xl border-2
+            bg-white dark:bg-slate-900 rounded-2xl border transition-all duration-200
             ${
                 isSelected
-                    ? "border-primary-500 dark:border-primary-600"
-                    : "border-slate-200 dark:border-slate-800"
+                    ? "border-primary-500 ring-2 ring-primary-500/20 shadow-lg shadow-primary-500/5"
+                    : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md"
             }
-            overflow-hidden hover:shadow-lg hover:border-primary-300 dark:hover:border-primary-700 transition-all duration-200
         `}
         >
             {/* Header with checkbox */}
@@ -82,8 +82,20 @@ function UserCard({
                 )}
             </div>
 
-            {/* Roles */}
-            <div className="px-4 pb-3">
+            {/* Branch & Roles */}
+            <div className="px-4 pb-3 space-y-2">
+                <div className="flex items-center gap-1.5 text-xs">
+                    <IconBuildingWarehouse size={14} className="text-slate-400 shrink-0" />
+                    {user.warehouse ? (
+                        <span className="font-medium text-primary-600 dark:text-primary-400 truncate">
+                            {user.warehouse.name} ({user.warehouse.code})
+                        </span>
+                    ) : (
+                        <span className="text-slate-500 italic">
+                            Kantor Pusat / Global
+                        </span>
+                    )}
+                </div>
                 <div className="flex flex-wrap gap-1.5">
                     {user.roles.map((role, index) => (
                         <span
@@ -425,6 +437,7 @@ export default function Index() {
                                             </Table.Th>
                                             <Table.Th className={"w-10"}>No</Table.Th>
                                             <Table.Th>Pengguna</Table.Th>
+                                            <Table.Th>Cabang / Penempatan</Table.Th>
                                             <Table.Th>Group Akses</Table.Th>
                                             <Table.Th></Table.Th>
                                         </tr>
@@ -490,6 +503,18 @@ export default function Index() {
                                                                 </p>
                                                             </div>
                                                         </div>
+                                                    </Table.Td>
+                                                    <Table.Td>
+                                                        {user.warehouse ? (
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 border border-primary-100 dark:border-primary-900">
+                                                                <IconBuildingWarehouse size={13} />
+                                                                {user.warehouse.name} ({user.warehouse.code})
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                                                🏢 Kantor Pusat / Global
+                                                            </span>
+                                                        )}
                                                     </Table.Td>
                                                     <Table.Td>
                                                         <div className="flex flex-wrap gap-1">

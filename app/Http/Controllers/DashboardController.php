@@ -19,26 +19,31 @@ class DashboardController extends Controller
 {
     public function index(CashierShiftService $cashierShiftService)
     {
+        $user = auth()->user();
+        $scopedWarehouseId = $user && ! $user->isHQ() ? $user->warehouse_id : null;
+
         $totalCategories = Category::count();
         $totalProducts = Product::count();
-        $totalTransactions = Transaction::count();
+        $totalTransactions = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))->count();
         $totalCustomers = Customer::count();
-        $totalRevenue = Transaction::sum('grand_total');
-        $totalProfit = Profit::sum('total');
-        $averageOrder = Transaction::avg('grand_total') ?? 0;
-        $todayTransactions = Transaction::whereDate('created_at', Carbon::today())->count();
+        $totalRevenue = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))->sum('grand_total');
+        $totalProfit = Profit::when($scopedWarehouseId, fn ($q) => $q->whereHas('transaction', fn ($t) => $t->where('warehouse_id', $scopedWarehouseId)))->sum('total');
+        $averageOrder = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))->avg('grand_total') ?? 0;
+        $todayTransactions = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))->whereDate('created_at', Carbon::today())->count();
 
         // New: Today's Sales and Profit
-        $todaySales = Transaction::whereDate('created_at', Carbon::today())->sum('grand_total');
-        $todayProfit = Profit::whereDate('created_at', Carbon::today())->sum('total');
+        $todaySales = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))->whereDate('created_at', Carbon::today())->sum('grand_total');
+        $todayProfit = Profit::when($scopedWarehouseId, fn ($q) => $q->whereHas('transaction', fn ($t) => $t->where('warehouse_id', $scopedWarehouseId)))->whereDate('created_at', Carbon::today())->sum('total');
 
         // New: Monthly Target (from settings)
         $monthlyTarget = Setting::where('key', 'monthly_sales_target')->first()?->value ?? 0;
-        $currentMonthSales = Transaction::whereMonth('created_at', Carbon::now()->month)
+        $currentMonthSales = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
+            ->whereMonth('created_at', Carbon::now()->month)
             ->whereYear('created_at', Carbon::now()->year)
             ->sum('grand_total');
 
-        $revenueTrend = Transaction::selectRaw('DATE(created_at) as date, SUM(grand_total) as total')
+        $revenueTrend = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
+            ->selectRaw('DATE(created_at) as date, SUM(grand_total) as total')
             ->groupBy('date')
             ->orderBy('date', 'desc')
             ->take(12)
@@ -53,7 +58,8 @@ class DashboardController extends Controller
             ->reverse()
             ->values();
 
-        $topProducts = TransactionDetail::select('product_id', DB::raw('SUM(qty) as qty'), DB::raw('SUM(price) as total'))
+        $topProducts = TransactionDetail::when($scopedWarehouseId, fn ($q) => $q->whereHas('transaction', fn ($t) => $t->where('warehouse_id', $scopedWarehouseId)))
+            ->select('product_id', DB::raw('SUM(qty) as qty'), DB::raw('SUM(price) as total'))
             ->with('product:id,title,sku')
             ->groupBy('product_id')
             ->orderByDesc('qty')
@@ -68,22 +74,37 @@ class DashboardController extends Controller
                 ];
             });
 
-        // New: Low Stock Products (stock < 10)
-        $lowStockProducts = Product::where('stock', '<', 10)
-            ->orderBy('stock', 'asc')
-            ->take(5)
-            ->get()
-            ->map(function ($product) {
-                return [
-                    'name' => $product->title,
-                    'stock' => (int) $product->stock,
-                    'image' => $product->image,
-                ];
-            });
+        // New: Low Stock Products
+        if ($scopedWarehouseId) {
+            $lowStockProducts = Product::whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $scopedWarehouseId)->where('product_warehouse.stock', '<', 10))
+                ->with(['warehouses' => fn ($w) => $w->where('product_warehouse.warehouse_id', $scopedWarehouseId)])
+                ->take(5)
+                ->get()
+                ->map(function ($product) use ($scopedWarehouseId) {
+                    return [
+                        'name' => $product->title,
+                        'stock' => (int) ($product->warehouses->firstWhere('id', $scopedWarehouseId)?->pivot->stock ?? 0),
+                        'image' => $product->image,
+                    ];
+                });
+        } else {
+            $lowStockProducts = Product::where('stock', '<', 10)
+                ->orderBy('stock', 'asc')
+                ->take(5)
+                ->get()
+                ->map(function ($product) {
+                    return [
+                        'name' => $product->title,
+                        'stock' => (int) $product->stock,
+                        'image' => $product->image,
+                    ];
+                });
+        }
 
         // New: Slow Moving Products (no sales in 30 days)
         $thirtyDaysAgo = Carbon::now()->subDays(30);
-        $recentlySoldProductIds = TransactionDetail::where('created_at', '>=', $thirtyDaysAgo)
+        $recentlySoldProductIds = TransactionDetail::when($scopedWarehouseId, fn ($q) => $q->whereHas('transaction', fn ($t) => $t->where('warehouse_id', $scopedWarehouseId)))
+            ->where('created_at', '>=', $thirtyDaysAgo)
             ->distinct()
             ->pluck('product_id');
 
@@ -99,7 +120,8 @@ class DashboardController extends Controller
                 ];
             });
 
-        $recentTransactions = Transaction::with('cashier:id,name', 'customer:id,name')
+        $recentTransactions = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
+            ->with('cashier:id,name', 'customer:id,name')
             ->latest()
             ->take(5)
             ->get()
@@ -113,7 +135,8 @@ class DashboardController extends Controller
                 ];
             });
 
-        $topCustomers = Transaction::select('customer_id', DB::raw('COUNT(*) as orders'), DB::raw('SUM(grand_total) as total'))
+        $topCustomers = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
+            ->select('customer_id', DB::raw('COUNT(*) as orders'), DB::raw('SUM(grand_total) as total'))
             ->with('customer:id,name')
             ->whereNotNull('customer_id')
             ->groupBy('customer_id')
@@ -128,7 +151,8 @@ class DashboardController extends Controller
                 ];
             });
 
-        $topLocations = Transaction::join('customers', 'transactions.customer_id', '=', 'customers.id')
+        $topLocations = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('transactions.warehouse_id', $scopedWarehouseId))
+            ->join('customers', 'transactions.customer_id', '=', 'customers.id')
             ->select('customers.village_name', DB::raw('COUNT(*) as orders'))
             ->whereNotNull('customers.village_name')
             ->groupBy('customers.village_name')
@@ -143,6 +167,7 @@ class DashboardController extends Controller
             });
 
         $activeShifts = CashierShift::query()
+            ->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
             ->with('user:id,name')
             ->open()
             ->latest('opened_at')

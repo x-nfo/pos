@@ -41,6 +41,7 @@ class UserRequest extends FormRequest
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($userId)],
             'password' => [$isCreate ? 'required' : 'nullable', 'string', 'min:8', 'confirmed'],
             'avatar' => ['nullable', 'image', 'max:2048'],
+            'warehouse_id' => ['nullable', 'integer', 'exists:warehouses,id'],
             'selectedRoles' => [
                 'required',
                 'array',

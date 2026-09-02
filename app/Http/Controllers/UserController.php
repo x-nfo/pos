@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UserRequest;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -23,9 +24,9 @@ class UserController extends Controller
     {
         // get all users data
         $users = User::query()
-            ->with('roles')
+            ->with(['roles', 'warehouse:id,code,name'])
             ->when(request()->search, fn ($query) => $query->where('name', 'like', '%'.request()->search.'%'))
-            ->select('id', 'name', 'avatar', 'email')
+            ->select('id', 'name', 'avatar', 'email', 'warehouse_id')
             ->latest()
             ->paginate(7)
             ->withQueryString();
@@ -43,10 +44,12 @@ class UserController extends Controller
     {
         // get assignable role data (filter unowned permissions/super-admin for non-super-admin users)
         $roles = $this->getAssignableRoles($request->user());
+        $warehouses = Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name']);
 
         // render view
         return Inertia::render('Dashboard/Users/Create', [
             'roles' => $roles,
+            'warehouses' => $warehouses,
         ]);
     }
 
@@ -67,6 +70,7 @@ class UserController extends Controller
             'email' => $request->email,
             'password' => bcrypt($request->password),
             'avatar' => $avatarPath,
+            'warehouse_id' => $request->warehouse_id,
         ]);
 
         // assign role to user
@@ -100,14 +104,20 @@ class UserController extends Controller
 
         // get assignable role data (filter unowned permissions/super-admin for non-super-admin users)
         $roles = $this->getAssignableRoles($currentUser);
+        $warehouses = Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name']);
 
         // load relationship
-        $user->load(['roles' => fn ($query) => $query->select('id', 'name'), 'roles.permissions' => fn ($query) => $query->select('id', 'name')]);
+        $user->load([
+            'roles' => fn ($query) => $query->select('id', 'name'),
+            'roles.permissions' => fn ($query) => $query->select('id', 'name'),
+            'warehouse:id,code,name',
+        ]);
 
         // render view
         return Inertia::render('Dashboard/Users/Edit', [
             'roles' => $roles,
             'user' => $user,
+            'warehouses' => $warehouses,
         ]);
     }
 
@@ -153,11 +163,12 @@ class UserController extends Controller
             ]);
         }
 
-        // update user data name
+        // update user data name, email, avatar, warehouse_id
         $user->update([
             'name' => $request->name,
             'email' => $request->email,
             'avatar' => $avatarPath,
+            'warehouse_id' => $request->warehouse_id,
         ]);
 
         // assign role to user
@@ -241,6 +252,7 @@ class UserController extends Controller
         return [
             'name' => $user->name,
             'email' => $user->email,
+            'warehouse_id' => $user->warehouse_id,
             'avatar_changed' => $avatarChanged,
             'roles' => array_values($roles),
         ];

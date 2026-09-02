@@ -213,7 +213,9 @@ class TransactionController extends Controller
         // Get active bank accounts for bank transfer
         $bankAccounts = BankAccount::active()->ordered()->get();
 
-        $warehouses = Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name', 'type']);
+        $warehouses = auth()->user()->isHQ()
+            ? Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name', 'type'])
+            : Warehouse::where('id', auth()->user()->warehouse_id)->get(['id', 'code', 'name', 'type']);
 
         return [
             'carts' => $carts,
@@ -863,7 +865,11 @@ class TransactionController extends Controller
             $query->with('details.salesReturnItems.salesReturn:id,status');
         }
 
-        if (! $request->user()->isSuperAdmin()) {
+        if (! $request->user()->isHQ()) {
+            $query->where('warehouse_id', $request->user()->warehouse_id);
+        }
+
+        if (! $request->user()->isSuperAdmin() && ! $request->user()->can('reports-access')) {
             $query->where('cashier_id', $request->user()->id);
         }
 
@@ -888,7 +894,9 @@ class TransactionController extends Controller
             });
 
         $transactions = $query->paginate($this->perPage())->withQueryString();
-        $warehouses = Warehouse::active()->orderBy('code')->get(['id', 'code', 'name']);
+        $warehouses = $request->user()->isHQ()
+            ? Warehouse::active()->orderBy('code')->get(['id', 'code', 'name'])
+            : Warehouse::where('id', $request->user()->warehouse_id)->get(['id', 'code', 'name']);
         $transactions->through(function (Transaction $transaction) use ($salesReturnTablesReady) {
             $canCreateSalesReturn = false;
 

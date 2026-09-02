@@ -15,10 +15,12 @@ use App\Models\SalesReturnItem;
 use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
+use App\Models\Unit;
 use App\Services\AuditLogService;
 use App\Services\CashierShiftService;
 use App\Services\StockMutationService;
 use App\Services\ThermalPrintService;
+use App\Services\UnitConversionService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -37,7 +39,8 @@ class SalesReturnController extends Controller
         private readonly StockMutationService $stockMutationService,
         private readonly CashierShiftService $cashierShiftService,
         private readonly AuditLogService $auditLogService,
-        private readonly ThermalPrintService $thermalPrintService
+        private readonly ThermalPrintService $thermalPrintService,
+        private readonly UnitConversionService $unitConversionService
     ) {}
 
     public function index(Request $request): Response
@@ -52,11 +55,12 @@ class SalesReturnController extends Controller
             'return_type' => $request->input('return_type'),
         ];
 
+        $user = $request->user();
         $salesReturns = SalesReturn::query()
-            ->with(['transaction:id,invoice,payment_method,payment_status', 'customer:id,name', 'cashier:id,name'])
-            ->when(! $request->user()->isSuperAdmin(), function (Builder $query) use ($request) {
-                $query->whereHas('transaction', function (Builder $builder) use ($request) {
-                    $builder->where('cashier_id', $request->user()->id);
+            ->with(['transaction:id,invoice,payment_method,payment_status,warehouse_id', 'customer:id,name', 'cashier:id,name'])
+            ->when($user && ! $user->isHQ(), function (Builder $query) use ($user) {
+                $query->whereHas('transaction', function (Builder $builder) use ($user) {
+                    $builder->where('warehouse_id', $user->warehouse_id);
                 });
             })
             ->when($filters['code'], fn (Builder $query, $code) => $query->where('code', 'like', '%'.$code.'%'))
@@ -68,8 +72,7 @@ class SalesReturnController extends Controller
             ->when($filters['return_type'], fn (Builder $query, $returnType) => $query->where('return_type', $returnType))
             ->withCount(['items', 'exchangeItems'])
             ->latest()
-            ->paginate($this->perPage())->withQueryString()
-            ->withQueryString();
+            ->paginate($this->perPage())->withQueryString();
 
         return Inertia::render('Dashboard/SalesReturns/Index', [
             'salesReturns' => $salesReturns,
@@ -103,6 +106,7 @@ class SalesReturnController extends Controller
         $salesReturn = DB::transaction(function () use ($request, $transaction, $payload) {
             $salesReturn = SalesReturn::create([
                 'code' => $this->generateCode(),
+                'warehouse_id' => $transaction->warehouse_id,
                 'transaction_id' => $transaction->id,
                 'customer_id' => $transaction->customer_id,
                 'cashier_id' => $request->user()?->id,
@@ -284,12 +288,16 @@ class SalesReturnController extends Controller
 
             // Restock returned items
             foreach ($salesReturn->items as $item) {
+                $detail = $item->transactionDetail;
+                $conversionFactor = (float) ($detail?->conversion_factor ?: 1);
+                $baseQtyReturn = (int) round((float) $item->qty_return * $conversionFactor);
+
                 if ($item->restock_to_inventory && $item->product) {
                     $product = $item->product()->lockForUpdate()->first();
 
                     if ($product) {
                         $stockBefore = (int) $product->stock;
-                        $stockAfter = $stockBefore + (int) $item->qty_return;
+                        $stockAfter = $stockBefore + $baseQtyReturn;
 
                         $product->update([
                             'stock' => $stockAfter,
@@ -300,7 +308,7 @@ class SalesReturnController extends Controller
                             ProductWarehouse::where([
                                 'product_id' => $product->id,
                                 'warehouse_id' => $transactionWarehouseId,
-                            ])->increment('stock', (int) $item->qty_return);
+                            ])->increment('stock', $baseQtyReturn);
                         }
 
                         $this->stockMutationService->recordSalesReturnRestock(
@@ -314,14 +322,18 @@ class SalesReturnController extends Controller
                     }
                 }
 
-                $detail = $item->transactionDetail;
-                $buyPrice = (int) ($item->product?->buy_price ?? 0);
-                $margin = ((int) $detail->price - $buyPrice) * (int) $item->qty_return;
+                if ($item->product && $detail) {
+                    $unitBuyPrice = $detail->unit_id
+                        ? $this->unitConversionService->getBuyPrice($item->product, $detail->unit_id)
+                        : (int) round($item->product->buy_price * $conversionFactor);
 
-                Profit::create([
-                    'transaction_id' => $salesReturn->transaction_id,
-                    'total' => -$margin,
-                ]);
+                    $margin = ((int) $detail->price - $unitBuyPrice) * (int) $item->qty_return;
+
+                    Profit::create([
+                        'transaction_id' => $salesReturn->transaction_id,
+                        'total' => -$margin,
+                    ]);
+                }
             }
 
             // Deduct exchange replacement items stock
@@ -335,18 +347,21 @@ class SalesReturnController extends Controller
                         ]);
                     }
 
+                    $conversionFactor = (float) ($exchangeItem->conversion_factor ?: 1);
+                    $requiredBaseStock = (int) round((float) $exchangeItem->qty * $conversionFactor);
+
                     $availableStock = $transactionWarehouseId
                         ? (int) ($product->warehouses()->where('warehouse_id', $transactionWarehouseId)->lockForUpdate()->first()?->pivot->stock ?? 0)
                         : (int) $product->stock;
 
-                    if ($availableStock < (int) $exchangeItem->qty) {
+                    if ($availableStock < $requiredBaseStock) {
                         throw ValidationException::withMessages([
-                            'sales_return' => "Stok produk pengganti {$product->title} tidak mencukupi (Tersedia: {$availableStock}).",
+                            'sales_return' => "Stok produk pengganti {$product->title} tidak mencukupi (Dibutuhkan: {$requiredBaseStock}, Tersedia: {$availableStock}).",
                         ]);
                     }
 
                     $stockBefore = (int) $product->stock;
-                    $stockAfter = $stockBefore - (int) $exchangeItem->qty;
+                    $stockAfter = $stockBefore - $requiredBaseStock;
 
                     $product->update([
                         'stock' => $stockAfter,
@@ -356,20 +371,24 @@ class SalesReturnController extends Controller
                         ProductWarehouse::where([
                             'product_id' => $product->id,
                             'warehouse_id' => $transactionWarehouseId,
-                        ])->decrement('stock', (int) $exchangeItem->qty);
+                        ])->decrement('stock', $requiredBaseStock);
                     }
 
+                    $unitLabel = $exchangeItem->unit?->name ?? 'unit';
                     $this->stockMutationService->recordSalesReturnExchangeOut(
                         product: $product,
                         salesReturn: $salesReturn,
-                        qty: (int) $exchangeItem->qty,
+                        qty: $requiredBaseStock,
                         stockBefore: $stockBefore,
                         stockAfter: $stockAfter,
                         warehouseId: $transactionWarehouseId,
+                        notes: 'Barang pengganti retur penjualan '.$salesReturn->code.' ('.$exchangeItem->qty.' '.$unitLabel.')',
                         userId: $request->user()?->id,
                     );
 
-                    $exchangeBuyPrice = (int) ($product->buy_price ?? 0);
+                    $exchangeBuyPrice = $exchangeItem->unit_id
+                        ? $this->unitConversionService->getBuyPrice($product, $exchangeItem->unit_id)
+                        : (int) round(($product->buy_price ?? 0) * $conversionFactor);
                     $exchangeMargin = ((int) $exchangeItem->unit_price - $exchangeBuyPrice) * (int) $exchangeItem->qty;
 
                     Profit::create([
@@ -505,22 +524,63 @@ class SalesReturnController extends Controller
     {
         return Product::query()
             ->select('id', 'barcode', 'sku', 'title', 'sell_price', 'buy_price', 'stock')
+            ->with(['units'])
             ->when($warehouseId, function ($q) use ($warehouseId) {
                 $q->with(['warehouses' => fn ($w) => $w->where('warehouses.id', $warehouseId)]);
             })
             ->orderBy('title')
             ->get()
-            ->map(fn (Product $p) => [
-                'id' => $p->id,
-                'title' => $p->title,
-                'barcode' => $p->barcode,
-                'sku' => $p->sku,
-                'sell_price' => (int) $p->sell_price,
-                'buy_price' => (int) $p->buy_price,
-                'stock' => $warehouseId
-                    ? (int) ($p->warehouses->first()?->pivot->stock ?? 0)
-                    : (int) $p->stock,
-            ]);
+            ->map(function (Product $p) use ($warehouseId) {
+                $baseUnit = $p->baseUnit() ?: $p->units->first();
+                $units = $p->units->map(function ($u) use ($p) {
+                    $isBase = (bool) ($u->pivot->is_base ?? false);
+                    $factor = (float) ($u->pivot->conversion_factor ?? 1);
+                    $sellPrice = (int) ($u->pivot->sell_price ?? $p->sell_price);
+                    $buyPrice = (int) ($u->pivot->buy_price ?? $p->buy_price);
+
+                    return [
+                        'id' => $u->id,
+                        'name' => $u->name,
+                        'code' => $u->code,
+                        'symbol' => $u->symbol,
+                        'is_base' => $isBase,
+                        'conversion_factor' => $factor,
+                        'sell_price' => $sellPrice,
+                        'buy_price' => $buyPrice,
+                    ];
+                })->values()->all();
+
+                if (empty($units)) {
+                    $units = [
+                        [
+                            'id' => null,
+                            'name' => 'Pieces',
+                            'code' => 'PCS',
+                            'symbol' => 'pcs',
+                            'is_base' => true,
+                            'conversion_factor' => 1.0,
+                            'sell_price' => (int) $p->sell_price,
+                            'buy_price' => (int) $p->buy_price,
+                        ],
+                    ];
+                }
+
+                return [
+                    'id' => $p->id,
+                    'title' => $p->title,
+                    'barcode' => $p->barcode,
+                    'sku' => $p->sku,
+                    'unit_id' => $baseUnit?->id,
+                    'unit_name' => $baseUnit?->name ?? 'Pieces',
+                    'unit_code' => $baseUnit?->code ?? 'PCS',
+                    'sell_price' => (int) $p->sell_price,
+                    'buy_price' => (int) $p->buy_price,
+                    'stock' => $warehouseId
+                        ? (int) ($p->warehouses->first()?->pivot->stock ?? 0)
+                        : (int) $p->stock,
+                    'units' => $units,
+                ];
+            });
     }
 
     private function salesReturnAuditPayload(SalesReturn $salesReturn): array
@@ -557,20 +617,26 @@ class SalesReturnController extends Controller
 
     private function resolveAccessibleTransaction(Request $request, int $transactionId): Transaction
     {
+        $user = $request->user();
+
         return Transaction::query()
             ->with([
                 'cashier:id,name',
                 'customer:id,name',
                 'receivable',
                 'details.product:id,title,barcode,sku,buy_price',
+                'details.product.units',
+                'details.unit',
                 'details.salesReturnItems.salesReturn:id,status',
             ])
-            ->when(! $request->user()->isSuperAdmin(), fn (Builder $query) => $query->where('cashier_id', $request->user()->id))
+            ->when($user && ! $user->isHQ(), fn (Builder $query) => $query->where('warehouse_id', $user->warehouse_id))
             ->findOrFail($transactionId);
     }
 
     private function resolveAccessibleSalesReturn(Request $request, int $salesReturnId): SalesReturn
     {
+        $user = $request->user();
+
         return SalesReturn::query()
             ->with([
                 'customer:id,name',
@@ -579,15 +645,60 @@ class SalesReturnController extends Controller
                 'transaction.customer:id,name',
                 'transaction.receivable',
                 'transaction.details.product:id,title,barcode,sku,buy_price',
+                'transaction.details.product.units',
+                'transaction.details.unit',
                 'transaction.details.salesReturnItems.salesReturn:id,status',
                 'items.product:id,title,barcode,sku,buy_price',
-                'items.transactionDetail:id,transaction_id,product_id,qty,price',
+                'items.product.units',
+                'items.transactionDetail:id,transaction_id,product_id,qty,price,unit_id,conversion_factor',
+                'items.transactionDetail.unit',
                 'exchangeItems.product:id,title,barcode,sku,buy_price,sell_price',
+                'exchangeItems.product.units',
             ])
-            ->when(! $request->user()->isSuperAdmin(), function (Builder $query) use ($request) {
-                $query->whereHas('transaction', fn (Builder $builder) => $builder->where('cashier_id', $request->user()->id));
+            ->when($user && ! $user->isHQ(), function (Builder $query) use ($user) {
+                $query->whereHas('transaction', fn (Builder $builder) => $builder->where('warehouse_id', $user->warehouse_id));
             })
             ->findOrFail($salesReturnId);
+    }
+
+    private function resolveDetailUnit(TransactionDetail $detail): ?Unit
+    {
+        if ($detail->unit) {
+            return $detail->unit;
+        }
+
+        if ($detail->unit_id) {
+            $unit = Unit::find($detail->unit_id);
+            if ($unit) {
+                return $unit;
+            }
+        }
+
+        $product = $detail->product;
+        if (! $product) {
+            return null;
+        }
+
+        if (! empty($detail->conversion_factor) && (float) $detail->conversion_factor > 1) {
+            $matchingUnit = $product->units->first(function ($u) use ($detail) {
+                return abs((float) ($u->pivot->conversion_factor ?? 1) - (float) $detail->conversion_factor) < 0.001;
+            });
+            if ($matchingUnit) {
+                return $matchingUnit;
+            }
+        }
+
+        $unitPrice = $detail->qty > 0 ? (int) round($detail->price / $detail->qty) : (int) $detail->price;
+        if ($unitPrice > 0) {
+            $matchingByPrice = $product->units->first(function ($u) use ($unitPrice) {
+                return (int) ($u->pivot->sell_price ?? 0) === $unitPrice;
+            });
+            if ($matchingByPrice) {
+                return $matchingByPrice;
+            }
+        }
+
+        return $product->baseUnit() ?: $product->units->first();
     }
 
     private function transformTransactionForEditor(Transaction $transaction, ?SalesReturn $salesReturn = null): array
@@ -626,6 +737,8 @@ class SalesReturnController extends Controller
 
                 $draftItem = $draftItems->get($detail->id);
                 $qtySold = (int) $detail->qty;
+                $unit = $this->resolveDetailUnit($detail);
+                $unitName = $unit?->name ?? $unit?->code ?? 'Pcs';
 
                 return [
                     'id' => $detail->id,
@@ -635,7 +748,10 @@ class SalesReturnController extends Controller
                         'title' => $detail->product->title,
                         'barcode' => $detail->product->barcode,
                         'sku' => $detail->product->sku,
+                        'unit_name' => $unitName,
                     ] : null,
+                    'unit_name' => $unitName,
+                    'unit_code' => $unit?->code ?? 'PCS',
                     'qty' => $qtySold,
                     'price' => (int) $detail->price,
                     'returned_completed_qty' => $completedReturnedQty,
@@ -682,6 +798,9 @@ class SalesReturnController extends Controller
                 'invoice' => $salesReturn->transaction?->invoice,
             ],
             'items' => $salesReturn->items->map(function (SalesReturnItem $item) {
+                $unit = $item->transactionDetail ? $this->resolveDetailUnit($item->transactionDetail) : ($item->product?->baseUnit() ?: $item->product?->units->first());
+                $unitName = $unit?->name ?? $unit?->code ?? 'Pcs';
+
                 return [
                     'id' => $item->id,
                     'transaction_detail_id' => $item->transaction_detail_id,
@@ -690,7 +809,10 @@ class SalesReturnController extends Controller
                         'title' => $item->product->title,
                         'barcode' => $item->product->barcode,
                         'sku' => $item->product->sku,
+                        'unit_name' => $unitName,
                     ] : null,
+                    'unit_name' => $unitName,
+                    'unit_code' => $unit?->code ?? 'PCS',
                     'qty_sold' => (int) $item->qty_sold,
                     'qty_returned_before' => (int) $item->qty_returned_before,
                     'qty_return' => (int) $item->qty_return,
@@ -701,16 +823,37 @@ class SalesReturnController extends Controller
                 ];
             })->values(),
             'exchange_items' => $salesReturn->exchangeItems->map(function (SalesReturnExchangeItem $item) {
+                $product = $item->product;
+                $unit = $item->unit ?: ($item->unit_id && $product ? $product->units->firstWhere('id', $item->unit_id) : ($product?->baseUnit() ?: $product?->units->first()));
+                $unitName = $unit?->name ?? $unit?->code ?? 'Pieces';
+
+                $productUnits = $product ? $product->units->map(fn ($u) => [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'code' => $u->code,
+                    'symbol' => $u->symbol,
+                    'is_base' => (bool) ($u->pivot->is_base ?? false),
+                    'conversion_factor' => (float) ($u->pivot->conversion_factor ?? 1),
+                    'sell_price' => (int) ($u->pivot->sell_price ?? $product->sell_price),
+                    'buy_price' => (int) ($u->pivot->buy_price ?? $product->buy_price),
+                ])->values()->all() : [];
+
                 return [
                     'id' => $item->id,
                     'product_id' => $item->product_id,
-                    'product' => $item->product ? [
-                        'id' => $item->product->id,
-                        'title' => $item->product->title,
-                        'barcode' => $item->product->barcode,
-                        'sku' => $item->product->sku,
-                        'sell_price' => (int) $item->product->sell_price,
+                    'unit_id' => $item->unit_id ?: $unit?->id,
+                    'conversion_factor' => (float) ($item->conversion_factor ?: 1),
+                    'product' => $product ? [
+                        'id' => $product->id,
+                        'title' => $product->title,
+                        'barcode' => $product->barcode,
+                        'sku' => $product->sku,
+                        'sell_price' => (int) $product->sell_price,
+                        'unit_name' => $unitName,
+                        'units' => $productUnits,
                     ] : null,
+                    'unit_name' => $unitName,
+                    'unit_code' => $unit?->code ?? 'PCS',
                     'qty' => (int) $item->qty,
                     'unit_price' => (int) $item->unit_price,
                     'subtotal' => (int) $item->subtotal,
@@ -805,7 +948,7 @@ class SalesReturnController extends Controller
         if ($returnType === 'product_exchange') {
             $rawExchangeItems = $validated['exchange_items'] ?? [];
             $productIds = collect($rawExchangeItems)->pluck('product_id')->filter()->unique();
-            $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+            $products = Product::with('units')->whereIn('id', $productIds)->get()->keyBy('id');
 
             $exchangeItems = collect($rawExchangeItems)->map(function ($eItem) use ($products) {
                 $pId = (int) ($eItem['product_id'] ?? 0);
@@ -814,10 +957,21 @@ class SalesReturnController extends Controller
                 if (! $product || $qty < 1) {
                     return null;
                 }
-                $unitPrice = (int) ($eItem['unit_price'] ?? $product->sell_price);
+
+                $requestedUnitId = ! empty($eItem['unit_id']) ? (int) $eItem['unit_id'] : null;
+                $matchedUnit = $requestedUnitId ? $product->units->firstWhere('id', $requestedUnitId) : null;
+                $unit = $matchedUnit ?: $product->baseUnit() ?: $product->units->first();
+
+                $unitId = $unit?->id;
+                $conversionFactor = (float) ($unit?->pivot->conversion_factor ?? 1);
+                $unitPrice = $unit && isset($unit->pivot->sell_price) && (int) $unit->pivot->sell_price > 0
+                    ? (int) $unit->pivot->sell_price
+                    : (int) ($eItem['unit_price'] ?? $product->sell_price);
 
                 return [
                     'product_id' => $product->id,
+                    'unit_id' => $unitId,
+                    'conversion_factor' => $conversionFactor,
                     'qty' => $qty,
                     'unit_price' => $unitPrice,
                     'subtotal' => $qty * $unitPrice,

@@ -6,6 +6,7 @@ import {
     IconDeviceFloppy,
     IconArrowLeft,
     IconShield,
+    IconBuildingWarehouse,
 } from "@tabler/icons-react";
 import Input from "@/Components/Dashboard/Input";
 import Checkbox from "@/Components/Dashboard/Checkbox";
@@ -14,7 +15,7 @@ import { useState } from "react";
 import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
 
 export default function Edit() {
-    const { roles, user } = usePage().props;
+    const { roles, user, warehouses = [] } = usePage().props;
     const { requirePasswordConfirmation } = usePasswordConfirmation();
 
     const { data, setData, post, errors, processing } = useForm({
@@ -23,6 +24,7 @@ export default function Edit() {
         password: "",
         password_confirmation: "",
         selectedRoles: user.roles.map((role) => role.name),
+        warehouse_id: user.warehouse_id ? String(user.warehouse_id) : "",
         avatar: null,
         _method: "PUT",
     });
@@ -203,6 +205,40 @@ export default function Edit() {
                                 {errors.selectedRoles}
                             </p>
                         )}
+                    </div>
+
+                    {/* Branch / Warehouse Assignment */}
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
+                        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-2">
+                            <IconBuildingWarehouse size={16} />
+                            Penempatan Cabang (Multi-Branch Access)
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                            Pilih cabang penugasan untuk membatasi akses kasir/karyawan, atau pilih Kantor Pusat / Global untuk akses ke seluruh cabang.
+                        </p>
+                        <div>
+                            <select
+                                value={data.warehouse_id}
+                                onChange={(e) =>
+                                    setData("warehouse_id", e.target.value)
+                                }
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                            >
+                                <option value="">
+                                    🏢 Kantor Pusat / Global (Akses Semua Cabang)
+                                </option>
+                                {warehouses.map((w) => (
+                                    <option key={w.id} value={w.id}>
+                                        📍 {w.name} ({w.code})
+                                    </option>
+                                ))}
+                            </select>
+                            {errors.warehouse_id && (
+                                <p className="text-xs text-danger-500 mt-1.5">
+                                    {errors.warehouse_id}
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     {/* Submit */}

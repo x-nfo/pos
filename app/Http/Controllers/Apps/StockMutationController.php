@@ -14,12 +14,15 @@ class StockMutationController extends Controller
 {
     public function index(Request $request): Response
     {
+        $user = $request->user();
+        $warehouseId = $user && ! $user->isHQ() ? $user->warehouse_id : $request->input('warehouse_id');
+
         $filters = [
             'product_id' => $request->input('product_id'),
             'mutation_type' => $request->input('mutation_type'),
             'date_from' => $request->input('date_from'),
             'date_to' => $request->input('date_to'),
-            'warehouse_id' => $request->input('warehouse_id'),
+            'warehouse_id' => $warehouseId,
         ];
 
         $stockMutations = StockMutation::query()
@@ -28,15 +31,18 @@ class StockMutationController extends Controller
             ->when($filters['mutation_type'], fn ($query, $mutationType) => $query->where('mutation_type', $mutationType))
             ->when($filters['date_from'], fn ($query, $date) => $query->whereDate('created_at', '>=', $date))
             ->when($filters['date_to'], fn ($query, $date) => $query->whereDate('created_at', '<=', $date))
-            ->when($filters['warehouse_id'], fn ($query, $warehouseId) => $query->where('warehouse_id', $warehouseId))
+            ->when($filters['warehouse_id'], fn ($query, $whId) => $query->where('warehouse_id', $whId))
             ->latest()
-            ->paginate($this->perPage())->withQueryString()
-            ->withQueryString();
+            ->paginate($this->perPage())->withQueryString();
+
+        $warehouses = $user && ! $user->isHQ()
+            ? Warehouse::where('id', $user->warehouse_id)->get(['id', 'code', 'name'])
+            : Warehouse::active()->orderBy('code')->get(['id', 'code', 'name']);
 
         return Inertia::render('Dashboard/StockMutations/Index', [
             'stockMutations' => $stockMutations,
             'products' => Product::query()->orderBy('title')->get(['id', 'title', 'barcode', 'sku']),
-            'warehouses' => Warehouse::active()->orderBy('code')->get(['id', 'code', 'name']),
+            'warehouses' => $warehouses,
             'filters' => $filters,
         ]);
     }

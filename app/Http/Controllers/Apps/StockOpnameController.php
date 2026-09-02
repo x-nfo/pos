@@ -32,12 +32,15 @@ class StockOpnameController extends Controller
 
     public function index(Request $request): Response
     {
+        $user = $request->user();
+        $warehouseId = $user && ! $user->isHQ() ? $user->warehouse_id : $request->input('warehouse_id');
+
         $filters = [
             'search' => $request->input('search'),
             'status' => $request->input('status'),
             'date_from' => $request->input('date_from'),
             'date_to' => $request->input('date_to'),
-            'warehouse_id' => $request->input('warehouse_id'),
+            'warehouse_id' => $warehouseId,
         ];
 
         $stockOpnames = StockOpname::query()
@@ -52,22 +55,28 @@ class StockOpnameController extends Controller
             ->when($filters['status'], fn ($query, $status) => $query->where('status', $status))
             ->when($filters['date_from'], fn ($query, $date) => $query->whereDate('created_at', '>=', $date))
             ->when($filters['date_to'], fn ($query, $date) => $query->whereDate('created_at', '<=', $date))
-            ->when($filters['warehouse_id'], fn ($query, $warehouseId) => $query->where('warehouse_id', $warehouseId))
+            ->when($filters['warehouse_id'], fn ($query, $whId) => $query->where('warehouse_id', $whId))
             ->withCount('items')
             ->latest()
-            ->paginate($this->perPage())->withQueryString()
-            ->withQueryString();
+            ->paginate($this->perPage())->withQueryString();
+
+        $warehouses = $user && ! $user->isHQ()
+            ? Warehouse::where('id', $user->warehouse_id)->get(['id', 'code', 'name'])
+            : Warehouse::active()->orderBy('code')->get(['id', 'code', 'name']);
 
         return Inertia::render('Dashboard/StockOpnames/Index', [
             'stockOpnames' => $stockOpnames,
             'filters' => $filters,
-            'warehouses' => Warehouse::active()->orderBy('code')->get(['id', 'code', 'name']),
+            'warehouses' => $warehouses,
         ]);
     }
 
     public function create(): Response
     {
-        $warehouses = Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name']);
+        $user = auth()->user();
+        $warehouses = $user && ! $user->isHQ()
+            ? Warehouse::where('id', $user->warehouse_id)->get(['id', 'code', 'name'])
+            : Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name']);
 
         return Inertia::render('Dashboard/StockOpnames/Create', [
             'warehouses' => $warehouses,
@@ -76,12 +85,15 @@ class StockOpnameController extends Controller
 
     public function store(StoreStockOpnameRequest $request): RedirectResponse
     {
+        $user = $request->user();
+        $warehouseId = $user && ! $user->isHQ() ? $user->warehouse_id : $request->validated('warehouse_id');
+
         $stockOpname = StockOpname::create([
             'code' => $this->generateCode(),
-            'warehouse_id' => $request->validated('warehouse_id'),
+            'warehouse_id' => $warehouseId,
             'notes' => $request->validated('notes'),
             'status' => 'draft',
-            'created_by' => $request->user()?->id,
+            'created_by' => $user?->id,
         ]);
 
         return to_route('stock-opnames.show', $stockOpname);
@@ -89,6 +101,8 @@ class StockOpnameController extends Controller
 
     public function show(Request $request, StockOpname $stockOpname): Response
     {
+        $this->authorizeWarehouseAccess($request, $stockOpname);
+
         $stockOpname->load([
             'creator:id,name',
             'finalizer:id,name',
@@ -141,6 +155,7 @@ class StockOpnameController extends Controller
 
     public function update(UpdateStockOpnameRequest $request, StockOpname $stockOpname): RedirectResponse
     {
+        $this->authorizeWarehouseAccess($request, $stockOpname);
         $this->ensureDraft($stockOpname);
 
         $stockOpname->update($request->validated());
@@ -150,6 +165,7 @@ class StockOpnameController extends Controller
 
     public function populateItems(Request $request, StockOpname $stockOpname): RedirectResponse
     {
+        $this->authorizeWarehouseAccess($request, $stockOpname);
         $this->ensureDraft($stockOpname);
 
         $categoryId = $request->input('category_id');
@@ -197,6 +213,7 @@ class StockOpnameController extends Controller
 
     public function storeItem(StoreStockOpnameItemRequest $request, StockOpname $stockOpname): RedirectResponse
     {
+        $this->authorizeWarehouseAccess($request, $stockOpname);
         $this->ensureDraft($stockOpname);
 
         $product = Product::findOrFail($request->validated('product_id'));
@@ -235,6 +252,7 @@ class StockOpnameController extends Controller
         StockOpname $stockOpname,
         StockOpnameItem $item
     ): RedirectResponse {
+        $this->authorizeWarehouseAccess($request, $stockOpname);
         $this->ensureDraft($stockOpname);
         $this->ensureItemBelongsToOpname($stockOpname, $item);
 
@@ -267,6 +285,7 @@ class StockOpnameController extends Controller
 
     public function finalize(Request $request, StockOpname $stockOpname): RedirectResponse
     {
+        $this->authorizeWarehouseAccess($request, $stockOpname);
         $this->ensureDraft($stockOpname);
 
         $stockOpname->load('items.product');
@@ -368,6 +387,14 @@ class StockOpnameController extends Controller
     {
         if ($item->stock_opname_id !== $stockOpname->id) {
             abort(404);
+        }
+    }
+
+    private function authorizeWarehouseAccess(Request $request, StockOpname $stockOpname): void
+    {
+        $user = $request->user();
+        if ($user && ! $user->isHQ() && $stockOpname->warehouse_id && (int) $stockOpname->warehouse_id !== (int) $user->warehouse_id) {
+            abort(403, 'Anda tidak memiliki akses ke Stock Opname cabang ini.');
         }
     }
 

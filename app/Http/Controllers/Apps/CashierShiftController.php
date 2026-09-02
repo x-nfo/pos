@@ -48,11 +48,19 @@ class CashierShiftController extends Controller
         $shifts->through(fn (CashierShift $shift) => $this->transformShift($shift));
 
         $activeShift = $this->cashierShiftService->getActiveShiftForUser($request->user()->id);
-        $cashiers = $request->user()->isSuperAdmin() || $request->user()->can('cashier-shifts-force-close')
-            ? User::query()->orderBy('name')->get(['id', 'name'])
-            : collect([$request->user()->only(['id', 'name'])]);
+        $user = $request->user();
 
-        $warehouses = Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name']);
+        $cashiersQuery = User::query()->orderBy('name');
+        if (! $user->isHQ()) {
+            $cashiersQuery->where('warehouse_id', $user->warehouse_id);
+        }
+        $cashiers = $user->isSuperAdmin() || $user->can('cashier-shifts-force-close')
+            ? $cashiersQuery->get(['id', 'name'])
+            : collect([$user->only(['id', 'name'])]);
+
+        $warehouses = $user->isHQ()
+            ? Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name'])
+            : Warehouse::where('id', $user->warehouse_id)->get(['id', 'code', 'name']);
 
         return Inertia::render('Dashboard/CashierShifts/Index', [
             'shifts' => $shifts,
@@ -60,7 +68,7 @@ class CashierShiftController extends Controller
             'cashiers' => $cashiers,
             'activeShift' => $activeShift ? $this->transformShift($activeShift) : null,
             'warehouses' => $warehouses,
-            'canForceClose' => $request->user()->isSuperAdmin() || $request->user()->can('cashier-shifts-force-close'),
+            'canForceClose' => $user->isSuperAdmin() || $user->can('cashier-shifts-force-close'),
         ]);
     }
 
