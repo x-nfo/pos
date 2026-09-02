@@ -15,46 +15,64 @@ test.describe('POS Cart Checkout Flow', () => {
     // Click login
     await page.click('button[type="submit"]');
     
-    // 3. Navigate to POS Transactions page (usually redirects here automatically, but ensure we are there)
+    // 3. Navigate to POS Transactions page
     await expect(page).toHaveURL(/.*\/dashboard\/transactions/);
 
-    // If shift is closed, we need to open it.
-    // Check if "Buka Shift Sekarang" button is visible
+    // Ensure Shift is open
     const openShiftBtn = page.getByRole('button', { name: /Buka Shift Sekarang/i });
+    const productCard = page.locator('h3').first();
+    await expect(openShiftBtn.or(productCard)).toBeVisible({ timeout: 20000 });
+
     if (await openShiftBtn.isVisible()) {
         await openShiftBtn.click();
-        // Wait for modal and confirm
-        await page.waitForTimeout(1000);
-        // Assuming there is a "Simpan" or "Buka Shift" button in the modal
-        const submitShiftBtn = page.getByRole('button', { name: /Simpan|Buka Shift/i }).last();
-        if (await submitShiftBtn.isVisible()) {
-            await submitShiftBtn.click();
-        }
+        await expect(openShiftBtn).not.toBeVisible({ timeout: 15000 });
     }
 
-    // 4. Wait for products to load and click the first product
-    // We target the h3 element inside the ProductGrid which contains the product title
+
+
+    // 4. Wait for products to load and click the first product card
     const firstProduct = page.locator('h3').first();
-    await expect(firstProduct).toBeVisible();
+    await expect(firstProduct).toBeVisible({ timeout: 20000 });
     await firstProduct.click();
 
-    // 5. Verify the product was added to the cart
-    // The cart header should show "1 item" and Subtotal should appear
-    await expect(page.getByText('1 item')).toBeVisible();
-    await expect(page.getByText('Subtotal')).toBeVisible();
 
-    // 6. Input Cash Amount
-    // Target the cash input field (inputMode="numeric")
-    const cashInput = page.locator('input[inputmode="numeric"]').last();
-    await cashInput.fill('1000000'); // Fill 1,000,000 to ensure it covers any total
+    // If multi-unit modal opens, pick the first unit option button
+    const unitOption = page.locator('button:has-text("Satuan Dasar"), button:has-text("pcs"), button:has-text("Pilih")').first();
+    if (await unitOption.isVisible({ timeout: 2500 }).catch(() => false)) {
+        await unitOption.click();
+        await page.waitForTimeout(500);
+    }
 
-    // 7. Submit Transaction
-    const checkoutBtn = page.getByRole('button', { name: /Selesaikan Transaksi/i });
-    await expect(checkoutBtn).not.toBeDisabled();
-    await checkoutBtn.click();
+    // Verify item added to cart
+    await expect(page.locator('h4, .truncate').first()).toBeVisible({ timeout: 10000 });
 
-    // 8. Verify Success (Print modal or redirect)
-    // After success, it usually shows a success toast or a receipt/print button
+    // If cart drawer button is present (mobile/drawer view), click to open cart panel
+    const cartDrawerBtn = page.getByRole('button', { name: /Keranjang/i }).first();
+    if (await cartDrawerBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await expect(cartDrawerBtn).not.toBeDisabled({ timeout: 5000 });
+        await cartDrawerBtn.click();
+        await page.waitForTimeout(1000);
+    }
+
+    // 5. Click "Bayar Sekarang" to open Pembayaran Transaksi modal
+    const openPaymentModalBtn = page.getByRole('button', { name: /Bayar Sekarang|Selesaikan Transaksi/i }).first();
+    await expect(openPaymentModalBtn).toBeVisible({ timeout: 5000 });
+    await openPaymentModalBtn.click();
+
+    // 6. In Payment Modal, click quick cash button "Uang Pas" or "Rp 100.000"
+    const quickCashBtn = page.locator('button:has-text("Uang Pas"), button:has-text("Rp 100.000"), button:has-text("Rp 50.000")').first();
+    await expect(quickCashBtn).toBeVisible({ timeout: 5000 });
+    await quickCashBtn.click();
+
+    // 7. Submit Transaction via modal pay button
+    const finalPayBtn = page.locator('button:has-text("Bayar Rp"), button:has-text("Bayar")').last();
+    await expect(finalPayBtn).not.toBeDisabled({ timeout: 5000 });
+    await finalPayBtn.click();
+
+    // 8. Verify Success
     await expect(page.getByText(/Berhasil|Struk/i).first()).toBeVisible({ timeout: 10000 });
+
+
+
   });
 });

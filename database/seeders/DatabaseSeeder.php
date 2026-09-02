@@ -63,24 +63,28 @@ class DatabaseSeeder extends Seeder
             $cashier->update(['warehouse_id' => $cabang->id]);
         }
 
-        // Ensure all products have product_warehouse records for the default warehouse
-        $missingProductIds = DB::table('products')
-            ->whereNotIn('id', function ($query) use ($defaultWarehouse) {
-                $query->select('product_id')
-                    ->from('product_warehouse')
-                    ->where('warehouse_id', $defaultWarehouse->id);
-            })
-            ->pluck('id');
+        // Ensure all products have product_warehouse records for all active warehouses
+        $activeWarehouses = Warehouse::active()->get();
+        $productsList = DB::table('products')->get(['id', 'stock']);
 
-        foreach ($missingProductIds as $productId) {
-            $prodStock = (int) (DB::table('products')->where('id', $productId)->value('stock') ?? 0);
-            DB::table('product_warehouse')->insert([
-                'product_id' => $productId,
-                'warehouse_id' => $defaultWarehouse->id,
-                'stock' => $prodStock,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        foreach ($activeWarehouses as $wh) {
+            foreach ($productsList as $prod) {
+                $exists = DB::table('product_warehouse')
+                    ->where('product_id', $prod->id)
+                    ->where('warehouse_id', $wh->id)
+                    ->exists();
+
+                if (! $exists) {
+                    DB::table('product_warehouse')->insert([
+                        'product_id' => $prod->id,
+                        'warehouse_id' => $wh->id,
+                        'stock' => max(10, (int) $prod->stock),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
         }
     }
+
 }

@@ -17,18 +17,17 @@ test.describe('Product Multi-Unit CRUD', () => {
     await expect(page).toHaveURL(/.*\/dashboard\/products\/create/);
 
     // 3. Fill Basic Product Info
-    // We use explicit selectors to be safe if labels don't have matching 'for' attributes
     const uniqueSku = `TEST-MULTI-${Date.now()}`;
     const productName = `Kopi Sachet ABC ${Date.now()}`;
     
     // Fill SKU
-    await page.locator('label:has-text("SKU") + div input').first().fill(uniqueSku);
+    await page.locator('div:has(> label:has-text("SKU")) input').first().fill(uniqueSku);
     
     // Fill Barcode
     await page.getByPlaceholder('Scan atau ketik barcode').fill(uniqueSku);
     
     // Fill Nama Produk
-    await page.locator('label:has-text("Nama Produk") + input, label:has-text("Nama Produk") + div input').first().fill(productName);
+    await page.locator('div:has(> label:has-text("Nama Produk")) input').first().fill(productName);
     
     // Select Category (Headless UI Listbox)
     await page.getByRole('button', { name: 'Pilih kategori' }).click();
@@ -38,9 +37,11 @@ test.describe('Product Multi-Unit CRUD', () => {
     await page.getByPlaceholder('Deskripsi produk (opsional)').fill('Ini adalah deskripsi untuk pengujian E2E');
 
     // Fill Prices and Stock
-    await page.locator('label:has-text("Harga Beli") + div input').first().fill('1500');
-    await page.locator('label:has-text("Harga Jual") + div input').first().fill('2000');
-    await page.locator('label:has-text("Stok Awal") + input, label:has-text("Stok Awal") + div input').first().fill('120');
+    await page.locator('div:has(> label:has-text("Harga Beli")) input').first().fill('1500');
+    await page.locator('div:has(> label:has-text("Harga Jual")) input').first().fill('2000');
+    
+    const stockInput = page.locator('div:has(> label:has-text("Stok Awal")) input, input[placeholder="0"]').first();
+    await stockInput.fill('120');
 
     // 4. Enable Multi-Unit
     // Click the toggle switch
@@ -74,3 +75,4 @@ test.describe('Product Multi-Unit CRUD', () => {
     await expect(page.getByText(productName)).toBeVisible({ timeout: 10000 });
   });
 });
+
