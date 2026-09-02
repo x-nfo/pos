@@ -498,9 +498,10 @@ class ThermalPrintService
             $qty = (int) ($item->qty_return ?: $item->qty ?: 1);
             $unitPrice = (int) $item->unit_price;
             $subtotal = (int) ($item->subtotal ?: $qty * $unitPrice);
+            $unitSymbol = $item->transactionDetail?->unit?->symbol ? ' '.$item->transactionDetail->unit->symbol : ($item->product?->baseUnit()?->symbol ? ' '.$item->product->baseUnit()->symbol : '');
 
             $raw .= $itemTitle."\r\n";
-            $raw .= $this->leftRight("{$qty}x @ ".number_format($unitPrice, 0, ',', '.'), '-'.number_format($subtotal, 0, ',', '.'), $maxWidth)."\r\n";
+            $raw .= $this->leftRight("{$qty}{$unitSymbol}x @ ".number_format($unitPrice, 0, ',', '.'), '-'.number_format($subtotal, 0, ',', '.'), $maxWidth)."\r\n";
         }
 
         if ($isExchange && $salesReturn->exchangeItems->isNotEmpty()) {
@@ -511,9 +512,10 @@ class ThermalPrintService
                 $qty = (int) $item->qty;
                 $unitPrice = (int) $item->unit_price;
                 $subtotal = (int) ($item->subtotal ?: $qty * $unitPrice);
+                $unitSymbol = $item->product?->baseUnit()?->symbol ? ' '.$item->product->baseUnit()->symbol : '';
 
                 $raw .= $itemTitle."\r\n";
-                $raw .= $this->leftRight("{$qty}x @ ".number_format($unitPrice, 0, ',', '.'), number_format($subtotal, 0, ',', '.'), $maxWidth)."\r\n";
+                $raw .= $this->leftRight("{$qty}{$unitSymbol}x @ ".number_format($unitPrice, 0, ',', '.'), number_format($subtotal, 0, ',', '.'), $maxWidth)."\r\n";
             }
         }
 

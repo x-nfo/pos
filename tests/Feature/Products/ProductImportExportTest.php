@@ -6,6 +6,7 @@ use App\Exports\ProductsExport;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\Warehouse;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\UserSeeder;
@@ -66,8 +67,16 @@ class ProductImportExportTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent('products.csv', $csvContent);
 
+        $warehouse = Warehouse::first() ?? Warehouse::create([
+            'code' => 'PUSAT',
+            'name' => 'Gudang Pusat',
+            'type' => 'main',
+            'is_active' => true,
+        ]);
+
         $response = $this->post(route('import.products'), [
             'file' => $file,
+            'warehouse_id' => $warehouse->id,
         ]);
 
         $response->assertSessionHasNoErrors();
@@ -102,6 +111,13 @@ class ProductImportExportTest extends TestCase
 
     public function test_import_products_rejects_duplicate_sku_in_database_and_returns_error_list(): void
     {
+        $warehouse = Warehouse::first() ?? Warehouse::create([
+            'code' => 'PUSAT',
+            'name' => 'Gudang Pusat',
+            'type' => 'main',
+            'is_active' => true,
+        ]);
+
         $cat = Category::create([
             'name' => 'Makanan',
             'description' => 'Makanan',
@@ -132,6 +148,7 @@ class ProductImportExportTest extends TestCase
 
         $response = $this->post(route('import.products'), [
             'file' => $file,
+            'warehouse_id' => $warehouse->id,
         ]);
 
         $response->assertSessionHas('error');
@@ -142,6 +159,13 @@ class ProductImportExportTest extends TestCase
 
     public function test_import_products_rejects_duplicate_barcode_in_database_and_returns_error_list(): void
     {
+        $warehouse = Warehouse::first() ?? Warehouse::create([
+            'code' => 'PUSAT',
+            'name' => 'Gudang Pusat',
+            'type' => 'main',
+            'is_active' => true,
+        ]);
+
         $cat = Category::create([
             'name' => 'Makanan',
             'description' => 'Makanan',
@@ -172,6 +196,7 @@ class ProductImportExportTest extends TestCase
 
         $response = $this->post(route('import.products'), [
             'file' => $file,
+            'warehouse_id' => $warehouse->id,
         ]);
 
         $response->assertSessionHas('error');

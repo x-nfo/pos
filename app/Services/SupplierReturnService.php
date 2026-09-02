@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\Product;
 use App\Models\ProductWarehouse;
 use App\Models\SupplierReturn;
 use App\Models\SupplierReturnItem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SupplierReturnService
 {
@@ -28,6 +30,25 @@ class SupplierReturnService
     {
         return $this->documentNumberService->executeWithRetry(function () use ($data, $items, $userId) {
             return DB::transaction(function () use ($data, $items, $userId) {
+                $warehouseId = $data['warehouse_id'] ?? null;
+                foreach ($items as $item) {
+                    $product = Product::find($item['product_id']);
+                    if ($product) {
+                        $availableStock = $warehouseId
+                            ? (int) (ProductWarehouse::where([
+                                'product_id' => $product->id,
+                                'warehouse_id' => $warehouseId,
+                            ])->value('stock') ?? $product->stock)
+                            : (int) $product->stock;
+
+                        if ($availableStock < (int) $item['qty_returned']) {
+                            throw ValidationException::withMessages([
+                                'items' => "Stok fisik produk {$product->title} tidak mencukupi untuk diretur ke supplier (tersedia: {$availableStock}).",
+                            ]);
+                        }
+                    }
+                }
+
                 $return = SupplierReturn::create([
                     'supplier_id' => $data['supplier_id'] ?? null,
                     'warehouse_id' => $data['warehouse_id'] ?? null,
@@ -73,10 +94,34 @@ class SupplierReturnService
     public function complete(SupplierReturn $return): void
     {
         DB::transaction(function () use ($return) {
-            $return->load('items');
+            $return->load(['items.product', 'payable']);
 
             foreach ($return->items as $item) {
                 $product = $item->product;
+                if (! $product) {
+                    continue;
+                }
+
+                $availableStock = $return->warehouse_id
+                    ? (int) (ProductWarehouse::where([
+                        'product_id' => $product->id,
+                        'warehouse_id' => $return->warehouse_id,
+                    ])->value('stock') ?? $product->stock)
+                    : (int) $product->stock;
+
+                if ($availableStock < (int) $item->qty_returned) {
+                    throw ValidationException::withMessages([
+                        'return' => "Stok fisik produk {$product->title} tidak mencukupi untuk diretur ke supplier (tersedia: {$availableStock}).",
+                    ]);
+                }
+            }
+
+            foreach ($return->items as $item) {
+                $product = $item->product;
+                if (! $product) {
+                    continue;
+                }
+
                 $stockBefore = (int) $product->stock;
                 $product->decrement('stock', $item->qty_returned);
 

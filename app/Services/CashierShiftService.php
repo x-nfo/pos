@@ -58,7 +58,14 @@ class CashierShiftService
             ]);
         }
 
-        if (! $warehouseId) {
+        if (! $cashier->isHQ()) {
+            if ($warehouseId && (int) $warehouseId !== (int) $cashier->warehouse_id) {
+                throw ValidationException::withMessages([
+                    'warehouse_id' => 'Kasir hanya dapat membuka shift di cabang penempatannya.',
+                ]);
+            }
+            $warehouseId = $cashier->warehouse_id;
+        } elseif (! $warehouseId) {
             $warehouseId = Warehouse::active()->orderBy('sort_order')->orderBy('code')->first()?->id;
         }
 
@@ -203,6 +210,10 @@ class CashierShiftService
 
     public function visibleToUser(Builder $query, User $user): Builder
     {
+        if (! $user->isHQ()) {
+            $query->where('warehouse_id', $user->warehouse_id);
+        }
+
         if ($user->isSuperAdmin() || $user->can('cashier-shifts-force-close')) {
             return $query;
         }

@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use Maatwebsite\Excel\Concerns\OnEachRow;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -87,10 +88,10 @@ class ProductsImport implements OnEachRow, WithChunkReading, WithHeadingRow, Wit
         ]);
 
         if ($stock > 0) {
-            \App\Models\ProductWarehouse::create([
-                'product_id' => $product->id, 
+            ProductWarehouse::create([
+                'product_id' => $product->id,
                 'warehouse_id' => $this->warehouseId,
-                'stock' => $stock
+                'stock' => $stock,
             ]);
         }
     }
