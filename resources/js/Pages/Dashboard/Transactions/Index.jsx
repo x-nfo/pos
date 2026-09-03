@@ -1346,12 +1346,25 @@ export default function Index({
                         {/* Payment Details - Scrollable */}
                         <div className="p-3 space-y-4">
                             {/* Pay later toggle */}
-                            <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                            <div
+                                className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-200 ${
+                                    payLater
+                                        ? "border-primary-500/50 bg-primary-50/50 dark:bg-primary-950/20 dark:border-primary-500/40 shadow-sm"
+                                        : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                                }`}
+                            >
                                 <div>
-                                    <p className="text-sm font-semibold text-slate-800 dark:text-white">
-                                        Bayar Belakangan (Nota Barang)
-                                    </p>
-                                    <p className="text-xs text-slate-500">
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-sm font-semibold text-slate-800 dark:text-white">
+                                            Bayar Belakangan (Nota Barang)
+                                        </p>
+                                        {payLater && (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-primary-100 text-primary-700 dark:bg-primary-900/60 dark:text-primary-300">
+                                                Aktif
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
                                         Tidak perlu bayar sekarang, catat sebagai piutang.
                                     </p>
                                 </div>
@@ -1369,13 +1382,15 @@ export default function Index({
                                         }}
                                     />
                                     <span
-                                        className={`w-11 h-6 flex items-center bg-slate-300 rounded-full p-1 transition ${
-                                            payLater ? "bg-primary-500" : ""
+                                        className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ease-in-out ${
+                                            payLater
+                                                ? "bg-primary-600 dark:bg-primary-500"
+                                                : "bg-slate-300 dark:bg-slate-600"
                                         }`}
                                     >
                                         <span
-                                            className={`bg-white w-4 h-4 rounded-full shadow transform transition ${
-                                                payLater ? "translate-x-5" : ""
+                                            className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
+                                                payLater ? "translate-x-5" : "translate-x-0"
                                             }`}
                                         />
                                     </span>

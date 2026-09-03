@@ -122,12 +122,25 @@ export default function MobilePaymentSheet({
         >
             <div className="space-y-4">
                 {/* Pay Later Toggle */}
-                <div className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
+                <div
+                    className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all duration-200 ${
+                        payLater
+                            ? "border-primary-500/50 bg-primary-50/50 dark:bg-primary-950/20 dark:border-primary-500/40 shadow-sm"
+                            : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40"
+                    }`}
+                >
                     <div>
-                        <p className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5">
                             <IconClock size={16} className="text-amber-500" />
-                            Bayar Nanti (Piutang)
-                        </p>
+                            <p className="text-xs font-bold text-slate-800 dark:text-white">
+                                Bayar Nanti (Piutang)
+                            </p>
+                            {payLater && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary-100 text-primary-700 dark:bg-primary-900/60 dark:text-primary-300">
+                                    Aktif
+                                </span>
+                            )}
+                        </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                             Catat invoice sebagai piutang customer
                         </p>
