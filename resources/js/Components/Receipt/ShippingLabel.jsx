@@ -93,238 +93,176 @@ export default function ShippingLabel({ transaction, store = {} }) {
                             page-break-inside: avoid !important;
                             break-inside: avoid !important;
                             overflow: hidden !important;
+                            position: relative !important;
+                        }
+                        .shipping-label-footer {
+                            position: absolute !important;
+                            bottom: 12pt !important;
+                            left: 12pt !important;
+                            right: 12pt !important;
+                            border-top: 1px solid #e2e8f0 !important;
+                            padding-top: 6pt !important;
+                            margin-top: 0 !important;
+                        }
+                        .shipping-label-penerima {
+                            height: 65pt !important;
+                        }
+                        .shipping-label-ringkasan {
+                            height: 65pt !important;
+                        }
+                        .shipping-label-products {
+                            height: 48pt !important;
+                            overflow: hidden !important;
                         }
                     }
                 `}
             </style>
 
             <div
-                className="shipping-label-container bg-white text-slate-800 border border-slate-200 rounded-xl shadow-md relative overflow-hidden box-border"
+                className="shipping-label-container bg-white text-slate-800 border border-slate-200 rounded-2xl sm:rounded-xl shadow-lg sm:shadow-md relative overflow-hidden box-border w-full max-w-[425.2pt] sm:w-[425.2pt] h-auto sm:h-[283.5pt] p-3.5 sm:p-[12pt] transition-all"
                 style={{
-                    width: "425.2pt",
-                    height: "283.5pt",
-                    maxWidth: "100%",
-                    padding: "12pt",
                     fontFamily: "'Helvetica', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                     color: "#1e293b",
                 }}
             >
-                {/* Header Table */}
-                <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "auto", marginBottom: "5pt" }}>
-                    <tbody>
-                        <tr>
-                            <td style={{ width: "1%", paddingRight: "8pt", verticalAlign: "middle" }}>
-                                <div style={{ width: "40pt", height: "40pt", display: "block" }}>
-                                    {storeLogo ? (
-                                        <img
-                                            src={storeLogo}
-                                            alt={storeName}
-                                            style={{ maxWidth: "40pt", maxHeight: "40pt", objectFit: "contain" }}
-                                        />
-                                    ) : (
-                                        <div
-                                            style={{
-                                                width: "40pt",
-                                                height: "40pt",
-                                                border: "1px solid #e2e8f0",
-                                                lineHeight: "40pt",
-                                                textAlign: "center",
-                                                fontWeight: "bold",
-                                                fontSize: "17pt",
-                                            }}
-                                        >
-                                            {storeName.slice(0, 2).toUpperCase()}
-                                        </div>
-                                    )}
+                {/* Header */}
+                <div className="flex items-start justify-between gap-2.5 sm:gap-3 pb-2 sm:pb-[5pt]">
+                    {/* Store Branding (Left) */}
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                        <div className="w-10 h-10 sm:w-[40pt] sm:h-[40pt] flex-shrink-0 flex items-center justify-center">
+                            {storeLogo ? (
+                                <img
+                                    src={storeLogo}
+                                    alt={storeName}
+                                    className="max-w-full max-h-full object-contain"
+                                />
+                            ) : (
+                                <div className="w-full h-full border border-slate-200 rounded-lg sm:rounded-none flex items-center justify-center font-bold text-sm sm:text-[17pt] text-slate-700 bg-slate-50 sm:bg-transparent">
+                                    {storeName.slice(0, 2).toUpperCase()}
                                 </div>
-                            </td>
-                            <td style={{ textAlign: "left", verticalAlign: "middle", padding: "0 4pt" }}>
-                                <div style={{ fontSize: "13pt", fontWeight: "bold", lineHeight: 1.1 }}>
-                                    {storeName}
+                            )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <div className="font-bold text-xs sm:text-[13pt] text-slate-900 leading-tight truncate">
+                                {storeName}
+                            </div>
+                            {storeAddress && (
+                                <div className="text-[10px] sm:text-[7pt] text-slate-500 mt-0.5 leading-snug line-clamp-1 sm:truncate">
+                                    {storeAddress}
                                 </div>
-                                <div style={{ fontSize: "7pt", color: "#64748b", marginTop: "3pt" }}>
-                                    {storeAddress ? (storeAddress.length > 60 ? storeAddress.substring(0, 60) + "..." : storeAddress) : ""}
-                                </div>
-                                <div style={{ fontSize: "7pt", color: "#64748b", marginTop: "2pt", letterSpacing: "0.7pt" }}>
+                            )}
+                            {(storePhone || storeEmail) && (
+                                <div className="text-[10px] sm:text-[7pt] text-slate-500 mt-0.5 tracking-tight truncate">
                                     {storePhone}{storePhone && storeEmail ? " | " : ""}{storeEmail}
                                 </div>
-                            </td>
-                            <td style={{ width: "180pt", textAlign: "right", verticalAlign: "top", padding: "0 4pt" }}>
-                                <div style={{ fontSize: "7pt", color: "#64748b" }}>INVOICE</div>
-                                <div style={{ fontSize: "15pt", fontWeight: "bold", color: "#000", lineHeight: 1.1 }}>
-                                    {transaction?.invoice}
-                                </div>
-                                <div style={{ fontSize: "8pt", color: "#1e293b" }}>
-                                    {formatDate(transaction?.created_at)}
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                            )}
+                        </div>
+                    </div>
 
-                <div style={{ borderTop: "1px solid #e2e8f0", margin: "8pt 0" }} />
+                    {/* Invoice & Date Info (Right) */}
+                    <div className="text-right flex-shrink-0 pl-1">
+                        <div className="text-[9px] sm:text-[7pt] font-semibold text-slate-400 uppercase tracking-wider">
+                            INVOICE
+                        </div>
+                        <div className="font-bold text-xs sm:text-[14pt] text-slate-900 leading-tight whitespace-nowrap">
+                            {transaction?.invoice}
+                        </div>
+                        <div className="text-[10px] sm:text-[8pt] text-slate-600 mt-0.5">
+                            {formatDate(transaction?.created_at)}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="border-t border-slate-200 my-2 sm:my-[8pt]" />
 
                 {/* Section Penerima & Ringkasan Pesanan */}
-                <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-                    <tbody>
-                        <tr>
-                            <td style={{ width: "65%", paddingRight: "5pt", verticalAlign: "top" }}>
-                                <div
-                                    style={{
-                                        border: "1px solid #e2e8f0",
-                                        borderRadius: "6pt",
-                                        padding: "6pt",
-                                        height: "65pt",
-                                        boxSizing: "border-box",
-                                        overflow: "hidden",
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            fontSize: "7pt",
-                                            textTransform: "uppercase",
-                                            color: "#64748b",
-                                            fontWeight: "bold",
-                                            marginBottom: "3pt",
-                                        }}
-                                    >
-                                        Penerima
-                                    </div>
-                                    <div style={{ fontSize: "10pt", fontWeight: "bold", color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                        {customer.name || "Umum"}
-                                    </div>
-                                    <div style={{ fontSize: "8pt", color: "#64748b", marginTop: "5px", marginBottom: "5px" }}>
-                                        {customerPhone}
-                                    </div>
-                                    <div style={{ fontSize: "8pt", color: "#64748b", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                        {customerAddress ? (customerAddress.length > 80 ? customerAddress.substring(0, 80) + "..." : customerAddress) : "No Address"}
-                                    </div>
-                                    <div style={{ fontSize: "8pt", color: "#64748b", marginTop: "2pt", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                        {regionString}
-                                    </div>
+                <div className="grid grid-cols-12 gap-2 sm:gap-2.5">
+                    {/* Penerima Box */}
+                    <div className="shipping-label-penerima col-span-7 border border-slate-200 rounded-lg p-2 sm:p-[6pt] h-auto sm:h-[65pt] flex flex-col justify-between overflow-hidden">
+                        <div>
+                            <div className="text-[9px] sm:text-[7pt] font-bold uppercase text-slate-400 mb-0.5 sm:mb-[3pt]">
+                                Penerima
+                            </div>
+                            <div className="font-bold text-xs sm:text-[10pt] text-slate-900 truncate">
+                                {customer.name || "Umum"}
+                            </div>
+                            <div className="text-[10px] sm:text-[8pt] text-slate-500 mt-0.5">
+                                {customerPhone}
+                            </div>
+                        </div>
+                        <div className="mt-1">
+                            <div className="text-[10px] sm:text-[8pt] text-slate-500 leading-tight line-clamp-1 sm:truncate">
+                                {customerAddress ? customerAddress : "No Address"}
+                            </div>
+                            {regionString !== "-" && (
+                                <div className="text-[10px] sm:text-[8pt] text-slate-500 leading-tight truncate mt-0.5">
+                                    {regionString}
                                 </div>
-                            </td>
-                            <td style={{ width: "35%", paddingLeft: "5pt", verticalAlign: "top" }}>
-                                <div
-                                    style={{
-                                        border: "1px solid #e2e8f0",
-                                        borderRadius: "6pt",
-                                        padding: "6pt",
-                                        height: "65pt",
-                                        boxSizing: "border-box",
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        justifyContent: "space-between",
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            fontSize: "7pt",
-                                            textTransform: "uppercase",
-                                            color: "#64748b",
-                                            fontWeight: "bold",
-                                            marginBottom: "3pt",
-                                        }}
-                                    >
-                                        Ringkasan Pesanan
-                                    </div>
-                                    <table style={{ width: "100%", fontSize: "8pt", borderCollapse: "collapse" }}>
-                                        <tbody>
-                                            <tr>
-                                                <td style={{ color: "#1e293b" }}>Item</td>
-                                                <td style={{ textAlign: "right", color: "#1e293b" }}>{itemCount} unit</td>
-                                            </tr>
-                                            <tr>
-                                                <td style={{ paddingTop: "15pt", fontWeight: "bold", color: "#1e293b", fontSize: "10pt" }}>
-                                                    Total
-                                                </td>
-                                                <td style={{ paddingTop: "15pt", textAlign: "right", fontWeight: "bold", color: "#1e293b", fontSize: "10pt" }}>
-                                                    {formatPrice(transaction?.grand_total)}
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Ringkasan Pesanan Box */}
+                    <div className="shipping-label-ringkasan col-span-5 border border-slate-200 rounded-lg p-2 sm:p-[6pt] h-auto sm:h-[65pt] flex flex-col justify-between overflow-hidden">
+                        <div className="text-[9px] sm:text-[7pt] font-bold uppercase text-slate-400 mb-0.5 sm:mb-[3pt]">
+                            Ringkasan Pesanan
+                        </div>
+                        <div className="space-y-1 sm:space-y-0 text-[10px] sm:text-[8pt]">
+                            <div className="flex justify-between items-center text-slate-700">
+                                <span>Item</span>
+                                <span className="font-semibold">{itemCount} unit</span>
+                            </div>
+                            <div className="flex justify-between items-baseline pt-1 sm:pt-[10pt] border-t border-slate-100 sm:border-0">
+                                <span className="font-bold text-slate-900 text-[10px] sm:text-[10pt]">Total</span>
+                                <span className="font-bold text-slate-900 text-[11px] sm:text-[10pt] text-right ml-1 whitespace-nowrap">
+                                    {formatPrice(transaction?.grand_total)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 {/* Daftar Produk */}
-                <div
-                    style={{
-                        fontSize: "7pt",
-                        textTransform: "uppercase",
-                        color: "#64748b",
-                        fontWeight: "bold",
-                        marginTop: "10pt",
-                        marginBottom: "2pt",
-                    }}
-                >
-                    Daftar Produk
-                </div>
-                <div style={{ height: "50pt", overflow: "hidden" }}>
-                    <ul style={{ margin: 0, paddingLeft: "12pt", listStyleType: "disc" }}>
-                        {displayedProducts.map((detail, idx) => {
-                            const title = detail.product?.title || "Produk";
-                            const truncatedTitle = title.length > 40 ? title.substring(0, 40) + "..." : title;
-                            return (
-                                <li key={idx} style={{ fontSize: "8pt", marginBottom: "2pt", color: "#1e293b" }}>
-                                    {truncatedTitle} ({detail.qty}x)
-                                </li>
-                            );
-                        })}
-                    </ul>
+                <div className="mt-2.5 sm:mt-[10pt]">
+                    <div className="text-[9px] sm:text-[7pt] font-bold uppercase text-slate-400 mb-1 sm:mb-[2pt]">
+                        Daftar Produk
+                    </div>
+                    <div className="shipping-label-products h-auto sm:h-[48pt] overflow-hidden">
+                        <ul className="m-0 pl-3.5 sm:pl-[12pt] list-disc space-y-0.5 sm:space-y-[2pt]">
+                            {displayedProducts.map((detail, idx) => {
+                                const title = detail.product?.title || "Produk";
+                                return (
+                                    <li key={idx} className="text-[11px] sm:text-[8pt] text-slate-800 leading-snug truncate">
+                                        {title} ({detail.qty}x)
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
                 </div>
 
-                {/* Footer Absolute */}
-                <div
-                    style={{
-                        position: "absolute",
-                        bottom: "15pt",
-                        left: "15pt",
-                        right: "15pt",
-                        borderTop: "1px solid #e2e8f0",
-                        paddingTop: "8pt",
-                    }}
-                >
-                    <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "auto" }}>
-                        <tbody>
-                            <tr>
-                                <td style={{ verticalAlign: "bottom", paddingBottom: "2pt", lineHeight: 1.5, color: "#64748b", fontSize: "7pt" }}>
-                                    Admin: <strong style={{ color: "#1e293b" }}>{transaction?.cashier?.name || "-"}</strong>
-                                    <br />
-                                    Dicetak: {getPrintDate()}
-                                </td>
-                                <td style={{ textAlign: "right", width: "150pt", verticalAlign: "bottom" }}>
-                                    <div style={{ textAlign: "right", width: "220pt", float: "right" }}>
-                                        <svg
-                                            ref={barcodeRef}
-                                            style={{
-                                                height: "35pt",
-                                                width: "100%",
-                                                maxWidth: "220pt",
-                                                display: "block",
-                                                marginLeft: "auto",
-                                            }}
-                                        />
-                                        <div
-                                            style={{
-                                                fontSize: "8pt",
-                                                fontWeight: "bold",
-                                                letterSpacing: "2pt",
-                                                marginTop: "5pt",
-                                                color: "#000",
-                                                textAlign: "center",
-                                            }}
-                                        >
-                                            {transaction?.invoice}
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                {/* Footer */}
+                <div className="shipping-label-footer mt-3 pt-2.5 border-t border-slate-200 sm:border-t sm:absolute sm:bottom-[12pt] sm:left-[12pt] sm:right-[12pt] sm:mt-0 sm:pt-[8pt] flex flex-col sm:flex-row items-center sm:items-end justify-between gap-2.5 sm:gap-2">
+                    {/* Admin & Print Date */}
+                    <div className="text-[10px] sm:text-[7pt] text-slate-500 leading-snug text-center sm:text-left order-2 sm:order-1 self-start sm:self-end">
+                        <div>
+                            Admin: <strong className="text-slate-800 font-semibold">{transaction?.cashier?.name || "-"}</strong>
+                        </div>
+                        <div className="text-slate-400">
+                            Dicetak: {getPrintDate()}
+                        </div>
+                    </div>
+
+                    {/* Barcode & Invoice Number */}
+                    <div className="flex flex-col items-center sm:items-end order-1 sm:order-2 w-full sm:w-auto max-w-[240px] sm:max-w-[220pt]">
+                        <svg
+                            ref={barcodeRef}
+                            className="h-8 sm:h-[35pt] w-full max-w-[200px] sm:max-w-[220pt] block mx-auto sm:ml-auto"
+                        />
+                        <div className="text-[10px] sm:text-[8pt] font-bold tracking-widest text-slate-900 text-center mt-1 sm:mt-[4pt]">
+                            {transaction?.invoice}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
