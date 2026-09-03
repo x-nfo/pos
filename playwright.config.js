@@ -28,8 +28,8 @@ export default defineConfig({
       reuseExistingServer: true,
     },
     {
-      command: 'npm run dev -- --port 5175',
-      port: 5175,
+      command: 'npm run dev',
+      port: 5173,
       timeout: 120 * 1000,
       reuseExistingServer: true,
     }
