@@ -9,6 +9,7 @@ import {
     IconTruck,
     IconBuildingBank,
     IconCheck,
+    IconCircleCheck,
     IconAlertCircle,
     IconShare,
     IconQrcode,
@@ -17,6 +18,10 @@ import {
     IconBluetooth,
     IconBolt,
     IconX,
+    IconVolume,
+    IconVolumeOff,
+    IconShoppingCart,
+    IconBrandWhatsapp,
 } from "@tabler/icons-react";
 import QRCode from "qrcode";
 import ThermalReceipt, {
@@ -28,7 +33,8 @@ import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
 import { shareWhatsappReceipt } from "@/Utils/whatsappReceipt";
 import { printViaWebUsb } from "@/Utils/webUsbPrinter";
 import { printViaBluetooth } from "@/Utils/webBluetoothPrinter";
-import toast from "react-hot-toast";
+import { playSuccessChime, isSoundEnabled, toggleSoundEnabled } from "@/Utils/sound";
+import toast, { Toaster } from "react-hot-toast";
 import axios from "axios";
 import Swal from "sweetalert2";
 
@@ -76,6 +82,7 @@ export default function Print({
         pdf_receipt: true,
         pdf_invoice: true,
     },
+    isJustCompleted = false,
 }) {
     const { storeProfile, branding, flash } = usePage().props;
     const { can } = useAuthorization();
@@ -88,7 +95,9 @@ export default function Print({
     const [isWebUsbPrinting, setIsWebUsbPrinting] = useState(false);
     const [isBluetoothPrinting, setIsBluetoothPrinting] = useState(false);
     const [isCheckingApproval, setIsCheckingApproval] = useState(false);
+    const [soundActive, setSoundActive] = useState(() => isSoundEnabled());
     const hasAutoPrinted = useRef(false);
+    const hasPlayedSound = useRef(false);
     const canConfirmPayment = can("transactions-confirm-payment");
     const canApproveDiscount = can("discounts-approve");
     const { requirePasswordConfirmation } = usePasswordConfirmation();
@@ -181,11 +190,72 @@ export default function Print({
         }
     };
 
+    const handleToggleSound = () => {
+        const next = toggleSoundEnabled();
+        setSoundActive(next);
+        if (next) {
+            playSuccessChime();
+            toast.success("Suara notifikasi kasir aktif");
+        } else {
+            toast("Suara notifikasi kasir dinonaktifkan", { icon: "🔇" });
+        }
+    };
+
+    const handleTriggerPrint = () => {
+        if (printMode === "thermal58" || printMode === "thermal80") {
+            if (autoPrintDriver === "bluetooth" && enabledButtons?.bluetooth !== false) {
+                handleBluetoothPrint();
+            } else if (autoPrintDriver === "webusb" && enabledButtons?.webusb !== false) {
+                handleWebUsbPrint();
+            } else if (autoPrintDriver === "server" && enabledButtons?.server !== false) {
+                handleDirectPrint();
+            } else {
+                handlePrint();
+            }
+        } else {
+            handlePrint();
+        }
+    };
+
+    useEffect(() => {
+        if ((isJustCompleted || flash?.success) && !hasPlayedSound.current) {
+            hasPlayedSound.current = true;
+            playSuccessChime();
+        }
+    }, [isJustCompleted, flash?.success]);
+
     useEffect(() => {
         if (flash?.success) toast.success(flash.success);
         if (flash?.error) toast.error(flash.error, { duration: 6000 });
         if (flash?.info) toast(flash.info);
     }, [flash]);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)) {
+                return;
+            }
+            if (showConfirmModal) return;
+
+            if (e.key === "Escape" || e.key === "F2") {
+                e.preventDefault();
+                router.visit(route("transactions.index"));
+            } else if ((e.key === "p" || e.key === "P") && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                handleTriggerPrint();
+            } else if ((e.key === "w" || e.key === "W") && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                shareWhatsappReceipt({
+                    transaction,
+                    storeProfile,
+                    branding,
+                });
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [showConfirmModal, printMode, autoPrintDriver, enabledButtons, transaction, storeProfile, branding]);
 
     const formatPrice = (price = 0) =>
         Number(price || 0).toLocaleString("id-ID", {
@@ -366,358 +436,414 @@ export default function Print({
     return (
         <>
             <Head title="Invoice Penjualan" />
+            <Toaster position="top-center" />
 
-            <div className="min-h-screen bg-slate-100 dark:bg-slate-950 py-8 px-4 print:bg-white print:p-0 print:m-0 print:min-h-0">
-                <div className="max-w-4xl mx-auto space-y-6 print:max-w-none print:m-0 print:p-0 print:space-y-0">
-                    {/* Action Bar */}
-                    <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
-                        <Link
-                            href={route("transactions.index")}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                        >
-                            <IconArrowLeft size={18} />
-                            Kembali ke kasir
-                        </Link>
+            <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 py-6 sm:py-8 px-4 flex flex-col items-center justify-start print:bg-white print:p-0 print:m-0 print:min-h-0">
+                <div className={`w-full mx-auto print:max-w-none print:m-0 print:p-0 transition-all duration-300 ${printMode === "invoice" ? "max-w-6xl" : "max-w-5xl"}`}>
+                    {/* Unified POS Workstation Card */}
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200/80 dark:border-slate-800 overflow-hidden print:shadow-none print:border-0 print:rounded-none">
+                        {/* Integrated Header / Status Bar (print:hidden) */}
+                        <header className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-5 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 print:hidden">
+                            <div className="flex items-center gap-3">
+                                <Link
+                                    href={route("transactions.index")}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-colors"
+                                >
+                                    <IconArrowLeft size={16} />
+                                    <span>Kasir (Esc)</span>
+                                </Link>
 
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-                            {/* Print Mode Selector */}
-                            <div className="flex bg-slate-200 dark:bg-slate-800 rounded-xl p-1 w-full sm:w-auto">
-                                <button
-                                    onClick={() => setPrintMode("invoice")}
-                                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                                        printMode === "invoice"
-                                            ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow"
-                                            : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
-                                    }`}
-                                >
-                                    <IconFileInvoice
-                                        size={16}
-                                        className="inline mr-1"
-                                    />
-                                    Invoice
-                                </button>
-                                <button
-                                    onClick={() => setPrintMode("thermal80")}
-                                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                                        printMode === "thermal80"
-                                            ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow"
-                                            : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
-                                    }`}
-                                >
-                                    <IconReceipt
-                                        size={16}
-                                        className="inline mr-1"
-                                    />
-                                    Struk 80mm
-                                </button>
-                                <button
-                                    onClick={() => setPrintMode("thermal58")}
-                                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                                        printMode === "thermal58"
-                                            ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow"
-                                            : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
-                                    }`}
-                                >
-                                    <IconReceipt
-                                        size={16}
-                                        className="inline mr-1"
-                                    />
-                                    Struk 58mm
-                                </button>
-                                <button
-                                    onClick={() => setPrintMode("shipping")}
-                                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                                        printMode === "shipping"
-                                            ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow"
-                                            : "text-slate-500 dark:text-slate-400 hover:text-slate-700"
-                                    }`}
-                                >
-                                    <IconTruck
-                                        size={16}
-                                        className="inline mr-1"
-                                    />
-                                    Resi
-                                </button>
+                                <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
+
+                                <div className="flex items-center gap-2">
+                                    <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
+                                        {transaction.invoice}
+                                    </span>
+                                    <span className="text-xs text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
+                                    <span className="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">
+                                        {formatDateTime(transaction.created_at)}
+                                    </span>
+                                </div>
                             </div>
 
-                            {showPaymentLink && (
-                                <a
-                                    href={transaction.payment_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-primary-200 dark:border-primary-800 text-sm font-semibold text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950/50 transition-colors w-full sm:w-auto"
+                            <div className="flex items-center gap-2.5">
+                                <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${paymentStatusColor}`}>
+                                    {paymentStatusLabel}
+                                </span>
+
+                                <button
+                                    type="button"
+                                    onClick={handleToggleSound}
+                                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                    title={soundActive ? "Bisukan suara kasir" : "Aktifkan suara kasir"}
+                                    aria-label="Toggle Sound"
                                 >
-                                    <IconExternalLink size={18} />
-                                    Pembayaran
-                                </a>
-                            )}
+                                    {soundActive ? <IconVolume size={16} /> : <IconVolumeOff size={16} className="text-slate-400" />}
+                                </button>
 
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    shareWhatsappReceipt({
-                                        transaction,
-                                        storeProfile,
-                                        branding,
-                                    });
-                                }}
-                                className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto"
-                                title="Share Struk Transaksi"
-                            >
-                                <IconShare size={18} />
-                                Share
-                            </button>
-
-                            {/* Confirm Payment Button - Only for pending bank_transfer */}
-                            {paymentMethodKey === "bank_transfer" &&
-                                paymentStatusKey === "pending" &&
-                                canConfirmPayment && (
-                                    <button
-                                        onClick={() =>
-                                            setShowConfirmModal(true)
-                                        }
-                                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-success-500 hover:bg-success-600 text-sm font-semibold text-white transition-colors w-full sm:w-auto"
-                                    >
-                                        <IconCheck size={18} />
-                                        Konfirmasi Bayar
-                                    </button>
-                                )}
-
-                            {printMode === "invoice" && enabledButtons?.pdf_invoice !== false && (
-                                <a
-                                    href={route("pdf.transactions.invoice", transaction.invoice)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-sm font-semibold text-white shadow-lg shadow-primary-500/30 transition-colors w-full sm:w-auto"
+                                <Link
+                                    href={route("transactions.index")}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-bold text-xs shadow-sm shadow-primary-500/25 transition-all cursor-pointer"
                                 >
-                                    <IconPrinter size={18} />
-                                    PDF Invoice
-                                </a>
-                            )}
+                                    <IconShoppingCart size={16} />
+                                    <span>Transaksi Baru</span>
+                                    <kbd className="hidden sm:inline text-[9px] bg-white/20 px-1.5 py-0.5 rounded font-mono font-normal">Esc</kbd>
+                                </Link>
+                            </div>
+                        </header>
 
-                            {(printMode === "thermal80" || printMode === "thermal58") && (
-                                <>
-                                    {enabledButtons?.bluetooth !== false && (
-                                        <button
-                                            type="button"
-                                            onClick={handleBluetoothPrint}
-                                            disabled={isBluetoothPrinting}
-                                            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold transition-all shadow-sm w-full sm:w-auto disabled:opacity-50"
-                                            title="Cetak Struk Langsung via Web Bluetooth ESC/POS (Bluetooth Thermal Printer)"
-                                        >
-                                            <IconBluetooth size={18} className="text-indigo-500" />
-                                            {isBluetoothPrinting ? "Connecting..." : "Bluetooth"}
-                                        </button>
-                                    )}
-                                    {enabledButtons?.webusb !== false && (
-                                        <button
-                                            type="button"
-                                            onClick={handleWebUsbPrint}
-                                            disabled={isWebUsbPrinting}
-                                            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-semibold transition-all shadow-sm w-full sm:w-auto disabled:opacity-50"
-                                            title="Cetak Struk Langsung via WebUSB ESC/POS (USB Thermal Printer)"
-                                        >
-                                            <IconUsb size={18} className="text-blue-500" />
-                                            {isWebUsbPrinting ? "Mengirim..." : "WebUSB"}
-                                        </button>
-                                    )}
-                                    {enabledButtons?.server !== false && (
-                                        <button
-                                            type="button"
-                                            onClick={handleDirectPrint}
-                                            disabled={isDirectPrinting}
-                                            className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto disabled:opacity-50"
-                                            title="Cetak Struk via Server Spooler CUPS / LPR"
-                                        >
-                                            <IconPrinter size={18} />
-                                            {isDirectPrinting ? "Mencetak..." : "Server Thermal"}
-                                        </button>
-                                    )}
-                                    {enabledButtons?.pdf_receipt !== false && (
-                                        <a
-                                            href={route("pdf.transactions.receipt", {
-                                                invoice: transaction.invoice,
-                                                size: printMode === "thermal58" ? "58" : "80",
-                                            })}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-sm font-semibold text-white transition-colors w-full sm:w-auto"
-                                        >
-                                            <IconPrinter size={18} />
-                                            PDF Struk {printMode === "thermal58" ? "58mm" : "80mm"}
-                                        </a>
-                                    )}
-                                </>
-                            )}
-
-                            {printMode === "shipping" && (
-                                <>
-                                    <button
-                                        type="button"
-                                        onClick={handlePrint}
-                                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-sm font-semibold text-white transition-colors w-full sm:w-auto shadow-sm"
-                                        title="Cetak Resi Pengiriman (Print Dialog Browser)"
-                                    >
-                                        <IconPrinter size={18} />
-                                        Cetak Resi
-                                    </button>
-                                    <a
-                                        href={route("pdf.transactions.shipping", transaction.invoice)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-sm font-semibold text-white transition-colors w-full sm:w-auto"
-                                    >
-                                        <IconPrinter size={18} />
-                                        PDF Resi
-                                    </a>
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Pending Bank Confirmation Banner */}
-                    {isPendingBankConfirmation && (
-                        <div className="rounded-xl border border-cyan-200 dark:border-cyan-800/80 bg-cyan-50/90 dark:bg-cyan-950/40 px-4 py-3 sm:px-5 sm:py-3.5 shadow-xs print:hidden">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <div className="w-9 h-9 rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0">
-                                        <IconBuildingBank size={20} />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <h3 className="font-bold text-cyan-950 dark:text-cyan-100 text-sm">
-                                                Menunggu Konfirmasi Transfer Bank
-                                            </h3>
-                                            <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-cyan-200/80 dark:bg-cyan-900/60 text-cyan-900 dark:text-cyan-200">
-                                                {transaction.bank_account?.bank_name || "Bank"}
-                                            </span>
+                        {/* Split Workstation Body */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 print:block">
+                            {/* Left Column: Cashier Command Hub (print:hidden) */}
+                            <div className="lg:col-span-5 p-6 sm:p-7 flex flex-col justify-between space-y-6 print:hidden">
+                                <div className="space-y-5">
+                                    {/* Success Indicator & Customer Info */}
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                                            <IconCheck size={24} strokeWidth={2.5} />
                                         </div>
-                                        <p className="text-xs text-cyan-800/80 dark:text-cyan-300/80 mt-0.5 truncate">
-                                            {transaction.bank_account?.account_number ? `Rek. ${transaction.bank_account.account_number} (${transaction.bank_account.account_name}) • ` : ""}
-                                            Total: <strong className="text-cyan-950 dark:text-cyan-100">{formatPrice(transaction.grand_total)}</strong>
-                                        </p>
+                                        <div>
+                                            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                                                {isJustCompleted ? "Transaksi Selesai!" : "Detail Transaksi"}
+                                            </h2>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                {transaction.customer?.name || "Pelanggan Umum"} • Kasir: {transaction.cashier?.name || "Kasir"}
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                                    <button
-                                        type="button"
-                                        onClick={handleCheckApprovalStatus}
-                                        disabled={isCheckingApproval}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-cyan-200 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200 text-xs font-semibold hover:bg-cyan-50 dark:hover:bg-slate-700 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
-                                        title="Muat ulang status transaksi"
-                                    >
-                                        <IconRefresh
-                                            size={14}
-                                            className={isCheckingApproval ? "animate-spin" : ""}
-                                        />
-                                        <span>{isCheckingApproval ? "Memeriksa..." : "Cek Status"}</span>
-                                    </button>
+                                    {/* Kembalian & Total Box */}
+                                    {paymentMethodKey === "cash" ? (
+                                        <div className="rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/40 border-2 border-emerald-500/30 p-4 sm:p-5 shadow-xs">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                                                    Uang Kembalian
+                                                </span>
+                                                <span className="px-2 py-0.5 rounded-md bg-emerald-200/80 dark:bg-emerald-900/60 text-[10px] font-bold text-emerald-800 dark:text-emerald-200">
+                                                    Kembalikan
+                                                </span>
+                                            </div>
+                                            <div className="text-3xl sm:text-4xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight mt-1.5">
+                                                {formatPrice(transaction.change)}
+                                            </div>
+                                            <div className="mt-3 pt-3 border-t border-emerald-200/60 dark:border-emerald-900/50 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                                                <span>Total: <strong className="text-slate-900 dark:text-white">{formatPrice(transaction.grand_total)}</strong></span>
+                                                <span>Diterima: <strong className="text-slate-900 dark:text-white">{formatPrice(transaction.cash)}</strong></span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 p-4 sm:p-5">
+                                            <div className="text-xs text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">
+                                                Total Tagihan
+                                            </div>
+                                            <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-1.5">
+                                                {formatPrice(transaction.grand_total)}
+                                            </div>
+                                            <div className="mt-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                                                Metode Pembayaran: <span className="text-slate-900 dark:text-white font-bold">{paymentMethodLabel}</span>
+                                            </div>
+                                        </div>
+                                    )}
 
-                                    {canConfirmPayment && (
+                                    {/* Action Buttons Stack */}
+                                    <div className="space-y-2.5">
                                         <button
                                             type="button"
-                                            onClick={() => setShowConfirmModal(true)}
-                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                                            onClick={handleTriggerPrint}
+                                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-750 text-white text-sm font-bold shadow-xs transition-all cursor-pointer"
                                         >
-                                            <IconCheck size={15} />
-                                            <span>Konfirmasi Bayar</span>
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Pending Approval Banner */}
-                    {isPendingApproval && (
-                        <div className="rounded-xl border border-amber-200 dark:border-amber-800/80 bg-amber-50/90 dark:bg-amber-950/40 px-4 py-3 sm:px-5 sm:py-3.5 shadow-xs print:hidden">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                                        <IconAlertCircle size={20} />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <h3 className="font-bold text-amber-950 dark:text-amber-100 text-sm">
-                                                Menunggu Persetujuan Diskon
-                                            </h3>
-                                            <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
-                                                Diskon {formatPrice(transaction.discount)}
+                                            <IconPrinter size={18} />
+                                            <span>
+                                                {printMode === "invoice"
+                                                    ? "Cetak Invoice A4"
+                                                    : printMode === "shipping"
+                                                    ? "Cetak Resi"
+                                                    : "Cetak Struk Sekarang"}
                                             </span>
-                                            {paymentMethodKey === "bank_transfer" && (
-                                                <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300">
-                                                    Transfer Bank
-                                                </span>
+                                            <kbd className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-mono font-normal">P</kbd>
+                                        </button>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => shareWhatsappReceipt({ transaction, storeProfile, branding })}
+                                                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-xs font-bold transition-colors cursor-pointer"
+                                            >
+                                                <IconBrandWhatsapp size={16} />
+                                                <span>Kirim WA</span>
+                                                <kbd className="text-[9px] bg-emerald-200/60 dark:bg-emerald-900/60 px-1 py-0.5 rounded font-mono">W</kbd>
+                                            </button>
+
+                                            {showPaymentLink ? (
+                                                <a
+                                                    href={transaction.payment_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-primary-200 dark:border-primary-800 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950/40 text-xs font-bold transition-colors"
+                                                >
+                                                    <IconExternalLink size={16} />
+                                                    <span>Link Bayar</span>
+                                                </a>
+                                            ) : (
+                                                <Link
+                                                    href={route("transactions.index")}
+                                                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-colors"
+                                                >
+                                                    <IconShoppingCart size={16} />
+                                                    <span>Kasir Baru</span>
+                                                </Link>
                                             )}
                                         </div>
-                                        <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-0.5 truncate">
-                                            {paymentMethodKey === "bank_transfer"
-                                                ? "Perlu persetujuan Supervisor. Mutasi transfer bank tetap harus dikonfirmasi setelah diskon disetujui."
-                                                : "Memerlukan verifikasi Supervisor sebelum pembayaran diselesaikan."}
-                                        </p>
                                     </div>
-                                </div>
 
-                                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                                    <button
-                                        type="button"
-                                        onClick={handleCheckApprovalStatus}
-                                        disabled={isCheckingApproval}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-semibold hover:bg-amber-50 dark:hover:bg-slate-700 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
-                                        title="Muat ulang status approval transaksi"
-                                    >
-                                        <IconRefresh
-                                            size={14}
-                                            className={isCheckingApproval ? "animate-spin" : ""}
-                                        />
-                                        <span>{isCheckingApproval ? "Memeriksa..." : "Cek Status"}</span>
-                                    </button>
+                                    {/* Driver Options for Thermal */}
+                                    {(printMode === "thermal58" || printMode === "thermal80") && (
+                                        <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                                            <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-wider">
+                                                Driver Cetak Thermal:
+                                            </div>
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                                                {enabledButtons?.bluetooth !== false && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleBluetoothPrint}
+                                                        disabled={isBluetoothPrinting}
+                                                        className="inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition-all disabled:opacity-50 cursor-pointer"
+                                                    >
+                                                        <IconBluetooth size={14} className="text-indigo-500" />
+                                                        <span>Bluetooth</span>
+                                                    </button>
+                                                )}
+                                                {enabledButtons?.webusb !== false && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleWebUsbPrint}
+                                                        disabled={isWebUsbPrinting}
+                                                        className="inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition-all disabled:opacity-50 cursor-pointer"
+                                                    >
+                                                        <IconUsb size={14} className="text-blue-500" />
+                                                        <span>WebUSB</span>
+                                                    </button>
+                                                )}
+                                                {enabledButtons?.server !== false && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleDirectPrint}
+                                                        disabled={isDirectPrinting}
+                                                        className="inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition-all disabled:opacity-50 cursor-pointer"
+                                                    >
+                                                        <IconPrinter size={14} />
+                                                        <span>Server</span>
+                                                    </button>
+                                                )}
+                                                {enabledButtons?.pdf_receipt !== false && (
+                                                    <a
+                                                        href={route("pdf.transactions.receipt", {
+                                                            invoice: transaction.invoice,
+                                                            size: printMode === "thermal58" ? "58" : "80",
+                                                        })}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition-all"
+                                                    >
+                                                        <IconFileInvoice size={14} />
+                                                        <span>PDF</span>
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
 
-                                    {canApproveDiscount && (
-                                        <>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleDiscountDecision("approve")}
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs hover:shadow-xs transition-colors cursor-pointer"
+                                    {/* Action links for Invoice A4 */}
+                                    {printMode === "invoice" && enabledButtons?.pdf_invoice !== false && (
+                                        <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                                            <a
+                                                href={route("pdf.transactions.invoice", transaction.invoice)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold transition-colors"
                                             >
-                                                <IconCheck size={14} />
-                                                <span>Setujui</span>
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleDiscountDecision("deny")}
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-800 bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                                                <IconPrinter size={16} />
+                                                <span>Buka Dokumen PDF Invoice</span>
+                                            </a>
+                                        </div>
+                                    )}
+
+                                    {/* Action links for Shipping Label */}
+                                    {printMode === "shipping" && (
+                                        <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                                            <a
+                                                href={route("pdf.transactions.shipping", transaction.invoice)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors"
                                             >
-                                                <IconX size={14} />
-                                                <span>Tolak</span>
-                                            </button>
-                                        </>
+                                                <IconPrinter size={16} />
+                                                <span>Buka PDF Resi Pengiriman</span>
+                                            </a>
+                                        </div>
+                                    )}
+
+                                    {/* Pending Bank Confirmation Banner */}
+                                    {isPendingBankConfirmation && (
+                                        <div className="rounded-2xl border border-cyan-200 dark:border-cyan-800/80 bg-cyan-50/90 dark:bg-cyan-950/40 p-4 shadow-xs">
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 mt-0.5">
+                                                    <IconBuildingBank size={18} />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="font-bold text-cyan-950 dark:text-cyan-100 text-xs">
+                                                        Menunggu Konfirmasi Transfer
+                                                    </h4>
+                                                    <p className="text-[11px] text-cyan-800/80 dark:text-cyan-300/80 mt-0.5">
+                                                        {transaction.bank_account?.bank_name} • {transaction.bank_account?.account_number}
+                                                    </p>
+                                                    <div className="flex items-center gap-2 mt-3">
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleCheckApprovalStatus}
+                                                            disabled={isCheckingApproval}
+                                                            className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-cyan-200 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200 text-xs font-semibold hover:bg-cyan-50 cursor-pointer"
+                                                        >
+                                                            {isCheckingApproval ? "Memeriksa..." : "Cek Status"}
+                                                        </button>
+                                                        {canConfirmPayment && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setShowConfirmModal(true)}
+                                                                className="px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold cursor-pointer"
+                                                            >
+                                                                Konfirmasi Bayar
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Pending Discount Approval Banner */}
+                                    {isPendingApproval && (
+                                        <div className="rounded-2xl border border-amber-200 dark:border-amber-800/80 bg-amber-50/90 dark:bg-amber-950/40 p-4 shadow-xs">
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                                                    <IconAlertCircle size={18} />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="font-bold text-amber-950 dark:text-amber-100 text-xs">
+                                                        Menunggu Persetujuan Diskon
+                                                    </h4>
+                                                    <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                                                        Diskon diajukan: {formatPrice(transaction.discount)}
+                                                    </p>
+                                                    <div className="flex items-center gap-2 mt-3 flex-wrap">
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleCheckApprovalStatus}
+                                                            disabled={isCheckingApproval}
+                                                            className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-semibold cursor-pointer"
+                                                        >
+                                                            {isCheckingApproval ? "Memeriksa..." : "Cek Status"}
+                                                        </button>
+                                                        {canApproveDiscount && (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleDiscountDecision("approve")}
+                                                                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer"
+                                                                >
+                                                                    Setujui
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleDiscountDecision("deny")}
+                                                                    className="px-2.5 py-1 rounded-lg border border-rose-200 bg-white text-rose-600 text-xs font-bold cursor-pointer"
+                                                                >
+                                                                    Tolak
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Approved Discount Alert */}
+                                    {transaction?.discount_approval_status === "approved" && (
+                                        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/30 px-3.5 py-2 flex items-center gap-2 text-xs text-emerald-800 dark:text-emerald-300">
+                                            <IconCheck size={16} className="text-emerald-600 shrink-0" />
+                                            <span>Diskon disetujui {transaction?.discount_approver?.name ? `oleh ${transaction.discount_approver.name}` : ""}.</span>
+                                        </div>
+                                    )}
+
+                                    {/* Denied Discount Alert */}
+                                    {transaction?.discount_approval_status === "denied" && (
+                                        <div className="rounded-xl border border-rose-200 dark:border-rose-800/60 bg-rose-50 dark:bg-rose-950/30 px-3.5 py-2 flex items-center gap-2 text-xs text-rose-800 dark:text-rose-300">
+                                            <IconX size={16} className="text-rose-600 shrink-0" />
+                                            <span>Pengajuan diskon ditolak. Transaksi tanpa diskon.</span>
+                                        </div>
                                     )}
                                 </div>
+
+                                {/* Bottom Shortcut Legend */}
+                                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500 flex flex-wrap items-center justify-between gap-1">
+                                    <span>Pintasan Cepat:</span>
+                                    <span>
+                                        <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-slate-700 dark:text-slate-300">Esc</kbd> Kasir Baru • <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-slate-700 dark:text-slate-300">P</kbd> Cetak • <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-slate-700 dark:text-slate-300">W</kbd> WA
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                    )}
 
-                    {/* Approved Discount Banner */}
-                    {transaction?.discount_approval_status === "approved" && (
-                        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-emerald-800 dark:text-emerald-300 print:hidden">
-                            <span className="flex items-center gap-1.5 font-medium">
-                                <IconCheck size={16} className="text-emerald-600 dark:text-emerald-400" />
-                                Diskon telah disetujui {transaction?.discount_approver?.name ? `oleh ${transaction.discount_approver.name}` : ""} {transaction?.discount_approved_at ? `pada ${formatDateTime(transaction.discount_approved_at)}` : ""}.
-                            </span>
-                        </div>
-                    )}
-
-                    {/* Denied Discount Banner */}
-                    {transaction?.discount_approval_status === "denied" && (
-                        <div className="rounded-xl border border-rose-200 dark:border-rose-800/60 bg-rose-50 dark:bg-rose-950/30 px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-rose-800 dark:text-rose-300 print:hidden">
-                            <span className="flex items-center gap-1.5 font-medium">
-                                <IconX size={16} className="text-rose-600 dark:text-rose-400" />
-                                Pengajuan diskon telah ditolak {transaction?.discount_approver?.name ? `oleh ${transaction.discount_approver.name}` : ""} {transaction?.discount_approved_at ? `pada ${formatDateTime(transaction.discount_approved_at)}` : ""}. Total transaksi disesuaikan tanpa diskon.
-                            </span>
-                        </div>
-                    )}
+                            {/* Right Column: Live Document Preview (Prints to paper) */}
+                            <div className="lg:col-span-7 bg-slate-50/75 dark:bg-slate-950/50 p-4 sm:p-6 lg:p-7 flex flex-col items-center justify-start border-t lg:border-t-0 lg:border-l border-slate-100 dark:border-slate-800 print:bg-white print:p-0 print:border-0 print:w-full overflow-hidden">
+                                {/* Centered Format Switcher Pills (print:hidden) */}
+                                <div className="inline-flex items-center p-1 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs mb-6 print:hidden">
+                                    <button
+                                        onClick={() => setPrintMode("thermal58")}
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                                            printMode === "thermal58"
+                                                ? "bg-slate-900 dark:bg-slate-700 text-white shadow-xs"
+                                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                        }`}
+                                    >
+                                        <IconReceipt size={14} className="inline mr-1" />
+                                        Struk 58mm
+                                    </button>
+                                    <button
+                                        onClick={() => setPrintMode("thermal80")}
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                                            printMode === "thermal80"
+                                                ? "bg-slate-900 dark:bg-slate-700 text-white shadow-xs"
+                                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                        }`}
+                                    >
+                                        <IconReceipt size={14} className="inline mr-1" />
+                                        Struk 80mm
+                                    </button>
+                                    <button
+                                        onClick={() => setPrintMode("invoice")}
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                                            printMode === "invoice"
+                                                ? "bg-slate-900 dark:bg-slate-700 text-white shadow-xs"
+                                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                        }`}
+                                    >
+                                        <IconFileInvoice size={14} className="inline mr-1" />
+                                        Invoice A4
+                                    </button>
+                                    <button
+                                        onClick={() => setPrintMode("shipping")}
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                                            printMode === "shipping"
+                                                ? "bg-slate-900 dark:bg-slate-700 text-white shadow-xs"
+                                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                        }`}
+                                    >
+                                        <IconTruck size={14} className="inline mr-1" />
+                                        Resi
+                                    </button>
+                                </div>
 
                     {/* Thermal Receipt Preview */}
                     {(printMode === "thermal80" || printMode === "thermal58") && (
@@ -760,7 +886,7 @@ export default function Print({
 
                     {/* Invoice View */}
                     {printMode === "invoice" && (
-                        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl print:shadow-none print:border-slate-300">
+                        <div className="w-full max-w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-md print:shadow-none print:border-slate-300">
                             {/* Header */}
                             <div className="bg-gradient-to-r from-primary-500 to-primary-700 px-4 sm:px-6 py-5 sm:py-6 text-white print:bg-slate-100 print:text-slate-900">
                                 <div className="flex flex-col items-center text-center gap-4 sm:gap-5 sm:grid sm:grid-cols-[1.4fr,1fr] sm:text-left sm:items-start">
@@ -1195,8 +1321,11 @@ export default function Print({
                             </div>
                         </div>
                     )}
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
 
             {/* Confirmation Modal */}
             {showConfirmModal && canConfirmPayment && (

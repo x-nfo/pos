@@ -731,7 +731,9 @@ class TransactionController extends Controller
                     ->with('info', 'Transaksi menunggu approval supervisor.');
             }
 
-            return to_route('transactions.print', $transaction->invoice);
+            return to_route('transactions.print', $transaction->invoice)
+                ->with('success', 'Transaksi berhasil diselesaikan!')
+                ->with('just_completed', true);
         } catch (PaymentGatewayException $exception) {
             return redirect()
                 ->route('transactions.print', $transaction->invoice ?? $request->input('invoice'))
@@ -747,7 +749,7 @@ class TransactionController extends Controller
         }
     }
 
-    public function print($invoice)
+    public function print(Request $request, $invoice)
     {
         // get transaction
         $transaction = Transaction::with([
@@ -779,12 +781,17 @@ class TransactionController extends Controller
             'pdf_invoice' => Setting::getBool('printer_enable_pdf_invoice', true),
         ];
 
+        $isJustCompleted = (bool) ($request->session()->get('just_completed')
+            || $request->session()->has('success')
+            || $request->boolean('completed'));
+
         return Inertia::render('Dashboard/Transactions/Print', [
             'transaction' => $transaction,
             'defaultPaperSize' => $defaultPaperSize,
             'autoPrint' => $autoPrint,
             'autoPrintDriver' => $autoPrintDriver,
             'enabledButtons' => $enabledButtons,
+            'isJustCompleted' => $isJustCompleted,
         ]);
     }
 
