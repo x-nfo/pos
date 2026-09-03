@@ -24,7 +24,16 @@ export default function MobileAppMenu({ isOpen, onClose }) {
     const { triggerHaptic } = useHaptic();
     const menuNavigation = Menu();
 
-    const [expandedSections, setExpandedSections] = useState({});
+    const [expandedSections, setExpandedSections] = useState(() => {
+        const initial = {};
+        menuNavigation.forEach((section, idx) => {
+            const hasActive = section.details.some(
+                (d) => d.active || d.subdetails?.some((s) => s.active)
+            );
+            if (hasActive) initial[idx] = true;
+        });
+        return initial;
+    });
     const [searchQuery, setSearchQuery] = useState("");
 
     const toggleSection = (index) => {
