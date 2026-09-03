@@ -273,6 +273,21 @@ export default function Print({
             minute: "2-digit",
         });
 
+    const formatDate = (value) => {
+        if (!value) return "-";
+        try {
+            const d = new Date(value);
+            if (isNaN(d.getTime())) return value;
+            return d.toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+            });
+        } catch (e) {
+            return value;
+        }
+    };
+
     const items = transaction?.details ?? [];
     const promoDiscountTotal = useMemo(
         () =>
@@ -438,16 +453,16 @@ export default function Print({
             <Head title="Invoice Penjualan" />
             <Toaster position="top-center" />
 
-            <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 py-6 sm:py-8 px-4 flex flex-col items-center justify-start print:bg-white print:p-0 print:m-0 print:min-h-0">
+            <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 py-3 sm:py-8 px-2.5 sm:px-4 flex flex-col items-center justify-start print:bg-white print:p-0 print:m-0 print:min-h-0">
                 <div className={`w-full mx-auto print:max-w-none print:m-0 print:p-0 transition-all duration-300 ${printMode === "invoice" ? "max-w-6xl" : "max-w-5xl"}`}>
                     {/* Unified POS Workstation Card */}
                     <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200/80 dark:border-slate-800 overflow-hidden print:shadow-none print:border-0 print:rounded-none">
                         {/* Integrated Header / Status Bar (print:hidden) */}
-                        <header className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-5 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 print:hidden">
-                            <div className="flex items-center gap-3">
+                        <header className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-3.5 sm:px-6 py-2.5 sm:py-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 print:hidden">
+                            <div className="flex items-center justify-between sm:justify-start gap-2.5">
                                 <Link
                                     href={route("transactions.index")}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-colors"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-colors shrink-0"
                                 >
                                     <IconArrowLeft size={16} />
                                     <span>Kasir (Esc)</span>
@@ -455,7 +470,7 @@ export default function Print({
 
                                 <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
 
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 sm:gap-2">
                                     <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
                                         {transaction.invoice}
                                     </span>
@@ -466,37 +481,39 @@ export default function Print({
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-2.5">
+                            <div className="flex items-center justify-between sm:justify-end gap-2">
                                 <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${paymentStatusColor}`}>
                                     {paymentStatusLabel}
                                 </span>
 
-                                <button
-                                    type="button"
-                                    onClick={handleToggleSound}
-                                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                                    title={soundActive ? "Bisukan suara kasir" : "Aktifkan suara kasir"}
-                                    aria-label="Toggle Sound"
-                                >
-                                    {soundActive ? <IconVolume size={16} /> : <IconVolumeOff size={16} className="text-slate-400" />}
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={handleToggleSound}
+                                        className="p-1.5 sm:p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                        title={soundActive ? "Bisukan suara kasir" : "Aktifkan suara kasir"}
+                                        aria-label="Toggle Sound"
+                                    >
+                                        {soundActive ? <IconVolume size={16} /> : <IconVolumeOff size={16} className="text-slate-400" />}
+                                    </button>
 
-                                <Link
-                                    href={route("transactions.index")}
-                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-bold text-xs shadow-sm shadow-primary-500/25 transition-all cursor-pointer"
-                                >
-                                    <IconShoppingCart size={16} />
-                                    <span>Transaksi Baru</span>
-                                    <kbd className="hidden sm:inline text-[9px] bg-white/20 px-1.5 py-0.5 rounded font-mono font-normal">Esc</kbd>
-                                </Link>
+                                    <Link
+                                        href={route("transactions.index")}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-bold text-xs shadow-sm shadow-primary-500/25 transition-all cursor-pointer"
+                                    >
+                                        <IconShoppingCart size={16} />
+                                        <span>Transaksi Baru</span>
+                                        <kbd className="hidden sm:inline text-[9px] bg-white/20 px-1.5 py-0.5 rounded font-mono font-normal">Esc</kbd>
+                                    </Link>
+                                </div>
                             </div>
                         </header>
 
                         {/* Split Workstation Body */}
                         <div className="grid grid-cols-1 lg:grid-cols-12 print:block">
                             {/* Left Column: Cashier Command Hub (print:hidden) */}
-                            <div className="lg:col-span-5 p-6 sm:p-7 flex flex-col justify-between space-y-6 print:hidden">
-                                <div className="space-y-5">
+                            <div className="lg:col-span-5 p-4 sm:p-7 flex flex-col justify-between space-y-6 print:hidden">
+                                <div className="space-y-4 sm:space-y-5">
                                     {/* Success Indicator & Customer Info */}
                                     <div className="flex items-center gap-3">
                                         <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20">
@@ -542,6 +559,11 @@ export default function Print({
                                             <div className="mt-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
                                                 Metode Pembayaran: <span className="text-slate-900 dark:text-white font-bold">{paymentMethodLabel}</span>
                                             </div>
+                                            {transaction.payment_method === "pay_later" && transaction.receivable?.due_date && (
+                                                <div className="mt-2 pt-2 border-t border-slate-200/80 dark:border-slate-700/60 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                                                    Jatuh Tempo: <span className="font-bold">{formatDate(transaction.receivable.due_date)}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
@@ -796,53 +818,55 @@ export default function Print({
                             </div>
 
                             {/* Right Column: Live Document Preview (Prints to paper) */}
-                            <div className="lg:col-span-7 bg-slate-50/75 dark:bg-slate-950/50 p-4 sm:p-6 lg:p-7 flex flex-col items-center justify-start border-t lg:border-t-0 lg:border-l border-slate-100 dark:border-slate-800 print:bg-white print:p-0 print:border-0 print:w-full overflow-hidden">
+                            <div className="lg:col-span-7 bg-slate-50/75 dark:bg-slate-950/50 p-3 sm:p-6 lg:p-7 flex flex-col items-center justify-start border-t lg:border-t-0 lg:border-l border-slate-100 dark:border-slate-800 print:bg-white print:p-0 print:border-0 print:w-full overflow-x-auto">
                                 {/* Centered Format Switcher Pills (print:hidden) */}
-                                <div className="inline-flex items-center p-1 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs mb-6 print:hidden">
-                                    <button
-                                        onClick={() => setPrintMode("thermal58")}
-                                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                                            printMode === "thermal58"
-                                                ? "bg-slate-900 dark:bg-slate-700 text-white shadow-xs"
-                                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        }`}
-                                    >
-                                        <IconReceipt size={14} className="inline mr-1" />
-                                        Struk 58mm
-                                    </button>
-                                    <button
-                                        onClick={() => setPrintMode("thermal80")}
-                                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                                            printMode === "thermal80"
-                                                ? "bg-slate-900 dark:bg-slate-700 text-white shadow-xs"
-                                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        }`}
-                                    >
-                                        <IconReceipt size={14} className="inline mr-1" />
-                                        Struk 80mm
-                                    </button>
-                                    <button
-                                        onClick={() => setPrintMode("invoice")}
-                                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                                            printMode === "invoice"
-                                                ? "bg-slate-900 dark:bg-slate-700 text-white shadow-xs"
-                                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        }`}
-                                    >
-                                        <IconFileInvoice size={14} className="inline mr-1" />
-                                        Invoice A4
-                                    </button>
-                                    <button
-                                        onClick={() => setPrintMode("shipping")}
-                                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                                            printMode === "shipping"
-                                                ? "bg-slate-900 dark:bg-slate-700 text-white shadow-xs"
-                                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                        }`}
-                                    >
-                                        <IconTruck size={14} className="inline mr-1" />
-                                        Resi
-                                    </button>
+                                <div className="w-full max-w-full overflow-x-auto flex justify-center mb-4 sm:mb-6 print:hidden">
+                                    <div className="inline-flex items-center p-1 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+                                        <button
+                                            onClick={() => setPrintMode("thermal58")}
+                                            className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                                                printMode === "thermal58"
+                                                    ? "bg-slate-900 dark:bg-slate-700 text-white shadow-xs"
+                                                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            }`}
+                                        >
+                                            <IconReceipt size={14} className="inline mr-1" />
+                                            Struk 58mm
+                                        </button>
+                                        <button
+                                            onClick={() => setPrintMode("thermal80")}
+                                            className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                                                printMode === "thermal80"
+                                                    ? "bg-slate-900 dark:bg-slate-700 text-white shadow-xs"
+                                                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            }`}
+                                        >
+                                            <IconReceipt size={14} className="inline mr-1" />
+                                            Struk 80mm
+                                        </button>
+                                        <button
+                                            onClick={() => setPrintMode("invoice")}
+                                            className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                                                printMode === "invoice"
+                                                    ? "bg-slate-900 dark:bg-slate-700 text-white shadow-xs"
+                                                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            }`}
+                                        >
+                                            <IconFileInvoice size={14} className="inline mr-1" />
+                                            Invoice A4
+                                        </button>
+                                        <button
+                                            onClick={() => setPrintMode("shipping")}
+                                            className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                                                printMode === "shipping"
+                                                    ? "bg-slate-900 dark:bg-slate-700 text-white shadow-xs"
+                                                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            }`}
+                                        >
+                                            <IconTruck size={14} className="inline mr-1" />
+                                            Resi
+                                        </button>
+                                    </div>
                                 </div>
 
                     {/* Thermal Receipt Preview */}
@@ -874,8 +898,8 @@ export default function Print({
 
                     {/* Shipping Label Preview */}
                     {printMode === "shipping" && (
-                        <div className="flex justify-center items-center py-6 sm:py-8 print:py-0 print:block">
-                            <div className="w-full max-w-[600px] mx-auto flex justify-center print:block print:max-w-none print:w-auto">
+                        <div className="w-full flex justify-center items-center py-2 sm:py-6 print:py-0 print:block">
+                            <div className="w-full max-w-full sm:max-w-[425.2pt] mx-auto flex justify-center print:block print:max-w-none print:w-auto">
                                 <ShippingLabel
                                     transaction={transaction}
                                     store={store}
@@ -998,8 +1022,7 @@ export default function Print({
                                                 transaction.receivable && (
                                                     <span className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
                                                         Jatuh tempo:{" "}
-                                                        {transaction.receivable
-                                                            ?.due_date || "-"}
+                                                        {formatDate(transaction.receivable?.due_date)}
                                                     </span>
                                                 )}
                                             {transaction.payment_confirmer && (

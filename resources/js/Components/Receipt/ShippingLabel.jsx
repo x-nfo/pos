@@ -51,13 +51,22 @@ export default function ShippingLabel({ transaction, store = {} }) {
             try {
                 JsBarcode(barcodeRef.current, transaction.invoice, {
                     format: "CODE128",
-                    width: 1.8,
-                    height: 45,
+                    width: 1.5,
+                    height: 40,
                     displayValue: false,
                     margin: 0,
                     background: "transparent",
                     lineColor: "#000000",
                 });
+                const bbox = barcodeRef.current.getBBox();
+                if (bbox && bbox.width > 0 && bbox.height > 0) {
+                    barcodeRef.current.setAttribute(
+                        "viewBox",
+                        `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
+                    );
+                    barcodeRef.current.removeAttribute("width");
+                    barcodeRef.current.removeAttribute("height");
+                }
             } catch (e) {
                 console.error("Barcode generation error:", e);
             }
@@ -119,7 +128,7 @@ export default function ShippingLabel({ transaction, store = {} }) {
             </style>
 
             <div
-                className="shipping-label-container bg-white text-slate-800 border border-slate-200 rounded-2xl sm:rounded-xl shadow-lg sm:shadow-md relative overflow-hidden box-border w-full max-w-[425.2pt] sm:w-[425.2pt] h-auto sm:h-[283.5pt] p-3.5 sm:p-[12pt] transition-all"
+                className="shipping-label-container bg-white text-slate-800 border border-slate-200 rounded-2xl sm:rounded-xl shadow-lg sm:shadow-md relative box-border w-full max-w-full sm:max-w-[425.2pt] sm:w-[425.2pt] h-auto sm:h-[283.5pt] p-3 sm:p-[12pt] transition-all"
                 style={{
                     fontFamily: "'Helvetica', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                     color: "#1e293b",
@@ -178,7 +187,7 @@ export default function ShippingLabel({ transaction, store = {} }) {
                 {/* Section Penerima & Ringkasan Pesanan */}
                 <div className="grid grid-cols-12 gap-2 sm:gap-2.5">
                     {/* Penerima Box */}
-                    <div className="shipping-label-penerima col-span-7 border border-slate-200 rounded-lg p-2 sm:p-[6pt] h-auto sm:h-[65pt] flex flex-col justify-between overflow-hidden">
+                    <div className="shipping-label-penerima col-span-7 border border-slate-200 rounded-lg p-2 sm:p-[6pt] min-h-[56pt] sm:h-[65pt] flex flex-col justify-between">
                         <div>
                             <div className="text-[9px] sm:text-[7pt] font-bold uppercase text-slate-400 mb-0.5 sm:mb-[3pt]">
                                 Penerima
@@ -186,12 +195,12 @@ export default function ShippingLabel({ transaction, store = {} }) {
                             <div className="font-bold text-xs sm:text-[10pt] text-slate-900 truncate">
                                 {customer.name || "Umum"}
                             </div>
-                            <div className="text-[10px] sm:text-[8pt] text-slate-500 mt-0.5">
+                            <div className="text-[10px] sm:text-[8pt] text-slate-500 mt-0.5 truncate">
                                 {customerPhone}
                             </div>
                         </div>
                         <div className="mt-1">
-                            <div className="text-[10px] sm:text-[8pt] text-slate-500 leading-tight line-clamp-1 sm:truncate">
+                            <div className="text-[10px] sm:text-[8pt] text-slate-500 leading-tight line-clamp-2 sm:truncate">
                                 {customerAddress ? customerAddress : "No Address"}
                             </div>
                             {regionString !== "-" && (
@@ -203,7 +212,7 @@ export default function ShippingLabel({ transaction, store = {} }) {
                     </div>
 
                     {/* Ringkasan Pesanan Box */}
-                    <div className="shipping-label-ringkasan col-span-5 border border-slate-200 rounded-lg p-2 sm:p-[6pt] h-auto sm:h-[65pt] flex flex-col justify-between overflow-hidden">
+                    <div className="shipping-label-ringkasan col-span-5 border border-slate-200 rounded-lg p-2 sm:p-[6pt] min-h-[56pt] sm:h-[65pt] flex flex-col justify-between">
                         <div className="text-[9px] sm:text-[7pt] font-bold uppercase text-slate-400 mb-0.5 sm:mb-[3pt]">
                             Ringkasan Pesanan
                         </div>
@@ -242,9 +251,9 @@ export default function ShippingLabel({ transaction, store = {} }) {
                 </div>
 
                 {/* Footer */}
-                <div className="shipping-label-footer mt-3 pt-2.5 border-t border-slate-200 sm:border-t sm:absolute sm:bottom-[12pt] sm:left-[12pt] sm:right-[12pt] sm:mt-0 sm:pt-[8pt] flex flex-col sm:flex-row items-center sm:items-end justify-between gap-2.5 sm:gap-2">
+                <div className="shipping-label-footer mt-3 pt-2.5 pb-0.5 border-t border-slate-200 sm:border-t sm:absolute sm:bottom-[12pt] sm:left-[12pt] sm:right-[12pt] sm:mt-0 sm:pt-[8pt] flex flex-row items-end justify-between gap-2">
                     {/* Admin & Print Date */}
-                    <div className="text-[10px] sm:text-[7pt] text-slate-500 leading-snug text-center sm:text-left order-2 sm:order-1 self-start sm:self-end">
+                    <div className="text-[10px] sm:text-[7pt] text-slate-500 leading-snug text-left flex-shrink-0">
                         <div>
                             Admin: <strong className="text-slate-800 font-semibold">{transaction?.cashier?.name || "-"}</strong>
                         </div>
@@ -254,12 +263,12 @@ export default function ShippingLabel({ transaction, store = {} }) {
                     </div>
 
                     {/* Barcode & Invoice Number */}
-                    <div className="flex flex-col items-center sm:items-end order-1 sm:order-2 w-full sm:w-auto max-w-[240px] sm:max-w-[220pt]">
+                    <div className="flex flex-col items-end flex-1 max-w-[150px] sm:max-w-[200pt] ml-auto">
                         <svg
                             ref={barcodeRef}
-                            className="h-8 sm:h-[35pt] w-full max-w-[200px] sm:max-w-[220pt] block mx-auto sm:ml-auto"
+                            className="h-7 sm:h-[35pt] w-full max-w-[150px] sm:max-w-[200pt] block ml-auto"
                         />
-                        <div className="text-[10px] sm:text-[8pt] font-bold tracking-widest text-slate-900 text-center mt-1 sm:mt-[4pt]">
+                        <div className="text-[9px] sm:text-[8pt] font-bold tracking-wider text-slate-900 text-center w-full mt-0.5 sm:mt-[4pt]">
                             {transaction?.invoice}
                         </div>
                     </div>

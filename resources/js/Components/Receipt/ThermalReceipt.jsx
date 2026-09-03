@@ -182,7 +182,7 @@ export default function ThermalReceipt({
                                 )}
                             <div className="flex justify-between">
                                 <span>
-                                    {qty} {item.unit?.symbol || ""}x @ {formatPrice(unitPrice)}
+                                    {qty} {item.unit?.symbol || item.unit?.name || "x"} @ {formatPrice(unitPrice)}
                                 </span>
                                 <span>{formatPrice(itemTotal)}</span>
                             </div>
@@ -211,16 +211,16 @@ export default function ThermalReceipt({
                         <span>-{formatPrice(discount)}</span>
                     </div>
                 )}
-                {voucherDiscount > 0 && (
-                    <div className="flex justify-between">
-                        <span>Voucher</span>
-                        <span>-{formatPrice(voucherDiscount)}</span>
-                    </div>
-                )}
                 {loyaltyDiscount > 0 && (
                     <div className="flex justify-between">
                         <span>Redeem Poin</span>
                         <span>-{formatPrice(loyaltyDiscount)}</span>
+                    </div>
+                )}
+                {voucherDiscount > 0 && (
+                    <div className="flex justify-between">
+                        <span>Voucher</span>
+                        <span>-{formatPrice(voucherDiscount)}</span>
                     </div>
                 )}
                 {shipping > 0 && (
@@ -259,6 +259,12 @@ export default function ThermalReceipt({
                     <div className="flex justify-between font-bold">
                         <span>Kembali</span>
                         <span>{formatPrice(change)}</span>
+                    </div>
+                )}
+                {transaction?.payment_method === "pay_later" && transaction?.receivable?.due_date && (
+                    <div className="flex justify-between font-bold">
+                        <span>Jatuh Tempo</span>
+                        <span>{formatDateOnly(transaction.receivable.due_date)}</span>
                     </div>
                 )}
                 {isPaid ? (
@@ -507,6 +513,12 @@ export function ThermalReceipt58mm({
                 <div className="flex justify-between">
                     <span>Kembali</span>
                     <span>{formatPrice(transaction?.change)}</span>
+                </div>
+            )}
+            {transaction?.payment_method === "pay_later" && transaction?.receivable?.due_date && (
+                <div className="flex justify-between font-bold">
+                    <span>Jatuh Tempo</span>
+                    <span>{formatDateOnly(transaction.receivable.due_date)}</span>
                 </div>
             )}
             {transaction?.payment_status === "paid" ? (
