@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BankAccount;
 use App\Models\Payable;
 use App\Models\PurchaseOrder;
 use App\Models\Receivable;
@@ -172,13 +173,23 @@ class DocumentController extends Controller
     {
         $this->ensureFontDirectory();
 
-        $receivable->load(['transaction.warehouse', 'customer', 'payments.bankAccount', 'payments.user']);
+        $receivable->load([
+            'transaction.warehouse',
+            'transaction.details.product',
+            'transaction.details.unit',
+            'customer',
+            'payments.bankAccount',
+            'payments.user',
+        ]);
+
+        $bankAccounts = BankAccount::active()->ordered()->get();
 
         $pdf = Pdf::loadView('pdf.receivable', [
             'receivable' => $receivable,
             'store' => $this->storeProfile($receivable->transaction?->warehouse),
             'barcode' => $this->barcode($receivable->invoice),
-        ])->setPaper('a5', 'portrait');
+            'bankAccounts' => $bankAccounts,
+        ])->setPaper('a4', 'portrait');
 
         return $pdf->stream("piutang-{$receivable->invoice}.pdf");
     }
