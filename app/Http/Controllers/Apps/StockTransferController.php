@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Apps;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\StockTransfer;
 use App\Models\Warehouse;
@@ -47,10 +48,44 @@ class StockTransferController extends Controller
     public function create(): Response
     {
         $warehouses = Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name']);
-        $products = Product::with(['warehouses:id,code,name'])->orderBy('title')->get(['id', 'title', 'sku', 'stock']);
+        $products = Product::with([
+            'warehouses:id,code,name',
+            'units:id,code,name,symbol',
+            'category:id,name',
+        ])
+            ->orderBy('title')
+            ->get(['id', 'category_id', 'title', 'sku', 'barcode', 'stock'])
+            ->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'category_id' => $product->category_id,
+                    'category_name' => $product->category?->name ?? 'Tanpa Kategori',
+                    'title' => $product->title,
+                    'sku' => $product->sku,
+                    'barcode' => $product->barcode,
+                    'stock' => (int) $product->stock,
+                    'warehouses' => $product->warehouses->map(fn ($w) => [
+                        'id' => $w->id,
+                        'code' => $w->code,
+                        'name' => $w->name,
+                        'pivot' => ['stock' => (int) $w->pivot->stock],
+                    ]),
+                    'units' => $product->units->map(fn ($u) => [
+                        'id' => $u->id,
+                        'code' => $u->code,
+                        'name' => $u->name,
+                        'symbol' => $u->symbol,
+                        'is_base' => (bool) ($u->pivot->is_base ?? false),
+                        'conversion_factor' => (float) ($u->pivot->conversion_factor ?? 1),
+                    ])->values()->toArray(),
+                ];
+            });
+
+        $categories = Category::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Dashboard/StockTransfers/Create', [
             'warehouses' => $warehouses,
+            'categories' => $categories,
             'products' => $products,
         ]);
     }
@@ -64,6 +99,8 @@ class StockTransferController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
+            'items.*.unit_id' => ['nullable', 'exists:units,id'],
+            'items.*.conversion_factor' => ['nullable', 'numeric', 'min:0.0001'],
             'items.*.qty' => ['required', 'integer', 'min:1'],
         ]);
 
@@ -92,6 +129,7 @@ class StockTransferController extends Controller
             'sourceWarehouse:id,code,name',
             'destinationWarehouse:id,code,name',
             'items.product:id,title,sku',
+            'items.unit:id,code,name,symbol',
             'creator:id,name',
         ]);
 

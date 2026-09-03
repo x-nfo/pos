@@ -8,6 +8,7 @@ use App\Models\ProductWarehouse;
 use App\Models\StockMutation;
 use App\Models\StockTransfer;
 use App\Models\StockTransferItem;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -803,5 +804,367 @@ class StockTransferTest extends TestCase
         $this->actingAs($user)->post(route('stock-transfers.send', $transfer))->assertForbidden();
         $this->actingAs($user)->post(route('stock-transfers.receive', $transfer))->assertForbidden();
         $this->actingAs($user)->post(route('stock-transfers.cancel', $transfer))->assertForbidden();
+    }
+
+    /**
+     * UOM Test: Dapat membuat draft transfer stok dengan satuan (misal Dus) dan faktor konversi.
+     */
+    public function test_can_create_stock_transfer_draft_with_uom(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'stock-transfers-access',
+            'stock-transfers-create',
+        ]);
+
+        $unit = Unit::firstOrCreate([
+            'code' => 'DUS',
+        ], [
+            'name' => 'Dus',
+            'symbol' => 'dus',
+        ]);
+
+        $product = $this->createProduct(stock: 100, title: 'Kopi Sachet Dus');
+        ProductWarehouse::create([
+            'product_id' => $product->id,
+            'warehouse_id' => $this->warehouseUtama->id,
+            'stock' => 100,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->post(route('stock-transfers.store'), [
+                'source_warehouse_id' => $this->warehouseUtama->id,
+                'destination_warehouse_id' => $this->warehouseToko->id,
+                'items' => [
+                    [
+                        'product_id' => $product->id,
+                        'unit_id' => $unit->id,
+                        'conversion_factor' => 24,
+                        'qty' => 2,
+                    ],
+                ],
+            ]);
+
+        $transfer = StockTransfer::first();
+        $this->assertNotNull($transfer);
+        $response->assertRedirect(route('stock-transfers.show', $transfer));
+
+        $item = $transfer->items->first();
+        $this->assertSame(2, $item->qty);
+        $this->assertSame($unit->id, $item->unit_id);
+        $this->assertEquals(24.0000, (float) $item->conversion_factor);
+        $this->assertSame(48, $item->base_qty);
+    }
+
+    /**
+     * UOM Test: Pengiriman transfer stok menghitung base quantity (qty * conversion_factor)
+     * dan memotong stok gudang asal dalam satuan dasar.
+     */
+    public function test_send_transfer_with_uom_deducts_correct_base_stock(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'stock-transfers-access',
+            'stock-transfers-create',
+            'stock-transfers-send',
+        ]);
+
+        $unit = Unit::firstOrCreate([
+            'code' => 'DUS',
+        ], [
+            'name' => 'Dus',
+            'symbol' => 'dus',
+        ]);
+
+        $product = $this->createProduct(stock: 50, title: 'Kopi Botol');
+        ProductWarehouse::create([
+            'product_id' => $product->id,
+            'warehouse_id' => $this->warehouseUtama->id,
+            'stock' => 50,
+        ]);
+
+        $transfer = StockTransfer::create([
+            'document_number' => 'ST-UOM-0001',
+            'source_warehouse_id' => $this->warehouseUtama->id,
+            'destination_warehouse_id' => $this->warehouseToko->id,
+            'status' => 'draft',
+            'created_by' => $user->id,
+        ]);
+
+        StockTransferItem::create([
+            'stock_transfer_id' => $transfer->id,
+            'product_id' => $product->id,
+            'unit_id' => $unit->id,
+            'conversion_factor' => 24,
+            'qty' => 2, // 2 Dus = 48 unit dasar
+        ]);
+
+        $response = $this
+            ->from(route('stock-transfers.show', $transfer))
+            ->actingAs($user)
+            ->post(route('stock-transfers.send', $transfer));
+
+        $response->assertSessionHas('success', 'Transfer stok berhasil dikirim.');
+
+        // Stok asal berkurang 48 (50 -> 2)
+        $pwSource = ProductWarehouse::where([
+            'product_id' => $product->id,
+            'warehouse_id' => $this->warehouseUtama->id,
+        ])->first();
+        $this->assertSame(2, $pwSource->stock);
+        $this->assertSame(2, $product->fresh()->stock);
+
+        // Mutasi keluar tercatat 48
+        $mutation = StockMutation::where('reference_type', 'stock_transfer')
+            ->where('reference_id', $transfer->id)
+            ->first();
+        $this->assertSame(48, $mutation->qty);
+        $this->assertStringContainsString('2 Dus', $mutation->notes);
+    }
+
+    /**
+     * UOM Test: Ditolak jika kuantitas dasar setelah konversi melebihi saldo gudang asal.
+     */
+    public function test_cannot_send_transfer_when_converted_base_stock_exceeds_source_stock(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'stock-transfers-access',
+            'stock-transfers-send',
+        ]);
+
+        $unit = Unit::firstOrCreate([
+            'code' => 'DUS',
+        ], [
+            'name' => 'Dus',
+            'symbol' => 'dus',
+        ]);
+
+        // Saldo gudang asal hanya 20 unit dasar
+        $product = $this->createProduct(stock: 20, title: 'Kopi Susu');
+        ProductWarehouse::create([
+            'product_id' => $product->id,
+            'warehouse_id' => $this->warehouseUtama->id,
+            'stock' => 20,
+        ]);
+
+        $transfer = StockTransfer::create([
+            'document_number' => 'ST-UOM-0002',
+            'source_warehouse_id' => $this->warehouseUtama->id,
+            'destination_warehouse_id' => $this->warehouseToko->id,
+            'status' => 'draft',
+            'created_by' => $user->id,
+        ]);
+
+        // Coba kirim 1 Dus (24 unit dasar) saat saldo hanya 20
+        StockTransferItem::create([
+            'stock_transfer_id' => $transfer->id,
+            'product_id' => $product->id,
+            'unit_id' => $unit->id,
+            'conversion_factor' => 24,
+            'qty' => 1,
+        ]);
+
+        $response = $this
+            ->from(route('stock-transfers.show', $transfer))
+            ->actingAs($user)
+            ->post(route('stock-transfers.send', $transfer));
+
+        $response->assertSessionHasErrors('transfer');
+        $errorMessage = session('errors')->first('transfer');
+        $this->assertStringContainsString('Stok Kopi Susu tidak mencukupi di gudang asal', $errorMessage);
+        $this->assertStringContainsString('tersedia: 20', $errorMessage);
+        $this->assertStringContainsString('dibutuhkan: 24', $errorMessage);
+    }
+
+    /**
+     * UOM Test: Penerimaan transfer stok dengan UOM menambahkan kuantitas dasar ke gudang tujuan.
+     */
+    public function test_can_receive_stock_transfer_with_uom_and_increments_correct_destination_base_stock(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'stock-transfers-access',
+            'stock-transfers-receive',
+        ]);
+
+        $unit = Unit::firstOrCreate([
+            'code' => 'CTN',
+        ], [
+            'name' => 'Carton',
+            'symbol' => 'ctn',
+        ]);
+
+        $product = $this->createProduct(stock: 48, title: 'Snack Bar');
+
+        $transfer = StockTransfer::create([
+            'document_number' => 'ST-UOM-0003',
+            'source_warehouse_id' => $this->warehouseUtama->id,
+            'destination_warehouse_id' => $this->warehouseToko->id,
+            'status' => 'in_transit',
+            'created_by' => $user->id,
+        ]);
+
+        $item = StockTransferItem::create([
+            'stock_transfer_id' => $transfer->id,
+            'product_id' => $product->id,
+            'unit_id' => $unit->id,
+            'conversion_factor' => 24,
+            'qty' => 2, // 2 Karton = 48 unit dasar
+        ]);
+
+        $response = $this
+            ->from(route('stock-transfers.show', $transfer))
+            ->actingAs($user)
+            ->post(route('stock-transfers.receive', $transfer));
+
+        $response->assertSessionHas('success', 'Transfer stok berhasil diterima.');
+
+        // Stok gudang tujuan bertambah 48
+        $pwDest = ProductWarehouse::where([
+            'product_id' => $product->id,
+            'warehouse_id' => $this->warehouseToko->id,
+        ])->first();
+        $this->assertNotNull($pwDest);
+        $this->assertSame(48, $pwDest->stock);
+
+        // Mutasi in tercatat 48
+        $mutation = StockMutation::where('reference_type', 'stock_transfer')
+            ->where('reference_id', $transfer->id)
+            ->where('mutation_type', 'in')
+            ->first();
+        $this->assertNotNull($mutation);
+        $this->assertSame(48, $mutation->qty);
+        $this->assertStringContainsString('2 Carton', $mutation->notes);
+    }
+
+    /**
+     * UOM Test: Penerimaan sebagian (partial receive) dengan UOM menghitung selisih dan mutasi secara akurat.
+     */
+    public function test_partial_receive_with_uom_records_correct_difference_and_base_stock(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'stock-transfers-access',
+            'stock-transfers-receive',
+        ]);
+
+        $unit = Unit::firstOrCreate([
+            'code' => 'DUS',
+        ], [
+            'name' => 'Dus',
+            'symbol' => 'dus',
+        ]);
+
+        $product = $this->createProduct(stock: 48, title: 'Minuman Kaleng');
+
+        $transfer = StockTransfer::create([
+            'document_number' => 'ST-UOM-0004',
+            'source_warehouse_id' => $this->warehouseUtama->id,
+            'destination_warehouse_id' => $this->warehouseToko->id,
+            'status' => 'in_transit',
+            'created_by' => $user->id,
+        ]);
+
+        $item = StockTransferItem::create([
+            'stock_transfer_id' => $transfer->id,
+            'product_id' => $product->id,
+            'unit_id' => $unit->id,
+            'conversion_factor' => 24,
+            'qty' => 2, // 2 Dus = 48 unit
+        ]);
+
+        // Terima 1 Dus (1 Dus rusak di jalan)
+        $response = $this
+            ->from(route('stock-transfers.show', $transfer))
+            ->actingAs($user)
+            ->post(route('stock-transfers.receive', $transfer), [
+                'items' => [
+                    [
+                        'id' => $item->id,
+                        'received_qty' => 1,
+                        'notes' => '1 Dus basah di jalan',
+                    ],
+                ],
+            ]);
+
+        $response->assertSessionHas('success', 'Transfer stok berhasil diterima.');
+
+        // Stok gudang tujuan bertambah 1 Dus = 24 unit
+        $pwDest = ProductWarehouse::where([
+            'product_id' => $product->id,
+            'warehouse_id' => $this->warehouseToko->id,
+        ])->first();
+        $this->assertSame(24, $pwDest->stock);
+
+        // Mutasi mencatat 24 unit masuk dengan rincian selisih
+        $mutation = StockMutation::where('reference_type', 'stock_transfer')
+            ->where('reference_id', $transfer->id)
+            ->where('mutation_type', 'in')
+            ->first();
+        $this->assertNotNull($mutation);
+        $this->assertSame(24, $mutation->qty);
+        $this->assertStringContainsString('Selisih: 1 Dus [24 unit]', $mutation->notes);
+        $this->assertStringContainsString('1 Dus basah di jalan', $mutation->notes);
+    }
+
+    /**
+     * UOM Test: Pembatalan transfer in-transit dengan UOM mengembalikan saldo dasar ke gudang asal.
+     */
+    public function test_cancel_in_transit_transfer_with_uom_restores_correct_base_stock(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'stock-transfers-access',
+            'stock-transfers-cancel',
+        ]);
+
+        $unit = Unit::firstOrCreate([
+            'code' => 'DUS',
+        ], [
+            'name' => 'Dus',
+            'symbol' => 'dus',
+        ]);
+
+        $product = $this->createProduct(stock: 2, title: 'Cangkir');
+        ProductWarehouse::create([
+            'product_id' => $product->id,
+            'warehouse_id' => $this->warehouseUtama->id,
+            'stock' => 2, // Sebelumnya 50, berkurang 48 (2 Dus) saat dikirim
+        ]);
+
+        $transfer = StockTransfer::create([
+            'document_number' => 'ST-UOM-0005',
+            'source_warehouse_id' => $this->warehouseUtama->id,
+            'destination_warehouse_id' => $this->warehouseToko->id,
+            'status' => 'in_transit',
+            'created_by' => $user->id,
+        ]);
+
+        StockTransferItem::create([
+            'stock_transfer_id' => $transfer->id,
+            'product_id' => $product->id,
+            'unit_id' => $unit->id,
+            'conversion_factor' => 24,
+            'qty' => 2, // 48 unit dasar
+        ]);
+
+        $response = $this
+            ->from(route('stock-transfers.show', $transfer))
+            ->actingAs($user)
+            ->post(route('stock-transfers.cancel', $transfer));
+
+        $response->assertSessionHas('success', 'Transfer stok dibatalkan.');
+
+        // Saldo dikembalikan 48 unit dasar (2 + 48 = 50)
+        $pwSource = ProductWarehouse::where([
+            'product_id' => $product->id,
+            'warehouse_id' => $this->warehouseUtama->id,
+        ])->first();
+        $this->assertSame(50, $pwSource->stock);
+        $this->assertSame(50, $product->fresh()->stock);
+
+        // Mutasi in pengembalian tercatat 48
+        $mutation = StockMutation::where('reference_type', 'stock_transfer')
+            ->where('reference_id', $transfer->id)
+            ->where('mutation_type', 'in')
+            ->first();
+        $this->assertNotNull($mutation);
+        $this->assertSame(48, $mutation->qty);
     }
 }

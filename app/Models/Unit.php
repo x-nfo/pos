@@ -80,6 +80,14 @@ class Unit extends Model
     }
 
     /**
+     * Stock transfer items using this unit.
+     */
+    public function stockTransferItems(): HasMany
+    {
+        return $this->hasMany(StockTransferItem::class, 'unit_id');
+    }
+
+    /**
      * Check if unit is actively used in products, carts, transactions, or procurement.
      */
     public function hasHistoricalRelations(): bool
@@ -89,6 +97,7 @@ class Unit extends Model
             || $this->transactionDetails()->exists()
             || $this->purchaseOrderItems()->exists()
             || $this->goodsReceivingItems()->exists()
-            || $this->dineOrderItems()->exists();
+            || $this->dineOrderItems()->exists()
+            || $this->stockTransferItems()->exists();
     }
 }

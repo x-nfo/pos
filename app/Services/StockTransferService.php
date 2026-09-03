@@ -48,6 +48,10 @@ class StockTransferService
                     StockTransferItem::create([
                         'stock_transfer_id' => $transfer->id,
                         'product_id' => $item['product_id'],
+                        'unit_id' => ! empty($item['unit_id']) ? $item['unit_id'] : null,
+                        'conversion_factor' => isset($item['conversion_factor']) && (float) $item['conversion_factor'] > 0
+                            ? (float) $item['conversion_factor']
+                            : 1.0,
                         'qty' => $item['qty'],
                     ]);
                 }
@@ -81,20 +85,26 @@ class StockTransferService
         }
 
         DB::transaction(function () use ($transfer, $userId) {
-            $transfer->load('items.product');
+            $transfer->load(['items.product', 'items.unit']);
             $before = $transfer->replicate();
 
             // Validate stock availability
             foreach ($transfer->items as $item) {
+                $factor = (float) ($item->conversion_factor ?: 1.0);
+                $baseQty = (int) round($item->qty * $factor);
+
                 $wh = ProductWarehouse::where([
                     'product_id' => $item->product_id,
                     'warehouse_id' => $transfer->source_warehouse_id,
                 ])->first();
 
                 $available = $wh ? (int) $wh->stock : 0;
-                if ($available < $item->qty) {
+                if ($available < $baseQty) {
+                    $detail = $factor > 1 && $item->unit
+                        ? " (tersedia: {$available}, dibutuhkan: {$baseQty} [{$item->qty} {$item->unit->name}])"
+                        : " (tersedia: {$available})";
                     throw ValidationException::withMessages([
-                        'transfer' => "Stok {$item->product->title} tidak mencukupi di gudang asal (tersedia: {$available}).",
+                        'transfer' => "Stok {$item->product->title} tidak mencukupi di gudang asal{$detail}.",
                     ]);
                 }
             }
@@ -102,30 +112,34 @@ class StockTransferService
             // Decrement source warehouse stock
             foreach ($transfer->items as $item) {
                 $product = $item->product;
+                $factor = (float) ($item->conversion_factor ?: 1.0);
+                $baseQty = (int) round($item->qty * $factor);
+
                 $pw = ProductWarehouse::where([
                     'product_id' => $item->product_id,
                     'warehouse_id' => $transfer->source_warehouse_id,
                 ])->first();
                 $stockBefore = $pw ? (int) $pw->stock : 0;
-                $stockAfter = max(0, $stockBefore - $item->qty);
+                $stockAfter = max(0, $stockBefore - $baseQty);
 
                 ProductWarehouse::where([
                     'product_id' => $item->product_id,
                     'warehouse_id' => $transfer->source_warehouse_id,
-                ])->decrement('stock', $item->qty);
+                ])->decrement('stock', $baseQty);
 
-                $product->decrement('stock', $item->qty);
+                $product->decrement('stock', $baseQty);
 
+                $unitNote = $factor > 1 && $item->unit ? ' ('.$item->qty.' '.$item->unit->name.')' : '';
                 StockMutation::create([
                     'product_id' => $product->id,
                     'warehouse_id' => $transfer->source_warehouse_id,
                     'reference_type' => 'stock_transfer',
                     'reference_id' => $transfer->id,
                     'mutation_type' => 'out',
-                    'qty' => $item->qty,
+                    'qty' => $baseQty,
                     'stock_before' => $stockBefore,
-                    'stock_after' => max(0, $stockBefore - $item->qty),
-                    'notes' => 'Transfer ke '.$transfer->destinationWarehouse->code,
+                    'stock_after' => $stockAfter,
+                    'notes' => 'Transfer ke '.$transfer->destinationWarehouse->code.$unitNote,
                     'created_by' => $userId,
                 ]);
             }
@@ -155,7 +169,7 @@ class StockTransferService
         }
 
         DB::transaction(function () use ($transfer, $userId, $receivedData) {
-            $transfer->load('items.product');
+            $transfer->load(['items.product', 'items.unit']);
             $before = $transfer->replicate();
 
             $receivedMap = [];
@@ -167,6 +181,7 @@ class StockTransferService
 
             foreach ($transfer->items as $item) {
                 $product = $item->product;
+                $factor = (float) ($item->conversion_factor ?: 1.0);
 
                 // Determine received_qty (default to sent qty if not provided)
                 $entry = $receivedMap[$item->id] ?? null;
@@ -184,22 +199,29 @@ class StockTransferService
                     'notes' => $itemNotes,
                 ]);
 
-                // Increment destination warehouse stock & legacy stock by receivedQty
-                if ($receivedQty > 0) {
+                $receivedBaseQty = (int) round($receivedQty * $factor);
+
+                // Increment destination warehouse stock & legacy stock by receivedBaseQty
+                if ($receivedBaseQty > 0) {
                     $pwDest = ProductWarehouse::firstOrCreate(
                         ['product_id' => $item->product_id, 'warehouse_id' => $transfer->destination_warehouse_id],
                         ['stock' => 0]
                     );
                     $destStockBefore = (int) $pwDest->stock;
-                    $destStockAfter = $destStockBefore + $receivedQty;
+                    $destStockAfter = $destStockBefore + $receivedBaseQty;
 
-                    $pwDest->increment('stock', $receivedQty);
-                    $product->increment('stock', $receivedQty);
+                    $pwDest->increment('stock', $receivedBaseQty);
+                    $product->increment('stock', $receivedBaseQty);
 
                     $diff = $item->qty - $receivedQty;
+                    $diffBase = (int) round($diff * $factor);
+                    $unitName = $item->unit ? $item->unit->name : 'unit';
                     $mutationNotes = 'Transfer dari '.$transfer->sourceWarehouse->code;
                     if ($diff > 0) {
-                        $mutationNotes .= " (Diterima {$receivedQty}/{$item->qty}, Selisih: {$diff}".($itemNotes ? " - {$itemNotes}" : '').')';
+                        $unitDetail = $factor > 1 ? " {$unitName} ({$receivedBaseQty}/".((int) round($item->qty * $factor)).' unit)' : '';
+                        $mutationNotes .= " (Diterima {$receivedQty}/{$item->qty}{$unitDetail}, Selisih: {$diff}".($factor > 1 ? " {$unitName} [{$diffBase} unit]" : '').($itemNotes ? " - {$itemNotes}" : '').')';
+                    } elseif ($factor > 1 && $item->unit) {
+                        $mutationNotes .= " ({$receivedQty} {$unitName})";
                     }
 
                     StockMutation::create([
@@ -208,7 +230,7 @@ class StockTransferService
                         'reference_type' => 'stock_transfer',
                         'reference_id' => $transfer->id,
                         'mutation_type' => 'in',
-                        'qty' => $receivedQty,
+                        'qty' => $receivedBaseQty,
                         'stock_before' => $destStockBefore,
                         'stock_after' => $destStockAfter,
                         'notes' => $mutationNotes,
@@ -248,20 +270,23 @@ class StockTransferService
 
             // If sent but not received, return stock to source and record mutation
             if ($returnStock) {
-                $transfer->load('items.product');
+                $transfer->load(['items.product', 'items.unit']);
 
                 foreach ($transfer->items as $item) {
+                    $factor = (float) ($item->conversion_factor ?: 1.0);
+                    $baseQty = (int) round($item->qty * $factor);
+
                     $pw = ProductWarehouse::firstOrCreate(
                         ['product_id' => $item->product_id, 'warehouse_id' => $transfer->source_warehouse_id],
                         ['stock' => 0]
                     );
                     $stockBefore = (int) $pw->stock;
-                    $stockAfter = $stockBefore + $item->qty;
+                    $stockAfter = $stockBefore + $baseQty;
 
-                    $pw->increment('stock', $item->qty);
+                    $pw->increment('stock', $baseQty);
 
                     $product = $item->product;
-                    $product->increment('stock', $item->qty);
+                    $product->increment('stock', $baseQty);
 
                     StockMutation::create([
                         'product_id' => $product->id,
@@ -269,7 +294,7 @@ class StockTransferService
                         'reference_type' => 'stock_transfer',
                         'reference_id' => $transfer->id,
                         'mutation_type' => 'in',
-                        'qty' => $item->qty,
+                        'qty' => $baseQty,
                         'stock_before' => $stockBefore,
                         'stock_after' => $stockAfter,
                         'notes' => 'Pembatalan transfer '.$transfer->document_number,
