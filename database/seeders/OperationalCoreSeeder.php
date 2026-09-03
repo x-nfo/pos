@@ -73,6 +73,7 @@ class OperationalCoreSeeder extends Seeder
                 'opening_cash' => 175000,
                 'expected_cash' => 175000,
                 'notes' => 'Shift pagi weekday untuk sample histori.',
+                'warehouse_id' => $cashier->warehouse_id,
                 'status' => CashierShift::STATUS_OPEN,
             ]);
 
@@ -83,6 +84,7 @@ class OperationalCoreSeeder extends Seeder
                 'opening_cash' => 200000,
                 'expected_cash' => 200000,
                 'notes' => 'Shift sore yang nanti ditutup supervisor.',
+                'warehouse_id' => $cashier->warehouse_id,
                 'status' => CashierShift::STATUS_OPEN,
             ]);
 
@@ -93,6 +95,7 @@ class OperationalCoreSeeder extends Seeder
                 'opening_cash' => 250000,
                 'expected_cash' => 250000,
                 'notes' => 'Shift aktif hari ini.',
+                'warehouse_id' => $cashier->warehouse_id,
                 'status' => CashierShift::STATUS_OPEN,
             ]);
 

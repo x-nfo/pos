@@ -66,7 +66,7 @@ class CashierShiftService
             }
             $warehouseId = $cashier->warehouse_id;
         } elseif (! $warehouseId) {
-            $warehouseId = Warehouse::active()->orderBy('sort_order')->orderBy('code')->first()?->id;
+            $warehouseId = $cashier->warehouse_id ?: Warehouse::active()->orderBy('sort_order')->orderBy('code')->first()?->id;
         }
 
         return CashierShift::create([

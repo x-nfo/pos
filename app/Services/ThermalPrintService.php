@@ -5,26 +5,76 @@ namespace App\Services;
 use App\Models\SalesReturn;
 use App\Models\Setting;
 use App\Models\Transaction;
+use App\Models\Warehouse;
 
 class ThermalPrintService
 {
+    public function resolveStoreProfile(?Warehouse $warehouse): array
+    {
+        $baseStoreName = Setting::get('store_name', config('app.name', 'Rekasir'));
+        $name = $baseStoreName;
+        if ($warehouse && $warehouse->type !== 'main' && $warehouse->name) {
+            $name = $baseStoreName.' ('.$warehouse->name.')';
+        }
+
+        $clean = function (?string $value): string {
+            if ($value === null) {
+                return '';
+            }
+            $trimmed = trim($value);
+            if (str_contains(strtolower($trimmed), 'belum diisi')) {
+                return '';
+            }
+
+            return $trimmed;
+        };
+
+        $address = $clean($warehouse?->address) ?: $clean(Setting::get('store_address', ''));
+        $phone = $clean($warehouse?->phone) ?: $clean(Setting::get('store_phone', ''));
+
+        return [
+            'name' => $name,
+            'address' => $address,
+            'phone' => $phone,
+            'email' => Setting::get('store_email', ''),
+            'website' => Setting::get('store_website', ''),
+        ];
+    }
+
+    public function centerWrapped(string $text, int $width): array
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return [];
+        }
+
+        $lines = explode("\n", wordwrap($text, $width, "\n", true));
+
+        return array_map(fn ($l) => $this->center($l, $width), $lines);
+    }
+
     public function generateReceiptText(Transaction $transaction, string $paperSize = '80mm'): string
     {
-        $transaction->loadMissing(['customer', 'details.product', 'details.unit', 'cashier', 'bankAccount']);
+        $transaction->loadMissing(['customer', 'details.product', 'details.unit', 'cashier.warehouse', 'bankAccount', 'warehouse', 'cashierShift.warehouse']);
 
-        $storeName = Setting::get('store_name', 'Toko Anda');
-        $storeAddress = Setting::get('store_address', '');
-        $storePhone = Setting::get('store_phone', '');
+        $warehouse = $transaction->warehouse ?: $transaction->cashierShift?->warehouse ?: $transaction->cashier?->warehouse;
+        $store = $this->resolveStoreProfile($warehouse);
         $maxWidth = $paperSize === '58mm' ? 32 : 48;
 
         $lines = [];
         $lines[] = '';
-        $lines[] = $this->center(strtoupper($storeName ?? 'TOKO ANDA'), $maxWidth);
-        if ($storeAddress) {
-            $lines[] = $this->center($storeAddress, $maxWidth);
+        foreach ($this->centerWrapped(strtoupper($store['name'] ?: 'TOKO ANDA'), $maxWidth) as $nameLine) {
+            $lines[] = $nameLine;
         }
-        if ($storePhone) {
-            $lines[] = $this->center('Telp: '.$storePhone, $maxWidth);
+        if ($store['address']) {
+            foreach ($this->centerWrapped($store['address'], $maxWidth) as $addrLine) {
+                $lines[] = $addrLine;
+            }
+        }
+        if ($store['phone']) {
+            foreach ($this->centerWrapped('Telp: '.$store['phone'], $maxWidth) as $phoneLine) {
+                $lines[] = $phoneLine;
+            }
         }
         $lines[] = $this->line($maxWidth);
         $lines[] = $this->left('No: '.($transaction->invoice ?? ''), $maxWidth);
@@ -111,18 +161,13 @@ class ThermalPrintService
 
     public function generateWhatsappReceiptText(Transaction $transaction): string
     {
-        $transaction->loadMissing(['customer', 'details.product', 'details.unit', 'cashier', 'receivable', 'bankAccount']);
+        $transaction->loadMissing(['customer', 'details.product', 'details.unit', 'cashier.warehouse', 'receivable', 'bankAccount', 'warehouse', 'cashierShift.warehouse']);
 
-        $storeName = Setting::get('store_name', config('app.name', 'Point of Sales'));
-        $storeAddress = Setting::get('store_address', '');
-        $storePhone = Setting::get('store_phone', '');
-
-        if ($storeAddress && str_contains(strtolower($storeAddress), 'belum diisi')) {
-            $storeAddress = '';
-        }
-        if ($storePhone && str_contains(strtolower($storePhone), 'belum diisi')) {
-            $storePhone = '';
-        }
+        $warehouse = $transaction->warehouse ?: $transaction->cashierShift?->warehouse ?: $transaction->cashier?->warehouse;
+        $store = $this->resolveStoreProfile($warehouse);
+        $storeName = $store['name'];
+        $storeAddress = $store['address'];
+        $storePhone = $store['phone'];
 
         $isPaid = $transaction->payment_status === 'paid';
 
@@ -219,21 +264,26 @@ class ThermalPrintService
 
     public function generateSalesReturnReceiptText(SalesReturn $salesReturn, string $paperSize = '80mm'): string
     {
-        $salesReturn->loadMissing(['transaction', 'customer', 'cashier', 'items.product', 'exchangeItems.product']);
+        $salesReturn->loadMissing(['transaction.warehouse', 'transaction.cashier.warehouse', 'customer', 'cashier.warehouse', 'items.product', 'exchangeItems.product', 'warehouse']);
 
-        $storeName = Setting::get('store_name', 'Toko Anda');
-        $storeAddress = Setting::get('store_address', '');
-        $storePhone = Setting::get('store_phone', '');
+        $warehouse = $salesReturn->warehouse ?: $salesReturn->transaction?->warehouse ?: $salesReturn->cashier?->warehouse ?: $salesReturn->transaction?->cashier?->warehouse;
+        $store = $this->resolveStoreProfile($warehouse);
         $maxWidth = $paperSize === '58mm' ? 32 : 48;
 
         $lines = [];
         $lines[] = '';
-        $lines[] = $this->center(strtoupper($storeName ?? 'TOKO ANDA'), $maxWidth);
-        if ($storeAddress) {
-            $lines[] = $this->center($storeAddress, $maxWidth);
+        foreach ($this->centerWrapped(strtoupper($store['name'] ?: 'TOKO ANDA'), $maxWidth) as $nameLine) {
+            $lines[] = $nameLine;
         }
-        if ($storePhone) {
-            $lines[] = $this->center('Telp: '.$storePhone, $maxWidth);
+        if ($store['address']) {
+            foreach ($this->centerWrapped($store['address'], $maxWidth) as $addrLine) {
+                $lines[] = $addrLine;
+            }
+        }
+        if ($store['phone']) {
+            foreach ($this->centerWrapped('Telp: '.$store['phone'], $maxWidth) as $phoneLine) {
+                $lines[] = $phoneLine;
+            }
         }
         $lines[] = $this->line($maxWidth);
         $lines[] = $this->center($salesReturn->return_type === 'product_exchange' ? 'BUKTI TUKAR BARANG' : 'BUKTI RETUR PENJUALAN', $maxWidth);
@@ -349,6 +399,8 @@ class ThermalPrintService
 
     public function printDirectToCups(Transaction $transaction, ?string $printerName = null, ?string $paperSize = null): bool
     {
+        $transaction->loadMissing(['warehouse', 'cashier.warehouse', 'cashierShift.warehouse', 'details.product', 'details.unit', 'cashier', 'customer']);
+
         $printerName = $printerName ?: Setting::get('printer_cups_name', 'EPPOS');
         $paperSize = $paperSize ?: Setting::get('printer_paper_size', '58mm');
 
@@ -359,17 +411,16 @@ class ThermalPrintService
         $escBoldOn = "\x1bE\x01";
         $escBoldOff = "\x1bE\x00";
 
-        $storeName = Setting::get('store_name', 'Toko Anda');
-        $storeAddress = Setting::get('store_address', '');
-        $storePhone = Setting::get('store_phone', '');
+        $warehouse = $transaction->warehouse ?: $transaction->cashierShift?->warehouse ?: $transaction->cashier?->warehouse;
+        $store = $this->resolveStoreProfile($warehouse);
 
         $raw = $escInit;
-        $raw .= $escCenter.$escBoldOn.strtoupper($storeName)."\r\n".$escBoldOff;
-        if ($storeAddress) {
-            $raw .= $storeAddress."\r\n";
+        $raw .= $escCenter.$escBoldOn.strtoupper($store['name'])."\r\n".$escBoldOff;
+        if ($store['address']) {
+            $raw .= wordwrap($store['address'], $maxWidth, "\r\n", true)."\r\n";
         }
-        if ($storePhone) {
-            $raw .= 'Telp: '.$storePhone."\r\n";
+        if ($store['phone']) {
+            $raw .= wordwrap('Telp: '.$store['phone'], $maxWidth, "\r\n", true)."\r\n";
         }
 
         $raw .= $escLeft;
@@ -454,6 +505,8 @@ class ThermalPrintService
 
     public function printSalesReturnDirectToCups(SalesReturn $salesReturn, ?string $printerName = null, ?string $paperSize = null): bool
     {
+        $salesReturn->loadMissing(['warehouse', 'transaction', 'customer', 'cashier', 'items.product']);
+
         $printerName = $printerName ?: Setting::get('printer_cups_name', 'EPPOS');
         $paperSize = $paperSize ?: Setting::get('printer_paper_size', '58mm');
 
@@ -464,17 +517,16 @@ class ThermalPrintService
         $escBoldOn = "\x1bE\x01";
         $escBoldOff = "\x1bE\x00";
 
-        $storeName = Setting::get('store_name', 'Toko Anda');
-        $storeAddress = Setting::get('store_address', '');
-        $storePhone = Setting::get('store_phone', '');
+        $warehouse = $salesReturn->warehouse ?: $salesReturn->transaction?->warehouse ?: $salesReturn->cashier?->warehouse ?: $salesReturn->transaction?->cashier?->warehouse;
+        $store = $this->resolveStoreProfile($warehouse);
 
         $raw = $escInit;
-        $raw .= $escCenter.$escBoldOn.strtoupper($storeName)."\r\n".$escBoldOff;
-        if ($storeAddress) {
-            $raw .= $storeAddress."\r\n";
+        $raw .= $escCenter.$escBoldOn.strtoupper($store['name'])."\r\n".$escBoldOff;
+        if ($store['address']) {
+            $raw .= wordwrap($store['address'], $maxWidth, "\r\n", true)."\r\n";
         }
-        if ($storePhone) {
-            $raw .= 'Telp: '.$storePhone."\r\n";
+        if ($store['phone']) {
+            $raw .= wordwrap('Telp: '.$store['phone'], $maxWidth, "\r\n", true)."\r\n";
         }
 
         $isExchange = $salesReturn->return_type === 'product_exchange';

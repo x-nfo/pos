@@ -87,14 +87,14 @@ flowchart TD
 Untuk membuat simulasi terasa nyata, kita menggunakan studi kasus bisnis: **"CV Berkah Jaya & Resto Corner"**, sebuah entitas usaha *hybrid* yang mengoperasikan toko ritel/grosir sekaligus area kafe *dine-in*.
 
 ### Profil Karakter Pengguna (*Actors & Roles*):
-| Aktor | Role Sistem | Kredensial Login | Tugas Pokok |
+| Aktor | Role Sistem & Penempatan | Kredensial Login | Tugas Pokok |
 |---|---|---|---|
-| **Budi Santoso** | `Super Admin` / Owner | `admin@mail.com` / `password` | Konfigurasi sistem, approval finansial, audit log, laporan laba rugi. |
-| **Siti Rahma** | `Admin` / Inventory Head | `admin@mail.com` / `password` | Master data barang, UOM, harga bertingkat, PO supplier, stock opname. |
-| **Dewi Kasir** | `Cashier` | `cashier@gmail.com` / `password` | Buka/tutup shift, transaksi kasir POS, hold/resume cart, cetak struk thermal. |
-| **Rian Gudang** | `Warehouse Staff` | `admin@mail.com` (Role Gudang) | Penerimaan barang masuk (Goods Receiving), mutasi transfer antar-gudang. |
-| **Chef Dimas** | `Kitchen / Waiter` | `cashier@gmail.com` (Akses Dine-In) | Monitor antrean pesanan meja Dine-In, konfirmasi/accept orderan makanan. |
-| **Pak Joko** | `Customer Member VIP` | *Scan QR Meja / Member #081234567890* | Pembeli retail/grosir & pelanggan kafe dine-in. |
+| **Budi Santoso** | `Super Admin` / Owner (**Akun HQ**, Semua Cabang) | `admin@mail.com` / `password` | Pemilik bisnis: monitoring konsolidasi seluruh cabang via dashboard switcher, approval finansial, audit log, laporan laba rugi global. |
+| **Siti Rahma** | `Admin` / Inventory Head (**Gudang Pusat**) | `admin@mail.com` / `password` | Master data barang, UOM, harga bertingkat, PO supplier, transfer stok antar-cabang, stock opname pusat. |
+| **Dewi Kasir** | `Cashier` (**Cabang Kota Wisata**) | `cashier@gmail.com` / `password` | Buka/tutup shift cabang, transaksi kasir POS (stok cabang), cetak struk dengan alamat cabang otomatis. |
+| **Rian Gudang** | `Warehouse Staff` (**Gudang Pusat**) | `admin@mail.com` (Role Gudang) | Penerimaan barang masuk (Goods Receiving), pengiriman mutasi transfer stok ke cabang. |
+| **Chef Dimas** | `Kitchen / Waiter` (**Cabang Kota Wisata**) | `cashier@gmail.com` (Akses Dine-In) | Monitor antrean pesanan meja Dine-In, konfirmasi/accept orderan makanan cabang. |
+| **Pak Joko** | `Customer Member VIP` (Member Global) | *Scan QR Meja / Member #081234567890* | Pembeli retail/grosir lintas cabang & pelanggan kafe dine-in. |
 
 ---
 
@@ -188,11 +188,23 @@ Daftarkan hierarki satuan barang:
 - `Dus / Karton` (Faktor konversi = 24 Pcs)
 - `Porsi` / `Cup` (Satuan saji restoran = 1)
 
-### 2. Setup Multi-Gudang (Warehouse)
-Buka menu **Pengaturan > Gudang (`/dashboard/settings/warehouses`)**:
-- `Gudang Pusat (Main Warehouse)`: Tempat bongkar muat barang masuk dari supplier.
-- `Toko Display (Front Store)`: Lokasi rak pajangan tempat kasir bertransaksi.
-- `Resto Pantry / Kitchen`: Lokasi penyimpanan bahan baku makanan & minuman.
+### 2. Setup Multi-Gudang & Multi-Cabang (Multi-Warehouse)
+Buka menu **Pengaturan > Gudang / Cabang (`/dashboard/settings/warehouses`)**:
+Daftarkan struktur lokasi fisik toko dan gudang:
+1. **Gudang Pusat (Tipe: `main`)**:
+   - Kode: `WH-PUSAT` | Nama: `Gudang Pusat Logistik` | Alamat: `Kawasan Industri Sentul Kav. 8` | Telp: `021-87901234`.
+   - Peran: Penerimaan PO dari supplier dan penyedia stok awal.
+2. **Cabang Kota Wisata (Tipe: `branch`)**:
+   - Kode: `BR-KTW` | Nama: `Cabang Kota Wisata` | Alamat: `Ruko Boston Square No. 12-14, Kota Wisata` | Telp: `0812-9988-7766`.
+   - Peran: Outlet toko fisik yang melayani pelanggan langsung di kasir POS. **Alamat dan nomor telepon ini akan otomatis tercetak pada struk kasir.**
+3. **Resto Pantry / Kitchen (Tipe: `warehouse`)**:
+   - Kode: `WH-RESTO` | Nama: `Pantry Kitchen Resto` | Alamat: `Lt. 2 Area Resto`.
+   - Peran: Penyimpanan bahan baku racikan minuman dan makanan kafe.
+
+> [!IMPORTANT]
+> **Penempatan Karyawan Cabang (`/dashboard/users`)**:
+> - Pada saat mendaftarkan kasir Dewi di menu **Pengguna**, pilih penugasan cabang ke **Cabang Kota Wisata** (`warehouse_id: 5`). Akun ini otomatis terkunci (*branch-isolated*) hanya untuk melihat stok dan melayani transaksi di cabang tersebut.
+> - Untuk akun pemilik Budi Santoso, kosongkan field cabang (*None / Kosong*). Akun ini bertindak sebagai **HQ / Kantor Pusat** yang bebas memantau konsolidasi seluruh cabang.
 
 ### 3. Master Produk, Barcode & Katalog Referensi (32k+ Data)
 Buka menu **Produk (`/dashboard/products`)**:
@@ -368,17 +380,18 @@ Alur operasional kasir dari toko buka di pagi hari hingga toko tutup di malam ha
 ### 1. Pagi Hari: Pembukaan Shift Kasir (*Shift Opening*)
 1. Kasir Dewi login ke sistem: `cashier@gmail.com` / `password`.
 2. Klik menu **Kasir POS (`/pos`)**.
-3. Sistem memblokir layar kasir (*Active Shift Guard*) dan memunculkan pop-up **Buka Shift Baru**.
+3. Sistem memblokir layar kasir (*Active Shift Guard*) dan memunculkan modal **Buka Shift Baru**.
 4. Masukkan **Modal Kas Awal (*Opening Cash Float*)**: `Rp 200.000` (uang pecahan kembalian di laci kas).
-5. Pilih Gudang Kasir: `Toko Display`.
+5. Sistem mendeteksi akun kasir Dewi ditempatkan di **Cabang Kota Wisata** (`warehouse_id: 5`), sehingga shift otomatis terkunci pada cabang tersebut.
 6. Klik **Buka Shift**. Layar kasir sekarang aktif dan siap bertransaksi.
 
 ### 2. Operasional Penjualan Kasir (POS Checkout)
 Ketika pembeli (Pak Joko) datang membawa barang ke kasir:
-1. **Identifikasi Pelanggan & Pricelist**:
+1. **Identifikasi Pelanggan & Pricelist (Lintas Cabang)**:
    - Ketik nama `Pak Joko` atau nomor HP `081234567890`.
-   - Sistem mendeteksi status **VIP Gold**: harga otomatis mengacu pada *Price List VIP*, serta menampilkan saldo poin loyalitas (`1.500 Poin = Rp 15.000`).
-2. **Scan / Input Barang**:
+   - Sistem mendeteksi status **VIP Gold**: data keanggotaan master global langsung terhubung, harga otomatis mengacu pada *Price List VIP*, serta menampilkan saldo poin loyalitas (`1.500 Poin = Rp 15.000`).
+2. **Scan / Input Barang (Stok Fisik Cabang)**:
+   - Daftar barang yang tampil di kasir hanya produk yang memiliki stok fisik di Cabang Kota Wisata (`product_warehouse.stock > 0`).
    - Scan barcode `8992753123456` (Minyak Goreng).
    - Pilih Satuan: `Dus` (berisi 6 Pcs) dengan harga grosir khusus.
    - Tambah 1x Biskuit Kaleng Roma.
@@ -393,10 +406,22 @@ Ketika pembeli (Pak Joko) datang membawa barang ke kasir:
    - **Tunai (*Cash*)**: Total tagihan Rp 215.000, uang diterima Rp 250.000 → Kembalian otomatis terhitung Rp 35.000.
    - **QRIS Dinamis**: Tampilkan QR code di layar / EDC untuk di-scan m-Banking pelanggan.
    - **Transfer Bank**: Pilih rekening BCA toko (memerlukan Step-Up password untuk konfirmasi).
-   - **Piutang / Kasbon (*Pay Later*)**: Khusus member terpercaya, tagihan masuk ke modul piutang dengan tanggal jatuh tempo.
+   - **Piutang / Kasbon (*Pay Later*)**: Khusus member terpercaya, tagihan masuk ke modul piutang cabang dengan tanggal jatuh tempo.
    - **Split Payment**: Rp 100.000 Tunai + Rp 115.000 QRIS.
-6. **Selesaikan Transaksi & Cetak Struk**:
-   - Klik **Bayar**. Printer termal (WebUSB/Bluetooth) langsung mencetak struk secara otomatis (*Auto-Print*).
+6. **Selesaikan Transaksi & Cetak Struk Dinamis Cabang**:
+   - Klik **Bayar**.
+   - Printer termal (WebUSB/Bluetooth) langsung mencetak struk secara otomatis (*Auto-Print*).
+   - **Header Struk Cabang**: Menampilkan secara dinamis nama dan alamat cabang:
+     ```text
+            CABANG KOTA WISATA
+     Ruko Boston Square No. 12-14, Kota Wisata
+               Telp: 0812-9988-7766
+     ----------------------------------------
+     No: TRX-20260903-0001
+     Kasir: Dewi Kasir
+     Cabang: Cabang Kota Wisata
+     ...
+     ```
    - WhatsApp Gateway otomatis mengirimkan **Struk Digital & Link PDF Invoice** ke nomor HP Pak Joko (`081234567890`).
 
 ### 3. Mode Kasir Offline & Sinkronisasi Anomali Stok Negatif
@@ -536,18 +561,30 @@ Buka menu **Pengaturan > Otomatisasi CRM (`/dashboard/settings/automation`)**:
 
 Evaluasi performa usaha, kepatuhan operasional, dan integrasi pihak ketiga.
 
-### 1. Laporan Penjualan & Margin Laba Kotor (*Gross Profit & COGS*)
+### 1. Dashboard Utama & Switcher Multi-Cabang (`/dashboard`)
+1. **Akun Pemilik / HQ (Budi Santoso)**:
+   - Pada bagian atas dashboard, terdapat dropdown switcher **Cabang / Gudang**.
+   - Pilih **"Semua Cabang (Konsolidasi)"**: Menampilkan total omzet gabungan, profit bersih total, tren pendapatan 12 hari terakhir, dan target penjualan bulanan seluruh jaringan toko.
+   - Pilih **"Cabang Kota Wisata"**: Seluruh kartu metrik, grafik tren, 3 produk terlaris, peringatan stok menipis fisik (< 10 unit), transaksi terkini, dan shift kasir aktif seketika berubah menyajikan data cabang tersebut.
+2. **Akun Kasir / Staf Cabang (Dewi Kasir)**:
+   - Dashboard otomatis mengunci metrik dan menampilkan label lencana cabang `🏪 Cabang Kota Wisata` sehingga staf fokus pada pencapaian tokonya sendiri.
+
+### 2. Laporan Penjualan & Margin Laba Kotor Per Cabang
 1. **Laporan Penjualan (`/dashboard/reports/sales`)**:
    - Analisis omzet kotor, diskon promosi, PPN yang dipungut, dan rincian omzet per metode pembayaran (Tunai vs QRIS vs Transfer).
+   - **Filter & Kolom Cabang**: Akun HQ dapat memfilter transaksi per cabang tertentu, dan tabel transaksi menampilkan kolom **Cabang**.
 2. **Laporan Laba Rugi Kotor (`/dashboard/reports/profits`)**:
    - Membandingkan **Pendapatan Bersih (*Net Sales*)** dengan **Harga Pokok Penjualan (*COGS / HPP*)**.
-   - Menghitung persentase margin laba per kategori produk dan produk individu.
+   - Menghitung persentase margin laba per kategori produk dan produk individu di cabang yang dipilih.
 
-### 2. Wawasan Lanjutan (*Advanced Sales Insights*)
-Buka menu **Laporan > Wawasan Penjualan (`/dashboard/reports/insights`)**:
-- **Analisis Jam Sibuk (*Peak Hours Analysis*)**: Menampilkan grafik jam dengan volume transaksi tertinggi (misal jam 12:00–14:00 dan 18:30–20:30) untuk optimasi alokasi shift kasir dan staf dapur.
-- **Produk Terlaris (*Top 10 Best Sellers*)** & **Barang Kurang Laku (*Slow-Moving Stock*)**.
-- **Performa Kasir**: Metrik kecepatan transaksi dan rata-rata nominal keranjang (*basket size*) per kasir.
+### 3. Wawasan Lanjutan Per Cabang (*Advanced Sales Insights*)
+Buka menu **Laporan > Advanced Insights (`/dashboard/reports/insights`)**:
+- **Filter Cabang**: Klik tombol filter dan pilih cabang untuk melihat analisis mendalam satu cabang.
+- **Analisis Jam Sibuk (*Peak Hours Analysis*)**: Menampilkan grafik jam dengan volume transaksi tertinggi khusus di cabang tersebut (misal jam 12:00–14:00 dan 18:30–20:30) untuk penjadwalan shift kasir.
+- **Produk Terlaris (*Top 10 Best Sellers*)** & **Barang Kurang Laku (*Slow-Moving Stock*)** di cabang.
+- **Ketahanan Stok (*Stock Coverage*)**: Estimasi sisa hari ketahanan stok berdasarkan kecepatan penjualan (*velocity*) harian cabang.
+- **Performa Kasir**: Peringkat kasir cabang berdasarkan total transaksi, omzet, dan rata-rata keranjang (*average basket*).
+- **Retensi Pelanggan**: Proporsi pelanggan setia (*repeat customer*) vs pelanggan baru di cabang.
 
 ### 3. Audit Trail Forensik Log Aktivitas Sensitif (`/dashboard/audit-logs`)
 Untuk mencegah kecurangan (*fraud*) dan menjaga integritas data toko:

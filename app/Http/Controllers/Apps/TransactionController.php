@@ -751,10 +751,12 @@ class TransactionController extends Controller
     {
         // get transaction
         $transaction = Transaction::with([
+            'warehouse:id,code,name,address,phone,type',
             'details.product',
             'details.unit',
             'details.pricingRule',
-            'cashier:id,name',
+            'cashier:id,name,warehouse_id',
+            'cashier.warehouse:id,code,name,address,phone,type',
             'customer:id,name',
             'receivable',
             'bankAccount',
@@ -788,7 +790,7 @@ class TransactionController extends Controller
 
     public function directPrint(string $invoice, ThermalPrintService $thermalPrintService)
     {
-        $transaction = Transaction::with(['details.product', 'details.unit', 'cashier', 'customer'])
+        $transaction = Transaction::with(['warehouse:id,code,name,address,phone,type', 'cashier.warehouse:id,code,name,address,phone,type', 'details.product', 'details.unit', 'cashier', 'customer'])
             ->where('invoice', $invoice)
             ->firstOrFail();
 

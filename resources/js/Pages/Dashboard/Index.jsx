@@ -1,5 +1,5 @@
 import DashboardLayout from "@/Layouts/DashboardLayout";
-import { Head, Link } from "@inertiajs/react";
+import { Head, Link, router } from "@inertiajs/react";
 import { useEffect, useMemo, useRef } from "react";
 import Chart from "chart.js/auto";
 import {
@@ -20,6 +20,7 @@ import {
     IconTarget,
     IconMapPin,
     IconWallet,
+    IconBuildingStore,
 } from "@tabler/icons-react";
 
 const formatCurrency = (value = 0) =>
@@ -205,6 +206,9 @@ export default function Dashboard({
     topLocations = [],
     lowStockProducts = [],
     activeShifts = [],
+    warehouses = [],
+    selectedWarehouseId = null,
+    isLockedBranch = false,
 }) {
     const chartRef = useRef(null);
     const chartInstance = useRef(null);
@@ -309,20 +313,62 @@ export default function Dashboard({
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                            Dashboard
-                        </h1>
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                                Dashboard
+                            </h1>
+                            {isLockedBranch && warehouses.length > 0 && (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800">
+                                    <IconBuildingStore size={14} />
+                                    {warehouses[0]?.name}
+                                </span>
+                            )}
+                        </div>
                         <p className="text-sm text-slate-500 dark:text-slate-400">
-                            Ringkasan aktivitas bisnis Anda
+                            {isLockedBranch
+                                ? `Ringkasan aktivitas operasional ${warehouses[0]?.name ?? "cabang"}`
+                                : "Ringkasan aktivitas bisnis Anda"}
                         </p>
                     </div>
-                    <Link
-                        href={route("transactions.index")}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium transition-colors shadow-lg shadow-primary-500/30"
-                    >
-                        <IconShoppingCart size={18} />
-                        <span>Transaksi Baru</span>
-                    </Link>
+
+                    <div className="flex items-center gap-3 flex-wrap">
+                        {!isLockedBranch && warehouses.length > 0 && (
+                            <div className="flex items-center gap-2">
+                                <div className="relative min-w-[200px]">
+                                    <select
+                                        value={selectedWarehouseId ?? ""}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            router.get(
+                                                route("dashboard"),
+                                                val ? { warehouse_id: val } : {},
+                                                {
+                                                    preserveState: true,
+                                                    preserveScroll: true,
+                                                }
+                                            );
+                                        }}
+                                        className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all cursor-pointer shadow-sm"
+                                    >
+                                        <option value="">Semua Cabang (Konsolidasi)</option>
+                                        {warehouses.map((w) => (
+                                            <option key={w.id} value={w.id}>
+                                                {w.code ? `[${w.code}] ` : ""}{w.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
+                        <Link
+                            href={route("transactions.index")}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium transition-colors shadow-lg shadow-primary-500/30"
+                        >
+                            <IconShoppingCart size={18} />
+                            <span>Transaksi Baru</span>
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Main Stat Cards - Reorganized */}

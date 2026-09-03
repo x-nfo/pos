@@ -36,17 +36,27 @@ export default function Print({
     const [isBluetoothPrinting, setIsBluetoothPrinting] = useState(false);
     const hasAutoPrinted = useRef(false);
 
-    const store = useMemo(
-        () => ({
-            name: storeProfile?.name || branding?.appName || "Rekasir",
+    const store = useMemo(() => {
+        const baseStoreName = storeProfile?.name || branding?.appName || "Rekasir";
+        const warehouse = salesReturn?.warehouse || salesReturn?.transaction?.warehouse;
+        const storeName = warehouse && warehouse.type !== "main" && warehouse.name
+            ? `${baseStoreName} (${warehouse.name})`
+            : baseStoreName;
+
+        const clean = (val) => {
+            if (!val || typeof val !== "string") return "";
+            return val.toLowerCase().includes("belum diisi") ? "" : val.trim();
+        };
+
+        return {
+            name: storeName,
             logo: storeProfile?.logo || branding?.logoLight || null,
-            address: storeProfile?.address || "",
-            phone: storeProfile?.phone || "",
-            email: storeProfile?.email || "",
-            website: storeProfile?.website || "",
-        }),
-        [storeProfile, branding]
-    );
+            address: clean(warehouse?.address) || clean(storeProfile?.address) || "",
+            phone: clean(warehouse?.phone) || clean(storeProfile?.phone) || "",
+            email: clean(storeProfile?.email) || "",
+            website: clean(storeProfile?.website) || "",
+        };
+    }, [storeProfile, branding, salesReturn?.warehouse, salesReturn?.transaction?.warehouse]);
 
     const handleDirectPrint = async () => {
         setIsDirectPrinting(true);
@@ -259,6 +269,7 @@ export default function Print({
                                 <SalesReturnThermalReceipt58mm
                                     salesReturn={salesReturn}
                                     storeName={store.name}
+                                    storeAddress={store.address}
                                     storePhone={store.phone}
                                     storeEmail={store.email}
                                     storeWebsite={store.website}

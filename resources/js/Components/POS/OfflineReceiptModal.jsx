@@ -33,9 +33,19 @@ export default function OfflineReceiptModal({
 
     if (!isOpen || !transactionData) return null;
 
-    const storeName = storeProfile?.name || branding?.appName || "Point of Sales";
-    const storeAddress = storeProfile?.address || "";
-    const storePhone = storeProfile?.phone || "";
+    const baseStoreName = storeProfile?.name || branding?.appName || "Point of Sales";
+    const warehouse = transactionData.warehouse || auth?.warehouse || auth?.user?.warehouse;
+    const storeName = warehouse && warehouse.type !== "main" && warehouse.name
+        ? `${baseStoreName} (${warehouse.name})`
+        : baseStoreName;
+
+    const clean = (val) => {
+        if (!val || typeof val !== "string") return "";
+        return val.toLowerCase().includes("belum diisi") ? "" : val.trim();
+    };
+
+    const storeAddress = clean(warehouse?.address) || clean(storeProfile?.address) || "";
+    const storePhone = clean(warehouse?.phone) || clean(storeProfile?.phone) || "";
     const cashierName = transactionData.cashier_name || auth?.user?.name || "Kasir";
     const customerName = transactionData.customer?.name || "Pelanggan Umum";
     const clientTxId = transactionData.client_tx_id || "offline-trx";

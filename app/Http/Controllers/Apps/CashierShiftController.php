@@ -32,6 +32,7 @@ class CashierShiftController extends Controller
             'status' => $request->input('status'),
             'opened_from' => $request->input('opened_from'),
             'opened_to' => $request->input('opened_to'),
+            'warehouse_id' => $request->input('warehouse_id'),
         ];
 
         $query = CashierShift::query()
@@ -40,6 +41,7 @@ class CashierShiftController extends Controller
             ->when($filters['status'], fn (Builder $builder, $status) => $builder->where('status', $status))
             ->when($filters['opened_from'], fn (Builder $builder, $date) => $builder->whereDate('opened_at', '>=', $date))
             ->when($filters['opened_to'], fn (Builder $builder, $date) => $builder->whereDate('opened_at', '<=', $date))
+            ->when($filters['warehouse_id'], fn (Builder $builder, $whId) => $builder->where('warehouse_id', $whId))
             ->latest('opened_at');
 
         $query = $this->cashierShiftService->visibleToUser($query, $request->user());

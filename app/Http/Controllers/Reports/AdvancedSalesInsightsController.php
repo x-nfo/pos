@@ -15,6 +15,7 @@ use App\Models\PricingRule;
 use App\Models\Product;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -76,11 +77,21 @@ class AdvancedSalesInsightsController extends Controller
         $loyaltyPerformance = $this->loyaltyPerformance($filters);
         $crmOperations = $this->crmOperations($filters);
 
+        if ($user && ! $user->isHQ()) {
+            $warehouses = Warehouse::where('id', $user->warehouse_id)->get(['id', 'code', 'name']);
+            $cashiers = User::where('warehouse_id', $user->warehouse_id)->select('id', 'name')->orderBy('name')->get();
+        } else {
+            $warehouses = Warehouse::active()->orderBy('code')->get(['id', 'code', 'name']);
+            $cashiers = User::select('id', 'name')->orderBy('name')->get();
+        }
+
         return Inertia::render('Dashboard/Reports/Insights', [
             'filters' => $filters,
-            'cashiers' => User::select('id', 'name')->orderBy('name')->get(),
+            'cashiers' => $cashiers,
             'customers' => Customer::select('id', 'name')->orderBy('name')->get(),
             'categories' => Category::select('id', 'name')->orderBy('name')->get(),
+            'warehouses' => $warehouses,
+            'is_locked_branch' => $user && ! $user->isHQ(),
             'summary' => [
                 'orders_count' => (int) ($summaryRaw->orders_count ?? 0),
                 'revenue_total' => (int) ($summaryRaw->revenue_total ?? 0),

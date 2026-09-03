@@ -7,6 +7,7 @@ use App\Models\BankAccount;
 use App\Models\Receivable;
 use App\Models\ReceivablePayment;
 use App\Models\Setting;
+use App\Models\Warehouse;
 use App\Services\ReceivableService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,18 +21,29 @@ class ReceivableController extends Controller
 
     public function index(Request $request)
     {
+        $user = $request->user();
+        $isLockedBranch = $user && ! $user->isHQ();
+        $warehouseId = $isLockedBranch
+            ? $user->warehouse_id
+            : ($request->input('warehouse_id') ? (int) $request->input('warehouse_id') : null);
+
         $filters = [
             'status' => $request->input('status'),
             'customer' => $request->input('customer'),
             'invoice' => $request->input('invoice'),
             'due_from' => $request->input('due_from'),
             'due_to' => $request->input('due_to'),
+            'warehouse_id' => $warehouseId,
         ];
 
-        $query = Receivable::with('customer:id,name')
+        $query = Receivable::with(['customer:id,name', 'transaction.warehouse:id,code,name'])
             ->withSum(['payments as total_paid' => fn ($q) => $q->where('status', 'approved')], 'amount')
             ->withCount(['payments as pending_payments_count' => fn ($q) => $q->where('status', 'pending')])
             ->orderByDesc('created_at');
+
+        if ($warehouseId) {
+            $query->whereHas('transaction', fn ($t) => $t->where('warehouse_id', $warehouseId));
+        }
 
         $query->when($filters['status'], function ($q, $status) {
             $q->where('status', $status);
@@ -54,9 +66,15 @@ class ReceivableController extends Controller
             return $item;
         });
 
+        $warehouses = $isLockedBranch
+            ? Warehouse::where('id', $user->warehouse_id)->get(['id', 'code', 'name'])
+            : Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name']);
+
         return Inertia::render('Dashboard/Receivables/Index', [
             'receivables' => $receivables,
             'filters' => $filters,
+            'warehouses' => $warehouses,
+            'is_locked_branch' => $isLockedBranch,
         ]);
     }
 

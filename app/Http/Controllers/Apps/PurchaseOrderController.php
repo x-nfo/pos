@@ -22,10 +22,16 @@ class PurchaseOrderController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
+        $isLockedBranch = $user && ! $user->isHQ();
+        $warehouseId = $isLockedBranch
+            ? $user->warehouse_id
+            : ($request->input('warehouse_id') ? (int) $request->input('warehouse_id') : null);
+
         $filters = [
             'status' => $request->input('status'),
             'supplier' => $request->input('supplier'),
             'search' => $request->input('search'),
+            'warehouse_id' => $warehouseId,
         ];
 
         $query = PurchaseOrder::with([
@@ -36,8 +42,8 @@ class PurchaseOrderController extends Controller
         ])->withCount('items as items_count')
             ->orderByDesc('created_at');
 
-        if ($user && ! $user->isHQ()) {
-            $query->where('warehouse_id', $user->warehouse_id);
+        if ($warehouseId) {
+            $query->where('warehouse_id', $warehouseId);
         }
 
         $query->when($filters['status'], fn ($q, $s) => $q->where('status', $s))
@@ -47,10 +53,16 @@ class PurchaseOrderController extends Controller
         $orders = $query->paginate($this->perPage())->withQueryString();
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
 
+        $warehouses = $isLockedBranch
+            ? Warehouse::where('id', $user->warehouse_id)->get(['id', 'code', 'name'])
+            : Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name']);
+
         return Inertia::render('Dashboard/PurchaseOrders/Index', [
             'orders' => $orders,
             'filters' => $filters,
             'suppliers' => $suppliers,
+            'warehouses' => $warehouses,
+            'is_locked_branch' => $isLockedBranch,
         ]);
     }
 

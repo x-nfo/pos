@@ -28,7 +28,19 @@ const statusBadge = (status) => {
 
 export default function TransactionDetail({ transaction, token }) {
     const { storeProfile, branding } = usePage().props;
-    const storeName = storeProfile?.name || branding?.appName || "STRUK PEMBELIAN";
+    const baseStoreName = storeProfile?.name || branding?.appName || "Point of Sales";
+    const warehouse = transaction?.warehouse;
+    const storeName = warehouse && warehouse.type !== "main" && warehouse.name
+        ? `${baseStoreName} (${warehouse.name})`
+        : baseStoreName;
+
+    const clean = (val) => {
+        if (!val || typeof val !== "string") return "";
+        return val.toLowerCase().includes("belum diisi") ? "" : val.trim();
+    };
+
+    const storeAddress = clean(warehouse?.address) || clean(storeProfile?.address);
+    const storePhone = clean(warehouse?.phone) || clean(storeProfile?.phone);
     const logoSrc = storeProfile?.logo || branding?.logoLight || null;
 
     return (
@@ -46,8 +58,11 @@ export default function TransactionDetail({ transaction, token }) {
                             />
                         ) : null}
                         <h2 className="text-lg font-black tracking-tight">{storeName}</h2>
-                        {storeProfile?.address && (
-                            <p className="text-xs text-white/80 mt-0.5 max-w-xs mx-auto truncate">{storeProfile.address}</p>
+                        {storeAddress && (
+                            <p className="text-xs text-white/80 mt-0.5 max-w-xs mx-auto truncate">{storeAddress}</p>
+                        )}
+                        {storePhone && (
+                            <p className="text-xs text-white/70 mt-0.5 max-w-xs mx-auto truncate">Telp: {storePhone}</p>
                         )}
                         
                         <div className="mt-4 pt-3 border-t border-white/15 flex items-center justify-between text-xs text-white/90">

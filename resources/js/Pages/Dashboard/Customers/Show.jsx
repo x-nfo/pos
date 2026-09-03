@@ -216,9 +216,16 @@ export default function Show({
                                             className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-800/50"
                                         >
                                             <div>
-                                                <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                                                    {transaction.invoice}
-                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                                        {transaction.invoice}
+                                                    </p>
+                                                    {transaction.warehouse && (
+                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                                                            {transaction.warehouse}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <p className="text-xs text-slate-500 dark:text-slate-400">
                                                     {formatDateTime(
                                                         transaction.date

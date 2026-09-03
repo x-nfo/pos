@@ -639,8 +639,10 @@ class SalesReturnController extends Controller
 
         return SalesReturn::query()
             ->with([
+                'warehouse:id,code,name,address,phone,type',
                 'customer:id,name',
                 'cashier:id,name',
+                'transaction.warehouse:id,code,name,address,phone,type',
                 'transaction.cashier:id,name',
                 'transaction.customer:id,name',
                 'transaction.receivable',

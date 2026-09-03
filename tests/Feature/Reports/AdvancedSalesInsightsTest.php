@@ -14,6 +14,7 @@ use App\Models\PricingRule;
 use App\Models\Product;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -437,12 +438,77 @@ class AdvancedSalesInsightsTest extends TestCase
         ]);
     }
 
-    private function createTransactionWithDetails(User $cashier, Customer $customer, Carbon $createdAt, array $lines): Transaction
+    public function test_branch_locked_user_and_warehouse_filter_in_advanced_insights(): void
+    {
+        $warehouseA = Warehouse::create(['code' => 'WHA', 'name' => 'Cabang A', 'address' => 'A', 'phone' => '081']);
+        $warehouseB = Warehouse::create(['code' => 'WHB', 'name' => 'Cabang B', 'address' => 'B', 'phone' => '082']);
+
+        $category = Category::create(['name' => 'Cat', 'description' => 'Test', 'image' => 'c.png']);
+        $product = Product::create([
+            'category_id' => $category->id,
+            'image' => 'p.png',
+            'barcode' => 'BRC-INS',
+            'sku' => 'SKU-INS',
+            'title' => 'Produk Insight',
+            'description' => 'Produk Insight',
+            'buy_price' => 20000,
+            'sell_price' => 50000,
+            'stock' => 10,
+            'tax_rate' => 0,
+        ]);
+
+        $hqUser = $this->createUser();
+        $branchUser = $this->createUser();
+        $branchUser->update(['warehouse_id' => $warehouseA->id]);
+
+        $customer = Customer::create([
+            'name' => 'Customer A',
+            'no_telp' => '0812345678',
+            'address' => 'Alamat A',
+        ]);
+
+        $this->createTransactionWithDetails(
+            cashier: $branchUser,
+            customer: $customer,
+            createdAt: Carbon::parse('2026-03-01 10:00:00'),
+            lines: [['product' => $product, 'qty' => 2, 'line_total' => 100000]],
+            warehouseId: $warehouseA->id
+        );
+
+        $this->createTransactionWithDetails(
+            cashier: $hqUser,
+            customer: $customer,
+            createdAt: Carbon::parse('2026-03-01 11:00:00'),
+            lines: [['product' => $product, 'qty' => 5, 'line_total' => 250000]],
+            warehouseId: $warehouseB->id
+        );
+
+        // Branch user only sees Warehouse A
+        $responseBranch = $this->actingAs($branchUser)->get(route('reports.insights.index'));
+        $responseBranch->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('is_locked_branch', true)
+            ->where('summary.orders_count', 1)
+            ->where('summary.revenue_total', 100000)
+            ->where('summary.items_sold', 2)
+        );
+
+        // HQ user with filter warehouse B
+        $responseHQ = $this->actingAs($hqUser)->get(route('reports.insights.index', ['warehouse_id' => $warehouseB->id]));
+        $responseHQ->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('is_locked_branch', false)
+            ->where('summary.orders_count', 1)
+            ->where('summary.revenue_total', 250000)
+            ->where('summary.items_sold', 5)
+        );
+    }
+
+    private function createTransactionWithDetails(User $cashier, Customer $customer, Carbon $createdAt, array $lines, ?int $warehouseId = null): Transaction
     {
         $subtotal = collect($lines)->sum('line_total');
         $transaction = Transaction::create([
             'cashier_id' => $cashier->id,
             'customer_id' => $customer->id,
+            'warehouse_id' => $warehouseId,
             'invoice' => 'TRX-'.strtoupper((string) str()->random(8)),
             'cash' => $subtotal,
             'change' => 0,

@@ -33,12 +33,16 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
+        $user = $request->user();
+        $isLockedBranch = $user && ! $user->isHQ();
+        $warehouseId = $isLockedBranch
+            ? $user->warehouse_id
+            : ($request->input('warehouse_id') ? (int) $request->input('warehouse_id') : null);
+
         $filters = [
             'search' => $request->input('search'),
-            'warehouse_id' => $request->input('warehouse_id'),
+            'warehouse_id' => $warehouseId ? (string) $warehouseId : null,
         ];
-
-        $warehouseId = $filters['warehouse_id'] ? (int) $filters['warehouse_id'] : null;
 
         $products = Product::query()
             ->when($filters['search'], function ($q, $search) {
@@ -56,7 +60,9 @@ class ProductController extends Controller
             ->paginate($this->perPage())
             ->withQueryString();
 
-        $warehouses = Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name', 'type']);
+        $warehouses = $isLockedBranch
+            ? Warehouse::where('id', $user->warehouse_id)->get(['id', 'code', 'name', 'type'])
+            : Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name', 'type']);
 
         $products->through(function (Product $product) use ($warehouseId, $warehouses) {
             $warehouseStocks = $warehouses->map(function ($w) use ($product) {
@@ -92,6 +98,7 @@ class ProductController extends Controller
             'products' => $products,
             'warehouses' => $warehouses,
             'filters' => $filters,
+            'is_locked_branch' => $isLockedBranch,
         ]);
     }
 

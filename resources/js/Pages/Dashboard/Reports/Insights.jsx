@@ -25,6 +25,7 @@ const defaultFilters = {
     cashier_id: "",
     customer_id: "",
     category_id: "",
+    warehouse_id: "",
 };
 
 const formatCurrency = (value = 0) =>
@@ -171,6 +172,8 @@ export default function Insights({
     cashiers,
     customers,
     categories,
+    warehouses = [],
+    is_locked_branch = false,
     summary,
     salesByHour,
     salesByDay,
@@ -195,6 +198,7 @@ export default function Insights({
     const [selectedCashier, setSelectedCashier] = useState(null);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
     const [selectedCategory, setSelectedCategory] = useState(null);
+    const [selectedWarehouse, setSelectedWarehouse] = useState(null);
 
     const salesHourChartRef = useRef(null);
     const salesHourChart = useRef(null);
@@ -215,14 +219,18 @@ export default function Insights({
         setSelectedCategory(
             categories.find((item) => String(item.id) === String(filters.category_id || "")) || null
         );
-    }, [filters, cashiers, customers, categories]);
+        setSelectedWarehouse(
+            warehouses.find((item) => String(item.id) === String(filters.warehouse_id || "")) || null
+        );
+    }, [filters, cashiers, customers, categories, warehouses]);
 
     const hasActiveFilters =
         filterData.start_date ||
         filterData.end_date ||
         filterData.cashier_id ||
         filterData.customer_id ||
-        filterData.category_id;
+        filterData.category_id ||
+        filterData.warehouse_id;
 
     const hourChartData = useMemo(
         () => salesByHour.filter((item) => item.orders_count > 0 || item.revenue_total > 0),
@@ -321,6 +329,7 @@ export default function Insights({
         setSelectedCashier(null);
         setSelectedCustomer(null);
         setSelectedCategory(null);
+        setSelectedWarehouse(null);
         router.get(route("reports.insights.index"), defaultFilters, {
             preserveState: true,
             preserveScroll: true,
@@ -409,7 +418,7 @@ export default function Insights({
                 {showFilters && (
                     <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
                         <form onSubmit={applyFilters}>
-                            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
                                 <div>
                                     <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                                         Tanggal Mulai
@@ -467,6 +476,17 @@ export default function Insights({
                                         handleChange("category_id", value ? String(value.id) : "");
                                     }}
                                     placeholder="Semua kategori"
+                                    searchable
+                                />
+                                <InputSelect
+                                    label="Cabang / Gudang"
+                                    data={warehouses}
+                                    selected={selectedWarehouse}
+                                    setSelected={(value) => {
+                                        setSelectedWarehouse(value);
+                                        handleChange("warehouse_id", value ? String(value.id) : "");
+                                    }}
+                                    placeholder="Semua cabang"
                                     searchable
                                 />
                             </div>

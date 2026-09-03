@@ -11,7 +11,11 @@ Cetak receipt ke printer thermal (ESC/POS protocol) langsung dari browser via We
 ### ThermalPrintService (Server-side)
 - Generate teks receipt dalam format monospace
 - Support 80mm (48 karakter) dan 58mm (32 karakter)
-- Format: header toko, invoice info, item list, subtotal, diskon, PPN, total, pembayaran, footer
+- **Header Dinamis Cabang (*Branch Dynamic Header*)**:
+  - Otomatis mencetak nama cabang, alamat cabang, dan nomor telepon cabang tempat transaksi kasir dibuat (`transaction.warehouse`).
+  - *Word-wrap* otomatis untuk alamat panjang agar tidak terpotong di kertas sempit 58mm maupun 80mm.
+  - Jika alamat cabang kosong/belum diisi, otomatis *fallback* ke nama dan alamat profil toko pusat (`StoreProfile`).
+- Format: header cabang/toko, invoice info, item list, subtotal, diskon, PPN, total, pembayaran, footer
 - Output: plain text (`generateReceiptText`) dan HTML (`generateReceiptHtml`)
 
 ### Thermal Print Route
@@ -33,7 +37,7 @@ Cetak receipt ke printer thermal (ESC/POS protocol) langsung dari browser via We
 | Route | Method | Fungsi |
 |-------|--------|--------|
 | `transactions.print` | GET | Halaman cetak transaksi multi-driver (Browser, USB, Bluetooth) |
-| `pdf.transactions.thermal` | GET | HTML receipt thermal monospace |
+| `pdf.transactions.thermal` | GET | HTML receipt thermal monospace dengan header dinamis cabang |
 | `settings.printer` | GET | Halaman settings printer |
 | `settings.printer.update` | POST | Simpan settings printer |
 

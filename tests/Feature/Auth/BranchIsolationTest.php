@@ -3,9 +3,11 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\CashierShift;
+use App\Models\Customer;
 use App\Models\GoodsReceiving;
 use App\Models\Profit;
 use App\Models\PurchaseOrder;
+use App\Models\Receivable;
 use App\Models\StockOpname;
 use App\Models\StockTransfer;
 use App\Models\Transaction;
@@ -63,6 +65,8 @@ class BranchIsolationTest extends TestCase
             'goods-receivings-create',
             'supplier-returns-access',
             'sales-returns-access',
+            'products-access',
+            'receivables-access',
         ];
 
         foreach ($permissions as $p) {
@@ -321,6 +325,7 @@ class BranchIsolationTest extends TestCase
             ->get(route('dashboard'))
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Dashboard/Index')
+                ->where('isLockedBranch', true)
                 ->where('totalRevenue', 100000)
                 ->where('totalProfit', 25000)
                 ->where('totalTransactions', 1)
@@ -331,9 +336,22 @@ class BranchIsolationTest extends TestCase
             ->get(route('dashboard'))
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Dashboard/Index')
+                ->where('isLockedBranch', false)
                 ->where('totalRevenue', 400000)
                 ->where('totalProfit', 100000)
                 ->where('totalTransactions', 2)
+            );
+
+        // HQ user can filter dashboard specifically to Branch A
+        $this->actingAs($this->hqUser)
+            ->get(route('dashboard', ['warehouse_id' => $this->warehouseA->id]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard/Index')
+                ->where('isLockedBranch', false)
+                ->where('selectedWarehouseId', $this->warehouseA->id)
+                ->where('totalRevenue', 100000)
+                ->where('totalProfit', 25000)
+                ->where('totalTransactions', 1)
             );
     }
 
@@ -513,5 +531,100 @@ class BranchIsolationTest extends TestCase
         $this->actingAs($this->branchUserA)
             ->get(route('goods-receivings.show', $grB))
             ->assertForbidden();
+    }
+
+    public function test_products_and_receivables_are_scoped_to_branch_user(): void
+    {
+        $this->actingAs($this->branchUserA)
+            ->get(route('products.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard/Products/Index')
+                ->where('is_locked_branch', true)
+                ->where('filters.warehouse_id', (string) $this->warehouseA->id)
+            );
+
+        $customer = Customer::create([
+            'name' => 'Test Customer',
+            'no_telp' => '081234567890',
+            'address' => 'Jl. Test No. 1',
+        ]);
+
+        $trxA = Transaction::create([
+            'invoice' => 'TRX-REC-A',
+            'cashier_id' => $this->branchUserA->id,
+            'customer_id' => $customer->id,
+            'warehouse_id' => $this->warehouseA->id,
+            'grand_total' => 50000,
+            'discount' => 0,
+            'cash' => 0,
+            'change' => 0,
+            'payment_method' => 'pay_later',
+            'payment_status' => 'pending',
+        ]);
+
+        Receivable::create([
+            'customer_id' => $customer->id,
+            'transaction_id' => $trxA->id,
+            'invoice' => $trxA->invoice,
+            'total' => 50000,
+            'paid' => 0,
+            'due_date' => now()->addDays(7),
+            'status' => 'pending',
+        ]);
+
+        $trxB = Transaction::create([
+            'invoice' => 'TRX-REC-B',
+            'cashier_id' => $this->branchUserB->id,
+            'customer_id' => $customer->id,
+            'warehouse_id' => $this->warehouseB->id,
+            'grand_total' => 80000,
+            'discount' => 0,
+            'cash' => 0,
+            'change' => 0,
+            'payment_method' => 'pay_later',
+            'payment_status' => 'pending',
+        ]);
+
+        Receivable::create([
+            'customer_id' => $customer->id,
+            'transaction_id' => $trxB->id,
+            'invoice' => $trxB->invoice,
+            'total' => 80000,
+            'paid' => 0,
+            'due_date' => now()->addDays(7),
+            'status' => 'pending',
+        ]);
+
+        // Branch A user only sees Receivable from TRX-REC-A
+        $this->actingAs($this->branchUserA)
+            ->get(route('receivables.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard/Receivables/Index')
+                ->where('is_locked_branch', true)
+                ->has('receivables.data', 1)
+                ->where('receivables.data.0.invoice', 'TRX-REC-A')
+            );
+
+        // HQ user sees all receivables and can filter by warehouse
+        $this->actingAs($this->hqUser)
+            ->get(route('receivables.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard/Receivables/Index')
+                ->where('is_locked_branch', false)
+                ->has('receivables.data', 2)
+            );
+
+        $this->actingAs($this->hqUser)
+            ->get(route('receivables.index', ['warehouse_id' => $this->warehouseB->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard/Receivables/Index')
+                ->where('is_locked_branch', false)
+                ->has('receivables.data', 1)
+                ->where('receivables.data.0.invoice', 'TRX-REC-B')
+            );
     }
 }

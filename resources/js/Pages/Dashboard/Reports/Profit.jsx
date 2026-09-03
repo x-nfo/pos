@@ -45,6 +45,7 @@ const defaultFilters = {
     invoice: "",
     cashier_id: "",
     customer_id: "",
+    warehouse_id: "",
 };
 
 const formatCurrency = (value = 0) =>
@@ -60,6 +61,7 @@ const ProfitReport = ({
     filters,
     cashiers,
     customers,
+    warehouses = [],
 }) => {
     const [showFilters, setShowFilters] = useState(false);
     const [filterData, setFilterData] = useState({
@@ -68,6 +70,7 @@ const ProfitReport = ({
     });
     const [selectedCashier, setSelectedCashier] = useState(null);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
+    const [selectedWarehouse, setSelectedWarehouse] = useState(null);
 
     useEffect(() => {
         setFilterData({ ...defaultFilters, ...filters });
@@ -77,10 +80,18 @@ const ProfitReport = ({
         setSelectedCustomer(
             customers.find((c) => String(c.id) === filters.customer_id) || null
         );
-    }, [filters, cashiers, customers]);
+        setSelectedWarehouse(
+            warehouses.find((w) => String(w.id) === filters.warehouse_id) || null
+        );
+    }, [filters, cashiers, customers, warehouses]);
 
     const handleChange = (field, value) =>
         setFilterData((prev) => ({ ...prev, [field]: value }));
+
+    const handleSelectWarehouse = (value) => {
+        setSelectedWarehouse(value);
+        handleChange("warehouse_id", value ? String(value.id) : "");
+    };
 
     const applyFilters = (e) => {
         e.preventDefault();
@@ -95,6 +106,7 @@ const ProfitReport = ({
         setFilterData(defaultFilters);
         setSelectedCashier(null);
         setSelectedCustomer(null);
+        setSelectedWarehouse(null);
         router.get(route("reports.profits.index"), defaultFilters, {
             replace: true,
             preserveScroll: true,
@@ -113,7 +125,8 @@ const ProfitReport = ({
         filterData.start_date ||
         filterData.end_date ||
         filterData.cashier_id ||
-        filterData.customer_id;
+        filterData.customer_id ||
+        filterData.warehouse_id;
 
     const stats = {
         profit_total: summary?.profit_total ?? 0,
@@ -198,7 +211,7 @@ const ProfitReport = ({
                 {showFilters && (
                     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 animate-slide-up">
                         <form onSubmit={applyFilters}>
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                         Tanggal Mulai
@@ -276,6 +289,14 @@ const ProfitReport = ({
                                     placeholder="Semua pelanggan"
                                     searchable
                                 />
+                                <InputSelect
+                                    label="Cabang / Gudang"
+                                    data={warehouses}
+                                    selected={selectedWarehouse}
+                                    setSelected={handleSelectWarehouse}
+                                    placeholder="Semua cabang"
+                                    searchable
+                                />
                             </div>
                             <div className="flex justify-end gap-2 mt-4">
                                 {hasActiveFilters && (
@@ -316,6 +337,9 @@ const ProfitReport = ({
                                             Tanggal
                                         </th>
                                         <th className="px-4 py-4 text-left text-xs font-semibold text-slate-500 uppercase">
+                                            Cabang
+                                        </th>
+                                        <th className="px-4 py-4 text-left text-xs font-semibold text-slate-500 uppercase">
                                             Kasir
                                         </th>
                                         <th className="px-4 py-4 text-left text-xs font-semibold text-slate-500 uppercase">
@@ -348,6 +372,11 @@ const ProfitReport = ({
                                             </td>
                                             <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
                                                 {trx.created_at}
+                                            </td>
+                                            <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                                    {trx.warehouse?.name ?? "Pusat"}
+                                                </span>
                                             </td>
                                             <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
                                                 {trx.cashier?.name ?? "-"}

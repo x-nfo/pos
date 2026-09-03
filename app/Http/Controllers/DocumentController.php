@@ -7,6 +7,7 @@ use App\Models\PurchaseOrder;
 use App\Models\Receivable;
 use App\Models\Setting;
 use App\Models\Transaction;
+use App\Models\Warehouse;
 use App\Services\ThermalPrintService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -22,7 +23,7 @@ class DocumentController extends Controller
         }
     }
 
-    private function storeProfile(): array
+    private function storeProfile(?Warehouse $warehouse = null): array
     {
         $appName = Setting::get('app_name', 'Rekasir');
         $storeName = Setting::get('store_name', $appName);
@@ -45,12 +46,30 @@ class DocumentController extends Controller
             }
         }
 
+        $clean = function (?string $value): string {
+            if ($value === null) {
+                return '';
+            }
+            $trimmed = trim($value);
+            if (str_contains(strtolower($trimmed), 'belum diisi')) {
+                return '';
+            }
+
+            return $trimmed;
+        };
+
+        $address = $clean($warehouse?->address) ?: $clean(Setting::get('store_address', ''));
+        $phone = $clean($warehouse?->phone) ?: $clean(Setting::get('store_phone', ''));
+        $name = ($warehouse && $warehouse->type !== 'main' && $warehouse->name)
+            ? $storeName.' ('.$warehouse->name.')'
+            : $storeName;
+
         return [
-            'name' => $storeName,
+            'name' => $name,
             'logo' => $logo,
             'logo_data' => $logoData,
-            'address' => Setting::get('store_address', ''),
-            'phone' => Setting::get('store_phone', ''),
+            'address' => $address,
+            'phone' => $phone,
             'email' => Setting::get('store_email', ''),
             'website' => Setting::get('store_website', ''),
         ];
@@ -68,13 +87,15 @@ class DocumentController extends Controller
     {
         $this->ensureFontDirectory();
 
-        $transaction = Transaction::with(['details.product', 'details.unit', 'cashier', 'customer'])
+        $transaction = Transaction::with(['warehouse', 'cashier.warehouse', 'cashierShift.warehouse', 'details.product', 'details.unit', 'cashier', 'customer'])
             ->where('invoice', $invoice)
             ->firstOrFail();
 
+        $warehouse = $transaction->warehouse ?: $transaction->cashierShift?->warehouse ?: $transaction->cashier?->warehouse;
+
         $pdf = Pdf::loadView('pdf.invoice', [
             'transaction' => $transaction,
-            'store' => $this->storeProfile(),
+            'store' => $this->storeProfile($warehouse),
             'barcode' => $this->barcode($transaction->invoice),
         ])->setPaper('a4');
 
@@ -93,15 +114,17 @@ class DocumentController extends Controller
     {
         $this->ensureFontDirectory();
 
-        $transaction = Transaction::with(['details.product', 'details.unit', 'cashier', 'customer'])
+        $transaction = Transaction::with(['warehouse', 'cashier.warehouse', 'cashierShift.warehouse', 'details.product', 'details.unit', 'cashier', 'customer'])
             ->where('invoice', $invoice)
             ->firstOrFail();
+
+        $warehouse = $transaction->warehouse ?: $transaction->cashierShift?->warehouse ?: $transaction->cashier?->warehouse;
 
         $template = $size === '58' ? 'pdf.receipt_58' : 'pdf.receipt_80';
         $width = $size === '58' ? 164.4 : 226.8; // points (mm*2.8346)
         $pdf = Pdf::loadView($template, [
             'transaction' => $transaction,
-            'store' => $this->storeProfile(),
+            'store' => $this->storeProfile($warehouse),
             'barcode' => $this->barcode($transaction->invoice),
             'locale' => app()->getLocale(),
         ])->setPaper([0, 0, $width, 800], 'portrait');
@@ -113,13 +136,15 @@ class DocumentController extends Controller
     {
         $this->ensureFontDirectory();
 
-        $transaction = Transaction::with(['details.product', 'details.unit', 'customer', 'cashier'])
+        $transaction = Transaction::with(['warehouse', 'cashier.warehouse', 'cashierShift.warehouse', 'details.product', 'details.unit', 'customer', 'cashier'])
             ->where('invoice', $invoice)
             ->firstOrFail();
 
+        $warehouse = $transaction->warehouse ?: $transaction->cashierShift?->warehouse ?: $transaction->cashier?->warehouse;
+
         $pdf = Pdf::loadView('pdf.shipping_label', [
             'transaction' => $transaction,
-            'store' => $this->storeProfile(),
+            'store' => $this->storeProfile($warehouse),
             'barcode' => $this->barcode($transaction->invoice),
         ]);
 
@@ -132,7 +157,7 @@ class DocumentController extends Controller
 
     public function thermalPrint(string $invoice, Request $request)
     {
-        $transaction = Transaction::with(['details.product', 'details.unit', 'cashier', 'customer'])
+        $transaction = Transaction::with(['warehouse', 'details.product', 'details.unit', 'cashier', 'customer'])
             ->where('invoice', $invoice)
             ->firstOrFail();
 
@@ -147,11 +172,11 @@ class DocumentController extends Controller
     {
         $this->ensureFontDirectory();
 
-        $receivable->load(['customer', 'payments.bankAccount', 'payments.user']);
+        $receivable->load(['transaction.warehouse', 'customer', 'payments.bankAccount', 'payments.user']);
 
         $pdf = Pdf::loadView('pdf.receivable', [
             'receivable' => $receivable,
-            'store' => $this->storeProfile(),
+            'store' => $this->storeProfile($receivable->transaction?->warehouse),
             'barcode' => $this->barcode($receivable->invoice),
         ])->setPaper('a5', 'portrait');
 
@@ -192,7 +217,7 @@ class DocumentController extends Controller
 
         $pdf = Pdf::loadView('pdf.purchase_order', [
             'order' => $order,
-            'store' => $this->storeProfile(),
+            'store' => $this->storeProfile($order->warehouse),
             'barcode' => $barcode,
         ])->setPaper('a4', 'portrait');
 

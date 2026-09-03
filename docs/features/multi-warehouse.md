@@ -1,96 +1,84 @@
-# Multi-Warehouse
+# Multi-Warehouse & Multi-Cabang
 
 Kembali ke indeks dokumentasi: `docs/README.md`
 
 ## Tujuan
 
-Memisahkan stok produk per lokasi fisik (gudang pusat, cabang toko, gudang penyangga). Memungkinkan bisnis dengan >1 lokasi operasional.
+Memisahkan stok produk, operasional kasir, piutang, dan pelaporan per lokasi fisik (gudang pusat, cabang toko, gudang penyangga). Memungkinkan pengelolaan ritel multi-cabang terintegrasi secara profesional dengan pemisahan peran antara kantor pusat (HQ) dan staf cabang.
 
-## Definisi
+## Definisi & Tipe Lokasi
 
-| Istilah | Arti |
-|---------|------|
-| Main Warehouse | Gudang utama, dibuat otomatis saat seeding |
-| Branch Warehouse | Cabang toko yang juga menjual langsung |
-| Stock Warehouse | Gudang penyangga (tidak menjual langsung) |
+| Istilah | Tipe Sistem | Arti & Peran |
+|---------|-------------|--------------|
+| **Gudang Utama (Pusat)** | `main` | Pusat penerimaan barang dari supplier (PO & GR), transit logistik, dan suplai ke cabang. |
+| **Cabang Toko (Outlet)** | `branch` | Lokasi toko fisik yang melayani penjualan langsung ke pelanggan (POS kasir), memiliki kasir shift, stok fisik rak, serta alamat dan nomor telepon unik pada struk. |
+| **Gudang Penyangga** | `warehouse` | Tempat penyimpanan stok cadangan (tidak melayani penjualan kasir langsung). |
 
-## Fitur Saat Ini
+## Arsitektur & Aturan Multi-Cabang
 
-### Warehouse CRUD
-- Tambah, edit, hapus warehouse
-- Tipe: main, branch, warehouse
-- Status aktif/nonaktif
-- Urutan tampilan
-- Guard: tidak bisa hapus warehouse yang masih punya stok
-- Guard: tidak bisa hapus warehouse utama
+### 1. Model Pengguna: Kantor Pusat (HQ) vs Akun Cabang
+- **Super Admin / Akun Pusat (`warehouse_id = null`)**:
+  - Dianggap sebagai akun HQ (`$user->isHQ() === true`).
+  - Memiliki akses konsolidasi ke seluruh cabang.
+  - Dapat beralih (*switch*) tampilan Dashboard, Laporan Penjualan, Laba Rugi, Insights, Piutang, PO, dan Shift Kasir ke cabang manapun melalui dropdown filter.
+- **Akun Cabang (`warehouse_id != null`)**:
+  - Diberikan penugasan tetap ke satu cabang (`$user->isHQ() === false`).
+  - Terkunci secara otomatis (*hard-isolation*):
+    - **Dashboard**: Hanya melihat omzet, grafik pendapatan, dan transaksi cabangnya.
+    - **POS & Kasir**: Hanya dapat membuka shift dan menjual produk dengan stok di cabangnya (`product_warehouse.stock > 0`).
+    - **Katalog Produk**: Kolom stok otomatis menampilkan stok fisik cabangnya.
+    - **Laporan**: Hanya dapat melihat Laporan Penjualan, Laba Rugi, dan Insights untuk cabangnya.
+    - **Piutang**: Hanya mengelola dan menagih piutang yang berasal dari transaksi cabangnya.
+    - **Stock Transfer**: Wajib melibatkan cabangnya sebagai asal (*source*) atau tujuan (*destination*).
+    - **Stock Opname**: Hanya dapat mengaudit stok pada rak/gudang cabangnya.
 
-### Product-Warehouse Pivot
-- Stok disimpan per produk per warehouse di `product_warehouse`
-- Saat warehouse baru dibuat, semua produk otomatis ter-sync dengan stok 0
-- Saat seeder, semua stok produk existing dipindah ke warehouse PUSAT
+### 2. Header Struk Dinamis Per Cabang (*Dynamic Receipt*)
+- Struk cetak thermal (58mm / 80mm) dan invoice digital/PDF otomatis menampilkan **Nama Cabang**, **Alamat Cabang**, dan **Nomor Telepon/WhatsApp Cabang** tempat kasir bertugas.
+- Jika alamat cabang belum diisi, sistem secara otomatis melakukan *fallback* ke alamat profil toko pusat (`StoreProfile`), menjamin tampilan struk selalu rapi dan tidak pernah kosong.
 
-### Warehouse di Shift
-- Kasir memilih warehouse saat buka shift
-- Warehouse tidak bisa diubah setelah shift dibuka
-- Admin bisa lihat warehouse asal di detail shift
+### 3. Product-Warehouse Pivot (Stok Fisik Terpisah)
+- Stok fisik dicatat per produk per gudang/cabang pada tabel pivot `product_warehouse`.
+- Saat cabang/gudang baru ditambahkan, seluruh produk otomatis disinkronkan dengan saldo awal `0`.
+- Saat seeder dijalankan, stok awal produk dialokasikan ke Gudang Pusat (`main`).
 
-### Warehouse di Transaksi
-- Produk yang tampil di POS hanya yang punya stok > 0 di warehouse shift aktif
-- Cart menyimpan `warehouse_id`
-- Checkout decrement stok di pivot warehouse
-- Transaksi tercatat dengan `warehouse_id`
-- Search product by barcode — hanya produk yang ada di warehouse shift aktif
+### 4. Siklus Pengadaan & Transfer Antar-Gudang
+- **Purchase Order (PO)**: Memiliki `warehouse_id` tujuan pengiriman barang.
+- **Goods Receiving (GR)**: Penerimaan barang otomatis menambah stok fisik di gudang tujuan PO.
+- **Transfer Stok Antar-Cabang**: Mendukung status *draft* $\rightarrow$ *in_transit* (stok asal berkurang) $\rightarrow$ *completed* (stok tujuan bertambah setelah konfirmasi penerimaan) atau *cancelled* (stok kembali ke asal).
 
-### Warehouse di Purchasing
-- PO punya `warehouse_id` (tujuan gudang)
-- GR auto-inherit warehouse dari PO
-- Supplier Return: stok decrement dari warehouse asal
-- Stock Opname: pilih warehouse, baca stok dari pivot warehouse
-
-### Stock Transfer Antar Warehouse
-- Transfer antar warehouse (source → destination)
-- Status: draft → in_transit → completed / cancelled
-- Send: kurangi stok source + catat stock mutation
-- Receive: tambah stok destination + catat stock mutation
-- Cancel: jika in_transit, stok dikembalikan ke source
-- Validasi stok cukup sebelum send
+### 5. Pelaporan & Analisis Multi-Cabang
+- **Dashboard Switcher**: Di header Dashboard, pengguna HQ dapat memilih *"Semua Cabang (Konsolidasi)"* atau memilih cabang tertentu untuk mengubah seluruh metrik KPI secara instan.
+- **Laporan Penjualan & Laba Rugi**: Dilengkapi filter dropdown cabang dan kolom cabang di tabel transaksi.
+- **Advanced Sales Insights**: Analisis jam sibuk (*sales by hour*), produk terlaris, produk *slow moving*, retensi pelanggan, dan leaderboard performa kasir per cabang.
 
 ## Halaman dan Route
 
-| Route | Fungsi |
-|-------|--------|
-| `settings.warehouses.index` | Daftar warehouse (CRUD inline) |
-| `stock-transfers.index` | Daftar transfer stok |
-| `stock-transfers.create` | Buat transfer baru |
-| `stock-transfers.show` | Detail transfer + action (send/receive/cancel) |
+| Route | Fungsi | Akses Peran |
+|-------|--------|-------------|
+| `settings.warehouses.index` | Manajemen master cabang & gudang (nama, alamat, telepon, tipe) | HQ / Super Admin |
+| `stock-transfers.index` | Daftar transfer stok antar-cabang | HQ & Cabang terkait |
+| `stock-transfers.create` | Formulir pengiriman transfer stok | HQ & Cabang terkait |
+| `stock-transfers.show` | Detail transfer & tombol aksi (Kirim / Terima / Batalkan) | HQ & Cabang terkait |
+| `stock-opnames.index` | Audit fisik opname stok per cabang | HQ & Cabang terkait |
 
 ## Permission
 
-| Permission | Untuk apa |
-|-----------|-----------|
-| `warehouses-access` | Lihat daftar warehouse |
-| `warehouses-create` | Tambah warehouse baru |
-| `warehouses-update` | Edit warehouse |
-| `warehouses-delete` | Hapus warehouse |
-| `stock-transfers-access` | Lihat daftar transfer |
-| `stock-transfers-create` | Buat transfer |
-| `stock-transfers-send` | Kirim transfer (decrement source) |
-| `stock-transfers-receive` | Terima transfer (increment dest) |
-| `stock-transfers-cancel` | Batalkan transfer |
+| Permission | Kegunaan |
+|-----------|----------|
+| `warehouses-access` | Melihat daftar gudang / cabang |
+| `warehouses-create` | Mendaftarkan cabang / gudang baru |
+| `warehouses-update` | Mengubah informasi cabang (alamat, nomor telp) |
+| `warehouses-delete` | Menghapus cabang (hanya jika saldo stok 0) |
+| `stock-transfers-access` | Mengakses modul transfer stok |
+| `stock-transfers-create` | Membuat dokumen transfer stok |
+| `stock-transfers-send` | Menjalankan pengiriman transfer stok |
+| `stock-transfers-receive` | Mengonfirmasi penerimaan transfer di cabang tujuan |
+| `stock-transfers-cancel` | Membatalkan transfer barang |
 
-## Alur User
+## Standar Operasional (SOP Multi-Cabang)
 
-1. Admin: setup warehouse di Settings → Gudang
-2. Cashier: buka shift → pilih warehouse
-3. POS: hanya produk dengan stok di warehouse shift yang tampil
-4. Checkout: stok decrement dari warehouse shift
-5. PO: tentukan warehouse tujuan
-6. GR: barang masuk ke warehouse PO
-7. Stock Opname: pilih warehouse, hitung stok fisik
-8. Stock Transfer: kirim barang antar warehouse
-
-## Catatan Teknis
-
-- Semua tabel stok & transaksi punya `warehouse_id` nullable (backward compat)
-- Jika `warehouse_id` null, fallback ke `products.stock` (legacy single-warehouse)
-- Seed data: warehouse PUSAT (main) dibuat otomatis, stok existing dipindah ke pivot
+1. **Setup Cabang**: Daftarkan cabang baru di `Settings > Gudang / Cabang`, lengkapi alamat dan kontak.
+2. **Penugasan Karyawan**: Daftarkan kasir/staf di menu `Pengguna` dan pilih cabang penempatannya. Untuk pemilik/manajer area, kosongkan field cabang agar berstatus HQ.
+3. **Distribusi Stok**: Kirim barang dari Gudang Pusat ke Cabang Toko menggunakan menu `Transfer Stok`.
+4. **Operasional Kasir**: Kasir membuka shift, melayani pelanggan, dan mencetak struk dengan alamat cabang dinamis.
+5. **Monitoring & Audit**: Manajer/Owner memantau omzet konsolidasi atau memilih cabang tertentu di Dashboard & Laporan.

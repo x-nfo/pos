@@ -227,17 +227,27 @@ export default function Print({
         loyaltyDiscountTotal +
         voucherDiscountTotal;
 
-    const store = useMemo(
-        () => ({
-            name: storeProfile?.name || branding?.appName || "Rekasir",
+    const store = useMemo(() => {
+        const baseStoreName = storeProfile?.name || branding?.appName || "Rekasir";
+        const warehouse = transaction?.warehouse || transaction?.cashier?.warehouse;
+        const storeName = warehouse && warehouse.type !== "main" && warehouse.name
+            ? `${baseStoreName} (${warehouse.name})`
+            : baseStoreName;
+
+        const clean = (val) => {
+            if (!val || typeof val !== "string") return "";
+            return val.toLowerCase().includes("belum diisi") ? "" : val.trim();
+        };
+
+        return {
+            name: storeName,
             logo: storeProfile?.logo || branding?.logoLight || null,
-            address: storeProfile?.address || "",
-            phone: storeProfile?.phone || "",
-            email: storeProfile?.email || "",
-            website: storeProfile?.website || "",
-        }),
-        [storeProfile, branding]
-    );
+            address: clean(warehouse?.address) || clean(storeProfile?.address) || "",
+            phone: clean(warehouse?.phone) || clean(storeProfile?.phone) || "",
+            email: clean(storeProfile?.email) || "",
+            website: clean(storeProfile?.website) || "",
+        };
+    }, [storeProfile, branding, transaction?.warehouse, transaction?.cashier?.warehouse]);
 
     const paymentLabels = {
         cash: "Tunai",
@@ -715,6 +725,7 @@ export default function Print({
                                     <ThermalReceipt58mm
                                         transaction={transaction}
                                         storeName={store.name}
+                                        storeAddress={store.address}
                                         storePhone={store.phone}
                                         storeEmail={store.email}
                                         storeWebsite={store.website}

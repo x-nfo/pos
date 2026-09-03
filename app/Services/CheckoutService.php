@@ -139,11 +139,16 @@ class CheckoutService
                 }
             }
 
+            $effectiveWarehouseId = $activeShift->warehouse_id ?: $cashier->warehouse_id;
+            if (! $activeShift->warehouse_id && $cashier->warehouse_id) {
+                $activeShift->update(['warehouse_id' => $cashier->warehouse_id]);
+            }
+
             foreach ($productRequests as $productId => $totalBaseQty) {
                 $product = Product::where('id', $productId)->lockForUpdate()->first();
                 if ($product) {
-                    $availableStock = $activeShift->warehouse_id
-                        ? (int) ($product->warehouses()->where('warehouse_id', $activeShift->warehouse_id)->lockForUpdate()->first()?->pivot->stock ?? 0)
+                    $availableStock = $effectiveWarehouseId
+                        ? (int) ($product->warehouses()->where('warehouse_id', $effectiveWarehouseId)->lockForUpdate()->first()?->pivot->stock ?? 0)
                         : (int) $product->stock;
 
                     if ($availableStock < $totalBaseQty) {
@@ -171,7 +176,7 @@ class CheckoutService
             $transaction = Transaction::create([
                 'cashier_id' => $cashier->id,
                 'cashier_shift_id' => $activeShift->id,
-                'warehouse_id' => $activeShift->warehouse_id,
+                'warehouse_id' => $effectiveWarehouseId,
                 'customer_id' => $payload['customer_id'] ?? null,
                 'invoice' => $invoice,
                 'cash' => $cashAmount,
@@ -240,10 +245,12 @@ class CheckoutService
                         $stockBefore = (int) $component->stock;
                         $stockAfter = $stockBefore - $componentQty;
 
-                        ProductWarehouse::where([
-                            'product_id' => $component->id,
-                            'warehouse_id' => $activeShift->warehouse_id,
-                        ])->decrement('stock', $componentQty);
+                        if ($effectiveWarehouseId) {
+                            ProductWarehouse::where([
+                                'product_id' => $component->id,
+                                'warehouse_id' => $effectiveWarehouseId,
+                            ])->decrement('stock', $componentQty);
+                        }
                         $component->decrement('stock', $componentQty);
 
                         $this->stockMutationService->recordSaleOut(
@@ -252,7 +259,7 @@ class CheckoutService
                             qty: $componentQty,
                             stockBefore: $stockBefore,
                             stockAfter: $stockAfter,
-                            warehouseId: $activeShift->warehouse_id,
+                            warehouseId: $effectiveWarehouseId,
                             notes: 'Komponen '.$component->title.' untuk bundle '.$product->title.' pada transaksi '.$transaction->invoice,
                             userId: $cashier->id
                         );
@@ -262,10 +269,12 @@ class CheckoutService
                     $stockBefore = (int) $product->stock;
                     $stockAfter = $stockBefore - $baseQty;
 
-                    ProductWarehouse::where([
-                        'product_id' => $product->id,
-                        'warehouse_id' => $activeShift->warehouse_id,
-                    ])->decrement('stock', $baseQty);
+                    if ($effectiveWarehouseId) {
+                        ProductWarehouse::where([
+                            'product_id' => $product->id,
+                            'warehouse_id' => $effectiveWarehouseId,
+                        ])->decrement('stock', $baseQty);
+                    }
                     $product->decrement('stock', $baseQty);
 
                     $this->stockMutationService->recordSaleOut(
@@ -274,7 +283,7 @@ class CheckoutService
                         qty: $baseQty,
                         stockBefore: $stockBefore,
                         stockAfter: $stockAfter,
-                        warehouseId: $activeShift->warehouse_id,
+                        warehouseId: $effectiveWarehouseId,
                         notes: 'Penjualan transaksi '.$transaction->invoice,
                         userId: $cashier->id
                     );

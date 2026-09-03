@@ -48,20 +48,23 @@ export function generateWhatsappReceiptText(
 ) {
     if (!transaction) return "";
 
-    const storeName =
+    const baseStoreName =
         storeProfile?.name ||
         branding?.appName ||
         "Point of Sales";
-    const storeAddress =
-        storeProfile?.address &&
-        !storeProfile.address.toLowerCase().includes("belum diisi")
-            ? storeProfile.address.trim()
-            : "";
-    const storePhone =
-        storeProfile?.phone &&
-        !storeProfile.phone.toLowerCase().includes("belum diisi")
-            ? storeProfile.phone.trim()
-            : "";
+    const warehouse = transaction?.warehouse || transaction?.cashier?.warehouse;
+    const storeName =
+        warehouse && warehouse.type !== "main" && warehouse.name
+            ? `${baseStoreName} (${warehouse.name})`
+            : baseStoreName;
+
+    const clean = (val) => {
+        if (!val || typeof val !== "string") return "";
+        return val.toLowerCase().includes("belum diisi") ? "" : val.trim();
+    };
+
+    const storeAddress = clean(warehouse?.address) || clean(storeProfile?.address);
+    const storePhone = clean(warehouse?.phone) || clean(storeProfile?.phone);
 
     const cashierName =
         transaction.cashier?.name ||

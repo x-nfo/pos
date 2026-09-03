@@ -14,10 +14,52 @@ export function buildEscPosReceipt(transaction, storeInfo = {}, paperSize = "58m
         return l + " ".repeat(spaces) + r + "\n";
     };
 
+    const wrapText = (text, max) => {
+        const str = (text || "").toString().trim();
+        if (!str) return [];
+        const words = str.split(/\s+/);
+        const lines = [];
+        let currentLine = "";
+
+        for (const word of words) {
+            if (!currentLine) {
+                if (word.length <= max) {
+                    currentLine = word;
+                } else {
+                    for (let i = 0; i < word.length; i += max) {
+                        lines.push(word.substring(i, i + max));
+                    }
+                }
+            } else if ((currentLine + " " + word).length <= max) {
+                currentLine += " " + word;
+            } else {
+                lines.push(currentLine);
+                if (word.length <= max) {
+                    currentLine = word;
+                } else {
+                    for (let i = 0; i < word.length; i += max) {
+                        if (i + max < word.length) {
+                            lines.push(word.substring(i, i + max));
+                        } else {
+                            currentLine = word.substring(i);
+                        }
+                    }
+                }
+            }
+        }
+        if (currentLine) lines.push(currentLine);
+        return lines;
+    };
+
     const center = (text) => {
         const t = (text || "").toString().trim().substring(0, maxWidth);
         const pad = Math.max(0, Math.floor((maxWidth - t.length) / 2));
         return " ".repeat(pad) + t + "\n";
+    };
+
+    const centerWrapped = (text) => {
+        const lines = wrapText(text, maxWidth);
+        return lines.map((t) => center(t)).join("");
     };
 
     const line = (char = "-") => char.repeat(maxWidth) + "\n";
@@ -26,11 +68,11 @@ export function buildEscPosReceipt(transaction, storeInfo = {}, paperSize = "58m
     parts.push(new Uint8Array([0x1b, 0x40])); // ESC @ (initialize)
     parts.push(new Uint8Array([0x1b, 0x61, 0x01])); // ESC a 1 (center alignment)
     parts.push(new Uint8Array([0x1b, 0x45, 0x01])); // ESC E 1 (bold on)
-    parts.push(encoder.encode((storeInfo.name || "TOKO ANDA").toUpperCase() + "\n"));
+    parts.push(encoder.encode(centerWrapped((storeInfo.name || "TOKO ANDA").toUpperCase())));
     parts.push(new Uint8Array([0x1b, 0x45, 0x00])); // ESC E 0 (bold off)
 
-    if (storeInfo.address) parts.push(encoder.encode(center(storeInfo.address)));
-    if (storeInfo.phone) parts.push(encoder.encode(center("Telp: " + storeInfo.phone)));
+    if (storeInfo.address) parts.push(encoder.encode(centerWrapped(storeInfo.address)));
+    if (storeInfo.phone) parts.push(encoder.encode(centerWrapped("Telp: " + storeInfo.phone)));
 
     parts.push(new Uint8Array([0x1b, 0x61, 0x00])); // ESC a 0 (left alignment)
     parts.push(encoder.encode(line("=")));
@@ -131,10 +173,52 @@ export function buildEscPosSalesReturnReceipt(salesReturn, storeInfo = {}, paper
         return l + " ".repeat(spaces) + r + "\n";
     };
 
+    const wrapText = (text, max) => {
+        const str = (text || "").toString().trim();
+        if (!str) return [];
+        const words = str.split(/\s+/);
+        const lines = [];
+        let currentLine = "";
+
+        for (const word of words) {
+            if (!currentLine) {
+                if (word.length <= max) {
+                    currentLine = word;
+                } else {
+                    for (let i = 0; i < word.length; i += max) {
+                        lines.push(word.substring(i, i + max));
+                    }
+                }
+            } else if ((currentLine + " " + word).length <= max) {
+                currentLine += " " + word;
+            } else {
+                lines.push(currentLine);
+                if (word.length <= max) {
+                    currentLine = word;
+                } else {
+                    for (let i = 0; i < word.length; i += max) {
+                        if (i + max < word.length) {
+                            lines.push(word.substring(i, i + max));
+                        } else {
+                            currentLine = word.substring(i);
+                        }
+                    }
+                }
+            }
+        }
+        if (currentLine) lines.push(currentLine);
+        return lines;
+    };
+
     const center = (text) => {
         const t = (text || "").toString().trim().substring(0, maxWidth);
         const pad = Math.max(0, Math.floor((maxWidth - t.length) / 2));
         return " ".repeat(pad) + t + "\n";
+    };
+
+    const centerWrapped = (text) => {
+        const lines = wrapText(text, maxWidth);
+        return lines.map((t) => center(t)).join("");
     };
 
     const line = (char = "-") => char.repeat(maxWidth) + "\n";
@@ -143,11 +227,11 @@ export function buildEscPosSalesReturnReceipt(salesReturn, storeInfo = {}, paper
     parts.push(new Uint8Array([0x1b, 0x40])); // ESC @ (initialize)
     parts.push(new Uint8Array([0x1b, 0x61, 0x01])); // ESC a 1 (center alignment)
     parts.push(new Uint8Array([0x1b, 0x45, 0x01])); // ESC E 1 (bold on)
-    parts.push(encoder.encode((storeInfo.name || "TOKO ANDA").toUpperCase() + "\n"));
+    parts.push(encoder.encode(centerWrapped((storeInfo.name || "TOKO ANDA").toUpperCase())));
     parts.push(new Uint8Array([0x1b, 0x45, 0x00])); // ESC E 0 (bold off)
 
-    if (storeInfo.address) parts.push(encoder.encode(center(storeInfo.address)));
-    if (storeInfo.phone) parts.push(encoder.encode(center("Telp: " + storeInfo.phone)));
+    if (storeInfo.address) parts.push(encoder.encode(centerWrapped(storeInfo.address)));
+    if (storeInfo.phone) parts.push(encoder.encode(centerWrapped("Telp: " + storeInfo.phone)));
 
     const isExchange = salesReturn.return_type === "product_exchange";
 

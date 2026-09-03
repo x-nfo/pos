@@ -323,6 +323,7 @@ export default function SalesReturnThermalReceipt({
 export function SalesReturnThermalReceipt58mm({
     salesReturn,
     storeName = "TOKO",
+    storeAddress = "",
     storePhone = "",
     storeEmail = "",
     storeWebsite = "",
@@ -377,6 +378,7 @@ export function SalesReturnThermalReceipt58mm({
         >
             <div className="text-center">
                 <p className="font-bold">{storeName}</p>
+                {storeAddress && <p className="text-[10px] leading-tight">{storeAddress}</p>}
                 {storePhone && <p>{storePhone}</p>}
                 {storeEmail && <p className="text-[10px]">{storeEmail}</p>}
                 {storeWebsite && <p className="text-[10px]">{storeWebsite}</p>}

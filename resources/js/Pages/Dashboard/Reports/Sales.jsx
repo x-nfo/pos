@@ -90,9 +90,19 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
         [customers, filterData.customer_id]
     );
 
+    const warehouseFromFilters = useMemo(
+        () =>
+            warehouses.find(
+                (w) => castFilterString(w.id) === filterData.warehouse_id
+            ) ?? null,
+        [warehouses, filterData.warehouse_id]
+    );
+
     const [selectedCashier, setSelectedCashier] = useState(cashierFromFilters);
     const [selectedCustomer, setSelectedCustomer] =
         useState(customerFromFilters);
+    const [selectedWarehouse, setSelectedWarehouse] =
+        useState(warehouseFromFilters);
 
     useEffect(
         () => setSelectedCashier(cashierFromFilters),
@@ -102,6 +112,10 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
         () => setSelectedCustomer(customerFromFilters),
         [customerFromFilters]
     );
+    useEffect(
+        () => setSelectedWarehouse(warehouseFromFilters),
+        [warehouseFromFilters]
+    );
     useEffect(() => {
         setFilterData({
             ...defaultFilterState,
@@ -110,18 +124,30 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
             invoice: castFilterString(filters?.invoice),
             cashier_id: castFilterString(filters?.cashier_id),
             customer_id: castFilterString(filters?.customer_id),
+            warehouse_id: castFilterString(filters?.warehouse_id),
         });
     }, [filters]);
 
-    const handleChange = (field, value) =>
-        setFilterData((prev) => ({ ...prev, [field]: value }));
-    const handleSelectCashier = (value) => {
-        setSelectedCashier(value);
-        handleChange("cashier_id", value ? String(value.id) : "");
+    const handleChange = (field, value) => {
+        setFilterData((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
     };
-    const handleSelectCustomer = (value) => {
-        setSelectedCustomer(value);
-        handleChange("customer_id", value ? String(value.id) : "");
+
+    const handleSelectCashier = (cashier) => {
+        setSelectedCashier(cashier);
+        handleChange("cashier_id", cashier?.id ? String(cashier.id) : "");
+    };
+
+    const handleSelectCustomer = (customer) => {
+        setSelectedCustomer(customer);
+        handleChange("customer_id", customer?.id ? String(customer.id) : "");
+    };
+
+    const handleSelectWarehouse = (warehouse) => {
+        setSelectedWarehouse(warehouse);
+        handleChange("warehouse_id", warehouse?.id ? String(warehouse.id) : "");
     };
 
     const applyFilters = (e) => {
@@ -137,6 +163,7 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
         setFilterData(defaultFilterState);
         setSelectedCashier(null);
         setSelectedCustomer(null);
+        setSelectedWarehouse(null);
         router.get(route("reports.sales.index"), defaultFilterState, {
             preserveScroll: true,
             preserveState: true,
@@ -247,7 +274,7 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
                 {showFilters && (
                     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 animate-slide-up">
                         <form onSubmit={applyFilters}>
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                         Tanggal Mulai
@@ -313,6 +340,14 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
                                     placeholder="Semua pelanggan"
                                     searchable
                                 />
+                                <InputSelect
+                                    label="Cabang / Gudang"
+                                    data={warehouses}
+                                    selected={selectedWarehouse}
+                                    setSelected={handleSelectWarehouse}
+                                    placeholder="Semua cabang"
+                                    searchable
+                                />
                             </div>
                             <div className="flex justify-end gap-2 mt-4">
                                 {hasActiveFilters && (
@@ -356,6 +391,9 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
                                             Pelanggan
                                         </th>
                                         <th className="px-4 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                                            Cabang
+                                        </th>
+                                        <th className="px-4 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
                                             Kasir
                                         </th>
                                         <th className="px-4 py-4 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
@@ -395,6 +433,11 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
                                             </td>
                                             <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
                                                 {trx.customer?.name ?? "-"}
+                                            </td>
+                                            <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                                    {trx.warehouse?.name ?? "Pusat"}
+                                                </span>
                                             </td>
                                             <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
                                                 {trx.cashier?.name ?? "-"}

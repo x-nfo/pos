@@ -10,17 +10,27 @@ use App\Models\Profit;
 use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
+use App\Models\Warehouse;
 use App\Services\CashierShiftService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
-    public function index(CashierShiftService $cashierShiftService)
+    public function index(Request $request, CashierShiftService $cashierShiftService)
     {
         $user = auth()->user();
-        $scopedWarehouseId = $user && ! $user->isHQ() ? $user->warehouse_id : null;
+        $scopedWarehouseId = $user && ! $user->isHQ()
+            ? $user->warehouse_id
+            : $request->input('warehouse_id');
+
+        if ($user && ! $user->isHQ()) {
+            $warehouses = Warehouse::where('id', $user->warehouse_id)->get(['id', 'code', 'name']);
+        } else {
+            $warehouses = Warehouse::active()->orderBy('code')->get(['id', 'code', 'name']);
+        }
 
         $totalCategories = Category::count();
         $totalProducts = Product::count();
@@ -212,6 +222,9 @@ class DashboardController extends Controller
             'topCustomers' => $topCustomers,
             'topLocations' => $topLocations,
             'activeShifts' => $activeShifts,
+            'warehouses' => $warehouses,
+            'selectedWarehouseId' => $scopedWarehouseId ? (int) $scopedWarehouseId : null,
+            'isLockedBranch' => $user && ! $user->isHQ(),
         ]);
     }
 }

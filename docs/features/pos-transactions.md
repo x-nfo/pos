@@ -20,13 +20,15 @@ Menyediakan alur kasir cepat untuk pencarian produk, pengelolaan cart, checkout,
 ## Fitur Saat Ini
 
 - cari produk via barcode / pencarian
-- cart multi-item
-- update qty cart
-- hold transaction
+- **Isolasi Stok Cabang**: Hanya produk dengan stok fisik > 0 di cabang shift kasir yang aktif yang dapat dijual
+- cart multi-item dengan dukungan multi-satuan (Multi-UOM)
+- update qty cart & harga bertingkat (Price List)
+- hold transaction (antrean belanja)
 - resume held cart
 - clear held cart
-- checkout tunai, bank transfer, Midtrans, Xendit, pay later
-- print invoice / receipt / shipping label
+- checkout tunai, bank transfer, Midtrans, Xendit, QRIS, pay later
+- **Struk Kasir Dinamis Per Cabang**: Cetak struk otomatis mencantumkan nama, alamat, dan nomor kontak cabang penempatan kasir
+- print invoice / receipt / shipping label (WebUSB Direct & Web Bluetooth)
 - share invoice publik
 - add customer langsung dari POS
 
@@ -54,12 +56,12 @@ Operasi transaksional tertentu juga mewajibkan middleware `active_shift`.
 
 ## Alur User
 
-1. kasir membuka halaman transaksi
-2. jika shift aktif, kasir dapat cari produk dan membangun cart
+1. kasir membuka halaman transaksi POS (`/pos`)
+2. jika shift aktif, kasir dapat cari produk dan membangun cart (stok otomatis mengacu pada cabang penempatan shift)
 3. cart dapat di-hold lalu di-resume
-4. checkout membuat transaksi, detail, profit, pengurangan stok per gudang, dan pencatatan mutasi stok keluar
-5. jika `pay_later`, sistem membuat receivable
-6. user diarahkan ke dokumen print / invoice (dengan opsi auto-print direct receipt)
+4. checkout membuat transaksi, detail, profit, pengurangan stok fisik pada gudang/cabang terkait, dan pencatatan mutasi stok keluar
+5. jika `pay_later`, sistem membuat receivable yang terikat ke transaksi cabang
+6. user diarahkan ke dokumen print / invoice (dengan opsi auto-print direct receipt dengan header alamat cabang)
 
 ## Integrasi Data
 

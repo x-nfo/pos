@@ -462,7 +462,8 @@ class CustomerController extends Controller
     private function recentTransactions(Customer $customer)
     {
         return Transaction::where('customer_id', $customer->id)
-            ->select('id', 'invoice', 'grand_total', 'payment_method', 'created_at')
+            ->with('warehouse:id,code,name')
+            ->select('id', 'invoice', 'grand_total', 'payment_method', 'created_at', 'warehouse_id')
             ->orderByDesc('created_at')
             ->limit(5)
             ->get()
@@ -471,6 +472,7 @@ class CustomerController extends Controller
                 'invoice' => $t->invoice,
                 'total' => $t->grand_total,
                 'payment_method' => $t->payment_method,
+                'warehouse' => $t->warehouse?->name ?? 'Pusat',
                 'date' => Carbon::parse($t->created_at)->format('d M Y H:i'),
             ]);
     }
