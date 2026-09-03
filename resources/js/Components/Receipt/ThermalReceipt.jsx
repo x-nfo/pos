@@ -21,6 +21,18 @@ function ThermalQrisCode({ value, size = 120 }) {
     );
 }
 
+const formatDateOnly = (value) => {
+    if (!value) return "-";
+    try {
+        const d = new Date(value);
+        if (isNaN(d.getTime())) return value;
+        const pad = (n) => String(n).padStart(2, "0");
+        return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+    } catch (e) {
+        return value;
+    }
+};
+
 /**
  * ThermalReceipt - Receipt template optimized for thermal printers (58mm/80mm)
  *
