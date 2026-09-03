@@ -757,7 +757,7 @@ class TransactionController extends Controller
             'details.pricingRule',
             'cashier:id,name,warehouse_id',
             'cashier.warehouse:id,code,name,address,phone,type',
-            'customer:id,name',
+            'customer:id,name,no_telp,address,province_name,regency_name,district_name,village_name',
             'receivable',
             'bankAccount',
             'discountApprover:id,name',

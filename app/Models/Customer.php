@@ -49,6 +49,10 @@ class Customer extends Model
         'deleted_at' => 'datetime',
     ];
 
+    protected $appends = [
+        'phone',
+    ];
+
     public function salesReturns()
     {
         return $this->hasMany(SalesReturn::class);
@@ -110,6 +114,11 @@ class Customer extends Model
             || $this->loyaltyPointHistories()->exists()
             || $this->vouchers()->where('is_used', true)->exists()
             || $this->dineOrders()->exists();
+    }
+
+    public function getPhoneAttribute(): ?string
+    {
+        return $this->no_telp;
     }
 
     public function getFormattedPhoneAttribute(): ?string

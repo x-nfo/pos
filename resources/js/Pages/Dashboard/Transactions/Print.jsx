@@ -736,16 +736,16 @@ export default function Print({
                     )}
 
                     {/* Shipping Label Preview */}
-{printMode === "shipping" && (
-    <div className="flex justify-center items-center py-10 print:py-0 print:block">
-        <div className="w-full max-w-[150mm] mx-auto transition-all duration-300 transform scale-100 md:scale-110 lg:scale-125 print:scale-100">
-            <ShippingLabel
-                transaction={transaction}
-                store={store}
-            />
-        </div>
-    </div>
-)}
+                    {printMode === "shipping" && (
+                        <div className="flex justify-center items-center py-6 sm:py-8 print:py-0 print:block">
+                            <div className="w-full max-w-[600px] mx-auto flex justify-center print:block print:max-w-none print:w-auto">
+                                <ShippingLabel
+                                    transaction={transaction}
+                                    store={store}
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     {/* Invoice View */}
                     {printMode === "invoice" && (
