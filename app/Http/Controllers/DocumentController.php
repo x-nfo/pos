@@ -193,7 +193,7 @@ class DocumentController extends Controller
             'payable' => $payable,
             'store' => $this->storeProfile(),
             'barcode' => $this->barcode($payable->document_number),
-        ])->setPaper('a5', 'portrait');
+        ])->setPaper('a4', 'portrait');
 
         return $pdf->stream("hutang-{$payable->document_number}.pdf");
     }

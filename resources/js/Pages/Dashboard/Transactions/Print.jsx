@@ -551,15 +551,26 @@ export default function Print({
                             )}
 
                             {printMode === "shipping" && (
-                                <a
-                                    href={route("pdf.transactions.shipping", transaction.invoice)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-sm font-semibold text-white transition-colors w-full sm:w-auto"
-                                >
-                                    <IconPrinter size={18} />
-                                    PDF Resi
-                                </a>
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={handlePrint}
+                                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-sm font-semibold text-white transition-colors w-full sm:w-auto shadow-sm"
+                                        title="Cetak Resi Pengiriman (Print Dialog Browser)"
+                                    >
+                                        <IconPrinter size={18} />
+                                        Cetak Resi
+                                    </button>
+                                    <a
+                                        href={route("pdf.transactions.shipping", transaction.invoice)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-sm font-semibold text-white transition-colors w-full sm:w-auto"
+                                    >
+                                        <IconPrinter size={18} />
+                                        PDF Resi
+                                    </a>
+                                </>
                             )}
                         </div>
                     </div>
