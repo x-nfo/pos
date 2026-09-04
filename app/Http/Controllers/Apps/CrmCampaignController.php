@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Apps;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendWhatsAppCampaignLogJob;
 use App\Models\CustomerCampaign;
 use App\Models\CustomerCampaignLog;
 use App\Models\Receivable;
@@ -205,7 +206,27 @@ class CrmCampaignController extends Controller
 
     public function shareReceivable(Receivable $receivable, Request $request)
     {
-        $campaign = $this->crmAutomationService->createInvoiceShareCampaignForReceivable($receivable, $request->user()->id);
+        $customMessage = $request->input('message');
+        $campaign = $this->crmAutomationService->createInvoiceShareCampaignForReceivable(
+            $receivable,
+            $request->user()->id,
+            $customMessage
+        );
+
+        $directDispatch = $request->boolean('direct_dispatch') || $request->input('mode') === 'gateway';
+
+        if ($directDispatch) {
+            $log = $campaign->logs()->where('receivable_id', $receivable->id)->latest()->first();
+            if ($log) {
+                SendWhatsAppCampaignLogJob::dispatch($log);
+            }
+
+            return back()->with('success', 'Pesan pengingat piutang berhasil dimasukkan ke antrean pengiriman WhatsApp.');
+        }
+
+        if ($request->wantsJson() || $request->header('X-Inertia')) {
+            return back()->with('success', 'Draft pengingat piutang berhasil disiapkan.');
+        }
 
         return redirect()
             ->route('crm-campaigns.show', $campaign)

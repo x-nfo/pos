@@ -242,7 +242,7 @@ class CrmAutomationService
         return $campaign->fresh(['logs.customer', 'logs.transaction']);
     }
 
-    public function createInvoiceShareCampaignForReceivable(Receivable $receivable, int $userId): CustomerCampaign
+    public function createInvoiceShareCampaignForReceivable(Receivable $receivable, int $userId, ?string $customMessage = null): CustomerCampaign
     {
         $storeName = Setting::get('store_name', config('app.name', 'Point of Sales'));
         $isOverdue = $receivable->due_date && now()->startOfDay()->gt($receivable->due_date);
@@ -266,11 +266,18 @@ class CrmAutomationService
         $total = number_format($receivable->total, 0, ',', '.');
         $dueDate = optional($receivable->due_date)?->format('d/m/Y') ?? '-';
 
-        $shareText = str_replace(
-            ['{{customer_name}}', '{{name}}', '{{invoice}}', '{{remaining}}', '{{total}}', '{{due_date}}', '{{store_name}}', '{{reason}}'],
-            [$customerName, $customerName, $receivable->invoice, $remaining, $total, $dueDate, $storeName, $reason],
-            $template
-        );
+        $shareText = ! empty($customMessage)
+            ? $customMessage
+            : str_replace(
+                ['{{customer_name}}', '{{name}}', '{{invoice}}', '{{remaining}}', '{{total}}', '{{due_date}}', '{{store_name}}', '{{reason}}'],
+                [$customerName, $customerName, $receivable->invoice, $remaining, $total, $dueDate, $storeName, $reason],
+                $template
+            );
+
+        $targetPhone = $receivable->customer?->formatted_phone ?: preg_replace('/[^0-9]/', '', (string) ($receivable->customer?->no_telp ?? ''));
+        $waUrl = ! empty($targetPhone)
+            ? 'https://wa.me/'.$targetPhone.'?text='.urlencode($shareText)
+            : 'https://wa.me/?text='.urlencode($shareText);
 
         $campaign = CustomerCampaign::query()->updateOrCreate(
             ['context_key' => 'invoice-share-receivable-'.$receivable->id],
@@ -301,8 +308,10 @@ class CrmAutomationService
                 'status' => CustomerCampaignLog::STATUS_READY_TO_SEND,
                 'payload' => [
                     'message' => $shareText,
-                    'whatsapp_url' => 'https://wa.me/?text='.urlencode($shareText),
+                    'whatsapp_url' => $waUrl,
                     'invoice' => $receivable->invoice,
+                    'target' => $targetPhone ?: null,
+                    'phone' => $targetPhone ?: null,
                 ],
             ]
         );

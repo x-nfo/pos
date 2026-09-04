@@ -11,7 +11,12 @@ import {
     IconX,
     IconClock,
     IconAlertCircle,
-    IconChevronLeft
+    IconChevronLeft,
+    IconSend,
+    IconExternalLink,
+    IconMessageDots,
+    IconRefresh,
+    IconHistory
 } from "@tabler/icons-react";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
@@ -24,11 +29,20 @@ const formatCurrency = (value = 0) =>
         minimumFractionDigits: 0,
     }).format(value);
 
-export default function ReceivableShow({ receivable, bankAccounts = [], approvalThreshold = 1000000 }) {
+export default function ReceivableShow({
+    receivable,
+    bankAccounts = [],
+    approvalThreshold = 1000000,
+    defaultReminderMessage = "",
+    isOverdue = false
+}) {
     const { flash, storeProfile, auth, wa_ready } = usePage().props;
     const { can } = useAuthorization();
     const [showForm, setShowForm] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
+    const [showReminderModal, setShowReminderModal] = useState(false);
+    const [reminderMessage, setReminderMessage] = useState(defaultReminderMessage || "");
+    const [isSendingGateway, setIsSendingGateway] = useState(false);
     const printRef = useRef(null);
     const { data, setData, post, processing, reset, errors } = useForm({
         amount: "",
@@ -42,7 +56,14 @@ export default function ReceivableShow({ receivable, bankAccounts = [], approval
     });
     const canPayReceivable = can("receivables-pay");
     const canApprove = can("receivables-approve") || can("super-admin");
-    const canCreateCrmCampaign = can("crm-campaigns-create");
+    const canCreateCrmCampaign = can("crm-campaigns-create") || can("receivables-access");
+    const canDispatchLog = can("crm-campaigns-update") || can("crm-campaigns-create") || can("super-admin");
+
+    useEffect(() => {
+        if (defaultReminderMessage) {
+            setReminderMessage(defaultReminderMessage);
+        }
+    }, [defaultReminderMessage]);
 
     useEffect(() => {
         if (flash?.success) toast.success(flash.success);
@@ -62,6 +83,71 @@ export default function ReceivableShow({ receivable, bankAccounts = [], approval
             month: "short",
             year: "numeric",
         });
+    };
+
+    const customerPhone = receivable.customer?.no_telp || receivable.customer?.phone || "";
+    const cleanPhone = (phone) => {
+        if (!phone) return "";
+        let cleaned = String(phone).replace(/[^0-9]/g, "");
+        if (cleaned.startsWith("0")) {
+            cleaned = "62" + cleaned.slice(1);
+        } else if (cleaned.startsWith("8")) {
+            cleaned = "62" + cleaned;
+        }
+        return cleaned;
+    };
+    const targetPhone = cleanPhone(customerPhone);
+    const waDirectUrl = targetPhone
+        ? `https://wa.me/${targetPhone}?text=${encodeURIComponent(reminderMessage || defaultReminderMessage || shareText)}`
+        : `https://wa.me/?text=${encodeURIComponent(reminderMessage || defaultReminderMessage || shareText)}`;
+
+    const campaignLogs = receivable.campaign_logs || receivable.campaignLogs || [];
+
+    const formatDateTime = (value) => {
+        if (!value) return "-";
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return value;
+        return d.toLocaleDateString("id-ID", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    };
+
+    const handleSendGateway = () => {
+        setIsSendingGateway(true);
+        router.post(
+            route("receivables.share-campaign", receivable.id),
+            {
+                direct_dispatch: true,
+                message: reminderMessage,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setShowReminderModal(false);
+                    setIsSendingGateway(false);
+                },
+                onError: (errs) => {
+                    setIsSendingGateway(false);
+                    toast.error(errs?.message || "Gagal mengirim pengingat via WhatsApp Gateway");
+                },
+            }
+        );
+    };
+
+    const handleDispatchLog = (logId) => {
+        router.post(
+            route("crm-campaign-logs.dispatch", logId),
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: () => toast.success("Pesan dimasukkan ke antrean pengiriman WhatsApp"),
+                onError: () => toast.error("Gagal mendispatch pengingat ke antrean"),
+            }
+        );
     };
 
     const paymentStatusBadge = (status) => {
@@ -235,38 +321,41 @@ export default function ReceivableShow({ receivable, bankAccounts = [], approval
                         </div>
                         <div className="flex items-center gap-2">
                             {receivable.status !== "paid" && canCreateCrmCampaign && (
-                                <Link
-                                    href={wa_ready ? route("receivables.share-campaign", receivable.id) : "#"}
-                                    method={wa_ready ? "post" : "get"}
-                                    as="button"
-                                    disabled={!wa_ready}
-                                    className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-white transition-colors ${
-                                        wa_ready ? "bg-primary-500 hover:bg-primary-600" : "bg-primary-300 cursor-not-allowed opacity-70"
-                                    }`}
-                                    title={wa_ready ? "Buat CRM Campaign untuk Piutang ini" : "WhatsApp Gateway belum dikonfigurasi di Pengaturan"}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowReminderModal(true)}
+                                    className="inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 transition-colors shadow-sm"
+                                    title="Kirim pengingat tagihan piutang via WhatsApp"
                                 >
                                     <IconBrandWhatsapp size={18} />
-                                    Auto Reminder
-                                </Link>
+                                    <span>Kirim Reminder WA</span>
+                                    {wa_ready ? (
+                                        <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="WhatsApp Gateway Online" />
+                                    ) : (
+                                        <span className="inline-block w-2 h-2 rounded-full bg-amber-300" title="WhatsApp Gateway Offline" />
+                                    )}
+                                </button>
                             )}
                             <a
-                                href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
+                                href={waDirectUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-green-500 text-white text-sm font-semibold hover:bg-green-600 transition-colors"
+                                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors shadow-sm"
+                                title="Buka chat WhatsApp Web/App ke pelanggan"
                             >
                                 <IconBrandWhatsapp size={18} />
-                                Share WhatsApp
+                                <span>Share WA Web</span>
                             </a>
                         </div>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-w-0">
-                    <div
-                        ref={printRef}
-                        className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 print:border-0 print:shadow-none min-w-0 overflow-hidden"
-                    >
+                    <div className="lg:col-span-2 space-y-4 min-w-0">
+                        <div
+                            ref={printRef}
+                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 print:border-0 print:shadow-none min-w-0 overflow-hidden"
+                        >
                         <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
                                 <p className="text-slate-500">Pelanggan</p>
@@ -393,7 +482,130 @@ export default function ReceivableShow({ receivable, bankAccounts = [], approval
                         </div>
                     </div>
 
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 print:hidden min-w-0 overflow-hidden">
+                    {/* Riwayat Pengingat WhatsApp Widget */}
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 print:hidden">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                                    <IconHistory size={20} />
+                                </div>
+                                <div>
+                                    <h2 className="text-sm font-bold text-slate-800 dark:text-white">
+                                        Riwayat Pengingat WhatsApp
+                                    </h2>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                        Log pesan penagihan & reminder yang tercatat
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                {campaignLogs.length} Log
+                            </span>
+                        </div>
+
+                        <div className="space-y-3">
+                            {campaignLogs.length > 0 ? (
+                                campaignLogs.map((log) => {
+                                    const isSent = log.status === "sent";
+                                    const isFailed = log.status === "failed";
+                                    const isReady = log.status === "ready_to_send" || log.status === "pending";
+
+                                    return (
+                                        <div
+                                            key={log.id}
+                                            className={`p-3.5 rounded-xl border ${
+                                                isSent
+                                                    ? "border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/10"
+                                                    : isFailed
+                                                    ? "border-rose-200 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/10"
+                                                    : "border-amber-200 dark:border-amber-900/40 bg-amber-50/30 dark:bg-amber-950/10"
+                                            } space-y-2`}
+                                        >
+                                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                                                <div className="flex items-center gap-2">
+                                                    <span
+                                                        className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full ${
+                                                            isSent
+                                                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
+                                                                : isFailed
+                                                                ? "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300"
+                                                                : "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
+                                                        }`}
+                                                    >
+                                                        {isSent ? (
+                                                            <>
+                                                                <IconCheck size={12} /> Terkirim
+                                                            </>
+                                                        ) : isFailed ? (
+                                                            <>
+                                                                <IconX size={12} /> Gagal
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <IconClock size={12} /> Antrean / Draf
+                                                            </>
+                                                        )}
+                                                    </span>
+                                                    <span className="text-xs text-slate-500">
+                                                        {formatDateTime(log.sent_at || log.created_at)}
+                                                    </span>
+                                                </div>
+
+                                                {log.payload?.target && (
+                                                    <span className="text-xs font-mono text-slate-600 dark:text-slate-400">
+                                                        +{log.payload.target}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {log.payload?.message && (
+                                                <p className="text-xs text-slate-700 dark:text-slate-300 bg-white/70 dark:bg-slate-900/70 p-2.5 rounded-lg border border-slate-200/60 dark:border-slate-800 whitespace-pre-line font-sans">
+                                                    {log.payload.message}
+                                                </p>
+                                            )}
+
+                                            <div className="flex items-center justify-between text-xs text-slate-500 pt-0.5">
+                                                <span>
+                                                    {log.campaign?.name || "Invoice Share Piutang"}
+                                                </span>
+                                                <div className="flex items-center gap-3">
+                                                    {log.payload?.whatsapp_url && (
+                                                        <a
+                                                            href={log.payload.whatsapp_url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 dark:text-primary-400 font-semibold"
+                                                        >
+                                                            <IconExternalLink size={13} />
+                                                            Buka Link WA
+                                                        </a>
+                                                    )}
+                                                    {isReady && wa_ready && canDispatchLog && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDispatchLog(log.id)}
+                                                            className="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-semibold"
+                                                        >
+                                                            <IconSend size={13} />
+                                                            Kirim Antrean
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="text-center py-6 text-slate-400 text-xs bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                                    <IconMessageDots size={26} className="mx-auto mb-1.5 text-slate-300 dark:text-slate-600" />
+                                    Belum ada pengingat WhatsApp yang tercatat untuk piutang ini.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 print:hidden min-w-0 overflow-hidden">
                         <p className="text-sm font-semibold text-slate-800 dark:text-white mb-3">
                             Detail Nota
                         </p>
@@ -720,6 +932,148 @@ export default function ReceivableShow({ receivable, bankAccounts = [], approval
                                         )}
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Pengingat Tagihan WhatsApp */}
+            {showReminderModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                        {/* Header Modal */}
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                                    <IconBrandWhatsapp size={22} />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                                        Kirim Pengingat WhatsApp
+                                    </h3>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                        Invoice {receivable.invoice} • Sisa {formatCurrency(receivable.remaining)}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowReminderModal(false)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                            >
+                                <IconX size={18} />
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-4">
+                            {/* Info Pelanggan & Gateway Status */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                                    <p className="text-xs text-slate-500">Tujuan Pelanggan</p>
+                                    <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">
+                                        {receivable.customer?.name || "Umum"}
+                                    </p>
+                                    {targetPhone ? (
+                                        <p className="text-xs font-mono text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                            +{targetPhone}
+                                        </p>
+                                    ) : (
+                                        <p className="text-xs text-rose-500 font-medium mt-0.5 flex items-center gap-1">
+                                            <IconAlertCircle size={13} /> Nomor telepon belum terisi
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                                    <p className="text-xs text-slate-500">Status Gateway</p>
+                                    <div>
+                                        {wa_ready ? (
+                                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full">
+                                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                Gateway Terhubung
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-100/70 dark:bg-amber-950/60 px-2.5 py-1 rounded-full">
+                                                <IconAlertCircle size={13} />
+                                                Gateway Offline
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Pratinjau Teks Pesan */}
+                            <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                        Teks Pesan Pengingat
+                                    </label>
+                                    {defaultReminderMessage && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setReminderMessage(defaultReminderMessage)}
+                                            className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 flex items-center gap-1"
+                                        >
+                                            <IconRefresh size={12} />
+                                            Reset Template
+                                        </button>
+                                    )}
+                                </div>
+                                <textarea
+                                    rows={5}
+                                    value={reminderMessage}
+                                    onChange={(e) => setReminderMessage(e.target.value)}
+                                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-800 dark:text-slate-100 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 font-sans"
+                                    placeholder="Tulis pesan pengingat..."
+                                />
+                                <p className="text-[11px] text-slate-400">
+                                    Pesan di atas akan otomatis dikirimkan ke nomor WhatsApp pelanggan. Anda dapat mengedit teks sebelum mengirim.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Footer Action Buttons */}
+                        <div className="flex items-center justify-between gap-2 px-5 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 flex-wrap">
+                            <button
+                                type="button"
+                                onClick={() => setShowReminderModal(false)}
+                                className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                            >
+                                Batal
+                            </button>
+
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <a
+                                    href={waDirectUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 transition border border-emerald-200 dark:border-emerald-800"
+                                >
+                                    <IconExternalLink size={16} />
+                                    Buka WA Web
+                                </a>
+
+                                <button
+                                    type="button"
+                                    onClick={handleSendGateway}
+                                    disabled={!wa_ready || isSendingGateway || !targetPhone}
+                                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-sm transition ${
+                                        wa_ready && targetPhone && !isSendingGateway
+                                            ? "bg-primary-600 hover:bg-primary-700"
+                                            : "bg-slate-400 cursor-not-allowed opacity-70"
+                                    }`}
+                                    title={
+                                        !targetPhone
+                                            ? "Nomor telepon pelanggan kosong"
+                                            : !wa_ready
+                                            ? "WhatsApp Gateway belum aktif di Pengaturan"
+                                            : "Kirim pesan sekarang melalui WhatsApp Gateway"
+                                    }
+                                >
+                                    <IconSend size={16} />
+                                    <span>{isSendingGateway ? "Mengirim Antrean..." : "Kirim via Gateway"}</span>
+                                </button>
                             </div>
                         </div>
                     </div>

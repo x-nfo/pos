@@ -90,15 +90,38 @@ class ReceivableController extends Controller
                     'approver:id,name',
                 ]);
             },
+            'campaignLogs' => function ($query) {
+                $query->orderByDesc('created_at')->with('campaign:id,name,type');
+            },
         ]);
 
         $bankAccounts = BankAccount::active()->ordered()->get(['id', 'bank_name', 'account_number', 'account_name', 'logo']);
         $approvalThreshold = (float) Setting::get('receivable_approval_threshold', 1000000);
 
+        $storeName = Setting::get('store_name', config('app.name', 'Point of Sales'));
+        $isOverdue = $receivable->due_date && now()->startOfDay()->gt($receivable->due_date);
+        $template = $isOverdue
+            ? Setting::get('wa_template_overdue', 'Halo {{customer_name}}, tagihan invoice {{invoice}} sebesar Rp {{remaining}} telah melewati jatuh tempo ({{due_date}}). Mohon segera melakukan konfirmasi dan pelunasan pembayaran. Terima kasih.')
+            : Setting::get('wa_template_due_soon', 'Halo {{customer_name}}, ini pengingat tagihan invoice {{invoice}} sebesar Rp {{remaining}} akan jatuh tempo pada {{due_date}}. Mohon dapat melakukan pembayaran sebelum jatuh tempo. Terima kasih.');
+        $reason = $isOverdue ? 'overdue' : 'jatuh tempo';
+
+        $customerName = $receivable->customer?->name ?? 'Pelanggan';
+        $remaining = number_format($receivable->remaining, 0, ',', '.');
+        $total = number_format($receivable->total, 0, ',', '.');
+        $dueDate = optional($receivable->due_date)?->format('d/m/Y') ?? '-';
+
+        $defaultReminderMessage = str_replace(
+            ['{{customer_name}}', '{{name}}', '{{invoice}}', '{{remaining}}', '{{total}}', '{{due_date}}', '{{store_name}}', '{{reason}}'],
+            [$customerName, $customerName, $receivable->invoice, $remaining, $total, $dueDate, $storeName, $reason],
+            $template
+        );
+
         return Inertia::render('Dashboard/Receivables/Show', [
             'receivable' => $receivable,
             'bankAccounts' => $bankAccounts,
             'approvalThreshold' => $approvalThreshold,
+            'defaultReminderMessage' => $defaultReminderMessage,
+            'isOverdue' => (bool) $isOverdue,
         ]);
     }
 
