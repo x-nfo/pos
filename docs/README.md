@@ -9,6 +9,7 @@ Dokumentasi ini ditujukan untuk developer yang ingin setup, memahami alur modul,
 - `docs/manual-testing-plan.md` — master manual testing plan & edge test matrix 🆕
 - `docs/deployment.md` — panduan deployment ke production 🆕
 - `docs/simulation-guide.md` — alur & simulasi urutan penggunaan (setup → harian → laporan) 🆕
+- `docs/toko-bangunan-simulation.md` — panduan alur & simulasi khusus Toko Bangunan / Material 🆕
 - `docs/configuration.md` — environment, payment, tax, printer
 
 ### Arsitektur
