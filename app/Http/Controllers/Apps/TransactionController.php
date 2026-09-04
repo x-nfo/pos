@@ -731,6 +731,10 @@ class TransactionController extends Controller
                     ->with('info', 'Transaksi menunggu approval supervisor.');
             }
 
+            if ($transaction->payment_url && in_array($transaction->payment_method, ['midtrans', 'xendit'])) {
+                return Inertia::location($transaction->payment_url);
+            }
+
             return to_route('transactions.print', $transaction->invoice)
                 ->with('success', 'Transaksi berhasil diselesaikan!')
                 ->with('just_completed', true);

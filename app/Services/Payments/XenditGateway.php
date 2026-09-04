@@ -27,6 +27,7 @@ class XenditGateway
                     'mobile_number' => optional($customer)->no_telp,
                 ],
                 'success_redirect_url' => route('transactions.print', $transaction->invoice),
+                'failure_redirect_url' => route('transactions.print', $transaction->invoice),
             ]);
 
         if ($response->failed()) {

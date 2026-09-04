@@ -283,7 +283,7 @@ class TransactionFlowTest extends TestCase
         $transaction = Transaction::latest('id')->first();
 
         $this->assertNotNull($transaction);
-        $response->assertRedirect(route('transactions.print', $transaction->invoice));
+        $response->assertRedirect($transaction->payment_url);
         $this->assertSame($shift->id, $transaction->cashier_shift_id);
         $this->assertSame('midtrans', $transaction->payment_method);
         $this->assertSame('pending', $transaction->payment_status);

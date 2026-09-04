@@ -386,7 +386,7 @@ export default function Print({
         statusColors[paymentStatusKey] ?? statusColors.paid;
 
     const isNonCash = paymentMethodKey !== "cash";
-    const showPaymentLink = isNonCash && transaction.payment_url && /^https?:\/\//i.test(transaction.payment_url);
+    const showPaymentLink = isNonCash && transaction.payment_status !== "paid" && transaction.payment_url && /^https?:\/\//i.test(transaction.payment_url);
 
     const handlePrint = () => {
         window.print();

@@ -32,6 +32,8 @@ class MidtransGateway
             ],
             'callbacks' => [
                 'finish' => route('transactions.print', $transaction->invoice),
+                'unfinish' => route('transactions.print', $transaction->invoice),
+                'error' => route('transactions.print', $transaction->invoice),
             ],
         ];
 
