@@ -250,13 +250,13 @@ class CrmAutomationService
         if ($isOverdue) {
             $template = Setting::get(
                 'wa_template_overdue',
-                'Halo {{customer_name}}, tagihan invoice {{invoice}} sebesar Rp {{remaining}} telah melewati jatuh tempo ({{due_date}}). Mohon segera melakukan konfirmasi dan pelunasan pembayaran. Terima kasih.'
+                'Halo {{customer_name}}, tagihan {{invoice}} Rp {{remaining}} telah lewat jatuh tempo ({{due_date}}). Mohon segera diselesaikan. Terima kasih.'
             );
             $reason = 'overdue';
         } else {
             $template = Setting::get(
                 'wa_template_due_soon',
-                'Halo {{customer_name}}, ini pengingat tagihan invoice {{invoice}} sebesar Rp {{remaining}} akan jatuh tempo pada {{due_date}}. Mohon dapat melakukan pembayaran sebelum jatuh tempo. Terima kasih.'
+                'Halo {{customer_name}}, tagihan {{invoice}} Rp {{remaining}} jatuh tempo pada {{due_date}}. Mohon lakukan pembayaran. Terima kasih.'
             );
             $reason = 'jatuh tempo';
         }
@@ -292,7 +292,7 @@ class CrmAutomationService
                     'receivable_id' => $receivable->id,
                     'invoice' => $receivable->invoice,
                 ]],
-                'message_template' => $template,
+                'message_template' => $shareText,
                 'processed_at' => now(),
                 'created_by' => $userId,
             ]
@@ -348,7 +348,7 @@ class CrmAutomationService
         $contextKey = 'due-soon-'.$at->toDateString();
         $template = Setting::get(
             'wa_template_due_soon',
-            'Halo {{customer_name}}, ini pengingat tagihan invoice {{invoice}} sebesar Rp {{remaining}} akan jatuh tempo pada {{due_date}}. Mohon dapat melakukan pembayaran sebelum jatuh tempo. Terima kasih.'
+            'Halo {{customer_name}}, tagihan {{invoice}} Rp {{remaining}} jatuh tempo pada {{due_date}}. Mohon lakukan pembayaran. Terima kasih.'
         );
 
         $campaign = CustomerCampaign::query()->firstOrCreate(
@@ -380,7 +380,7 @@ class CrmAutomationService
         $contextKey = 'overdue-'.$at->toDateString();
         $template = Setting::get(
             'wa_template_overdue',
-            'Halo {{customer_name}}, tagihan invoice {{invoice}} sebesar Rp {{remaining}} telah melewati jatuh tempo ({{due_date}}). Mohon segera melakukan konfirmasi dan pelunasan pembayaran. Terima kasih.'
+            'Halo {{customer_name}}, tagihan {{invoice}} Rp {{remaining}} telah lewat jatuh tempo ({{due_date}}). Mohon segera diselesaikan. Terima kasih.'
         );
 
         $campaign = CustomerCampaign::query()->firstOrCreate(

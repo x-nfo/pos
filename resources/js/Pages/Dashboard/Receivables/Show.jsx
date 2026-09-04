@@ -325,10 +325,10 @@ export default function ReceivableShow({
                                     type="button"
                                     onClick={() => setShowReminderModal(true)}
                                     className="inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 transition-colors shadow-sm"
-                                    title="Kirim pengingat tagihan piutang via WhatsApp"
+                                    title="Pesan dikirim manual via sistem (terlacak sistem)"
                                 >
                                     <IconBrandWhatsapp size={18} />
-                                    <span>Kirim Reminder WA</span>
+                                    <span>Kirim Reminder</span>
                                     {wa_ready ? (
                                         <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="WhatsApp Gateway Online" />
                                     ) : (
@@ -340,11 +340,11 @@ export default function ReceivableShow({
                                 href={waDirectUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors shadow-sm"
-                                title="Buka chat WhatsApp Web/App ke pelanggan"
+                                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium border border-slate-200 dark:border-slate-700 transition-colors shadow-sm"
+                                title="Cadangan WhatsApp Web manual (tidak terlacak otomatis)"
                             >
-                                <IconBrandWhatsapp size={18} />
-                                <span>Share WA Web</span>
+                                <IconBrandWhatsapp size={18} className="text-emerald-600 dark:text-emerald-400" />
+                                <span>WA Web</span>
                             </a>
                         </div>
                     </div>
@@ -1003,6 +1003,25 @@ export default function ReceivableShow({
                                 </div>
                             </div>
 
+                            {/* Info Box: Kelebihan Gateway & Cadangan WA Web */}
+                            <div className={`px-3 py-2 rounded-xl text-xs flex items-center gap-2 ${
+                                wa_ready
+                                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60"
+                                    : "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60"
+                            }`}>
+                                {wa_ready ? (
+                                    <>
+                                        <IconCheck size={15} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                        <span>Pesan gateway terlacak di sistem. WA Web disiapkan sebagai cadangan.</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <IconAlertCircle size={15} className="shrink-0 text-amber-600 dark:text-amber-400" />
+                                        <span>Gateway offline. Gunakan WA Web cadangan (tidak terlacak otomatis).</span>
+                                    </>
+                                )}
+                            </div>
+
                             {/* Pratinjau Teks Pesan */}
                             <div className="space-y-1.5">
                                 <div className="flex items-center justify-between">
@@ -1028,13 +1047,13 @@ export default function ReceivableShow({
                                     placeholder="Tulis pesan pengingat..."
                                 />
                                 <p className="text-[11px] text-slate-400">
-                                    Pesan di atas akan otomatis dikirimkan ke nomor WhatsApp pelanggan. Anda dapat mengedit teks sebelum mengirim.
+                                    Pesan dapat diedit sebelum dikirim.
                                 </p>
                             </div>
                         </div>
 
                         {/* Footer Action Buttons */}
-                        <div className="flex items-center justify-between gap-2 px-5 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 flex-wrap">
+                        <div className="flex items-center justify-between gap-2 px-5 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
                             <button
                                 type="button"
                                 onClick={() => setShowReminderModal(false)}
@@ -1043,37 +1062,39 @@ export default function ReceivableShow({
                                 Batal
                             </button>
 
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <a
-                                    href={waDirectUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 transition border border-emerald-200 dark:border-emerald-800"
-                                >
-                                    <IconExternalLink size={16} />
-                                    Buka WA Web
-                                </a>
-
-                                <button
-                                    type="button"
-                                    onClick={handleSendGateway}
-                                    disabled={!wa_ready || isSendingGateway || !targetPhone}
-                                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-sm transition ${
-                                        wa_ready && targetPhone && !isSendingGateway
-                                            ? "bg-primary-600 hover:bg-primary-700"
-                                            : "bg-slate-400 cursor-not-allowed opacity-70"
-                                    }`}
-                                    title={
-                                        !targetPhone
-                                            ? "Nomor telepon pelanggan kosong"
-                                            : !wa_ready
-                                            ? "WhatsApp Gateway belum aktif di Pengaturan"
-                                            : "Kirim pesan sekarang melalui WhatsApp Gateway"
-                                    }
-                                >
-                                    <IconSend size={16} />
-                                    <span>{isSendingGateway ? "Mengirim Antrean..." : "Kirim via Gateway"}</span>
-                                </button>
+                            <div>
+                                {wa_ready ? (
+                                    <button
+                                        type="button"
+                                        onClick={handleSendGateway}
+                                        disabled={isSendingGateway || !targetPhone}
+                                        className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm transition ${
+                                            targetPhone && !isSendingGateway
+                                                ? "bg-primary-600 hover:bg-primary-700"
+                                                : "bg-slate-400 cursor-not-allowed opacity-70"
+                                        }`}
+                                        title={
+                                            !targetPhone
+                                                ? "Nomor telepon pelanggan kosong"
+                                                : "Pesan dikirim manual via sistem (terlacak sistem)"
+                                        }
+                                    >
+                                        <IconSend size={16} />
+                                        <span>{isSendingGateway ? "Mengirim..." : "Kirim Pesan"}</span>
+                                    </button>
+                                ) : (
+                                    <a
+                                        href={waDirectUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={() => setShowReminderModal(false)}
+                                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition"
+                                        title="Gateway offline, buka langsung di WhatsApp Web"
+                                    >
+                                        <IconBrandWhatsapp size={16} />
+                                        <span>Kirim via WA Web</span>
+                                    </a>
+                                )}
                             </div>
                         </div>
                     </div>

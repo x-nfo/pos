@@ -101,8 +101,8 @@ class ReceivableController extends Controller
         $storeName = Setting::get('store_name', config('app.name', 'Point of Sales'));
         $isOverdue = $receivable->due_date && now()->startOfDay()->gt($receivable->due_date);
         $template = $isOverdue
-            ? Setting::get('wa_template_overdue', 'Halo {{customer_name}}, tagihan invoice {{invoice}} sebesar Rp {{remaining}} telah melewati jatuh tempo ({{due_date}}). Mohon segera melakukan konfirmasi dan pelunasan pembayaran. Terima kasih.')
-            : Setting::get('wa_template_due_soon', 'Halo {{customer_name}}, ini pengingat tagihan invoice {{invoice}} sebesar Rp {{remaining}} akan jatuh tempo pada {{due_date}}. Mohon dapat melakukan pembayaran sebelum jatuh tempo. Terima kasih.');
+            ? Setting::get('wa_template_overdue', 'Halo {{customer_name}}, tagihan {{invoice}} Rp {{remaining}} telah lewat jatuh tempo ({{due_date}}). Mohon segera diselesaikan. Terima kasih.')
+            : Setting::get('wa_template_due_soon', 'Halo {{customer_name}}, tagihan {{invoice}} Rp {{remaining}} jatuh tempo pada {{due_date}}. Mohon lakukan pembayaran. Terima kasih.');
         $reason = $isOverdue ? 'overdue' : 'jatuh tempo';
 
         $customerName = $receivable->customer?->name ?? 'Pelanggan';

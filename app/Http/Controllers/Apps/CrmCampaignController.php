@@ -46,11 +46,11 @@ class CrmCampaignController extends Controller
                 'wa_reminder_schedule_time' => Setting::get('wa_reminder_schedule_time', '09:15'),
                 'wa_template_due_soon' => Setting::get(
                     'wa_template_due_soon',
-                    'Halo {{customer_name}}, ini pengingat tagihan invoice {{invoice}} sebesar Rp {{remaining}} akan jatuh tempo pada {{due_date}}. Mohon dapat melakukan pembayaran sebelum jatuh tempo. Terima kasih.'
+                    'Halo {{customer_name}}, tagihan {{invoice}} Rp {{remaining}} jatuh tempo pada {{due_date}}. Mohon lakukan pembayaran. Terima kasih.'
                 ),
                 'wa_template_overdue' => Setting::get(
                     'wa_template_overdue',
-                    'Halo {{customer_name}}, tagihan invoice {{invoice}} sebesar Rp {{remaining}} telah melewati jatuh tempo ({{due_date}}). Mohon segera melakukan konfirmasi dan pelunasan pembayaran. Terima kasih.'
+                    'Halo {{customer_name}}, tagihan {{invoice}} Rp {{remaining}} telah lewat jatuh tempo ({{due_date}}). Mohon segera diselesaikan. Terima kasih.'
                 ),
             ],
         ]);
@@ -224,13 +224,7 @@ class CrmCampaignController extends Controller
             return back()->with('success', 'Pesan pengingat piutang berhasil dimasukkan ke antrean pengiriman WhatsApp.');
         }
 
-        if ($request->wantsJson() || $request->header('X-Inertia')) {
-            return back()->with('success', 'Draft pengingat piutang berhasil disiapkan.');
-        }
-
-        return redirect()
-            ->route('crm-campaigns.show', $campaign)
-            ->with('success', 'Campaign share piutang berhasil dibuat.');
+        return back()->with('success', 'Draft pengingat piutang berhasil disiapkan.');
     }
 
     private function validateCampaign(Request $request): array
