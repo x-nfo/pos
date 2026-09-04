@@ -213,6 +213,7 @@ class OperationalCoreSeeder extends Seeder
 
                 $draftReturn = SalesReturn::create([
                     'code' => $this->generateSalesReturnCode(),
+                    'warehouse_id' => $draftTransaction->warehouse_id,
                     'transaction_id' => $draftTransaction->id,
                     'customer_id' => $draftTransaction->customer_id,
                     'cashier_id' => $cashier->id,
@@ -261,6 +262,7 @@ class OperationalCoreSeeder extends Seeder
 
         $salesReturn = SalesReturn::create([
             'code' => $this->generateSalesReturnCode(),
+            'warehouse_id' => $transaction->warehouse_id,
             'transaction_id' => $transaction->id,
             'customer_id' => $transaction->customer_id,
             'cashier_id' => $cashier->id,

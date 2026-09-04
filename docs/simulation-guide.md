@@ -175,6 +175,14 @@ Buka menu **Pengaturan > WhatsApp (`/dashboard/settings/whatsapp`)**:
 3. Buka aplikasi WhatsApp di HP toko → *Perangkat Tertaut* → *Tautkan Perangkat* → *Scan QR*.
 4. Status berubah menjadi **Connected** dengan nomor telepon terdaftar.
 5. **Anti-Ban Smart Delay**: Sistem secara otomatis menjadwalkan pengiriman pesan promosi dan struk melalui antrean background khusus (*Dedicated WhatsApp Queue*) dengan *random jitter delay* 3–7 detik per pesan agar nomor toko tidak terblokir oleh sistem keamanan WhatsApp.
+6. **Setup Service Background Production (PM2 & Cron)**:
+   - **Service WhatsApp**: `pm2 start whatsapp-service/server.js --name wa-service`
+   - **Queue Worker**: `pm2 start "php artisan queue:work --queue=whatsapp --sleep=3 --tries=3 --max-time=3600" --name "laravel-worker-wa"`
+   - **Cron Scheduler Linux (`crontab -e`)**:
+     ```cron
+     * * * * * cd /var/www/point-of-sales && php artisan schedule:run >> /dev/null 2>&1
+     ```
+     *(Pastikan ada spasi di antara kelima tanda bintang `* * * * *` agar format cron valid).*
 
 ---
 
@@ -549,11 +557,19 @@ Buka menu **CRM > Campaign WhatsApp (`/dashboard/crm-campaigns`)**:
    - Pesan masuk ke **Background Queue Worker** dengan jeda acak 3–7 detik antar-nomor demi menjaga reputasi akun WhatsApp toko.
 
 ### 3. Pengingat Otomatis Tagihan Piutang (*Automated Due-Date Reminders*)
-Buka menu **Pengaturan > Otomatisasi CRM (`/dashboard/settings/automation`)**:
-- Aktifkan pengingat otomatis pada:
-  - **H-3 Sebelum Jatuh Tempo**: Pemberitahuan ramah tagihan akan jatuh tempo.
-  - **H-0 Hari H Jatuh Tempo**: Pengingat pelunasan hari ini.
-  - **H+3 Lewat Jatuh Tempo**: Peringatan tagihan tertunggak disertai link bayar *Customer Portal*.
+Buka menu **CRM > Campaign CRM > Tab Otomasi (`/dashboard/crm-campaigns`)** atau **Pengaturan > WhatsApp**:
+1. **Pilihan Mode Pengiriman**:
+   - **Kirim Otomatis (Auto-Dispatch)**: Cronjob server otomatis menyusun campaign dan langsung mengirim pesan pengingat ke nomor WhatsApp pelanggan pada jam yang dijadwalkan tanpa perlu tindakan manual admin.
+   - **Pengingat Internal (Manual)**: Cronjob hanya menyusun daftar tagihan di menu **Reminder CRM (`/dashboard/crm-reminders`)** dengan status `ready`. Admin meninjau terlebih dahulu, lalu mengirim pesan saat siap.
+2. **Jadwal Pengiriman Harian**:
+   - Atur jam eksekusi harian (default: `09:15` WIB).
+   - Di level server, perintah `php artisan crm:generate-reminders` otomatis dieksekusi oleh crontab tepat pada jam tersebut.
+3. **Kriteria Filter Target Tagihan**:
+   - **Jatuh Tempo Mendatang (Hari H s/d H+3)**: Sistem mencari piutang belum lunas dengan rentang `due_date` antara **Hari Ini (00:00)** sampai **3 Hari ke Depan (23:59)**. Nota yang jatuh tempo hari ini (H-0) maupun 1-3 hari ke depan otomatis masuk pengingat.
+   - **Piutang Overdue (Telat Bayar)**: Ditargetkan secara berkala pada hari ke **H+1, H+3, dan H+7** lewat jatuh tempo demi menjaga kenyamanan pelanggan.
+4. **Catatan Teknis: Tombol "Kirim Antrean WA" vs Pengiriman Terjadwal**:
+   - Tombol **"Kirim Antrean WA"** pada halaman detail campaign adalah aksi **Kirim Sekarang (*On-Demand Force Dispatch*)** ke background worker dengan jeda aman 3–7 detik per nomor, **bukan** untuk menunda pengiriman hingga jam jadwal.
+   - Jika mode **Auto-Dispatch** sudah aktif dan cron server terpasang, admin **tidak perlu menekan tombol apapun**, sistem akan mengirimkannya secara otomatis saat jam jadwal tiba.
 
 ---
 

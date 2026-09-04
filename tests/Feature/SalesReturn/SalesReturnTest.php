@@ -11,10 +11,12 @@ use App\Models\SalesReturn;
 use App\Models\Transaction;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\Services\CashierShiftService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class SalesReturnTest extends TestCase
@@ -782,6 +784,313 @@ class SalesReturnTest extends TestCase
             ->has('autoPrint')
             ->has('autoPrintDriver')
             ->has('enabledButtons')
+        );
+    }
+
+    public function test_non_hq_cashier_can_view_sales_return_created_by_themselves_even_if_transaction_warehouse_differs(): void
+    {
+        $warehouseA = Warehouse::create([
+            'code' => 'WH-A',
+            'name' => 'Warehouse A',
+            'type' => 'main',
+            'is_active' => true,
+        ]);
+        $warehouseB = Warehouse::create([
+            'code' => 'WH-B',
+            'name' => 'Warehouse B',
+            'type' => 'branch',
+            'is_active' => true,
+        ]);
+
+        $cashier = $this->createUserWithPermissions([
+            'transactions-access',
+            'sales-returns-access',
+            'sales-returns-create',
+        ]);
+        $cashier->update(['warehouse_id' => $warehouseB->id]);
+
+        $otherCashier = User::factory()->create(['warehouse_id' => $warehouseA->id]);
+
+        [$transaction, $detail, $product] = $this->createTransaction($otherCashier);
+        $transaction->update(['warehouse_id' => $warehouseA->id]);
+
+        // Sales return created by cashier B on a transaction from warehouse A
+        $salesReturn = SalesReturn::create([
+            'code' => 'SR-TEST-OWN-01',
+            'warehouse_id' => $warehouseB->id,
+            'transaction_id' => $transaction->id,
+            'customer_id' => $transaction->customer_id,
+            'cashier_id' => $cashier->id,
+            'status' => 'draft',
+            'return_type' => 'refund_cash',
+            'refund_amount' => 60000,
+            'credited_amount' => 0,
+            'total_return_amount' => 60000,
+        ]);
+
+        $salesReturn->items()->create([
+            'transaction_detail_id' => $detail->id,
+            'product_id' => $product->id,
+            'qty_sold' => 1,
+            'qty_returned_before' => 0,
+            'qty_return' => 1,
+            'unit_price' => 60000,
+            'subtotal' => 60000,
+            'return_reason' => 'Retur produk sendiri',
+            'restock_to_inventory' => true,
+        ]);
+
+        // Non-HQ cashier can access show page
+        $response = $this
+            ->actingAs($cashier)
+            ->get(route('sales-returns.show', $salesReturn));
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Dashboard/SalesReturns/Show')
+            ->where('salesReturn.id', $salesReturn->id)
+        );
+
+        // Non-HQ cashier can also view it in index
+        $indexResponse = $this
+            ->actingAs($cashier)
+            ->get(route('sales-returns.index'));
+
+        $indexResponse->assertOk();
+        $indexResponse->assertInertia(fn ($page) => $page
+            ->component('Dashboard/SalesReturns/Index')
+            ->has('salesReturns.data', 1)
+        );
+    }
+
+    public function test_non_hq_cashier_can_access_sales_return_processed_in_their_warehouse(): void
+    {
+        $warehouseA = Warehouse::create([
+            'code' => 'WH-A2',
+            'name' => 'Warehouse A2',
+            'type' => 'main',
+            'is_active' => true,
+        ]);
+        $warehouseB = Warehouse::create([
+            'code' => 'WH-B2',
+            'name' => 'Warehouse B2',
+            'type' => 'branch',
+            'is_active' => true,
+        ]);
+
+        $cashierB1 = $this->createUserWithPermissions([
+            'transactions-access',
+            'sales-returns-access',
+        ]);
+        $cashierB1->update(['warehouse_id' => $warehouseB->id]);
+
+        $cashierB2 = User::factory()->create(['warehouse_id' => $warehouseB->id]);
+
+        [$transaction, $detail, $product] = $this->createTransaction($cashierB2);
+        $transaction->update(['warehouse_id' => $warehouseB->id]);
+
+        // Sales return created by cashier B2, but in cashier B1's warehouse
+        $salesReturn = SalesReturn::create([
+            'code' => 'SR-TEST-WH-02',
+            'warehouse_id' => $warehouseB->id,
+            'transaction_id' => $transaction->id,
+            'customer_id' => $transaction->customer_id,
+            'cashier_id' => $cashierB2->id,
+            'status' => 'draft',
+            'return_type' => 'refund_cash',
+            'refund_amount' => 60000,
+            'credited_amount' => 0,
+            'total_return_amount' => 60000,
+        ]);
+
+        $salesReturn->items()->create([
+            'transaction_detail_id' => $detail->id,
+            'product_id' => $product->id,
+            'qty_sold' => 1,
+            'qty_returned_before' => 0,
+            'qty_return' => 1,
+            'unit_price' => 60000,
+            'subtotal' => 60000,
+            'return_reason' => 'Retur sesama cabang',
+            'restock_to_inventory' => true,
+        ]);
+
+        $response = $this
+            ->actingAs($cashierB1)
+            ->get(route('sales-returns.show', $salesReturn));
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Dashboard/SalesReturns/Show')
+            ->where('salesReturn.id', $salesReturn->id)
+        );
+    }
+
+    public function test_non_hq_user_cannot_access_sales_return_from_another_branch_not_belonging_to_them(): void
+    {
+        $warehouseA = Warehouse::create([
+            'code' => 'WH-A3',
+            'name' => 'Warehouse A3',
+            'type' => 'branch',
+            'is_active' => true,
+        ]);
+        $warehouseB = Warehouse::create([
+            'code' => 'WH-B3',
+            'name' => 'Warehouse B3',
+            'type' => 'branch',
+            'is_active' => true,
+        ]);
+
+        $cashierB = $this->createUserWithPermissions([
+            'transactions-access',
+            'sales-returns-access',
+        ]);
+        $cashierB->update(['warehouse_id' => $warehouseB->id]);
+
+        $cashierA = User::factory()->create(['warehouse_id' => $warehouseA->id]);
+
+        [$transaction, $detail, $product] = $this->createTransaction($cashierA);
+        $transaction->update(['warehouse_id' => $warehouseA->id]);
+
+        // Sales return at warehouse A by cashier A
+        $salesReturnA = SalesReturn::create([
+            'code' => 'SR-TEST-FORBID-03',
+            'warehouse_id' => $warehouseA->id,
+            'transaction_id' => $transaction->id,
+            'customer_id' => $transaction->customer_id,
+            'cashier_id' => $cashierA->id,
+            'status' => 'draft',
+            'return_type' => 'refund_cash',
+            'refund_amount' => 60000,
+            'credited_amount' => 0,
+            'total_return_amount' => 60000,
+        ]);
+
+        $salesReturnA->items()->create([
+            'transaction_detail_id' => $detail->id,
+            'product_id' => $product->id,
+            'qty_sold' => 1,
+            'qty_returned_before' => 0,
+            'qty_return' => 1,
+            'unit_price' => 60000,
+            'subtotal' => 60000,
+            'return_reason' => 'Retur cabang lain',
+            'restock_to_inventory' => true,
+        ]);
+
+        // Attempting to access sales return belonging to warehouse A as user from warehouse B
+        $response = $this
+            ->actingAs($cashierB)
+            ->get(route('sales-returns.show', $salesReturnA));
+
+        $response->assertNotFound();
+
+        // Index should not show it
+        $indexResponse = $this
+            ->actingAs($cashierB)
+            ->get(route('sales-returns.index'));
+
+        $indexResponse->assertOk();
+        $indexResponse->assertInertia(fn ($page) => $page
+            ->component('Dashboard/SalesReturns/Index')
+            ->has('salesReturns.data', 0)
+        );
+    }
+
+    public function test_super_admin_has_global_access_to_sales_returns_across_warehouses(): void
+    {
+        Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
+
+        $superAdmin = User::factory()->create(['warehouse_id' => null]);
+        $superAdmin->assignRole('super-admin');
+
+        $warehouseA = Warehouse::create([
+            'code' => 'WH-SA1',
+            'name' => 'Branch 1',
+            'type' => 'branch',
+            'is_active' => true,
+        ]);
+        $warehouseB = Warehouse::create([
+            'code' => 'WH-SA2',
+            'name' => 'Branch 2',
+            'type' => 'branch',
+            'is_active' => true,
+        ]);
+
+        $cashierA = User::factory()->create(['warehouse_id' => $warehouseA->id]);
+        $cashierB = User::factory()->create(['warehouse_id' => $warehouseB->id]);
+
+        [$transactionA, $detailA, $productA] = $this->createTransaction($cashierA);
+        $transactionA->update(['warehouse_id' => $warehouseA->id]);
+
+        [$transactionB, $detailB, $productB] = $this->createTransaction($cashierB);
+        $transactionB->update(['warehouse_id' => $warehouseB->id]);
+
+        $returnA = SalesReturn::create([
+            'code' => 'SR-SA-01',
+            'warehouse_id' => $warehouseA->id,
+            'transaction_id' => $transactionA->id,
+            'customer_id' => $transactionA->customer_id,
+            'cashier_id' => $cashierA->id,
+            'status' => 'draft',
+            'return_type' => 'refund_cash',
+            'refund_amount' => 60000,
+            'credited_amount' => 0,
+            'total_return_amount' => 60000,
+        ]);
+        $returnA->items()->create([
+            'transaction_detail_id' => $detailA->id,
+            'product_id' => $productA->id,
+            'qty_sold' => 1,
+            'qty_returned_before' => 0,
+            'qty_return' => 1,
+            'unit_price' => 60000,
+            'subtotal' => 60000,
+            'return_reason' => 'Retur A',
+            'restock_to_inventory' => true,
+        ]);
+
+        $returnB = SalesReturn::create([
+            'code' => 'SR-SA-02',
+            'warehouse_id' => $warehouseB->id,
+            'transaction_id' => $transactionB->id,
+            'customer_id' => $transactionB->customer_id,
+            'cashier_id' => $cashierB->id,
+            'status' => 'draft',
+            'return_type' => 'refund_cash',
+            'refund_amount' => 60000,
+            'credited_amount' => 0,
+            'total_return_amount' => 60000,
+        ]);
+        $returnB->items()->create([
+            'transaction_detail_id' => $detailB->id,
+            'product_id' => $productB->id,
+            'qty_sold' => 1,
+            'qty_returned_before' => 0,
+            'qty_return' => 1,
+            'unit_price' => 60000,
+            'subtotal' => 60000,
+            'return_reason' => 'Retur B',
+            'restock_to_inventory' => true,
+        ]);
+
+        // Super Admin can access both show pages
+        $this->actingAs($superAdmin)
+            ->get(route('sales-returns.show', $returnA))
+            ->assertOk();
+
+        $this->actingAs($superAdmin)
+            ->get(route('sales-returns.show', $returnB))
+            ->assertOk();
+
+        // Super Admin sees all returns across branches in index
+        $indexResponse = $this->actingAs($superAdmin)
+            ->get(route('sales-returns.index'));
+
+        $indexResponse->assertOk();
+        $indexResponse->assertInertia(fn ($page) => $page
+            ->component('Dashboard/SalesReturns/Index')
+            ->has('salesReturns.data', 2)
         );
     }
 

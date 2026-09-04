@@ -59,8 +59,10 @@ class SalesReturnController extends Controller
         $salesReturns = SalesReturn::query()
             ->with(['transaction:id,invoice,payment_method,payment_status,warehouse_id', 'customer:id,name', 'cashier:id,name'])
             ->when($user && ! $user->isHQ(), function (Builder $query) use ($user) {
-                $query->whereHas('transaction', function (Builder $builder) use ($user) {
-                    $builder->where('warehouse_id', $user->warehouse_id);
+                $query->where(function (Builder $sub) use ($user) {
+                    $sub->where('warehouse_id', $user->warehouse_id)
+                        ->orWhere('cashier_id', $user->id)
+                        ->orWhereHas('transaction', fn (Builder $b) => $b->where('warehouse_id', $user->warehouse_id));
                 });
             })
             ->when($filters['code'], fn (Builder $query, $code) => $query->where('code', 'like', '%'.$code.'%'))
@@ -106,7 +108,7 @@ class SalesReturnController extends Controller
         $salesReturn = DB::transaction(function () use ($request, $transaction, $payload) {
             $salesReturn = SalesReturn::create([
                 'code' => $this->generateCode(),
-                'warehouse_id' => $transaction->warehouse_id,
+                'warehouse_id' => $request->user()?->warehouse_id ?? $transaction->warehouse_id,
                 'transaction_id' => $transaction->id,
                 'customer_id' => $transaction->customer_id,
                 'cashier_id' => $request->user()?->id,
@@ -284,7 +286,7 @@ class SalesReturnController extends Controller
                 }
             }
 
-            $transactionWarehouseId = $salesReturn->transaction->warehouse_id;
+            $returnWarehouseId = $salesReturn->warehouse_id ?: $salesReturn->transaction->warehouse_id;
 
             // Restock returned items
             foreach ($salesReturn->items as $item) {
@@ -303,11 +305,11 @@ class SalesReturnController extends Controller
                             'stock' => $stockAfter,
                         ]);
 
-                        // Restock to transaction warehouse
-                        if ($transactionWarehouseId) {
+                        // Restock to return warehouse
+                        if ($returnWarehouseId) {
                             ProductWarehouse::where([
                                 'product_id' => $product->id,
-                                'warehouse_id' => $transactionWarehouseId,
+                                'warehouse_id' => $returnWarehouseId,
                             ])->increment('stock', $baseQtyReturn);
                         }
 
@@ -350,8 +352,8 @@ class SalesReturnController extends Controller
                     $conversionFactor = (float) ($exchangeItem->conversion_factor ?: 1);
                     $requiredBaseStock = (int) round((float) $exchangeItem->qty * $conversionFactor);
 
-                    $availableStock = $transactionWarehouseId
-                        ? (int) ($product->warehouses()->where('warehouse_id', $transactionWarehouseId)->lockForUpdate()->first()?->pivot->stock ?? 0)
+                    $availableStock = $returnWarehouseId
+                        ? (int) ($product->warehouses()->where('warehouse_id', $returnWarehouseId)->lockForUpdate()->first()?->pivot->stock ?? 0)
                         : (int) $product->stock;
 
                     if ($availableStock < $requiredBaseStock) {
@@ -367,10 +369,10 @@ class SalesReturnController extends Controller
                         'stock' => $stockAfter,
                     ]);
 
-                    if ($transactionWarehouseId) {
+                    if ($returnWarehouseId) {
                         ProductWarehouse::where([
                             'product_id' => $product->id,
-                            'warehouse_id' => $transactionWarehouseId,
+                            'warehouse_id' => $returnWarehouseId,
                         ])->decrement('stock', $requiredBaseStock);
                     }
 
@@ -381,7 +383,7 @@ class SalesReturnController extends Controller
                         qty: $requiredBaseStock,
                         stockBefore: $stockBefore,
                         stockAfter: $stockAfter,
-                        warehouseId: $transactionWarehouseId,
+                        warehouseId: $returnWarehouseId,
                         notes: 'Barang pengganti retur penjualan '.$salesReturn->code.' ('.$exchangeItem->qty.' '.$unitLabel.')',
                         userId: $request->user()?->id,
                     );
@@ -412,7 +414,7 @@ class SalesReturnController extends Controller
 
             $salesReturn->update([
                 'cashier_shift_id' => $activeShift->id,
-                'warehouse_id' => $salesReturn->transaction->warehouse_id,
+                'warehouse_id' => $returnWarehouseId,
                 'return_type' => $settlement['return_type'],
                 'refund_amount' => $settlement['refund_amount'],
                 'credited_amount' => $settlement['credited_amount'],
@@ -629,7 +631,12 @@ class SalesReturnController extends Controller
                 'details.unit',
                 'details.salesReturnItems.salesReturn:id,status',
             ])
-            ->when($user && ! $user->isHQ(), fn (Builder $query) => $query->where('warehouse_id', $user->warehouse_id))
+            ->when($user && ! $user->isHQ(), function (Builder $query) use ($user) {
+                $query->where(function (Builder $sub) use ($user) {
+                    $sub->where('warehouse_id', $user->warehouse_id)
+                        ->orWhere('cashier_id', $user->id);
+                });
+            })
             ->findOrFail($transactionId);
     }
 
@@ -658,7 +665,11 @@ class SalesReturnController extends Controller
                 'exchangeItems.product.units',
             ])
             ->when($user && ! $user->isHQ(), function (Builder $query) use ($user) {
-                $query->whereHas('transaction', fn (Builder $builder) => $builder->where('warehouse_id', $user->warehouse_id));
+                $query->where(function (Builder $sub) use ($user) {
+                    $sub->where('warehouse_id', $user->warehouse_id)
+                        ->orWhere('cashier_id', $user->id)
+                        ->orWhereHas('transaction', fn (Builder $b) => $b->where('warehouse_id', $user->warehouse_id));
+                });
             })
             ->findOrFail($salesReturnId);
     }

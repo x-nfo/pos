@@ -139,23 +139,40 @@ export function playSynthesizedKaChing() {
 
 /**
  * Plays the iconic cashier "Ka-Ching" sound.
- * Tries the high-fidelity cash-register.wav file first, with Web Audio API synthesis fallback.
+ * Tries cashier-quotka-chingquot-sound-effect.mp3 first, then cash-register.wav, with Web Audio API synthesis fallback.
  */
 export function playSuccessChime() {
     if (!isSoundEnabled()) return;
     if (typeof window === "undefined") return;
 
     try {
-        const audio = new Audio("/sounds/cash-register.wav");
+        const audio = new Audio(
+            "/sounds/cashier-quotka-chingquot-sound-effect.mp3"
+        );
         audio.volume = 0.65;
+
+        const fallback = () => {
+            try {
+                const fallbackAudio = new Audio("/sounds/cash-register.wav");
+                fallbackAudio.volume = 0.65;
+                fallbackAudio.play().catch(() => {
+                    playSynthesizedKaChing();
+                });
+            } catch {
+                playSynthesizedKaChing();
+            }
+        };
+
+        audio.onerror = fallback;
+
         const playPromise = audio.play();
         if (playPromise !== undefined) {
             playPromise.catch(() => {
-                // Fallback to synthesized Ka-Ching if audio file playback is blocked or fails
-                playSynthesizedKaChing();
+                fallback();
             });
         }
     } catch (e) {
         playSynthesizedKaChing();
     }
 }
+

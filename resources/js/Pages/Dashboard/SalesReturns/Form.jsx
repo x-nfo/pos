@@ -507,7 +507,7 @@ export default function SalesReturnForm({
                                         1. Barang yang Dikembalikan
                                     </h2>
                                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                                        Tentukan kuantitas dan alasan pengembalian barang dari pelanggan
+                                        Tentukan kuantitas dan alasan item yang dikembalikan pelanggan (nominal refund tunai dihitung dari item ini)
                                     </p>
                                 </div>
                                 {canEdit && (
@@ -540,107 +540,145 @@ export default function SalesReturnForm({
                                         </tr>
                                     </Table.Thead>
                                     <Table.Tbody>
-                                        {itemStates.map((item) => (
-                                            <tr key={item.id}>
-                                                <Table.Td>
-                                                    <div className="min-w-[150px]">
-                                                        <p className="font-medium text-slate-800 dark:text-slate-100 line-clamp-2">
-                                                            {item.product?.title ||
-                                                                "-"}
-                                                        </p>
-                                                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                                                            {item.product?.barcode ||
-                                                                item.product?.sku ||
-                                                                "-"}
-                                                        </p>
-                                                    </div>
-                                                </Table.Td>
-                                                <Table.Td>
-                                                    <div className="flex items-baseline gap-1 whitespace-nowrap">
-                                                        <span className="font-semibold text-slate-800 dark:text-slate-200">{item.qty}</span>
-                                                        <span className="text-xs font-normal text-slate-500 dark:text-slate-400">{item.unit_name || item.product?.unit_name || "Pcs"}</span>
-                                                    </div>
-                                                </Table.Td>
-                                                <Table.Td>
-                                                    <div className="flex items-baseline gap-1 whitespace-nowrap">
-                                                        <span className="font-semibold text-slate-800 dark:text-slate-200">{item.remaining_returnable_qty}</span>
-                                                        <span className="text-xs font-normal text-slate-500 dark:text-slate-400">{item.unit_name || item.product?.unit_name || "Pcs"}</span>
-                                                    </div>
-                                                </Table.Td>
-                                                <Table.Td>
-                                                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                        {itemStates.map((item) => {
+                                            const isExhausted = (item.remaining_returnable_qty ?? 0) <= 0;
+                                            return (
+                                                <tr
+                                                    key={item.id}
+                                                    className={
+                                                        isExhausted
+                                                            ? "bg-slate-50/60 opacity-60 dark:bg-slate-900/40"
+                                                            : ""
+                                                    }
+                                                >
+                                                    <Table.Td>
+                                                        <div className="min-w-[150px]">
+                                                            <p className="font-medium text-slate-800 dark:text-slate-100 line-clamp-2">
+                                                                {item.product?.title || "-"}
+                                                            </p>
+                                                            <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                                                                <span className="text-xs text-slate-500 dark:text-slate-400">
+                                                                    {item.product?.barcode ||
+                                                                        item.product?.sku ||
+                                                                        "-"}
+                                                                </span>
+                                                                {isExhausted && (
+                                                                    <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+                                                                        Sudah Diretur Penuh
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </Table.Td>
+                                                    <Table.Td>
+                                                        <div className="flex items-baseline gap-1 whitespace-nowrap">
+                                                            <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                                                {item.qty}
+                                                            </span>
+                                                            <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+                                                                {item.unit_name || item.product?.unit_name || "Pcs"}
+                                                            </span>
+                                                        </div>
+                                                    </Table.Td>
+                                                    <Table.Td>
+                                                        <div className="flex items-baseline gap-1 whitespace-nowrap">
+                                                            <span
+                                                                className={`font-semibold ${
+                                                                    isExhausted
+                                                                        ? "text-slate-400 dark:text-slate-500 line-through"
+                                                                        : "text-slate-800 dark:text-slate-200"
+                                                                }`}
+                                                            >
+                                                                {item.remaining_returnable_qty}
+                                                            </span>
+                                                            <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+                                                                {item.unit_name || item.product?.unit_name || "Pcs"}
+                                                            </span>
+                                                        </div>
+                                                    </Table.Td>
+                                                    <Table.Td>
+                                                        <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                max={item.remaining_returnable_qty}
+                                                                value={item.qty_return}
+                                                                disabled={!canEdit || isExhausted}
+                                                                onChange={(event) => {
+                                                                    const rawVal = parseInt(event.target.value, 10);
+                                                                    const clampedVal = isNaN(rawVal)
+                                                                        ? 0
+                                                                        : Math.min(
+                                                                            Math.max(0, rawVal),
+                                                                            item.remaining_returnable_qty
+                                                                        );
+                                                                    updateItem(
+                                                                        item.id,
+                                                                        "qty_return",
+                                                                        clampedVal
+                                                                    );
+                                                                }}
+                                                                placeholder={isExhausted ? "0" : ""}
+                                                                className="h-10 w-20 rounded-lg border border-slate-200 bg-slate-50 px-2 text-center text-sm font-semibold text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                                            />
+                                                            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                                                {item.unit_name || item.product?.unit_name || "Pcs"}
+                                                            </span>
+                                                        </div>
+                                                    </Table.Td>
+                                                    <Table.Td>
                                                         <input
-                                                            type="number"
-                                                            min="0"
-                                                            max={
-                                                                item.remaining_returnable_qty
-                                                            }
-                                                            value={item.qty_return}
-                                                            disabled={!canEdit}
-                                                            onChange={(event) =>
-                                                                updateItem(
-                                                                    item.id,
-                                                                    "qty_return",
-                                                                    event.target.value
-                                                                )
-                                                            }
-                                                            className="h-10 w-20 rounded-lg border border-slate-200 bg-slate-50 px-2 text-center text-sm font-semibold text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                                                        />
-                                                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                                                            {item.unit_name || item.product?.unit_name || "Pcs"}
-                                                        </span>
-                                                    </div>
-                                                </Table.Td>
-                                                <Table.Td>
-                                                    <input
-                                                        type="text"
-                                                        value={item.return_reason}
-                                                        disabled={
-                                                            !canEdit ||
-                                                            item.qty_return === 0
-                                                        }
-                                                        onChange={(event) =>
-                                                            updateItem(
-                                                                item.id,
-                                                                "return_reason",
-                                                                event.target.value
-                                                            )
-                                                        }
-                                                        placeholder="Alasan retur"
-                                                        className="h-10 min-w-36 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                                                    />
-                                                </Table.Td>
-                                                <Table.Td>
-                                                    <div className="flex justify-center">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={
-                                                                item.restock_to_inventory
-                                                            }
+                                                            type="text"
+                                                            value={item.return_reason}
                                                             disabled={
                                                                 !canEdit ||
+                                                                isExhausted ||
                                                                 item.qty_return === 0
                                                             }
                                                             onChange={(event) =>
                                                                 updateItem(
                                                                     item.id,
-                                                                    "restock_to_inventory",
-                                                                    event.target.checked
+                                                                    "return_reason",
+                                                                    event.target.value
                                                                 )
                                                             }
-                                                            className="h-5 w-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                                                            placeholder={
+                                                                isExhausted
+                                                                    ? "Sudah habis diretur"
+                                                                    : "Alasan retur"
+                                                            }
+                                                            className="h-10 min-w-36 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                                                         />
-                                                    </div>
-                                                </Table.Td>
-                                                <Table.Td>
-                                                    <span className="font-semibold text-slate-800 whitespace-nowrap dark:text-slate-200">
-                                                        {formatCurrency(
-                                                            item.subtotal
-                                                        )}
-                                                    </span>
-                                                </Table.Td>
-                                            </tr>
-                                        ))}
+                                                    </Table.Td>
+                                                    <Table.Td>
+                                                        <div className="flex justify-center">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={item.restock_to_inventory}
+                                                                disabled={
+                                                                    !canEdit ||
+                                                                    isExhausted ||
+                                                                    item.qty_return === 0
+                                                                }
+                                                                onChange={(event) =>
+                                                                    updateItem(
+                                                                        item.id,
+                                                                        "restock_to_inventory",
+                                                                        event.target.checked
+                                                                    )
+                                                                }
+                                                                className="h-5 w-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                                            />
+                                                        </div>
+                                                    </Table.Td>
+                                                    <Table.Td>
+                                                        <span className="font-semibold text-slate-800 whitespace-nowrap dark:text-slate-200">
+                                                            {formatCurrency(item.subtotal)}
+                                                        </span>
+                                                    </Table.Td>
+                                                </tr>
+                                            );
+                                        })}
                                     </Table.Tbody>
                                 </Table>
                             </div>

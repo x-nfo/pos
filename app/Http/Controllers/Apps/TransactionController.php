@@ -875,7 +875,10 @@ class TransactionController extends Controller
         }
 
         if (! $request->user()->isHQ()) {
-            $query->where('warehouse_id', $request->user()->warehouse_id);
+            $query->where(function (Builder $sub) use ($request) {
+                $sub->where('warehouse_id', $request->user()->warehouse_id)
+                    ->orWhere('cashier_id', $request->user()->id);
+            });
         }
 
         if (! $request->user()->isSuperAdmin() && ! $request->user()->can('reports-access')) {
