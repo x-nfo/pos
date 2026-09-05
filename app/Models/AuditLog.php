@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 
 class AuditLog extends Model
 {
-    use HasFactory;
+    use HasFactory, MassPrunable;
 
     public $timestamps = false;
 
@@ -44,5 +46,15 @@ class AuditLog extends Model
     public function auditable()
     {
         return $this->morphTo();
+    }
+
+    /**
+     * Get the prunable model query.
+     */
+    public function prunable(): Builder
+    {
+        $retentionDays = (int) config('audit.retention_days', 90);
+
+        return static::where('created_at', '<=', now()->subDays($retentionDays));
     }
 }

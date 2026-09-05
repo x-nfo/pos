@@ -359,7 +359,7 @@ class StockMutationService
         ?string $notes = null,
         ?int $userId = null
     ): StockMutation {
-        $mutation = StockMutation::create([
+        return StockMutation::create([
             'product_id' => $product->id,
             'warehouse_id' => $warehouseId,
             'reference_type' => 'transaction',
@@ -371,36 +371,6 @@ class StockMutationService
             'notes' => $notes ?: 'Penjualan kasir transaksi '.$transaction->invoice,
             'created_by' => $userId,
         ]);
-
-        $this->auditLogService->log(
-            event: 'stock.adjusted',
-            module: 'stock',
-            auditable: $product,
-            description: 'Stok keluar dari transaksi penjualan '.$transaction->invoice,
-            before: [
-                'product_id' => $product->id,
-                'stock_before' => $stockBefore,
-                'stock_after' => $stockBefore,
-                'difference' => 0,
-                'reference' => $transaction->invoice,
-            ],
-            after: [
-                'product_id' => $product->id,
-                'stock_before' => $stockBefore,
-                'stock_after' => $stockAfter,
-                'difference' => $stockAfter - $stockBefore,
-                'reference' => $transaction->invoice,
-            ],
-            meta: [
-                'stock_mutation_id' => $mutation->id,
-                'transaction_id' => $transaction->id,
-                'invoice' => $transaction->invoice,
-                'mutation_type' => $mutation->mutation_type,
-                'qty' => $qty,
-            ],
-        );
-
-        return $mutation;
     }
 
     public function recordDineOrderOut(
@@ -413,7 +383,7 @@ class StockMutationService
         ?string $notes = null,
         ?int $userId = null
     ): StockMutation {
-        $mutation = StockMutation::create([
+        return StockMutation::create([
             'product_id' => $product->id,
             'warehouse_id' => $warehouseId,
             'reference_type' => 'dine_order',
@@ -425,35 +395,6 @@ class StockMutationService
             'notes' => $notes ?: 'Stok keluar dari pesanan meja #'.$order->table_id,
             'created_by' => $userId,
         ]);
-
-        $this->auditLogService->log(
-            event: 'stock.adjusted',
-            module: 'stock',
-            auditable: $product,
-            description: 'Stok keluar dari pesanan meja dine-in order #'.$order->id,
-            before: [
-                'product_id' => $product->id,
-                'stock_before' => $stockBefore,
-                'stock_after' => $stockBefore,
-                'difference' => 0,
-                'reference' => 'dine_order:'.$order->id,
-            ],
-            after: [
-                'product_id' => $product->id,
-                'stock_before' => $stockBefore,
-                'stock_after' => $stockAfter,
-                'difference' => $stockAfter - $stockBefore,
-                'reference' => 'dine_order:'.$order->id,
-            ],
-            meta: [
-                'stock_mutation_id' => $mutation->id,
-                'dine_order_id' => $order->id,
-                'mutation_type' => $mutation->mutation_type,
-                'qty' => $qty,
-            ],
-        );
-
-        return $mutation;
     }
 
     public function recordTransactionRestock(

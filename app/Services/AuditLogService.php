@@ -7,6 +7,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -23,24 +24,34 @@ class AuditLogService
         ?array $meta = null,
         ?Authenticatable $actor = null
     ): AuditLog {
-        $request = request();
-        $resolvedActor = $actor ?? auth()->user();
+        try {
+            $request = request();
+            $resolvedActor = $actor ?? auth()->user();
 
-        return AuditLog::create([
-            'user_id' => $resolvedActor?->getAuthIdentifier(),
-            'event' => $event,
-            'module' => $module,
-            'auditable_type' => $auditable instanceof Model ? $auditable->getMorphClass() : null,
-            'auditable_id' => $auditable instanceof Model ? $auditable->getKey() : null,
-            'target_label' => $this->resolveTargetLabel($auditable),
-            'description' => $description,
-            'before' => $this->normalizePayload($before),
-            'after' => $this->normalizePayload($after),
-            'meta' => $this->normalizePayload($meta),
-            'ip_address' => $request?->ip(),
-            'user_agent' => $request?->userAgent(),
-            'created_at' => now(),
-        ]);
+            return AuditLog::create([
+                'user_id' => $resolvedActor?->getAuthIdentifier(),
+                'event' => $event,
+                'module' => $module,
+                'auditable_type' => $auditable instanceof Model ? $auditable->getMorphClass() : null,
+                'auditable_id' => $auditable instanceof Model ? $auditable->getKey() : null,
+                'target_label' => $this->resolveTargetLabel($auditable),
+                'description' => $description,
+                'before' => $this->normalizePayload($before),
+                'after' => $this->normalizePayload($after),
+                'meta' => $this->normalizePayload($meta),
+                'ip_address' => $request?->ip(),
+                'user_agent' => $request?->userAgent(),
+                'created_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to record audit log: '.$e->getMessage(), [
+                'event' => $event,
+                'module' => $module,
+                'exception' => $e,
+            ]);
+
+            return new AuditLog;
+        }
     }
 
     public function only(array $source, array $keys): array

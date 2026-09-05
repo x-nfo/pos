@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -28,8 +29,8 @@ class AuditLogController extends Controller
             ->when($filters['user_id'], fn (Builder $query, $userId) => $query->where('user_id', $userId))
             ->when($filters['module'], fn (Builder $query, $module) => $query->where('module', $module))
             ->when($filters['event'], fn (Builder $query, $event) => $query->where('event', $event))
-            ->when($filters['date_from'], fn (Builder $query, $date) => $query->whereDate('created_at', '>=', $date))
-            ->when($filters['date_to'], fn (Builder $query, $date) => $query->whereDate('created_at', '<=', $date))
+            ->when($filters['date_from'], fn (Builder $query, $date) => $query->where('created_at', '>=', $date.' 00:00:00'))
+            ->when($filters['date_to'], fn (Builder $query, $date) => $query->where('created_at', '<=', $date.' 23:59:59'))
             ->when($filters['search'], function (Builder $query, $search) {
                 $query->where(function (Builder $builder) use ($search) {
                     $builder
@@ -47,8 +48,10 @@ class AuditLogController extends Controller
             'auditLogs' => $auditLogs,
             'filters' => $filters,
             'users' => User::query()->select('id', 'name')->orderBy('name')->get(),
-            'modules' => AuditLog::query()->select('module')->distinct()->orderBy('module')->pluck('module'),
-            'events' => AuditLog::query()->select('event')->distinct()->orderBy('event')->pluck('event'),
+            'modules' => Cache::remember('audit_log_modules', 3600, fn () => AuditLog::query()->select('module')->distinct()->orderBy('module')->pluck('module')
+            ),
+            'events' => Cache::remember('audit_log_events', 3600, fn () => AuditLog::query()->select('event')->distinct()->orderBy('event')->pluck('event')
+            ),
         ]);
     }
 

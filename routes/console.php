@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AuditLog;
 use App\Models\Setting;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -25,3 +26,7 @@ try {
 }
 
 Schedule::command('crm:generate-reminders')->dailyAt($reminderTime);
+
+Schedule::command('model:prune', [
+    '--model' => [AuditLog::class],
+])->dailyAt('02:30');
