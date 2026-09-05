@@ -55,23 +55,23 @@ class PublicCatalogController extends Controller
 
         $branchId = $activeBranch?->id;
 
-        // 3. Fetch categories with in-stock products in this specific branch
+        // 3. Fetch categories that have products in this specific branch
         $categories = Category::query()
             ->whereHas('products', function ($q) use ($branchId) {
                 $q->whereNull('deleted_at')
-                    ->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $branchId)->where('product_warehouse.stock', '>', 0));
+                    ->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $branchId));
             })
             ->withCount(['products' => function ($q) use ($branchId) {
                 $q->whereNull('deleted_at')
-                    ->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $branchId)->where('product_warehouse.stock', '>', 0));
+                    ->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $branchId));
             }])
             ->orderBy('name')
             ->get(['id', 'name', 'image']);
 
-        // 4. Fetch products with in-stock status in this specific branch
+        // 4. Fetch products in this specific branch (including out-of-stock items)
         $productsQuery = Product::query()
             ->with(['category:id,name', 'units', 'warehouses'])
-            ->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $branchId)->where('product_warehouse.stock', '>', 0))
+            ->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $branchId))
             ->when($categoryId && $categoryId !== 'all', function ($q) use ($categoryId) {
                 $q->where('category_id', $categoryId);
             })
@@ -117,6 +117,7 @@ class PublicCatalogController extends Controller
                 'category_name' => $product->category?->name,
                 'stock' => $branchStock,
                 'is_low_stock' => $product->min_stock > 0 && $branchStock <= $product->min_stock,
+                'is_sold_out' => $branchStock <= 0,
             ];
         });
 

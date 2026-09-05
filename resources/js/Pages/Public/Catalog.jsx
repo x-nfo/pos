@@ -62,6 +62,14 @@ export default function Catalog({
     // Customer checkout form state
     const isDeliveryAllowed = store.delivery_enabled !== false;
     const isPickupAllowed = store.pickup_enabled !== false;
+    const opStatus = activeBranch?.operating_status || store.operating_status || {
+        is_open: true,
+        status: "open",
+        label: "Buka",
+        badge_text: "Buka",
+        badge_color: "emerald",
+    };
+    const isStoreOpen = opStatus.is_open !== false;
     const [customerName, setCustomerName] = useState("");
     const [customerPhone, setCustomerPhone] = useState("");
     const [deliveryMethod, setDeliveryMethod] = useState(() => {
@@ -87,7 +95,7 @@ export default function Catalog({
     useEffect(() => {
         if (selectedProduct) {
             const existing = cart.find((item) => item.id === selectedProduct.id);
-            setModalQty(existing ? existing.qty : 1);
+            setModalQty(selectedProduct.stock <= 0 ? 0 : existing ? existing.qty : 1);
         }
     }, [selectedProduct]);
 
@@ -127,6 +135,11 @@ export default function Catalog({
 
     // Cart actions
     const addToCart = (product, quantity = 1, showToast = true) => {
+        if (!isStoreOpen) {
+            toast.error(`Maaf, toko sedang tutup (${opStatus.badge_text || "Tutup"})`);
+            return;
+        }
+
         if (product.stock <= 0) {
             toast.error("Maaf, stok produk ini habis");
             return;
@@ -141,6 +154,7 @@ export default function Catalog({
                 updated[existingIndex] = { ...current, qty: newQty };
                 return updated;
             }
+
             return [
                 ...prev,
                 {
@@ -167,6 +181,12 @@ export default function Catalog({
     const updateCartQty = (productId, newQty) => {
         if (newQty <= 0) {
             removeFromCart(productId);
+            return;
+        }
+
+        const currentItem = cart.find((i) => i.id === productId);
+        if (!isStoreOpen && currentItem && newQty > currentItem.qty) {
+            toast.error(`Toko sedang tutup. Tidak dapat menambah jumlah item.`);
             return;
         }
 
@@ -218,6 +238,11 @@ export default function Catalog({
 
     // WhatsApp Checkout handler
     const handleWhatsAppCheckout = () => {
+        if (!isStoreOpen) {
+            toast.error(`Toko sedang tutup (${opStatus.badge_text || "Tutup"}). Pemesanan belum dapat diproses.`);
+            return;
+        }
+
         if (cart.length === 0) {
             toast.error("Keranjang belanja masih kosong!");
             return;
@@ -260,6 +285,11 @@ export default function Catalog({
 
     // Instant buy from modal
     const handleInstantBuy = (product, qty) => {
+        if (!isStoreOpen) {
+            toast.error(`Maaf, toko sedang tutup (${opStatus.badge_text || "Tutup"})`);
+            return;
+        }
+
         if (!customerName.trim()) {
             addToCart(product, qty, false);
             setSelectedProduct(null);
@@ -340,6 +370,28 @@ export default function Catalog({
                     />
                 )}
 
+                {/* Store Closure Notice Banner */}
+                {!isStoreOpen && (
+                    <div className="mb-4 p-3 sm:p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/90 dark:border-amber-900/60 flex items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200 shadow-2xs">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                                <IconAlertCircle size={18} />
+                            </span>
+                            <div className="min-w-0">
+                                <p className="font-bold truncate">
+                                    Toko Sedang Tutup ({opStatus.badge_text || "Tutup"})
+                                </p>
+                                <p className="text-[11px] text-amber-700 dark:text-amber-300/90 truncate">
+                                    {opStatus.schedule_info || "Pemesanan ke keranjang dinonaktifkan sementara. Anda tetap dapat menjelajahi katalog produk."}
+                                </p>
+                            </div>
+                        </div>
+                        <span className="hidden sm:inline-flex px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-[11px] font-bold shrink-0">
+                            Hanya Lihat Katalog
+                        </span>
+                    </div>
+                )}
+
                 {/* Category Chips (Horizontal Scroll) */}
                 <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 mb-3 sm:mb-4 scrollbar-hide -mx-1 px-1">
                     <button
@@ -414,6 +466,7 @@ export default function Catalog({
                         {filteredProducts.map((product) => {
                             const inCart = cart.find((item) => item.id === product.id);
                             const price = product.final_price || product.sell_price;
+                            const isSoldOut = product.stock <= 0;
 
                             return (
                                 <div
@@ -429,30 +482,40 @@ export default function Catalog({
                                             <img
                                                 src={product.image}
                                                 alt={product.title}
-                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                                className={`w-full h-full object-cover transition-all duration-300 ${
+                                                    isSoldOut
+                                                        ? "opacity-45 grayscale contrast-75 brightness-90 group-hover:scale-100"
+                                                        : "group-hover:scale-105"
+                                                }`}
                                                 loading="lazy"
                                             />
                                         ) : (
-                                            <div className="flex flex-col items-center justify-center text-slate-300 dark:text-slate-600">
+                                            <div className={`flex flex-col items-center justify-center text-slate-300 dark:text-slate-600 ${isSoldOut ? "opacity-40" : ""}`}>
                                                 <IconPhotoOff size={32} />
                                                 <span className="text-[10px] mt-1">No Image</span>
                                             </div>
                                         )}
 
                                         {/* Promo Badge */}
-                                        {product.has_discount && (
+                                        {product.has_discount && !isSoldOut && (
                                             <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 px-1.5 py-0.5 rounded-md bg-rose-500 text-white font-bold text-[10px] sm:text-[11px] shadow-xs flex items-center gap-0.5">
                                                 <IconSparkles size={11} />
                                                 <span>-{product.discount_percentage}%</span>
                                             </div>
                                         )}
 
-                                        {/* Stock indicator badge */}
-                                        {product.stock <= 5 && product.stock > 0 && (
+                                        {/* Sold Out Overlay Badge or Stock indicator badge */}
+                                        {isSoldOut ? (
+                                            <div className="absolute inset-0 bg-slate-900/30 dark:bg-slate-950/50 flex items-center justify-center pointer-events-none p-2">
+                                                <span className="px-3 py-1 sm:py-1.5 rounded-full bg-slate-900/90 dark:bg-black/90 text-white font-bold text-[10px] sm:text-xs tracking-wider uppercase shadow-md border border-white/20">
+                                                    Sold Out
+                                                </span>
+                                            </div>
+                                        ) : product.stock <= 5 && product.stock > 0 ? (
                                             <div className="absolute bottom-1.5 left-1.5 sm:bottom-2 sm:left-2 px-1.5 py-0.5 rounded-md bg-amber-500/90 text-white font-semibold text-[9px] sm:text-[10px] backdrop-blur-xs">
                                                 Sisa {product.stock}
                                             </div>
-                                        )}
+                                        ) : null}
                                     </div>
 
                                     {/* Product Details */}
@@ -466,7 +529,11 @@ export default function Catalog({
 
                                             <h3
                                                 onClick={() => setSelectedProduct(product)}
-                                                className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white line-clamp-2 min-h-[30px] sm:min-h-[40px] leading-snug hover:text-primary-600 dark:hover:text-primary-400 cursor-pointer transition-colors"
+                                                className={`text-xs sm:text-sm font-bold line-clamp-2 min-h-[30px] sm:min-h-[40px] leading-snug cursor-pointer transition-colors ${
+                                                    isSoldOut
+                                                        ? "text-slate-500 dark:text-slate-400"
+                                                        : "text-slate-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400"
+                                                }`}
                                                 title={product.title}
                                             >
                                                 {product.title}
@@ -482,18 +549,27 @@ export default function Catalog({
                                         {/* Price & Action Row (Anti-overflow on mobile) */}
                                         <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-1">
                                             <div className="min-w-0 flex-1 pr-1">
-                                                {product.has_discount && (
+                                                {product.has_discount && !isSoldOut && (
                                                     <span className="text-[10px] text-slate-400 line-through block truncate">
                                                         {formatRupiah(product.sell_price)}
                                                     </span>
                                                 )}
-                                                <span className="text-xs sm:text-sm md:text-base font-extrabold text-primary-600 dark:text-primary-400 block truncate">
+                                                <span className={`text-xs sm:text-sm md:text-base font-extrabold block truncate ${
+                                                    isSoldOut ? "text-slate-500 dark:text-slate-400" : "text-primary-600 dark:text-primary-400"
+                                                }`}>
                                                     {formatRupiah(price)}
                                                 </span>
                                             </div>
 
                                             {/* Add to Cart / Stepper Button */}
-                                            {inCart ? (
+                                            {isSoldOut ? (
+                                                <span
+                                                    className="px-2 py-1 sm:py-1.5 rounded-lg sm:rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-bold text-[10px] sm:text-xs border border-slate-200/80 dark:border-slate-700 cursor-not-allowed select-none shrink-0"
+                                                    title="Stok Habis (Sold Out)"
+                                                >
+                                                    Habis
+                                                </span>
+                                            ) : inCart ? (
                                                 <div className="flex items-center bg-primary-50 dark:bg-primary-950/50 rounded-lg p-0.5 border border-primary-200 dark:border-primary-800 shrink-0">
                                                     <button
                                                         type="button"
@@ -514,8 +590,9 @@ export default function Catalog({
                                                             e.stopPropagation();
                                                             updateCartQty(product.id, inCart.qty + 1);
                                                         }}
-                                                        disabled={inCart.qty >= product.stock}
-                                                        className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-primary-600 text-white flex items-center justify-center disabled:opacity-40 shadow-xs"
+                                                        disabled={!isStoreOpen || inCart.qty >= product.stock}
+                                                        className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-primary-600 text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+                                                        title={!isStoreOpen ? "Toko sedang tutup" : inCart.qty >= product.stock ? "Stok maksimal" : "Tambah"}
                                                     >
                                                         <IconPlus size={11} />
                                                     </button>
@@ -523,12 +600,21 @@ export default function Catalog({
                                             ) : (
                                                 <button
                                                     type="button"
+                                                    disabled={!isStoreOpen}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         addToCart(product, 1);
                                                     }}
-                                                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-primary-600 hover:bg-primary-700 active:scale-90 text-white flex items-center justify-center shrink-0 shadow-xs transition-all"
-                                                    title="Tambah ke keranjang"
+                                                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 shadow-xs transition-all ${
+                                                        !isStoreOpen
+                                                            ? "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none"
+                                                            : "bg-primary-600 hover:bg-primary-700 active:scale-90 text-white cursor-pointer"
+                                                    }`}
+                                                    title={
+                                                        !isStoreOpen
+                                                            ? `Toko Sedang Tutup (${opStatus.badge_text || "Tutup"})`
+                                                            : "Tambah ke keranjang"
+                                                    }
                                                 >
                                                     <IconPlus size={16} strokeWidth={2.5} />
                                                 </button>
@@ -652,10 +738,10 @@ export default function Catalog({
                         {/* Drawer Scrollable Content */}
                         <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-3 sm:py-4 space-y-4">
                             {/* Operational Status Notice */}
-                            {store?.operating_status && !store.operating_status.is_open && (
+                            {!isStoreOpen && (
                                 <div
                                     className={`p-3 rounded-2xl border text-xs flex items-start gap-2.5 ${
-                                        store.operating_status.status === "temporarily_closed"
+                                        opStatus.status === "temporarily_closed"
                                             ? "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/50 text-rose-800 dark:text-rose-200"
                                             : "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/50 text-amber-800 dark:text-amber-200"
                                     }`}
@@ -663,25 +749,25 @@ export default function Catalog({
                                     <IconAlertCircle
                                         size={18}
                                         className={`shrink-0 mt-0.5 ${
-                                            store.operating_status.status === "temporarily_closed"
+                                            opStatus.status === "temporarily_closed"
                                                 ? "text-rose-600 dark:text-rose-400"
                                                 : "text-amber-600 dark:text-amber-400"
                                         }`}
                                     />
                                     <div className="space-y-0.5 flex-1">
                                         <span className="font-bold block">
-                                            {store.operating_status.status === "temporarily_closed"
+                                            {opStatus.status === "temporarily_closed"
                                                 ? "Toko Sedang Tutup Sementara"
-                                                : `Toko Sedang Tutup (${store.operating_status.badge_text})`}
+                                                : `Toko Sedang Tutup (${opStatus.badge_text})`}
                                         </span>
                                         <p className="text-[11px] leading-relaxed opacity-90">
-                                            {store.operating_status.status === "temporarily_closed"
-                                                ? `${store.operating_status.closure_reason || "Sedang libur operasional"}.${
-                                                      store.operating_status.reopen_date_formatted
-                                                          ? ` Buka kembali: ${store.operating_status.reopen_date_formatted}.`
+                                            {opStatus.status === "temporarily_closed"
+                                                ? `${opStatus.closure_reason || "Sedang libur operasional"}.${
+                                                      opStatus.reopen_date_formatted
+                                                          ? ` Buka kembali: ${opStatus.reopen_date_formatted}.`
                                                           : ""
-                                                  } Pesanan Anda tetap dapat dikirim via WhatsApp dan akan diproses saat toko beroperasi kembali.`
-                                                : "Pesanan Anda via WhatsApp tetap dapat dikirim dan akan diproses segera saat jam operasional toko dibuka."}
+                                                  } Pemesanan belanja ditutup sementara.`
+                                                : "Pemesanan belum dapat diproses saat ini. Silakan kembali saat jam operasional toko dibuka."}
                                         </p>
                                     </div>
                                 </div>
@@ -735,8 +821,9 @@ export default function Catalog({
                                                             <button
                                                                 type="button"
                                                                 onClick={() => updateCartQty(item.id, item.qty + 1)}
-                                                                disabled={item.qty >= item.stock}
-                                                                className="w-5 h-5 rounded flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 disabled:opacity-40"
+                                                                disabled={!isStoreOpen || item.qty >= item.stock}
+                                                                className="w-5 h-5 rounded flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                                                                title={!isStoreOpen ? "Toko sedang tutup" : undefined}
                                                             >
                                                                 <IconPlus size={11} />
                                                             </button>
@@ -891,11 +978,16 @@ export default function Catalog({
 
                                 <button
                                     type="button"
+                                    disabled={!isStoreOpen}
                                     onClick={handleWhatsAppCheckout}
-                                    className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all"
+                                    className={`w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
+                                        !isStoreOpen
+                                            ? "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none"
+                                            : "bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white shadow-md shadow-emerald-600/25 cursor-pointer"
+                                    }`}
                                 >
                                     <IconBrandWhatsapp size={18} />
-                                    Kirim Pesanan via WhatsApp
+                                    {!isStoreOpen ? "Toko Tutup — Belum Dapat Memesan" : "Kirim Pesanan via WhatsApp"}
                                 </button>
                             </div>
                         )}
@@ -918,22 +1010,35 @@ export default function Catalog({
                         <button
                             type="button"
                             onClick={() => setSelectedProduct(null)}
-                            className="absolute top-3 right-3 sm:top-4 sm:right-4 p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                            className="absolute top-3 right-3 sm:top-4 sm:right-4 p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition z-20"
                         >
                             <IconX size={18} />
                         </button>
 
-                        <div className="aspect-video w-full rounded-xl sm:rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-hidden mb-3 sm:mb-4 flex items-center justify-center border border-slate-200/80 dark:border-slate-700">
+                        <div className="aspect-square sm:aspect-[4/3] max-h-[320px] sm:max-h-[380px] w-full rounded-xl sm:rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-hidden mb-3 sm:mb-4 flex items-center justify-center border border-slate-200/80 dark:border-slate-700 relative">
                             {selectedProduct.image ? (
                                 <img
                                     src={selectedProduct.image}
                                     alt={selectedProduct.title}
-                                    className="w-full h-full object-contain"
+                                    className={`w-full h-full object-cover object-center ${
+                                        selectedProduct.stock <= 0
+                                            ? "opacity-45 grayscale contrast-75 brightness-90"
+                                            : ""
+                                    }`}
                                 />
                             ) : (
-                                <div className="flex flex-col items-center text-slate-400">
+                                <div className={`flex flex-col items-center text-slate-400 ${selectedProduct.stock <= 0 ? "opacity-40" : ""}`}>
                                     <IconPhotoOff size={40} />
                                     <span className="text-xs mt-1">Foto Belum Tersedia</span>
+                                </div>
+                            )}
+
+                            {/* Sold Out Overlay Badge in Modal */}
+                            {selectedProduct.stock <= 0 && (
+                                <div className="absolute inset-0 bg-slate-900/30 dark:bg-slate-950/50 flex items-center justify-center pointer-events-none p-4">
+                                    <span className="px-4 py-2 rounded-full bg-slate-900/90 dark:bg-black/90 text-white font-bold text-xs sm:text-sm tracking-wider uppercase shadow-md border border-white/20">
+                                        Sold Out · Stok Habis
+                                    </span>
                                 </div>
                             )}
                         </div>
@@ -950,10 +1055,12 @@ export default function Catalog({
 
                         {/* Price & Stock info */}
                         <div className="flex items-center gap-2.5 my-2">
-                            <span className="text-lg sm:text-xl font-extrabold text-primary-600 dark:text-primary-400">
+                            <span className={`text-lg sm:text-xl font-extrabold ${
+                                selectedProduct.stock <= 0 ? "text-slate-500 dark:text-slate-400" : "text-primary-600 dark:text-primary-400"
+                            }`}>
                                 {formatRupiah(selectedProduct.final_price || selectedProduct.sell_price)}
                             </span>
-                            {selectedProduct.has_discount && (
+                            {selectedProduct.has_discount && selectedProduct.stock > 0 && (
                                 <>
                                     <span className="text-xs text-slate-400 line-through">
                                         {formatRupiah(selectedProduct.sell_price)}
@@ -968,9 +1075,15 @@ export default function Catalog({
                         <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 py-1.5 border-y border-slate-100 dark:border-slate-800">
                             <span>
                                 Stok:{" "}
-                                <strong className="text-slate-800 dark:text-slate-200">
-                                    {selectedProduct.stock} unit
-                                </strong>
+                                {selectedProduct.stock <= 0 ? (
+                                    <span className="inline-flex items-center gap-1 font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-md">
+                                        Stok Habis (0 unit)
+                                    </span>
+                                ) : (
+                                    <strong className="text-slate-800 dark:text-slate-200">
+                                        {selectedProduct.stock} unit
+                                    </strong>
+                                )}
                             </span>
                             {selectedProduct.sku && (
                                 <span>
@@ -994,6 +1107,23 @@ export default function Catalog({
                             </div>
                         )}
 
+                        {/* Sold Out or Store Closed Alert in Modal */}
+                        {selectedProduct.stock <= 0 ? (
+                            <div className="my-3 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/50 flex items-center gap-2 text-xs text-rose-800 dark:text-rose-200">
+                                <IconAlertCircle size={16} className="shrink-0 text-rose-600 dark:text-rose-400" />
+                                <span>
+                                    <strong>Stok Sedang Habis:</strong> Produk ini saat ini belum tersedia untuk dipesan. Anda dapat menanyakan jadwal restock ke admin toko via WhatsApp.
+                                </span>
+                            </div>
+                        ) : !isStoreOpen ? (
+                            <div className="my-3 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/50 flex items-center gap-2 text-xs text-amber-800 dark:text-amber-200">
+                                <IconAlertCircle size={16} className="shrink-0 text-amber-600 dark:text-amber-400" />
+                                <span>
+                                    <strong>Toko Sedang Tutup:</strong> {opStatus.schedule_info || opStatus.badge_text || "Pemesanan dinonaktifkan sementara."}
+                                </span>
+                            </div>
+                        ) : null}
+
                         {/* Stepper & Action Buttons */}
                         <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center gap-2">
                             <div className="flex items-center justify-between w-full sm:w-auto gap-2 bg-slate-100 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700">
@@ -1003,8 +1133,9 @@ export default function Catalog({
                                 <div className="flex items-center gap-2">
                                     <button
                                         type="button"
+                                        disabled={!isStoreOpen || selectedProduct.stock <= 0 || modalQty <= 1}
                                         onClick={() => setModalQty((q) => Math.max(1, q - 1))}
-                                        className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 shadow-xs"
+                                        className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
                                     >
                                         <IconMinus size={14} />
                                     </button>
@@ -1013,11 +1144,18 @@ export default function Catalog({
                                     </span>
                                     <button
                                         type="button"
+                                        disabled={!isStoreOpen || selectedProduct.stock <= 0 || modalQty >= selectedProduct.stock}
                                         onClick={() =>
                                             setModalQty((q) => Math.min(selectedProduct.stock, q + 1))
                                         }
-                                        disabled={modalQty >= selectedProduct.stock}
-                                        className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 shadow-xs disabled:opacity-40"
+                                        className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                                        title={
+                                            selectedProduct.stock <= 0
+                                                ? "Stok Habis"
+                                                : !isStoreOpen
+                                                ? "Toko sedang tutup"
+                                                : undefined
+                                        }
                                     >
                                         <IconPlus size={14} />
                                     </button>
@@ -1027,23 +1165,78 @@ export default function Catalog({
                             <div className="grid grid-cols-2 sm:flex sm:flex-1 gap-2 w-full">
                                 <button
                                     type="button"
+                                    disabled={!isStoreOpen || selectedProduct.stock <= 0}
                                     onClick={() => {
+                                        if (selectedProduct.stock <= 0) {
+                                            toast.error("Maaf, produk ini sedang habis.");
+                                            return;
+                                        }
+                                        if (!isStoreOpen) {
+                                            toast.error(`Maaf, toko sedang tutup (${opStatus.badge_text || "Tutup"})`);
+                                            return;
+                                        }
                                         addToCart(selectedProduct, modalQty);
                                         setSelectedProduct(null);
                                     }}
-                                    className="py-2.5 px-3 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition"
+                                    className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition ${
+                                        !isStoreOpen || selectedProduct.stock <= 0
+                                            ? "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none"
+                                            : "bg-primary-600 hover:bg-primary-700 text-white cursor-pointer"
+                                    }`}
+                                    title={
+                                        selectedProduct.stock <= 0
+                                            ? "Stok Habis"
+                                            : !isStoreOpen
+                                            ? "Toko sedang tutup"
+                                            : "Tambah ke keranjang"
+                                    }
                                 >
                                     <IconShoppingCart size={16} />
-                                    + Keranjang
+                                    {selectedProduct.stock <= 0
+                                        ? "Stok Habis"
+                                        : !isStoreOpen
+                                        ? "Toko Tutup"
+                                        : "+ Keranjang"}
                                 </button>
 
                                 <button
                                     type="button"
-                                    onClick={() => handleInstantBuy(selectedProduct, modalQty)}
-                                    className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition"
+                                    onClick={() => {
+                                        if (selectedProduct.stock <= 0) {
+                                            const targetNumber = store.wa_number || "6281234567890";
+                                            const text = encodeURIComponent(
+                                                `Halo ${store.name || "Admin Toko"}, saya ingin menanyakan apakah produk *${selectedProduct.title}* yang sedang habis akan segera restock/tersedia kembali? Terima kasih.`
+                                            );
+                                            window.open(`https://wa.me/${targetNumber}?text=${text}`, "_blank");
+                                            return;
+                                        }
+                                        if (!isStoreOpen) {
+                                            toast.error(`Maaf, toko sedang tutup (${opStatus.badge_text || "Tutup"})`);
+                                            return;
+                                        }
+                                        handleInstantBuy(selectedProduct, modalQty);
+                                    }}
+                                    className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition ${
+                                        selectedProduct.stock <= 0
+                                            ? "bg-slate-800 hover:bg-slate-900 text-white cursor-pointer"
+                                            : !isStoreOpen
+                                            ? "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none"
+                                            : "bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                                    }`}
+                                    title={
+                                        selectedProduct.stock <= 0
+                                            ? "Tanya ketersediaan restock via WhatsApp"
+                                            : !isStoreOpen
+                                            ? "Toko sedang tutup"
+                                            : "Beli via WhatsApp"
+                                    }
                                 >
                                     <IconBrandWhatsapp size={16} />
-                                    Beli via WA
+                                    {selectedProduct.stock <= 0
+                                        ? "Tanya Stok via WA"
+                                        : !isStoreOpen
+                                        ? "Toko Tutup"
+                                        : "Beli via WA"}
                                 </button>
                             </div>
                         </div>

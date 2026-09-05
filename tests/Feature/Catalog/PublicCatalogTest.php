@@ -141,7 +141,7 @@ class PublicCatalogTest extends TestCase
         );
     }
 
-    public function test_public_catalog_hides_products_with_zero_stock(): void
+    public function test_public_catalog_displays_products_with_zero_stock_as_sold_out(): void
     {
         $category = Category::create(['name' => 'Snack', 'description' => 'Snack']);
 
@@ -161,7 +161,10 @@ class PublicCatalogTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Public/Catalog')
-            ->has('products', 0)
+            ->has('products', 1)
+            ->where('products.0.title', 'Keripik Singkong (Habis)')
+            ->where('products.0.stock', 0)
+            ->where('products.0.is_sold_out', true)
         );
     }
 
@@ -365,9 +368,13 @@ class PublicCatalogTest extends TestCase
             ->where('store.wa_number', '6281234567890')
             ->where('store.address', 'Jl. Tebet Raya No. 10')
             ->where('store.branch_name', 'Cabang Tebet')
-            ->has('products', 1)
-            ->where('products.0.title', 'Espresso Tebet Exclusive')
-            ->where('products.0.stock', 12)
+            ->has('products', 2)
+            ->where('products.0.title', 'Cold Brew Kemang Exclusive')
+            ->where('products.0.stock', 0)
+            ->where('products.0.is_sold_out', true)
+            ->where('products.1.title', 'Espresso Tebet Exclusive')
+            ->where('products.1.stock', 12)
+            ->where('products.1.is_sold_out', false)
         );
 
         // Request Catalog for Branch 2
@@ -381,9 +388,13 @@ class PublicCatalogTest extends TestCase
             ->where('store.wa_number', '6289876543210')
             ->where('store.address', 'Jl. Kemang Selatan No. 20')
             ->where('store.branch_name', 'Cabang Kemang')
-            ->has('products', 1)
+            ->has('products', 2)
             ->where('products.0.title', 'Cold Brew Kemang Exclusive')
             ->where('products.0.stock', 18)
+            ->where('products.0.is_sold_out', false)
+            ->where('products.1.title', 'Espresso Tebet Exclusive')
+            ->where('products.1.stock', 0)
+            ->where('products.1.is_sold_out', true)
         );
     }
 
