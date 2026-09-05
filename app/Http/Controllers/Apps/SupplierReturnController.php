@@ -73,7 +73,7 @@ class SupplierReturnController extends Controller
             $goodsReceivings = $grQuery->get();
         }
 
-        $products = Product::orderBy('title')->get(['id', 'title', 'sku', 'buy_price', 'stock']);
+        $products = Product::with('warehouses')->orderBy('title')->get(['id', 'title', 'sku', 'buy_price']);
 
         return Inertia::render('Dashboard/SupplierReturns/Create', [
             'suppliers' => $suppliers,

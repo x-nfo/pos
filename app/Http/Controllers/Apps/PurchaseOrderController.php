@@ -71,9 +71,9 @@ class PurchaseOrderController extends Controller
         $user = auth()->user();
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
         $categories = Category::orderBy('name')->get(['id', 'name']);
-        $products = Product::with(['units', 'category:id,name'])
+        $products = Product::with(['units', 'category:id,name', 'warehouses'])
             ->orderBy('title')
-            ->get(['id', 'category_id', 'title', 'sku', 'barcode', 'buy_price', 'sell_price', 'stock'])
+            ->get(['id', 'category_id', 'title', 'sku', 'barcode', 'buy_price', 'sell_price'])
             ->map(function ($product) {
                 return [
                     'id' => $product->id,
@@ -203,9 +203,9 @@ class PurchaseOrderController extends Controller
         $user = $request->user();
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
         $categories = Category::orderBy('name')->get(['id', 'name']);
-        $products = Product::with(['units', 'category:id,name'])
+        $products = Product::with(['units', 'category:id,name', 'warehouses'])
             ->orderBy('title')
-            ->get(['id', 'category_id', 'title', 'sku', 'barcode', 'buy_price', 'sell_price', 'stock'])
+            ->get(['id', 'category_id', 'title', 'sku', 'barcode', 'buy_price', 'sell_price'])
             ->map(function ($product) {
                 return [
                     'id' => $product->id,

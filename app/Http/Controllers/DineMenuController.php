@@ -30,7 +30,7 @@ class DineMenuController extends Controller
             ->get();
 
         $products = Product::where('is_active', true)
-            ->where('stock', '>', 0)
+            ->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.stock', '>', 0))
             ->with(['category', 'units.unit'])
             ->get();
 

@@ -98,8 +98,8 @@ class DashboardController extends Controller
                     ];
                 });
         } else {
-            $lowStockProducts = Product::where('stock', '<', 10)
-                ->orderBy('stock', 'asc')
+            $lowStockProducts = Product::whereHas('warehouses', fn ($w) => $w->where('product_warehouse.stock', '<', 10))
+                ->with('warehouses')
                 ->take(5)
                 ->get()
                 ->map(function ($product) {
@@ -119,7 +119,13 @@ class DashboardController extends Controller
             ->pluck('product_id');
 
         $slowMovingProducts = Product::whereNotIn('id', $recentlySoldProductIds)
-            ->where('stock', '>', 0)
+            ->when($scopedWarehouseId, function ($q) use ($scopedWarehouseId) {
+                $q->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $scopedWarehouseId)
+                    ->where('product_warehouse.stock', '>', 0));
+            }, function ($q) {
+                $q->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.stock', '>', 0));
+            })
+            ->with('warehouses')
             ->take(5)
             ->get()
             ->map(function ($product) {

@@ -54,7 +54,7 @@ class StockTransferController extends Controller
             'category:id,name',
         ])
             ->orderBy('title')
-            ->get(['id', 'category_id', 'title', 'sku', 'barcode', 'stock'])
+            ->get(['id', 'category_id', 'title', 'sku', 'barcode'])
             ->map(function ($product) {
                 return [
                     'id' => $product->id,
