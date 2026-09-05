@@ -321,7 +321,7 @@ class ProductController extends Controller
         $units = Unit::orderBy('name')->get(['id', 'code', 'name', 'symbol']);
 
         return Inertia::render('Dashboard/Products/Edit', [
-            'product' => $product->load('units'),
+            'product' => $product->load(['units', 'warehouses']),
             'categories' => $categories,
             'units' => $units,
         ]);

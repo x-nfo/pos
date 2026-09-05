@@ -307,10 +307,11 @@ class SalesReturnController extends Controller
 
                         // Restock to return warehouse
                         if ($returnWarehouseId) {
-                            ProductWarehouse::where([
+                            $pivot = ProductWarehouse::firstOrCreate([
                                 'product_id' => $product->id,
                                 'warehouse_id' => $returnWarehouseId,
-                            ])->increment('stock', $baseQtyReturn);
+                            ], ['stock' => 0]);
+                            $pivot->increment('stock', $baseQtyReturn);
                         }
 
                         $this->stockMutationService->recordSalesReturnRestock(
@@ -370,10 +371,11 @@ class SalesReturnController extends Controller
                     ]);
 
                     if ($returnWarehouseId) {
-                        ProductWarehouse::where([
+                        $pivot = ProductWarehouse::firstOrCreate([
                             'product_id' => $product->id,
                             'warehouse_id' => $returnWarehouseId,
-                        ])->decrement('stock', $requiredBaseStock);
+                        ], ['stock' => 0]);
+                        $pivot->decrement('stock', $requiredBaseStock);
                     }
 
                     $unitLabel = $exchangeItem->unit?->name ?? 'unit';

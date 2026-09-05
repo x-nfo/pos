@@ -269,14 +269,31 @@ export default function Edit({ categories = [], product, units = [] }) {
                                 />
                             </div>
 
-                            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                                    Stok Saat Ini
+                            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+                                    Stok Saat Ini (Total: {product.stock} {baseUnitSymbol})
                                 </p>
-                                <p className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">
-                                    {product.stock} {baseUnitSymbol}
-                                </p>
-                                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                
+                                {product.warehouses && product.warehouses.length > 0 ? (
+                                    <div className="mt-2 space-y-2">
+                                        {product.warehouses.map((wh) => (
+                                            <div key={wh.id} className="flex justify-between items-center bg-white dark:bg-slate-900 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-700/50">
+                                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                    {wh.name}
+                                                </span>
+                                                <span className={`text-sm font-bold ${wh.pivot.stock <= product.min_stock ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-slate-100'}`}>
+                                                    {wh.pivot.stock} {baseUnitSymbol}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">
+                                        {product.stock} {baseUnitSymbol}
+                                    </p>
+                                )}
+
+                                <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
                                     Perubahan stok dilakukan melalui transaksi atau stock opname.
                                 </p>
                             </div>

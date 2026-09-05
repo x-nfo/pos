@@ -125,12 +125,12 @@ class SupplierReturnService
                 $stockBefore = (int) $product->stock;
                 $product->decrement('stock', $item->qty_returned);
 
-                // Decrement pivot warehouse stock
                 if ($return->warehouse_id) {
-                    ProductWarehouse::where([
+                    $pivot = ProductWarehouse::firstOrCreate([
                         'product_id' => $product->id,
                         'warehouse_id' => $return->warehouse_id,
-                    ])->decrement('stock', $item->qty_returned);
+                    ], ['stock' => 0]);
+                    $pivot->decrement('stock', $item->qty_returned);
                 }
 
                 $this->stockMutationService->recordSupplierReturnOut(

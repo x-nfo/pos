@@ -220,10 +220,11 @@ class TransactionSyncController extends Controller
                             $stockBefore = (int) $component->stock;
                             $stockAfter = $stockBefore - $componentQty;
 
-                            ProductWarehouse::where([
+                            $pivot = ProductWarehouse::firstOrCreate([
                                 'product_id' => $component->id,
                                 'warehouse_id' => $activeShift->warehouse_id,
-                            ])->decrement('stock', $componentQty);
+                            ], ['stock' => 0]);
+                            $pivot->decrement('stock', $componentQty);
                             $component->decrement('stock', $componentQty);
 
                             $isDeficit = $stockAfter < 0;
@@ -243,11 +244,12 @@ class TransactionSyncController extends Controller
                             );
 
                             if ($isDeficit) {
+                                $warehouseName = $activeShift->warehouse?->name ?? 'Gudang Pusat';
                                 $this->auditLogService->log(
                                     event: 'stock.offline_negative_sync',
                                     module: 'stock',
                                     auditable: $component,
-                                    description: "Stok mengalami selisih minus akibat sinkronisasi offline untuk produk {$component->title} (Sisa stok: {$stockAfter}) pada transaksi {$transaction->invoice}",
+                                    description: "Stok mengalami selisih minus akibat sinkronisasi offline untuk produk {$component->title} di **{$warehouseName}** (Sisa stok: {$stockAfter}) pada transaksi {$transaction->invoice}",
                                     before: [
                                         'product_id' => $component->id,
                                         'product_title' => $component->title,
@@ -275,9 +277,11 @@ class TransactionSyncController extends Controller
                                         'qty_sold' => $componentQty,
                                         'stock_before' => $stockBefore,
                                         'stock_after' => $stockAfter,
+                                        'warehouse_id' => $activeShift->warehouse_id,
+                                        'warehouse_name' => $warehouseName,
                                         'is_negative_stock' => true,
                                         'offline_sync' => true,
-                                        'warning' => 'Stok mengalami selisih minus akibat sinkronisasi offline',
+                                        'warning' => "Stok mengalami selisih minus akibat sinkronisasi offline di {$warehouseName}",
                                     ],
                                     actor: auth()->user()
                                 );
@@ -288,7 +292,8 @@ class TransactionSyncController extends Controller
                                     'stock_before' => $stockBefore,
                                     'stock_after' => $stockAfter,
                                     'deficit' => abs($stockAfter),
-                                    'message' => 'Stok mengalami selisih minus akibat sinkronisasi offline',
+                                    'warehouse_name' => $warehouseName,
+                                    'message' => "Stok mengalami selisih minus akibat sinkronisasi offline di {$warehouseName}",
                                 ];
                             }
                         }
@@ -297,10 +302,11 @@ class TransactionSyncController extends Controller
                         $stockBefore = (int) $product->stock;
                         $stockAfter = $stockBefore - $baseQty;
 
-                        ProductWarehouse::where([
+                        $pivot = ProductWarehouse::firstOrCreate([
                             'product_id' => $product->id,
                             'warehouse_id' => $activeShift->warehouse_id,
-                        ])->decrement('stock', $baseQty);
+                        ], ['stock' => 0]);
+                        $pivot->decrement('stock', $baseQty);
                         $product->decrement('stock', $baseQty);
 
                         $isDeficit = $stockAfter < 0;
@@ -320,11 +326,12 @@ class TransactionSyncController extends Controller
                         );
 
                         if ($isDeficit) {
+                            $warehouseName = $activeShift->warehouse?->name ?? 'Gudang Pusat';
                             $this->auditLogService->log(
                                 event: 'stock.offline_negative_sync',
                                 module: 'stock',
                                 auditable: $product,
-                                description: "Stok mengalami selisih minus akibat sinkronisasi offline untuk produk {$product->title} (Sisa stok: {$stockAfter}) pada transaksi {$transaction->invoice}",
+                                description: "Stok mengalami selisih minus akibat sinkronisasi offline untuk produk {$product->title} di **{$warehouseName}** (Sisa stok: {$stockAfter}) pada transaksi {$transaction->invoice}",
                                 before: [
                                     'product_id' => $product->id,
                                     'product_title' => $product->title,
@@ -350,9 +357,11 @@ class TransactionSyncController extends Controller
                                     'qty_sold' => $baseQty,
                                     'stock_before' => $stockBefore,
                                     'stock_after' => $stockAfter,
+                                    'warehouse_id' => $activeShift->warehouse_id,
+                                    'warehouse_name' => $warehouseName,
                                     'is_negative_stock' => true,
                                     'offline_sync' => true,
-                                    'warning' => 'Stok mengalami selisih minus akibat sinkronisasi offline',
+                                    'warning' => "Stok mengalami selisih minus akibat sinkronisasi offline di {$warehouseName}",
                                 ],
                                 actor: auth()->user()
                             );
@@ -363,7 +372,8 @@ class TransactionSyncController extends Controller
                                 'stock_before' => $stockBefore,
                                 'stock_after' => $stockAfter,
                                 'deficit' => abs($stockAfter),
-                                'message' => 'Stok mengalami selisih minus akibat sinkronisasi offline',
+                                'warehouse_name' => $warehouseName,
+                                'message' => "Stok mengalami selisih minus akibat sinkronisasi offline di {$warehouseName}",
                             ];
                         }
                     }

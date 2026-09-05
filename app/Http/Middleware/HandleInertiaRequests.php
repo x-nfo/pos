@@ -17,6 +17,7 @@ use App\Services\WhatsAppService;
 use App\Support\ProductionSecurityBaseline;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Middleware;
 
@@ -118,28 +119,39 @@ class HandleInertiaRequests extends Middleware
                 $pendingDineOrdersCount = DineOrder::pending()->count();
             }
 
-            $lowStockNotifications = Product::where(function ($query) {
-                $query->where('min_stock', '>', 0)
-                    ->whereColumn('stock', '<=', 'min_stock')
-                    ->orWhere('stock', '<=', 0);
-            })
+            $lowStockNotifications = DB::table('product_warehouse')
+                ->join('products', 'product_warehouse.product_id', '=', 'products.id')
+                ->join('warehouses', 'product_warehouse.warehouse_id', '=', 'warehouses.id')
+                ->where(function ($query) {
+                    $query->where('products.min_stock', '>', 0)
+                        ->whereColumn('product_warehouse.stock', '<=', 'products.min_stock')
+                        ->orWhere('product_warehouse.stock', '<=', 0);
+                })
                 ->whereNotExists(function ($query) use ($userId) {
                     $query->selectRaw('1')
                         ->from('product_notification_reads as pr')
                         ->whereColumn('pr.product_id', 'products.id')
                         ->where('pr.user_id', $userId)
-                        ->whereColumn('pr.updated_at', '>=', 'products.updated_at');
+                        ->whereColumn('pr.updated_at', '>=', 'product_warehouse.updated_at');
                 })
-                ->orderByDesc('updated_at')
+                ->orderByDesc('product_warehouse.updated_at')
                 ->limit(10)
-                ->get(['id', 'title', 'stock', 'min_stock', 'updated_at'])
-                ->map(function ($product) {
+                ->get([
+                    'products.id', 
+                    'products.title', 
+                    'product_warehouse.stock', 
+                    'products.min_stock', 
+                    'product_warehouse.updated_at',
+                    'warehouses.name as warehouse_name'
+                ])
+                ->map(function ($row) {
                     return [
-                        'id' => $product->id,
-                        'title' => $product->title,
-                        'stock' => (int) $product->stock,
-                        'min_stock' => (int) $product->min_stock,
-                        'time' => optional($product->updated_at)->diffForHumans(),
+                        'id' => $row->id,
+                        'title' => $row->title,
+                        'stock' => (int) $row->stock,
+                        'min_stock' => (int) $row->min_stock,
+                        'warehouse' => $row->warehouse_name,
+                        'time' => \Carbon\Carbon::parse($row->updated_at)->diffForHumans(),
                     ];
                 });
 

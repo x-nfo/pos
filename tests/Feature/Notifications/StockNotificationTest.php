@@ -5,6 +5,7 @@ namespace Tests\Feature\Notifications;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -44,6 +45,9 @@ class StockNotificationTest extends TestCase
             'tax_rate' => 0,
         ]);
 
+        $warehouse = Warehouse::factory()->create(['name' => 'Toko Utama']);
+        $product->warehouses()->attach($warehouse->id, ['stock' => 3]);
+
         $response = $this->actingAs($user)->get(route('products.index'));
 
         $response->assertOk();
@@ -53,6 +57,7 @@ class StockNotificationTest extends TestCase
             ->where('lowStockNotifications.0.title', 'Keripik Tempe')
             ->where('lowStockNotifications.0.stock', 3)
             ->where('lowStockNotifications.0.min_stock', 5)
+            ->where('lowStockNotifications.0.warehouse', 'Toko Utama')
         );
     }
 
@@ -80,6 +85,9 @@ class StockNotificationTest extends TestCase
             'min_stock' => 5,
             'tax_rate' => 0,
         ]);
+
+        $warehouse = Warehouse::factory()->create(['name' => 'Toko Utama']);
+        $product->warehouses()->attach($warehouse->id, ['stock' => 2]);
 
         $response = $this->actingAs($user)->post(route('notifications.stock.read'), [
             'product_id' => $product->id,
@@ -138,6 +146,10 @@ class StockNotificationTest extends TestCase
             'tax_rate' => 0,
         ]);
 
+        $warehouse = Warehouse::factory()->create(['name' => 'Toko Utama']);
+        $product1->warehouses()->attach($warehouse->id, ['stock' => 2]);
+        $product2->warehouses()->attach($warehouse->id, ['stock' => 0]);
+
         $response = $this->actingAs($user)->post(route('notifications.stock.readAll'));
 
         $response->assertRedirect();
@@ -182,6 +194,9 @@ class StockNotificationTest extends TestCase
             'tax_rate' => 0,
         ]);
 
+        $warehouse = Warehouse::factory()->create(['name' => 'Toko Utama']);
+        $product->warehouses()->attach($warehouse->id, ['stock' => 0]);
+
         $response = $this->actingAs($user)->get(route('products.index'));
 
         $response->assertOk();
@@ -190,6 +205,7 @@ class StockNotificationTest extends TestCase
             ->where('lowStockNotifications.0.id', $product->id)
             ->where('lowStockNotifications.0.title', 'Produk Habis Total')
             ->where('lowStockNotifications.0.stock', 0)
+            ->where('lowStockNotifications.0.warehouse', 'Toko Utama')
         );
     }
 }

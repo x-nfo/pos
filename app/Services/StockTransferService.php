@@ -122,10 +122,11 @@ class StockTransferService
                 $stockBefore = $pw ? (int) $pw->stock : 0;
                 $stockAfter = max(0, $stockBefore - $baseQty);
 
-                ProductWarehouse::where([
+                $pivot = ProductWarehouse::firstOrCreate([
                     'product_id' => $item->product_id,
                     'warehouse_id' => $transfer->source_warehouse_id,
-                ])->decrement('stock', $baseQty);
+                ], ['stock' => 0]);
+                $pivot->decrement('stock', $baseQty);
 
                 $product->decrement('stock', $baseQty);
 

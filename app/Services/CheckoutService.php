@@ -246,10 +246,11 @@ class CheckoutService
                         $stockAfter = $stockBefore - $componentQty;
 
                         if ($effectiveWarehouseId) {
-                            ProductWarehouse::where([
+                            $pivot = ProductWarehouse::firstOrCreate([
                                 'product_id' => $component->id,
                                 'warehouse_id' => $effectiveWarehouseId,
-                            ])->decrement('stock', $componentQty);
+                            ], ['stock' => 0]);
+                            $pivot->decrement('stock', $componentQty);
                         }
                         $component->decrement('stock', $componentQty);
 
@@ -270,10 +271,11 @@ class CheckoutService
                     $stockAfter = $stockBefore - $baseQty;
 
                     if ($effectiveWarehouseId) {
-                        ProductWarehouse::where([
+                        $pivot = ProductWarehouse::firstOrCreate([
                             'product_id' => $product->id,
                             'warehouse_id' => $effectiveWarehouseId,
-                        ])->decrement('stock', $baseQty);
+                        ], ['stock' => 0]);
+                        $pivot->decrement('stock', $baseQty);
                     }
                     $product->decrement('stock', $baseQty);
 

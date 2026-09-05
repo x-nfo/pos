@@ -66,10 +66,11 @@ class GoodsReceivingService
 
                     // Increment warehouse pivot stock
                     if ($order->warehouse_id) {
-                        ProductWarehouse::where([
+                        $pivot = ProductWarehouse::firstOrCreate([
                             'product_id' => $product->id,
                             'warehouse_id' => $order->warehouse_id,
-                        ])->increment('stock', $baseQty);
+                        ], ['stock' => 0]);
+                        $pivot->increment('stock', $baseQty);
                     }
 
                     // Create batch record
