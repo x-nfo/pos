@@ -200,13 +200,6 @@ const ProfitReport = ({
                     </button>
                 </div>
 
-                {/* Summary Cards */}
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {summaryCards.map((card) => (
-                        <SummaryCard key={card.title} {...card} />
-                    ))}
-                </div>
-
                 {/* Filters */}
                 {showFilters && (
                     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 animate-slide-up">
@@ -319,6 +312,13 @@ const ProfitReport = ({
                         </form>
                     </div>
                 )}
+
+                {/* Summary Cards */}
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    {summaryCards.map((card) => (
+                        <SummaryCard key={card.title} {...card} />
+                    ))}
+                </div>
 
                 {/* Table & Mobile Cards */}
                 {rows.length > 0 ? (
