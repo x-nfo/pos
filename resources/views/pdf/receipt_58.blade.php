@@ -83,7 +83,20 @@
         $taxRate = $transaction->tax_rate ?? 0;
         $cash = $transaction->cash ?? 0;
         $change = $transaction->change ?? 0;
-        $paymentMethod = strtoupper($transaction->payment_method ?? 'TUNAI');
+        $paymentMethodRaw = strtolower($transaction->payment_method ?? 'cash');
+        $paymentMap = [
+            'cash' => 'Tunai',
+            'bank_transfer' => 'Transfer Bank',
+            'qris' => 'QRIS',
+            'qrisly' => 'QRIS Dinamis',
+            'midtrans' => 'Midtrans',
+            'xendit' => 'Xendit',
+            'pay_later' => 'Piutang',
+            'edc' => 'EDC',
+        ];
+        $paymentMethod = $paymentMap[$paymentMethodRaw] ?? strtoupper(str_replace('_', ' ', $paymentMethodRaw));
+        $isCash = $paymentMethodRaw === 'cash';
+        $isPaid = strtolower($transaction->payment_status ?? '') === 'paid';
     @endphp
 
     <div class="section">
@@ -137,16 +150,52 @@
 
     <div class="section">
         <div style="display:flex; justify-content:space-between;">
-            <span>Bayar ({{ $paymentMethod }})</span>
-            <span>{{ $formatPrice($cash) }}</span>
+            <span>Metode</span>
+            <span>{{ $paymentMethod }}</span>
         </div>
-        @if($change > 0)
+        @if($isCash && $cash > 0)
+            <div style="display:flex; justify-content:space-between;">
+                <span>Bayar Tunai</span>
+                <span>{{ $formatPrice($cash) }}</span>
+            </div>
+            @if($change > 0)
+                <div style="display:flex; justify-content:space-between; font-weight:700;">
+                    <span>Kembali</span>
+                    <span>{{ $formatPrice($change) }}</span>
+                </div>
+            @endif
+        @endif
+        @if($isPaid)
             <div style="display:flex; justify-content:space-between; font-weight:700;">
-                <span>Kembali</span>
-                <span>{{ $formatPrice($change) }}</span>
+                <span>Status</span>
+                <span>LUNAS</span>
+            </div>
+        @endif
+        @if($paymentMethodRaw === 'pay_later' && $transaction->receivable?->due_date)
+            <div style="display:flex; justify-content:space-between;">
+                <span>Jatuh Tempo</span>
+                <span>{{ \Carbon\Carbon::parse($transaction->receivable->due_date)->format('d/m/Y') }}</span>
             </div>
         @endif
     </div>
+
+    @if(!$isPaid)
+        <pre style="margin:3px 0;">{{ $dash }}</pre>
+        <div class="center section">
+            <div class="bold">*** BELUM LUNAS ***</div>
+            <div style="font-size:9px;">
+                {{ $paymentMethodRaw === 'bank_transfer' ? 'BELUM DIKONFIRMASI' : 'MENUNGGU KONFIRMASI DANA' }}
+            </div>
+            @if($paymentMethodRaw === 'bank_transfer' && $transaction->bankAccount)
+                <div style="font-size:9px; border:1px dashed #64748b; padding:2px; margin-top:3px; text-align:left;">
+                    <div class="bold">Transfer ke:</div>
+                    <div>Bank: {{ $transaction->bankAccount->bank_name }}</div>
+                    <div>Rek: {{ $transaction->bankAccount->account_number }}</div>
+                    <div>a.n {{ $transaction->bankAccount->account_name }}</div>
+                </div>
+            @endif
+        </div>
+    @endif
 
     <pre style="margin:3px 0;">{{ $line }}</pre>
 

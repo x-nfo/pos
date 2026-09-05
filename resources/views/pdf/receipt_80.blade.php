@@ -97,7 +97,13 @@
         $taxRate = $transaction->tax_rate ?? 0;
         $cash = $transaction->cash ?? 0;
         $change = $transaction->change ?? 0;
-        $paymentMethod = strtoupper($transaction->payment_method ?? 'TUNAI');
+        $paymentMethodRaw = strtolower($transaction->payment_method ?? 'cash');
+        $translatedMethod = $l("payment_methods.{$paymentMethodRaw}");
+        $paymentMethod = $translatedMethod !== "payment_methods.{$paymentMethodRaw}"
+            ? $translatedMethod
+            : strtoupper(str_replace('_', ' ', $paymentMethodRaw));
+        $isCash = $paymentMethodRaw === 'cash';
+        $isPaid = strtolower($transaction->payment_status ?? '') === 'paid';
     @endphp
 
     <div class="section">
@@ -151,16 +157,52 @@
 
     <div class="section">
         <div style="display:flex; justify-content:space-between;">
-            <span>{{ $l('receipt.amount_tendered') }} ({{ $paymentMethod }})</span>
-            <span>{{ $formatPrice($cash) }}</span>
+            <span>{{ $l('receipt.payment_method_label') ?? 'Metode' }}</span>
+            <span>{{ $paymentMethod }}</span>
         </div>
-        @if($change > 0)
+        @if($isCash && $cash > 0)
+            <div style="display:flex; justify-content:space-between;">
+                <span>{{ $l('receipt.cash_tendered') ?? 'Bayar Tunai' }}</span>
+                <span>{{ $formatPrice($cash) }}</span>
+            </div>
+            @if($change > 0)
+                <div style="display:flex; justify-content:space-between; font-weight:700;">
+                    <span>{{ $l('receipt.change_col') }}</span>
+                    <span>{{ $formatPrice($change) }}</span>
+                </div>
+            @endif
+        @endif
+        @if($isPaid)
             <div style="display:flex; justify-content:space-between; font-weight:700;">
-                <span>{{ $l('receipt.change_col') }}</span>
-                <span>{{ $formatPrice($change) }}</span>
+                <span>{{ $l('common.status') }}</span>
+                <span>{{ strtoupper($l('common.paid')) }}</span>
+            </div>
+        @endif
+        @if($paymentMethodRaw === 'pay_later' && $transaction->receivable?->due_date)
+            <div style="display:flex; justify-content:space-between;">
+                <span>{{ $l('common.due_date') }}</span>
+                <span>{{ \Carbon\Carbon::parse($transaction->receivable->due_date)->format('d/m/Y') }}</span>
             </div>
         @endif
     </div>
+
+    @if(!$isPaid)
+        <pre style="margin:4px 0;">{{ $dash }}</pre>
+        <div class="center section">
+            <div class="bold">{{ $l('receipt.unpaid_notice') ?? '*** BELUM LUNAS ***' }}</div>
+            <div style="font-size:10px;">
+                {{ $paymentMethodRaw === 'bank_transfer' ? ($l('receipt.pending_bank_transfer') ?? 'BELUM DIKONFIRMASI (TRANSFER BANK)') : ($l('receipt.pending_payment') ?? 'MENUNGGU KONFIRMASI DANA') }}
+            </div>
+            @if($paymentMethodRaw === 'bank_transfer' && $transaction->bankAccount)
+                <div style="font-size:10px; border:1px dashed #64748b; padding:4px; margin-top:4px; text-align:left;">
+                    <div class="bold">{{ $l('receipt.transfer_to') ?? 'Transfer ke:' }}</div>
+                    <div>Bank: {{ $transaction->bankAccount->bank_name }}</div>
+                    <div>{{ $l('receipt.account_no') ?? 'No. Rek' }}: {{ $transaction->bankAccount->account_number }}</div>
+                    <div>{{ $l('receipt.account_holder') ?? 'a.n' }} {{ $transaction->bankAccount->account_name }}</div>
+                </div>
+            @endif
+        </div>
+    @endif
 
     <pre style="margin:4px 0;">{{ $line }}</pre>
 

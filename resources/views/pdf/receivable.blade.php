@@ -387,7 +387,20 @@
                     <td style="text-align: center; color: #64748b;">{{ $index + 1 }}</td>
                     <td>{{ \Carbon\Carbon::parse($pay->paid_at)->format('d M Y') }}</td>
                     <td>
-                        <strong>{{ strtoupper(str_replace('_', ' ', $pay->method ?? '-')) }}</strong>
+                        @php
+                            $methodKey = strtolower($pay->method ?? 'cash');
+                            $methodLabelMap = [
+                                'cash' => 'Tunai',
+                                'bank_transfer' => 'Transfer Bank',
+                                'qris' => 'QRIS',
+                                'qrisly' => 'QRIS Dinamis',
+                                'midtrans' => 'Midtrans',
+                                'xendit' => 'Xendit',
+                                'edc' => 'EDC',
+                            ];
+                            $methodLabel = $methodLabelMap[$methodKey] ?? ucwords(str_replace('_', ' ', $methodKey));
+                        @endphp
+                        <strong>{{ $methodLabel }}</strong>
                         @if($pay->bankAccount)
                             <div class="muted">{{ $pay->bankAccount->bank_name }} - {{ $pay->bankAccount->account_number }}</div>
                         @endif

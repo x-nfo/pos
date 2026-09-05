@@ -219,11 +219,43 @@
             <td style="width:50%; vertical-align:top; font-size:13px; text-align:right;">
                 <div style="color:#64748b;font-weight:600;">Kasir</div>
                 <div style="font-weight:700; margin-top:2px;">{{ $transaction->cashier->name ?? '-' }}</div>
+                @php
+                    $paymentMethodRaw = strtolower($transaction->payment_method ?? 'cash');
+                    $invoicePaymentMap = [
+                        'cash' => 'Tunai',
+                        'bank_transfer' => 'Transfer Bank',
+                        'qris' => 'QRIS',
+                        'qrisly' => 'QRIS Dinamis',
+                        'midtrans' => 'Midtrans',
+                        'xendit' => 'Xendit',
+                        'pay_later' => 'Tempo / Piutang',
+                        'edc' => 'EDC',
+                    ];
+                    $invoiceStatusMap = [
+                        'paid' => 'Lunas',
+                        'pending' => $paymentMethodRaw === 'bank_transfer' ? 'Belum Dikonfirmasi' : 'Menunggu Pembayaran',
+                        'pending_approval' => 'Menunggu Approval',
+                        'failed' => 'Gagal',
+                        'expired' => 'Kedaluwarsa',
+                        'unpaid' => 'Belum Lunas',
+                        'partial' => 'Sebagian',
+                    ];
+                    $statusKey = strtolower($transaction->payment_status ?? 'pending');
+                    $invoiceMethodLabel = $invoicePaymentMap[$paymentMethodRaw] ?? strtoupper(str_replace('_', ' ', $paymentMethodRaw));
+                    $invoiceStatusLabel = $invoiceStatusMap[$statusKey] ?? ucfirst($statusKey);
+                @endphp
                 <div style="margin-top:6px;">
-                    <div><strong>Status:</strong> {{ $transaction->payment_status }}</div>
-                    <div><strong>Metode:</strong> {{ $transaction->payment_method }}</div>
+                    <div><strong>Status:</strong> {{ $invoiceStatusLabel }}</div>
+                    <div><strong>Metode:</strong> {{ $invoiceMethodLabel }}</div>
                     @if ($transaction->receivable && $transaction->receivable->due_date)
-                        <div><strong>Jatuh tempo:</strong> {{ $transaction->receivable->due_date }}</div>
+                        <div><strong>Jatuh tempo:</strong> {{ \Carbon\Carbon::parse($transaction->receivable->due_date)->format('d/m/Y') }}</div>
+                    @endif
+                    @if ($paymentMethodRaw === 'bank_transfer' && $transaction->bankAccount && $statusKey !== 'paid')
+                        <div style="margin-top:6px; font-size:11px; color:#475569;">
+                            <div><strong>Bank:</strong> {{ $transaction->bankAccount->bank_name }}</div>
+                            <div><strong>No. Rek:</strong> {{ $transaction->bankAccount->account_number }}</div>
+                            <div><strong>a.n:</strong> {{ $transaction->bankAccount->account_name }}</div>
+                        </div>
                     @endif
                 </div>
             </td>

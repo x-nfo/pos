@@ -362,15 +362,41 @@ class PayableTest extends TestCase
             'document_number' => 'PAY-PDF-001',
             'vendor_invoice_number' => 'INV-PDF-123',
             'total' => 1000000,
-            'paid' => 0,
+            'paid' => 150000,
             'due_date' => now()->addDays(14),
-            'status' => 'unpaid',
+            'status' => 'partial',
+        ]);
+
+        $bankAccount = BankAccount::create([
+            'bank_name' => 'BCA',
+            'account_name' => 'Supplier Acc',
+            'account_number' => '9876543210',
+            'is_active' => true,
+        ]);
+        $payable->payments()->create([
+            'user_id' => $user->id,
+            'bank_account_id' => $bankAccount->id,
+            'amount' => 150000,
+            'paid_at' => now(),
+            'method' => 'bank_transfer',
+            'note' => 'Cicilan 1',
         ]);
 
         $response = $this->actingAs($user)
             ->get(route('pdf.payables.show', $payable));
 
         $response->assertOk();
+
+        $payable->load(['supplier', 'payments.bankAccount', 'payments.user']);
+        $html = view('pdf.payable', [
+            'payable' => $payable,
+            'store' => ['name' => 'Rekasir'],
+            'barcode' => '',
+        ])->render();
+
+        $this->assertStringNotContainsString('BANK_TRANSFER', $html);
+        $this->assertStringContainsString('Transfer Bank', $html);
+        $this->assertStringContainsString('9876543210', $html);
     }
 
     public function test_authorized_user_can_delete_payment_and_restore_balance(): void

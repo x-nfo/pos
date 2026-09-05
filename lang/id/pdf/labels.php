@@ -88,13 +88,21 @@ return [
         'tax_rate' => 'PPN :rate%',
         'grand_total' => 'TOTAL',
         'payment_method' => 'Bayar via',
+        'payment_method_label' => 'Metode',
         'cash_payment' => 'Tunai',
+        'cash_tendered' => 'Bayar Tunai',
         'card_payment' => 'Kartu',
         'amount_tendered' => 'Bayar',
         'change_col' => 'Kembali',
         'points_earned' => 'Poin Didapat',
         'points_redeemed' => 'Poin Ditukar',
         'voucher_used' => 'Voucher',
+        'unpaid_notice' => '*** BELUM LUNAS ***',
+        'pending_bank_transfer' => 'BELUM DIKONFIRMASI (TRANSFER BANK)',
+        'pending_payment' => 'MENUNGGU KONFIRMASI DANA',
+        'transfer_to' => 'Transfer ke:',
+        'account_no' => 'No. Rek',
+        'account_holder' => 'a.n',
         'footer' => 'Barang yang sudah dibeli tidak dapat dikembalikan.',
     ],
 
@@ -158,5 +166,21 @@ return [
         'paid' => 'Lunas',
         'partial' => 'Sebagian',
         'overdue' => 'Jatuh Tempo',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | PDF Labels - Payment Methods
+    |--------------------------------------------------------------------------
+    */
+    'payment_methods' => [
+        'cash' => 'Tunai',
+        'bank_transfer' => 'Transfer Bank',
+        'qris' => 'QRIS',
+        'qrisly' => 'QRIS Dinamis',
+        'midtrans' => 'Midtrans',
+        'xendit' => 'Xendit',
+        'pay_later' => 'Piutang',
+        'edc' => 'EDC',
     ],
 ];

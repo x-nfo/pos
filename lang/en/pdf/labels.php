@@ -88,13 +88,21 @@ return [
         'tax_rate' => 'TAX :rate%',
         'grand_total' => 'TOTAL',
         'payment_method' => 'Payment via',
+        'payment_method_label' => 'Method',
         'cash_payment' => 'Cash',
+        'cash_tendered' => 'Cash Paid',
         'card_payment' => 'Card',
         'amount_tendered' => 'Tendered',
         'change_col' => 'Change',
         'points_earned' => 'Points Earned',
         'points_redeemed' => 'Points Redeemed',
         'voucher_used' => 'Voucher',
+        'unpaid_notice' => '*** UNPAID ***',
+        'pending_bank_transfer' => 'UNCONFIRMED (BANK TRANSFER)',
+        'pending_payment' => 'AWAITING PAYMENT CONFIRMATION',
+        'transfer_to' => 'Transfer to:',
+        'account_no' => 'Acc No',
+        'account_holder' => 'a.n',
         'footer' => 'Purchased items cannot be returned.',
     ],
 
@@ -158,5 +166,21 @@ return [
         'paid' => 'Paid',
         'partial' => 'Partial',
         'overdue' => 'Overdue',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | PDF Labels - Payment Methods
+    |--------------------------------------------------------------------------
+    */
+    'payment_methods' => [
+        'cash' => 'Cash',
+        'bank_transfer' => 'Bank Transfer',
+        'qris' => 'QRIS',
+        'qrisly' => 'Dynamic QRIS',
+        'midtrans' => 'Midtrans',
+        'xendit' => 'Xendit',
+        'pay_later' => 'Pay Later',
+        'edc' => 'EDC',
     ],
 ];
