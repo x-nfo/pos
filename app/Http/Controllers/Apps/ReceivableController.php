@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Apps;
 
 use App\Http\Controllers\Controller;
 use App\Models\BankAccount;
+use App\Models\CustomerCampaignLog;
 use App\Models\Receivable;
 use App\Models\ReceivablePayment;
 use App\Models\Setting;
@@ -90,10 +91,31 @@ class ReceivableController extends Controller
                     'approver:id,name',
                 ]);
             },
-            'campaignLogs' => function ($query) {
-                $query->orderByDesc('created_at')->with('campaign:id,name,type');
-            },
         ]);
+
+        $campaignLogs = CustomerCampaignLog::query()
+            ->with('campaign:id,name,type')
+            ->where(function ($query) use ($receivable) {
+                $query->where('receivable_id', $receivable->id);
+                if ($receivable->customer_id) {
+                    $query->orWhere(function ($sub) use ($receivable) {
+                        $sub->where('customer_id', $receivable->customer_id);
+                    });
+                }
+            })
+            ->orderByDesc('created_at')
+            ->get()
+            ->filter(function ($log) use ($receivable) {
+                if ($log->receivable_id === $receivable->id) {
+                    return true;
+                }
+                $ids = $log->payload['receivable_ids'] ?? [];
+
+                return in_array($receivable->id, $ids);
+            })
+            ->values();
+
+        $receivable->setRelation('campaignLogs', $campaignLogs);
 
         $bankAccounts = BankAccount::active()->ordered()->get(['id', 'bank_name', 'account_number', 'account_name', 'logo']);
         $approvalThreshold = (float) Setting::get('receivable_approval_threshold', 1000000);

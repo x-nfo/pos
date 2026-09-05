@@ -271,6 +271,96 @@ class CrmWhatsAppQueueTest extends TestCase
         $job->handle($mockWhatsApp, app(CrmAutomationService::class));
     }
 
+    public function test_crm_generate_reminders_consolidates_multiple_receivables_for_same_customer_and_dispatches_with_staggered_delay(): void
+    {
+        Queue::fake();
+
+        $today = now()->startOfDay();
+        Setting::set('wa_service_url', 'http://localhost:3001');
+        Setting::set('wa_enabled', '1');
+        Setting::set('wa_receivable_reminder_mode', 'auto');
+        Setting::set('wa_dispatch_delay_seconds', 60);
+
+        // Pelanggan 1 memiliki 3 tagihan jatuh tempo
+        $customer1 = $this->createCustomer([
+            'name' => 'Sanda Rusli',
+            'no_telp' => '628123456789',
+        ]);
+
+        $r1 = Receivable::create([
+            'customer_id' => $customer1->id,
+            'invoice' => 'TRX-MULTI-001',
+            'total' => 140000,
+            'paid' => 0,
+            'due_date' => $today->copy()->addDays(2),
+            'status' => 'unpaid',
+        ]);
+        $r2 = Receivable::create([
+            'customer_id' => $customer1->id,
+            'invoice' => 'TRX-MULTI-002',
+            'total' => 60000,
+            'paid' => 0,
+            'due_date' => $today->copy()->addDays(1),
+            'status' => 'unpaid',
+        ]);
+        $r3 = Receivable::create([
+            'customer_id' => $customer1->id,
+            'invoice' => 'TRX-MULTI-003',
+            'total' => 100000,
+            'paid' => 0,
+            'due_date' => $today->copy()->addDays(1),
+            'status' => 'unpaid',
+        ]);
+
+        // Pelanggan 2 memiliki 1 tagihan jatuh tempo
+        $customer2 = $this->createCustomer([
+            'name' => 'Budi Santoso',
+            'no_telp' => '628987654321',
+        ]);
+        $r4 = Receivable::create([
+            'customer_id' => $customer2->id,
+            'invoice' => 'TRX-SINGLE-001',
+            'total' => 50000,
+            'paid' => 0,
+            'due_date' => $today->copy()->addDays(2),
+            'status' => 'unpaid',
+        ]);
+
+        $this->artisan('crm:generate-reminders')->assertExitCode(0);
+
+        // Hanya 2 job antrean yang dipush: 1 untuk Sanda Rusli (rekap 3 faktur), 1 untuk Budi Santoso (1 faktur)
+        Queue::assertPushed(SendWhatsAppCampaignLogJob::class, 2);
+
+        $campaign = CustomerCampaign::where('type', CustomerCampaign::TYPE_DUE_DATE_REMINDER)->first();
+        $this->assertNotNull($campaign);
+
+        // Cek log Sanda Rusli
+        $sandaLog = $campaign->logs()->where('customer_id', $customer1->id)->first();
+        $this->assertNotNull($sandaLog);
+        $this->assertTrue($sandaLog->payload['is_consolidated']);
+        $this->assertCount(3, $sandaLog->payload['receivable_ids']);
+        $this->assertEquals(300000, $sandaLog->payload['total_remaining']);
+        $this->assertStringContainsString('TRX-MULTI-001', $sandaLog->payload['message']);
+        $this->assertStringContainsString('TRX-MULTI-002', $sandaLog->payload['message']);
+        $this->assertStringContainsString('TRX-MULTI-003', $sandaLog->payload['message']);
+        $this->assertStringContainsString('Total Tagihan (3 faktur): Rp 300.000', $sandaLog->payload['message']);
+
+        // Cek log Budi Santoso
+        $budiLog = $campaign->logs()->where('customer_id', $customer2->id)->first();
+        $this->assertNotNull($budiLog);
+        $this->assertFalse($budiLog->payload['is_consolidated']);
+        $this->assertEquals('TRX-SINGLE-001', $budiLog->payload['invoice']);
+
+        // Verifikasi staggered delay: Sanda delay 0s, Budi delay 60s
+        Queue::assertPushed(SendWhatsAppCampaignLogJob::class, function (SendWhatsAppCampaignLogJob $job) use ($budiLog) {
+            if ($job->log->id === $budiLog->id) {
+                return $job->delay !== null;
+            }
+
+            return true;
+        });
+    }
+
     private function createUserWithPermissions(array $permissions): User
     {
         $user = User::factory()->create();

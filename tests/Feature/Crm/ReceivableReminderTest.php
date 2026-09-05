@@ -4,6 +4,7 @@ namespace Tests\Feature\Crm;
 
 use App\Jobs\SendWhatsAppCampaignLogJob;
 use App\Models\Customer;
+use App\Models\CustomerCampaign;
 use App\Models\CustomerCampaignLog;
 use App\Models\Receivable;
 use App\Models\Setting;
@@ -144,6 +145,64 @@ class ReceivableReminderTest extends TestCase
 
         $response->assertRedirect(route('receivables.show', $receivable));
         $response->assertSessionHas('success', 'Draft pengingat piutang berhasil disiapkan.');
+    }
+
+    public function test_receivable_show_includes_consolidated_logs_for_associated_receivable(): void
+    {
+        $user = $this->createUserWithPermissions(['receivables-access']);
+
+        $customer = Customer::create([
+            'name' => 'Pak Bambang',
+            'no_telp' => '081234445555',
+            'address' => 'Jl. Kebon Jeruk',
+        ]);
+
+        $r1 = Receivable::create([
+            'customer_id' => $customer->id,
+            'invoice' => 'RCV-MULTI-A',
+            'total' => 200000,
+            'paid' => 0,
+            'due_date' => now()->addDays(2),
+            'status' => 'unpaid',
+        ]);
+
+        $r2 = Receivable::create([
+            'customer_id' => $customer->id,
+            'invoice' => 'RCV-MULTI-B',
+            'total' => 300000,
+            'paid' => 0,
+            'due_date' => now()->addDays(2),
+            'status' => 'unpaid',
+        ]);
+
+        $campaign = CustomerCampaign::create([
+            'name' => 'Campaign Rekap',
+            'type' => CustomerCampaign::TYPE_DUE_DATE_REMINDER,
+            'status' => CustomerCampaign::STATUS_READY,
+            'channel' => CustomerCampaign::CHANNEL_INTERNAL,
+        ]);
+
+        // Log dikaitkan primary ke r1, namun payload receivable_ids mencakup r1 dan r2
+        $campaign->logs()->create([
+            'customer_id' => $customer->id,
+            'receivable_id' => $r1->id,
+            'channel' => CustomerCampaign::CHANNEL_WHATSAPP_LINK,
+            'status' => CustomerCampaignLog::STATUS_READY_TO_SEND,
+            'payload' => [
+                'message' => 'Rekap tagihan Pak Bambang',
+                'is_consolidated' => true,
+                'receivable_ids' => [$r1->id, $r2->id],
+                'invoices' => ['RCV-MULTI-A', 'RCV-MULTI-B'],
+            ],
+        ]);
+
+        // Saat membuka r2, log konsolidasi harus tetap muncul
+        $response = $this->actingAs($user)->get(route('receivables.show', $r2));
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('Dashboard/Receivables/Show')
+            ->has('receivable.campaign_logs', 1)
+        );
     }
 
     private function createUserWithPermissions(array $permissions): User

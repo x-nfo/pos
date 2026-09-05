@@ -549,6 +549,11 @@ export default function ReceivableShow({
                                                     <span className="text-xs text-slate-500">
                                                         {formatDateTime(log.sent_at || log.created_at)}
                                                     </span>
+                                                    {log.payload?.is_consolidated && (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
+                                                            Rekap {log.payload?.invoices?.length || log.payload?.receivable_ids?.length || 0} Faktur
+                                                        </span>
+                                                    )}
                                                 </div>
 
                                                 {log.payload?.target && (
