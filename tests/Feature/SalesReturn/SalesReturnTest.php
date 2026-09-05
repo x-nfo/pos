@@ -1095,6 +1095,62 @@ class SalesReturnTest extends TestCase
         );
     }
 
+    public function test_partial_sales_return_calculates_subtotal_using_unit_price_not_line_total(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'transactions-access',
+            'sales-returns-access',
+            'sales-returns-create',
+            'sales-returns-complete',
+        ]);
+
+        // Transaction with 3 items of noodles @ 3500 (line total = 10500)
+        [$transaction, $detail, $product] = $this->createTransaction($user, qty: 3);
+        $detail->update([
+            'unit_price' => 3500,
+            'price' => 10500,
+        ]);
+        $transaction->update(['grand_total' => 10500]);
+
+        // Customer returns 1 piece out of 3, exchanging for 1 piece of a replacement product @ 3500
+        $replacementProduct = $this->createProduct(sellPrice: 3500, buyPrice: 2500, stock: 10);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $replacementProduct->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 10]);
+
+        $response = $this
+            ->actingAs($user)
+            ->post(route('sales-returns.store', $transaction), [
+                'return_type' => 'product_exchange',
+                'notes' => 'Tukar 1 dari 3 mie goreng',
+                'items' => [
+                    [
+                        'transaction_detail_id' => $detail->id,
+                        'qty_return' => 1,
+                        'return_reason' => 'Bungkus rusak',
+                        'restock_to_inventory' => false,
+                    ],
+                ],
+                'exchange_items' => [
+                    [
+                        'product_id' => $replacementProduct->id,
+                        'qty' => 1,
+                        'unit_price' => 3500,
+                    ],
+                ],
+            ]);
+
+        $salesReturn = SalesReturn::first();
+
+        $response->assertRedirect(route('sales-returns.show', $salesReturn));
+        $this->assertNotNull($salesReturn);
+        // Subtotal of 1 returned item should be 3500, NOT 10500!
+        $this->assertSame(3500, $salesReturn->total_return_amount);
+        $this->assertSame(3500, $salesReturn->exchange_amount);
+        // Difference should be 0 (even exchange), NOT refund 7000!
+        $this->assertSame(0, $salesReturn->difference_amount);
+        $this->assertSame(0, $salesReturn->refund_amount);
+    }
+
     private function createProduct(int $sellPrice = 60000, int $buyPrice = 40000, int $stock = 10): Product
     {
         $category = Category::firstOrCreate([
@@ -1189,7 +1245,8 @@ class SalesReturnTest extends TestCase
         $detail = $transaction->details()->create([
             'product_id' => $product->id,
             'qty' => $qty,
-            'price' => 60000,
+            'unit_price' => 60000,
+            'price' => 60000 * $qty,
         ]);
 
         $transaction->profits()->create([

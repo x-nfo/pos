@@ -71,4 +71,13 @@ class TransactionDetail extends Model
     {
         return $this->hasMany(SalesReturnItem::class);
     }
+
+    public function getEffectiveUnitPrice(): int
+    {
+        if (! empty($this->unit_price) && (int) $this->unit_price > 0) {
+            return (int) $this->unit_price;
+        }
+
+        return $this->qty > 0 ? (int) round($this->price / $this->qty) : (int) $this->price;
+    }
 }

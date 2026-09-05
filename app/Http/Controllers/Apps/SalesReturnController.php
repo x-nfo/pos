@@ -326,7 +326,8 @@ class SalesReturnController extends Controller
                         ? $this->unitConversionService->getBuyPrice($item->product, $detail->unit_id)
                         : (int) round($item->product->buy_price * $conversionFactor);
 
-                    $margin = ((int) $detail->price - $unitBuyPrice) * (int) $item->qty_return;
+                    $detailUnitPrice = $detail->getEffectiveUnitPrice();
+                    $margin = ($detailUnitPrice - $unitBuyPrice) * (int) $item->qty_return;
 
                     Profit::create([
                         'transaction_id' => $salesReturn->transaction_id,
@@ -747,6 +748,8 @@ class SalesReturnController extends Controller
                 $unit = $this->resolveDetailUnit($detail);
                 $unitName = $unit?->name ?? $unit?->code ?? 'Pcs';
 
+                $detailUnitPrice = $detail->getEffectiveUnitPrice();
+
                 return [
                     'id' => $detail->id,
                     'product_id' => $detail->product_id,
@@ -760,7 +763,9 @@ class SalesReturnController extends Controller
                     'unit_name' => $unitName,
                     'unit_code' => $unit?->code ?? 'PCS',
                     'qty' => $qtySold,
-                    'price' => (int) $detail->price,
+                    'unit_price' => $detailUnitPrice,
+                    'price' => $detailUnitPrice,
+                    'line_total' => (int) $detail->price,
                     'returned_completed_qty' => $completedReturnedQty,
                     'remaining_returnable_qty' => max(0, $qtySold - $completedReturnedQty),
                     'draft_item' => $draftItem ? [
@@ -922,14 +927,16 @@ class SalesReturnController extends Controller
                     ]);
                 }
 
+                $detailUnitPrice = $detail->getEffectiveUnitPrice();
+
                 return [
                     'transaction_detail_id' => $detail->id,
                     'product_id' => $detail->product_id,
                     'qty_sold' => (int) $detail->qty,
                     'qty_returned_before' => $qtyReturnedBefore,
                     'qty_return' => $qtyReturn,
-                    'unit_price' => (int) $detail->price,
-                    'subtotal' => $qtyReturn * (int) $detail->price,
+                    'unit_price' => $detailUnitPrice,
+                    'subtotal' => $qtyReturn * $detailUnitPrice,
                     'return_reason' => trim($item['return_reason']),
                     'restock_to_inventory' => (bool) ($item['restock_to_inventory'] ?? true),
                 ];

@@ -112,10 +112,16 @@ export default function SalesReturnForm({
                 restock_to_inventory: true,
             };
             const qtyReturn = Number(current.qty_return || 0);
-            const subtotal = qtyReturn * Number(detail.price || 0);
+            const unitPrice = Number(
+                detail.unit_price ??
+                (detail.qty > 0 ? Math.round(Number(detail.price || 0) / detail.qty) : detail.price) ??
+                0
+            );
+            const subtotal = qtyReturn * unitPrice;
 
             return {
                 ...detail,
+                unit_price: unitPrice,
                 qty_return: qtyReturn,
                 return_reason: current.return_reason || "",
                 restock_to_inventory: Boolean(current.restock_to_inventory),
@@ -571,12 +577,17 @@ export default function SalesReturnForm({
                                                         </div>
                                                     </Table.Td>
                                                     <Table.Td>
-                                                        <div className="flex items-baseline gap-1 whitespace-nowrap">
-                                                            <span className="font-semibold text-slate-800 dark:text-slate-200">
-                                                                {item.qty}
-                                                            </span>
-                                                            <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                                                                {item.unit_name || item.product?.unit_name || "Pcs"}
+                                                        <div className="flex flex-col whitespace-nowrap">
+                                                            <div className="flex items-baseline gap-1">
+                                                                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                                                    {item.qty}
+                                                                </span>
+                                                                <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+                                                                    {item.unit_name || item.product?.unit_name || "Pcs"}
+                                                                </span>
+                                                            </div>
+                                                            <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                                                                @{formatCurrency(item.unit_price)}
                                                             </span>
                                                         </div>
                                                     </Table.Td>
