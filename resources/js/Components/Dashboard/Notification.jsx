@@ -323,7 +323,7 @@ export default function Notification() {
     const bankCount = data.filter((d) => d.type === "bank_payment").length;
     const hasUrgentAction = discountCount > 0 || bankCount > 0;
 
-    const NotificationList = () => (
+    const NotificationList = ({ close }) => (
         <div className="flex flex-col gap-2.5 items-stretch w-full">
             {badgeCount === 0 && (
                 <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">
@@ -377,6 +377,7 @@ export default function Notification() {
                                     href={route("transactions.print", item.invoice)}
                                     className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-cyan-100 dark:hover:bg-cyan-900/50 transition-colors"
                                     title="Lihat Nota"
+                                    onClick={close}
                                 >
                                     <IconEye size={17} />
                                 </Link>
@@ -460,6 +461,7 @@ export default function Notification() {
                                     href={route("transactions.print", item.invoice)}
                                     className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
                                     title="Lihat Nota"
+                                    onClick={close}
                                 >
                                     <IconEye size={17} />
                                 </Link>
@@ -506,6 +508,7 @@ export default function Notification() {
                                         : route("payables.show", item.originalId)
                                 }
                                 className="min-w-0 flex-1 group"
+                                onClick={close}
                             >
                                 <div className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                                     {item.title}
@@ -534,11 +537,13 @@ export default function Notification() {
 
     return (
         <Menu className="relative z-50" as="div">
-            <Menu.Button
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center relative text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800 active:scale-95 transition-all"
-                aria-label="Notifikasi"
-                onClick={handleReloadNotifications}
-            >
+            {({ close }) => (
+                <>
+                    <Menu.Button
+                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center relative text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800 active:scale-95 transition-all"
+                        aria-label="Notifikasi"
+                        onClick={handleReloadNotifications}
+                    >
                 {badgeCount > 0 && (
                     <span
                         className={`absolute -top-1 -right-1 min-w-[16px] sm:min-w-[18px] h-[16px] sm:h-[18px] px-1 ${
@@ -594,6 +599,7 @@ export default function Notification() {
                                 <Link
                                     href={route("transactions.history", { payment_method: "bank_transfer", payment_status: "pending" })}
                                     className="text-[11px] sm:text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:underline"
+                                    onClick={close}
                                 >
                                     Riwayat Bank
                                 </Link>
@@ -602,6 +608,7 @@ export default function Notification() {
                                 <Link
                                     href={route("discount-approvals.pending")}
                                     className="text-[11px] sm:text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline"
+                                    onClick={close}
                                 >
                                     Semua Approval
                                 </Link>
@@ -623,10 +630,12 @@ export default function Notification() {
 
                     {/* Notification Items List */}
                     <div className="p-3 sm:p-4 max-h-[60vh] sm:max-h-[420px] overflow-y-auto dashboard-scrollbar">
-                        <NotificationList />
+                        <NotificationList close={close} />
                     </div>
                 </Menu.Items>
             </Transition>
+                </>
+            )}
         </Menu>
     );
 }
