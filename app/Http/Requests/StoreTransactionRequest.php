@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\BankAccount;
 use App\Models\Customer;
+use App\Services\CashierShiftService;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -58,7 +60,30 @@ class StoreTransactionRequest extends FormRequest
                     }
                 },
             ],
-            'bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
+            'bank_account_id' => [
+                'nullable',
+                'integer',
+                'exists:bank_accounts,id',
+                function ($attribute, $value, $fail) {
+                    if ($value) {
+                        $bankAccount = BankAccount::find($value);
+                        if (! $bankAccount || ! $bankAccount->is_active) {
+                            $fail('Akun bank tidak aktif atau tidak ditemukan.');
+
+                            return;
+                        }
+
+                        $user = $this->user();
+                        $shiftService = app(CashierShiftService::class);
+                        $activeShift = $user ? $shiftService->getActiveShiftForUser($user->id) : null;
+                        $warehouseId = $activeShift?->warehouse_id ?? $user?->warehouse_id;
+
+                        if ($warehouseId && $bankAccount->warehouse_id && (int) $bankAccount->warehouse_id !== (int) $warehouseId) {
+                            $fail('Akun bank tidak dapat digunakan di cabang ini.');
+                        }
+                    }
+                },
+            ],
             'customer_npwp' => ['nullable', 'string', 'max:50'],
         ];
     }

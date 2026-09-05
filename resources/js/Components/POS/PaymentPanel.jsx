@@ -69,9 +69,20 @@ function BankAccountCard({ bank, isActive, onSelect }) {
                 )}
             </div>
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">
-                    {bank.bank_name}
-                </p>
+                <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">
+                        {bank.bank_name}
+                    </p>
+                    {bank.warehouse ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-primary-100 dark:bg-primary-950/60 text-primary-700 dark:text-primary-300">
+                            {bank.warehouse.name}
+                        </span>
+                    ) : (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                            Pusat
+                        </span>
+                    )}
+                </div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 font-mono">
                     {bank.account_number}
                 </p>

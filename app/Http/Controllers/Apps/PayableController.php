@@ -133,7 +133,8 @@ class PayableController extends Controller
         $payable->payments->each(function ($payment) use ($payable) {
             $payment->setRelation('payable', $payable);
         });
-        $bankAccounts = BankAccount::active()->ordered()->get(['id', 'bank_name', 'account_number', 'account_name', 'logo']);
+        $targetWarehouseId = $payable->warehouse_id ?: $payable->purchaseOrder?->warehouse_id ?: auth()->user()->warehouse_id;
+        $bankAccounts = BankAccount::active()->forWarehouse($targetWarehouseId)->ordered()->get(['id', 'bank_name', 'account_number', 'account_name', 'logo']);
 
         return Inertia::render('Dashboard/Payables/Show', [
             'payable' => $payable,

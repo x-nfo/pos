@@ -14,7 +14,7 @@ import { useAuthorization } from "@/Utils/authorization";
 import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
 import { getBankLogoUrl } from "@/Utils/imageUrl";
 
-export default function BankAccountForm({ bankAccount = null }) {
+export default function BankAccountForm({ bankAccount = null, warehouses = [] }) {
     const isEdit = !!bankAccount;
     const { flash } = usePage().props;
     const { can } = useAuthorization();
@@ -28,6 +28,7 @@ export default function BankAccountForm({ bankAccount = null }) {
 
     const { data, setData, post, processing, errors } = useForm({
         _method: isEdit ? "PUT" : "POST",
+        warehouse_id: bankAccount?.warehouse_id ?? "",
         bank_name: bankAccount?.bank_name || "",
         account_number: bankAccount?.account_number || "",
         account_name: bankAccount?.account_name || "",
@@ -158,6 +159,31 @@ export default function BankAccountForm({ bankAccount = null }) {
                         errors={errors.account_name}
                         disabled={!canUpdatePaymentSettings}
                     />
+
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Penempatan Cabang
+                        </label>
+                        <select
+                            value={data.warehouse_id}
+                            onChange={(e) => setData("warehouse_id", e.target.value)}
+                            disabled={!canUpdatePaymentSettings}
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        >
+                            <option value="">Semua Cabang (Pusat / Global) - Berlaku di Seluruh Cabang</option>
+                            {warehouses.map((w) => (
+                                <option key={w.id} value={w.id}>
+                                    Khusus Cabang: {w.name} ({w.code})
+                                </option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                            Pilih cabang jika rekening ini hanya khusus untuk operasional cabang tersebut, atau pilih "Semua Cabang" agar kasir di semua cabang dapat menggunakannya.
+                        </p>
+                        {errors.warehouse_id && (
+                            <p className="text-xs text-danger-500 mt-1">{errors.warehouse_id}</p>
+                        )}
+                    </div>
 
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">

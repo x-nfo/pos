@@ -210,8 +210,12 @@ class TransactionController extends Controller
             $defaultGateway = 'cash';
         }
 
-        // Get active bank accounts for bank transfer
-        $bankAccounts = BankAccount::active()->ordered()->get();
+        // Get active bank accounts for bank transfer (scoped to warehouse / global)
+        $bankAccounts = BankAccount::active()
+            ->forWarehouse($warehouseId)
+            ->ordered()
+            ->with('warehouse:id,code,name')
+            ->get();
 
         $warehouses = auth()->user()->isHQ()
             ? Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name', 'type'])

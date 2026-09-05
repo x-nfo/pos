@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Head, usePage, router, Link } from "@inertiajs/react";
 import DashboardLayout from "@/Layouts/DashboardLayout";
 import {
@@ -36,11 +36,18 @@ function BankLogoItem({ bank }) {
     );
 }
 
-export default function BankAccounts({ bankAccounts = [] }) {
+export default function BankAccounts({ bankAccounts = [], warehouses = [] }) {
     const { flash } = usePage().props;
     const { can } = useAuthorization();
     const { requirePasswordConfirmation } = usePasswordConfirmation();
     const canUpdatePaymentSettings = can("payment-settings-update");
+    const [selectedWarehouseFilter, setSelectedWarehouseFilter] = useState("all");
+
+    const filteredBankAccounts = bankAccounts.filter((bank) => {
+        if (selectedWarehouseFilter === "all") return true;
+        if (selectedWarehouseFilter === "global") return !bank.warehouse_id;
+        return String(bank.warehouse_id) === String(selectedWarehouseFilter);
+    });
 
     useEffect(() => {
         if (flash?.success) toast.success(flash.success);
@@ -87,14 +94,31 @@ export default function BankAccounts({ bankAccounts = [] }) {
 
             <div className="max-w-3xl space-y-6">
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                    <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                        <h3 className="font-semibold text-slate-800 dark:text-white">
-                            Daftar Rekening ({bankAccounts.length})
-                        </h3>
+                    <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <h3 className="font-semibold text-slate-800 dark:text-white">
+                                Daftar Rekening ({filteredBankAccounts.length})
+                            </h3>
+                            {warehouses.length > 0 && (
+                                <select
+                                    value={selectedWarehouseFilter}
+                                    onChange={(e) => setSelectedWarehouseFilter(e.target.value)}
+                                    className="text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                >
+                                    <option value="all">Semua Cabang & Global</option>
+                                    <option value="global">Hanya Global (Pusat)</option>
+                                    {warehouses.map((w) => (
+                                        <option key={w.id} value={w.id}>
+                                            Cabang: {w.name} ({w.code})
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
                         {canUpdatePaymentSettings && (
                             <Link
                                 href={route("settings.bank-accounts.create")}
-                                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium transition-colors"
+                                className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium transition-colors"
                             >
                                 <IconPlus size={18} />
                                 Tambah Bank
@@ -102,9 +126,9 @@ export default function BankAccounts({ bankAccounts = [] }) {
                         )}
                     </div>
 
-                    {bankAccounts.length > 0 ? (
+                    {filteredBankAccounts.length > 0 ? (
                         <div className="divide-y divide-slate-200 dark:divide-slate-800">
-                            {bankAccounts.map((bank) => (
+                            {filteredBankAccounts.map((bank) => (
                                 <div
                                     key={bank.id}
                                     className={`p-4 flex items-center gap-4 ${
@@ -115,12 +139,23 @@ export default function BankAccounts({ bankAccounts = [] }) {
                                         <IconGripVertical size={20} />
                                     </div>
                                     <BankLogoItem bank={bank} />
-                                    <div className="flex-1">
-                                        <p className="font-semibold text-slate-800 dark:text-white">
-                                            {bank.bank_name}
-                                        </p>
-                                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                                            {bank.account_number} • {bank.account_name}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <p className="font-semibold text-slate-800 dark:text-white truncate">
+                                                {bank.bank_name}
+                                            </p>
+                                            {bank.warehouse ? (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800">
+                                                    Cabang: {bank.warehouse.name}
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                                    Semua Cabang (Pusat)
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                                            {bank.account_number} • <span className="font-sans">{bank.account_name}</span>
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-2">

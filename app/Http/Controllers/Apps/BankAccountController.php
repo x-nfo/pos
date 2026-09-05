@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Apps;
 
 use App\Http\Controllers\Controller;
 use App\Models\BankAccount;
+use App\Models\Warehouse;
 use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -20,10 +21,18 @@ class BankAccountController extends Controller
      */
     public function index()
     {
-        $bankAccounts = BankAccount::ordered()->get();
+        $bankAccounts = BankAccount::with('warehouse:id,code,name')
+            ->ordered()
+            ->get();
+
+        $warehouses = Warehouse::active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name']);
 
         return Inertia::render('Dashboard/Settings/BankAccounts', [
             'bankAccounts' => $bankAccounts,
+            'warehouses' => $warehouses,
         ]);
     }
 
@@ -32,8 +41,14 @@ class BankAccountController extends Controller
      */
     public function create()
     {
+        $warehouses = Warehouse::active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name']);
+
         return Inertia::render('Dashboard/Settings/BankAccountForm', [
             'bankAccount' => null,
+            'warehouses' => $warehouses,
         ]);
     }
 
@@ -42,8 +57,16 @@ class BankAccountController extends Controller
      */
     public function edit(BankAccount $bankAccount)
     {
+        $bankAccount->load('warehouse:id,code,name');
+
+        $warehouses = Warehouse::active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name']);
+
         return Inertia::render('Dashboard/Settings/BankAccountForm', [
             'bankAccount' => $bankAccount,
+            'warehouses' => $warehouses,
         ]);
     }
 
@@ -57,6 +80,7 @@ class BankAccountController extends Controller
         }
 
         $validated = $request->validate([
+            'warehouse_id' => 'nullable|integer|exists:warehouses,id',
             'bank_name' => 'required|string|max:100',
             'account_number' => 'required|string|max:50',
             'account_name' => 'required|string|max:100',
@@ -98,6 +122,7 @@ class BankAccountController extends Controller
         }
 
         $validated = $request->validate([
+            'warehouse_id' => 'nullable|integer|exists:warehouses,id',
             'bank_name' => 'required|string|max:100',
             'account_number' => 'required|string|max:50',
             'account_name' => 'required|string|max:100',
@@ -143,11 +168,13 @@ class BankAccountController extends Controller
     {
         $before = $this->bankAccountPayload($bankAccount);
 
-        // Check if used in transactions
-        if ($bankAccount->transactions()->exists()) {
+        // Check if used in transactions or payments
+        if ($bankAccount->transactions()->exists()
+            || $bankAccount->receivablePayments()->exists()
+            || $bankAccount->payablePayments()->exists()) {
             return redirect()
                 ->route('settings.bank-accounts.index')
-                ->with('error', 'Rekening bank tidak bisa dihapus karena sudah digunakan di transaksi.');
+                ->with('error', 'Rekening bank tidak bisa dihapus karena sudah digunakan di transaksi atau riwayat pembayaran.');
         }
 
         // Delete logo
@@ -243,7 +270,11 @@ class BankAccountController extends Controller
 
     private function bankAccountPayload(BankAccount $bankAccount): array
     {
+        $bankAccount->loadMissing('warehouse:id,name');
+
         return [
+            'warehouse_id' => $bankAccount->warehouse_id,
+            'warehouse_name' => $bankAccount->warehouse?->name ?? 'Semua Cabang',
             'bank_name' => $bankAccount->bank_name,
             'account_number_masked' => $this->auditLogService->maskAccountNumber($bankAccount->account_number),
             'account_name' => $bankAccount->account_name,

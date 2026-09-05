@@ -120,7 +120,8 @@ class ReceivableController extends Controller
 
         $receivable->setRelation('campaignLogs', $campaignLogs);
 
-        $bankAccounts = BankAccount::active()->ordered()->get(['id', 'bank_name', 'account_number', 'account_name', 'logo']);
+        $targetWarehouseId = $receivable->transaction?->warehouse_id ?? auth()->user()->warehouse_id;
+        $bankAccounts = BankAccount::active()->forWarehouse($targetWarehouseId)->ordered()->get(['id', 'bank_name', 'account_number', 'account_name', 'logo']);
         $approvalThreshold = (float) Setting::get('receivable_approval_threshold', 1000000);
 
         $storeName = Setting::get('store_name', config('app.name', 'Point of Sales'));

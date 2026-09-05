@@ -202,7 +202,10 @@ class DocumentController extends Controller
             'payments.user',
         ]);
 
-        $bankAccounts = BankAccount::active()->ordered()->get();
+        $bankAccounts = BankAccount::active()
+            ->forWarehouse($receivable->transaction?->warehouse_id)
+            ->ordered()
+            ->get();
 
         $pdf = Pdf::loadView('pdf.receivable', [
             'receivable' => $receivable,

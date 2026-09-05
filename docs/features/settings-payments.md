@@ -9,7 +9,7 @@ Mengelola konfigurasi bisnis dan pembayaran yang dipakai aplikasi secara operasi
 ## Fitur Saat Ini
 
 - payment gateway settings
-- bank account management
+- bank account management (multi-branch scoping & hybrid global/cabang)
 - store profile settings
 - target penjualan
 
@@ -49,7 +49,6 @@ Mengelola konfigurasi bisnis dan pembayaran yang dipakai aplikasi secara operasi
 
 - payment gateway tetap memerlukan konfigurasi provider di luar aplikasi
 - warning webhook ditampilkan, tetapi deployment publik tetap tanggung jawab environment
-- rekening bank saat ini bersifat global/terpusat (belum di-scope per cabang; rencana pengembangan tercatat di `docs/planning/improvement-planning.md`)
 
 ## File Sentral
 

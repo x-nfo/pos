@@ -235,9 +235,20 @@ export default function MobilePaymentSheet({
                                                 }`}
                                             >
                                                 <div>
-                                                    <p className="text-xs font-bold text-slate-900 dark:text-white">
-                                                        {bank.bank_name}
-                                                    </p>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <p className="text-xs font-bold text-slate-900 dark:text-white">
+                                                            {bank.bank_name}
+                                                        </p>
+                                                        {bank.warehouse ? (
+                                                            <span className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-primary-100 dark:bg-primary-950/60 text-primary-700 dark:text-primary-300">
+                                                                {bank.warehouse.name}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                                                Pusat
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
                                                         {bank.account_number} a.n. {bank.account_name}
                                                     </p>

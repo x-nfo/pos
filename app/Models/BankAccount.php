@@ -10,6 +10,7 @@ class BankAccount extends Model
     use HasFactory;
 
     protected $fillable = [
+        'warehouse_id',
         'bank_name',
         'account_number',
         'account_name',
@@ -19,6 +20,7 @@ class BankAccount extends Model
     ];
 
     protected $casts = [
+        'warehouse_id' => 'integer',
         'is_active' => 'boolean',
         'sort_order' => 'integer',
     ];
@@ -44,11 +46,52 @@ class BankAccount extends Model
     }
 
     /**
+     * Scope to filter bank accounts available for a given warehouse.
+     * Includes global accounts (warehouse_id is null) and branch-specific accounts.
+     * If $warehouseId is null, returns all accounts (e.g. for HQ).
+     */
+    public function scopeForWarehouse($query, ?int $warehouseId)
+    {
+        if (! $warehouseId) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($warehouseId) {
+            $q->whereNull('warehouse_id')
+                ->orWhere('warehouse_id', $warehouseId);
+        });
+    }
+
+    /**
+     * Get warehouse associated with this bank account (null if global)
+     */
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class)->withTrashed();
+    }
+
+    /**
      * Get transactions using this bank account
      */
     public function transactions()
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * Get receivable payments using this bank account
+     */
+    public function receivablePayments()
+    {
+        return $this->hasMany(ReceivablePayment::class);
+    }
+
+    /**
+     * Get payable payments using this bank account
+     */
+    public function payablePayments()
+    {
+        return $this->hasMany(PayablePayment::class);
     }
 
     public function getLogoUrlAttribute(): ?string

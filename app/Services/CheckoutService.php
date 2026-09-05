@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\PaymentGatewayException;
+use App\Models\BankAccount;
 use App\Models\Cart;
 use App\Models\Customer;
 use App\Models\CustomerVoucher;
@@ -173,6 +174,14 @@ class CheckoutService
             $grandTotal = (int) data_get($checkoutPreview, 'summary.grand_total', 0);
             $changeAmount = $isCashPayment ? max(0, $cashAmount - $grandTotal) : 0;
 
+            $bankAccountId = $paymentGateway === 'bank_transfer' ? ($payload['bank_account_id'] ?? null) : null;
+            if ($bankAccountId) {
+                $bankAccount = BankAccount::find($bankAccountId);
+                if ($bankAccount && $effectiveWarehouseId && $bankAccount->warehouse_id && (int) $bankAccount->warehouse_id !== (int) $effectiveWarehouseId) {
+                    abort(422, 'Akun bank tidak dapat digunakan di cabang ini.');
+                }
+            }
+
             $transaction = Transaction::create([
                 'cashier_id' => $cashier->id,
                 'cashier_shift_id' => $activeShift->id,
@@ -191,7 +200,7 @@ class CheckoutService
                 'grand_total' => $grandTotal,
                 'payment_method' => $isPayLater ? 'pay_later' : ($paymentGateway ?: 'cash'),
                 'payment_status' => $isCashPayment ? 'paid' : ($isPayLater ? 'unpaid' : 'pending'),
-                'bank_account_id' => $paymentGateway === 'bank_transfer' ? ($payload['bank_account_id'] ?? null) : null,
+                'bank_account_id' => $bankAccountId,
                 'tax_rate' => data_get($checkoutPreview, 'summary.tax_rate'),
                 'tax_total' => data_get($checkoutPreview, 'summary.tax_total', 0),
                 'customer_npwp' => $payload['customer_npwp'] ?? null,

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Apps;
 
 use App\Http\Controllers\Controller;
+use App\Models\BankAccount;
 use App\Models\Customer;
 use App\Models\CustomerVoucher;
 use App\Models\DiscountApprovalLog;
@@ -161,6 +162,17 @@ class TransactionSyncController extends Controller
                 $cashAmount = $isCashPayment ? max(0, (int) ($validated['cash'] ?? $grandTotal)) : 0;
                 $changeAmount = $isCashPayment ? max(0, $cashAmount - $grandTotal) : 0;
 
+                $bankAccountId = $paymentGateway === 'bank_transfer' ? ($validated['bank_account_id'] ?? null) : null;
+                if ($bankAccountId) {
+                    $bankAccount = BankAccount::find($bankAccountId);
+                    if ($bankAccount && $activeShift->warehouse_id && $bankAccount->warehouse_id && (int) $bankAccount->warehouse_id !== (int) $activeShift->warehouse_id) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Akun bank tidak dapat digunakan di cabang ini.',
+                        ], 422);
+                    }
+                }
+
                 $transaction = Transaction::create([
                     'cashier_id' => auth()->id(),
                     'cashier_shift_id' => $activeShift->id,
@@ -180,7 +192,7 @@ class TransactionSyncController extends Controller
                     'payment_method' => $isPayLater ? 'pay_later' : ($paymentGateway ?: 'cash'),
                     'payment_status' => $isCashPayment ? 'paid' : ($isPayLater ? 'unpaid' : 'pending'),
                     'payment_reference' => $offlineRef,
-                    'bank_account_id' => $paymentGateway === 'bank_transfer' ? ($validated['bank_account_id'] ?? null) : null,
+                    'bank_account_id' => $bankAccountId,
                     'customer_npwp' => $validated['customer_npwp'] ?? null,
                 ]);
 
