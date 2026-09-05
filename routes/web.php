@@ -22,6 +22,7 @@ use App\Http\Controllers\Apps\PriceListController;
 use App\Http\Controllers\Apps\PricingRuleController;
 use App\Http\Controllers\Apps\ProductCatalogController;
 use App\Http\Controllers\Apps\ProductController;
+use App\Http\Controllers\Apps\PromoBannerController;
 use App\Http\Controllers\Apps\PurchaseOrderController;
 use App\Http\Controllers\Apps\ReceivableController;
 use App\Http\Controllers\Apps\ReceivablePaymentApprovalController;
@@ -46,6 +47,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OgImageController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PublicCatalogController;
 use App\Http\Controllers\PublicPortalController;
 use App\Http\Controllers\RegionController;
 use App\Http\Controllers\Reports\AdvancedSalesInsightsController;
@@ -55,13 +57,18 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Models\Setting;
 use Illuminate\Foundation\Application;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 
-Route::get('/', function () {
+Route::get('/', function (Request $request) {
     if (Schema::hasTable('settings') && Setting::get('landing_page_mode') === 'direct_login') {
         return redirect()->route('login');
+    }
+
+    if (Schema::hasTable('settings') && Setting::get('landing_page_mode') === 'storefront') {
+        return app(PublicCatalogController::class)->index($request);
     }
 
     return Inertia::render('Welcome', [
@@ -71,6 +78,8 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+Route::get('/katalog', [PublicCatalogController::class, 'index'])->name('catalog.index');
 
 Route::get('/manifest.json', ManifestController::class)->name('manifest');
 
@@ -370,6 +379,15 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::get('/settings/branding', [SettingController::class, 'storeIdentity'])->middleware('permission:branding-settings-access')->name('settings.branding');
     Route::post('/settings/store', [SettingController::class, 'updateStoreProfile'])->middleware('permission:store-settings-update')->name('settings.store.update');
     Route::post('/settings/branding', [SettingController::class, 'updateBranding'])->middleware('permission:branding-settings-update')->name('settings.branding.update');
+
+    // settings promo banners (katalog)
+    Route::post('/settings/promo-banners', [PromoBannerController::class, 'store'])->middleware('permission:store-settings-update')->name('settings.promo-banners.store');
+    Route::post('/settings/promo-banners/order', [PromoBannerController::class, 'updateOrder'])->middleware('permission:store-settings-update')->name('settings.promo-banners.order');
+    Route::post('/settings/promo-banners/{promoBanner}', [PromoBannerController::class, 'update'])->middleware('permission:store-settings-update')->name('settings.promo-banners.update');
+    Route::delete('/settings/promo-banners/{promoBanner}', [PromoBannerController::class, 'destroy'])->middleware('permission:store-settings-update')->name('settings.promo-banners.destroy');
+    Route::patch('/settings/promo-banners/{promoBanner}/toggle', [PromoBannerController::class, 'toggleActive'])->middleware('permission:store-settings-update')->name('settings.promo-banners.toggle');
+    Route::post('/settings/static-banner', [SettingController::class, 'updateStaticBanner'])->middleware('permission:store-settings-update')->name('settings.static-banner.update');
+
     Route::get('/settings/printer', [SettingController::class, 'printer'])->middleware('permission:printer-settings-access')->name('settings.printer');
     Route::post('/settings/printer', [SettingController::class, 'updatePrinter'])->middleware('permission:printer-settings-update')->name('settings.printer.update');
     Route::get('/settings/loyalty', [SettingController::class, 'loyalty'])->middleware('permission:loyalty-settings-access')->name('settings.loyalty');

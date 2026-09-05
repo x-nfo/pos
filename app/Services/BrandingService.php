@@ -76,6 +76,13 @@ class BrandingService
             'app_powered_by_text' => Setting::get('app_powered_by_text', ''),
             'app_powered_by_url' => Setting::get('app_powered_by_url', ''),
             'landing_page_mode' => Setting::get('landing_page_mode', 'public_landing'),
+            'promo_banner_enabled' => (bool) Setting::getBool('promo_banner_enabled', true),
+            'promo_banner_badge' => Setting::get('promo_banner_badge', 'PROMO SPESIAL'),
+            'promo_banner_title' => Setting::get('promo_banner_title', 'Diskon & Penawaran Terbaik'),
+            'promo_banner_subtitle' => Setting::get('promo_banner_subtitle', 'Pesan langsung via WhatsApp toko kami. Pengiriman cepat & produk berkualitas!'),
+            'promo_banner_action_text' => Setting::get('promo_banner_action_text', 'Belanja Sekarang'),
+            'catalog_delivery_enabled' => (bool) Setting::getBool('catalog_delivery_enabled', true),
+            'catalog_pickup_enabled' => (bool) Setting::getBool('catalog_pickup_enabled', true),
         ];
     }
 

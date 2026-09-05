@@ -17,6 +17,7 @@ import {
     IconCreditCard,
     IconRocket,
     IconSparkles,
+    IconBuildingStore,
 } from "@tabler/icons-react";
 
 const stats = [
@@ -182,6 +183,13 @@ export default function Welcome() {
                                 <IconRocket size={20} />
                                 Coba Demo Sekarang
                                 <IconArrowRight size={18} />
+                            </Link>
+                            <Link
+                                href="/katalog"
+                                className="w-full sm:w-auto px-8 py-4 text-base font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all flex items-center justify-center gap-2 shadow-sm"
+                            >
+                                <IconBuildingStore size={20} className="text-emerald-600 dark:text-emerald-400" />
+                                Katalog Toko Online
                             </Link>
                             <Link
                                 href="/fitur"

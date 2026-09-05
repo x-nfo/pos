@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Apps;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
+use App\Models\PromoBanner;
 use App\Models\Setting;
 use App\Services\AuditLogService;
 use App\Services\BrandingService;
@@ -77,12 +79,44 @@ class SettingController extends Controller
             'store_npwp' => Setting::get('store_npwp', ''),
             'store_nib' => Setting::get('store_nib', ''),
             'tax_default_rate' => Setting::get('tax_default_rate', '11.00'),
+            'catalog_delivery_enabled' => Setting::getBool('catalog_delivery_enabled', true),
+            'catalog_pickup_enabled' => Setting::getBool('catalog_pickup_enabled', true),
+            'promo_banner_enabled' => Setting::getBool('promo_banner_enabled', true),
+            'static_banner_enabled' => Setting::getBool('static_banner_enabled', true),
+            'static_banner_badge' => Setting::get('static_banner_badge', Setting::get('promo_banner_badge', 'PROMO SPESIAL')),
+            'static_banner_title' => Setting::get('static_banner_title', Setting::get('promo_banner_title', 'Diskon & Penawaran Terbaik')),
+            'static_banner_subtitle' => Setting::get('static_banner_subtitle', Setting::get('promo_banner_subtitle', 'Pesan langsung via WhatsApp toko kami. Pengiriman cepat & produk berkualitas!')),
+            'static_banner_action_text' => Setting::get('static_banner_action_text', Setting::get('promo_banner_action_text', 'Belanja Sekarang')),
+            'static_banner_link_url' => Setting::get('static_banner_link_url', ''),
+            'static_banner_image' => Setting::get('static_banner_image', ''),
+            'static_banner_image_url' => Setting::get('static_banner_image') ? asset('storage/'.Setting::get('static_banner_image')) : null,
         ];
+
+        $promoBanners = PromoBanner::with('category:id,name')
+            ->orderBy('sort_order')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn ($banner) => [
+                'id' => $banner->id,
+                'title' => $banner->title,
+                'subtitle' => $banner->subtitle,
+                'image' => $banner->image,
+                'image_url' => $banner->image_url,
+                'link_url' => $banner->link_url,
+                'category_id' => $banner->category_id,
+                'category_name' => $banner->category?->name,
+                'is_active' => (bool) $banner->is_active,
+                'sort_order' => (int) $banner->sort_order,
+            ]);
+
+        $categories = Category::select('id', 'name')->orderBy('name')->get();
 
         return Inertia::render('Dashboard/Settings/StoreIdentity', [
             'settings' => $settings,
             'brandingSettings' => $isSuperAdmin ? $this->brandingService->getSettingsForForm() : null,
             'branding' => $this->brandingService->getBranding(),
+            'promoBanners' => $promoBanners,
+            'categories' => $categories,
             'initialTab' => ($request->routeIs('settings.branding') && $isSuperAdmin) ? 'branding' : 'store',
         ]);
     }
@@ -104,6 +138,8 @@ class SettingController extends Controller
             'store_npwp' => 'nullable|string|max:20',
             'store_nib' => 'nullable|string|max:30',
             'tax_default_rate' => 'nullable|numeric|min:0|max:100',
+            'catalog_delivery_enabled' => 'nullable|boolean',
+            'catalog_pickup_enabled' => 'nullable|boolean',
         ]);
 
         $before = [
@@ -143,6 +179,8 @@ class SettingController extends Controller
         Setting::set('store_npwp', $request->store_npwp, 'NPWP Toko');
         Setting::set('store_nib', $request->store_nib, 'NIB Toko');
         Setting::set('tax_default_rate', $request->tax_default_rate, 'Default tarif PPN (%)');
+        Setting::set('catalog_delivery_enabled', $request->boolean('catalog_delivery_enabled', true) ? '1' : '0', 'Layanan pengiriman ke alamat');
+        Setting::set('catalog_pickup_enabled', $request->boolean('catalog_pickup_enabled', true) ? '1' : '0', 'Layanan ambil di toko');
 
         $this->auditLogService->log(
             event: 'store.setting.updated',
@@ -320,7 +358,14 @@ class SettingController extends Controller
             'app_powered_by_show' => 'nullable|boolean',
             'app_powered_by_text' => 'nullable|string|max:255',
             'app_powered_by_url' => 'nullable|string|max:255',
-            'landing_page_mode' => 'required|string|in:public_landing,direct_login',
+            'landing_page_mode' => 'required|string|in:public_landing,storefront,direct_login',
+            'promo_banner_enabled' => 'nullable|boolean',
+            'promo_banner_badge' => 'nullable|string|max:50',
+            'promo_banner_title' => 'nullable|string|max:100',
+            'promo_banner_subtitle' => 'nullable|string|max:255',
+            'promo_banner_action_text' => 'nullable|string|max:50',
+            'catalog_delivery_enabled' => 'nullable|boolean',
+            'catalog_pickup_enabled' => 'nullable|boolean',
         ]);
 
         $before = $this->brandingService->getSettingsForForm();
@@ -359,6 +404,18 @@ class SettingController extends Controller
         Setting::set('app_powered_by_text', $request->app_powered_by_text ?? '', 'Teks Powered By');
         Setting::set('app_powered_by_url', $request->app_powered_by_url ?? '', 'URL Powered By');
         Setting::set('landing_page_mode', $request->landing_page_mode, 'Mode Landing Page');
+        Setting::set('promo_banner_enabled', $request->boolean('promo_banner_enabled') ? '1' : '0', 'Promo banner katalog aktif');
+        Setting::set('promo_banner_badge', $request->promo_banner_badge ?? 'PROMO SPESIAL', 'Teks badge promo banner');
+        Setting::set('promo_banner_title', $request->promo_banner_title ?? '', 'Judul promo banner');
+        Setting::set('promo_banner_subtitle', $request->promo_banner_subtitle ?? '', 'Deskripsi promo banner');
+        Setting::set('promo_banner_action_text', $request->promo_banner_action_text ?? 'Belanja Sekarang', 'Teks tombol promo banner');
+
+        if ($request->has('catalog_delivery_enabled')) {
+            Setting::set('catalog_delivery_enabled', $request->boolean('catalog_delivery_enabled') ? '1' : '0', 'Layanan pengiriman ke alamat');
+        }
+        if ($request->has('catalog_pickup_enabled')) {
+            Setting::set('catalog_pickup_enabled', $request->boolean('catalog_pickup_enabled') ? '1' : '0', 'Layanan ambil di toko');
+        }
 
         $this->auditLogService->log(
             event: 'branding.setting.updated',
@@ -407,5 +464,58 @@ class SettingController extends Controller
         $this->whatsAppService->disconnect();
 
         return response()->json(['status' => true]);
+    }
+
+    /**
+     * Update static promo banner settings
+     */
+    public function updateStaticBanner(Request $request)
+    {
+        $request->validate([
+            'static_banner_enabled' => 'nullable|boolean',
+            'static_banner_badge' => 'nullable|string|max:50',
+            'static_banner_title' => 'nullable|string|max:150',
+            'static_banner_subtitle' => 'nullable|string|max:255',
+            'static_banner_action_text' => 'nullable|string|max:50',
+            'static_banner_link_url' => 'nullable|string|max:255',
+            'static_banner_image' => 'nullable|image|max:3072',
+            'remove_static_banner_image' => 'nullable|boolean',
+        ]);
+
+        if ($request->hasFile('static_banner_image')) {
+            $oldPath = Setting::get('static_banner_image');
+            if ($oldPath && ! str_starts_with($oldPath, 'http')) {
+                Storage::disk('public')->delete($oldPath);
+            }
+            $newPath = $request->file('static_banner_image')->store('banners', 'public');
+            Setting::set('static_banner_image', $newPath, 'Gambar Banner Statis');
+        } elseif ($request->boolean('remove_static_banner_image')) {
+            $oldPath = Setting::get('static_banner_image');
+            if ($oldPath && ! str_starts_with($oldPath, 'http')) {
+                Storage::disk('public')->delete($oldPath);
+            }
+            Setting::set('static_banner_image', '', 'Gambar Banner Statis');
+        }
+
+        Setting::set('static_banner_enabled', $request->boolean('static_banner_enabled') ? '1' : '0', 'Banner statis katalog aktif');
+        Setting::set('static_banner_badge', $request->static_banner_badge ?? 'PROMO SPESIAL', 'Teks badge banner statis');
+        Setting::set('static_banner_title', $request->static_banner_title ?? '', 'Judul banner statis');
+        Setting::set('static_banner_subtitle', $request->static_banner_subtitle ?? '', 'Deskripsi banner statis');
+        Setting::set('static_banner_action_text', $request->static_banner_action_text ?? 'Belanja Sekarang', 'Teks tombol banner statis');
+        Setting::set('static_banner_link_url', $request->static_banner_link_url ?? '', 'URL tautan banner statis');
+
+        $this->auditLogService->log(
+            event: 'static_banner.updated',
+            module: 'store_settings',
+            auditable: ['target_label' => 'Static Promo Banner'],
+            description: 'Pengaturan banner promo statis katalog diperbarui.',
+            before: null,
+            after: [
+                'static_banner_enabled' => $request->boolean('static_banner_enabled'),
+                'static_banner_title' => $request->static_banner_title,
+            ],
+        );
+
+        return back()->with('success', 'Pengaturan banner promo statis berhasil disimpan.');
     }
 }

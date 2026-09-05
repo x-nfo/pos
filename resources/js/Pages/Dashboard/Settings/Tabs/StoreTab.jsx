@@ -15,6 +15,7 @@ import {
     IconReceiptTax,
     IconUpload,
     IconTrash,
+    IconTruckDelivery,
 } from "@tabler/icons-react";
 import { getStoreLogoUrl } from "@/Utils/imageUrl";
 
@@ -36,6 +37,8 @@ export default function StoreTab({ settings }) {
         store_npwp: settings.store_npwp || "",
         store_nib: settings.store_nib || "",
         tax_default_rate: settings.tax_default_rate || "11.00",
+        catalog_delivery_enabled: settings.catalog_delivery_enabled !== undefined ? Boolean(settings.catalog_delivery_enabled) : true,
+        catalog_pickup_enabled: settings.catalog_pickup_enabled !== undefined ? Boolean(settings.catalog_pickup_enabled) : true,
     });
 
     useEffect(() => {
@@ -257,6 +260,97 @@ export default function StoreTab({ settings }) {
                             <p className="mt-1 text-xs text-slate-400">
                                 Tarif default untuk produk baru. Dapat diubah per produk.
                             </p>
+                        </div>
+                    </div>
+
+                    {/* Online Store Order & Fulfillment Options */}
+                    <div className="border-t border-slate-100 dark:border-slate-800 pt-6 space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400">
+                                <IconTruckDelivery size={22} />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
+                                    Layanan Pemesanan Online (Katalog WhatsApp)
+                                </h2>
+                                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                                    Atur metode pemenuhan pesanan yang dapat dipilih oleh pelanggan saat checkout di katalog online.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                            {/* Delivery Toggle Card */}
+                            <div className={`p-4 rounded-2xl border transition-all ${
+                                data.catalog_delivery_enabled
+                                    ? "border-emerald-200 bg-emerald-50/40 dark:border-emerald-900/60 dark:bg-emerald-950/20"
+                                    : "border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40"
+                            }`}>
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <IconTruckDelivery size={18} className={data.catalog_delivery_enabled ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"} />
+                                            <span className="text-sm font-bold text-slate-900 dark:text-white">
+                                                Kirim ke Alamat (Delivery)
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                            Jika diaktifkan, pelanggan dapat memilih pengantaran kurir dan wajib mengisi alamat pengiriman saat checkout.
+                                        </p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+                                        <input
+                                            type="checkbox"
+                                            checked={data.catalog_delivery_enabled}
+                                            onChange={(e) => setData("catalog_delivery_enabled", e.target.checked)}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                                    </label>
+                                </div>
+                                <div className="mt-3 flex items-center gap-1.5 text-[11px] font-medium">
+                                    <span className={`w-2 h-2 rounded-full ${data.catalog_delivery_enabled ? "bg-emerald-500" : "bg-slate-400"}`} />
+                                    <span className={data.catalog_delivery_enabled ? "text-emerald-700 dark:text-emerald-300" : "text-slate-500"}>
+                                        Status: {data.catalog_delivery_enabled ? "Pengantaran Aktif" : "Pengantaran Nonaktif (Khusus Ambil di Toko)"}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Pickup Toggle Card */}
+                            <div className={`p-4 rounded-2xl border transition-all ${
+                                data.catalog_pickup_enabled
+                                    ? "border-emerald-200 bg-emerald-50/40 dark:border-emerald-900/60 dark:bg-emerald-950/20"
+                                    : "border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40"
+                            }`}>
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <IconBuildingStore size={18} className={data.catalog_pickup_enabled ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"} />
+                                            <span className="text-sm font-bold text-slate-900 dark:text-white">
+                                                Ambil di Toko (Pick-up)
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                            Pelanggan datang langsung ke lokasi toko untuk mengambil pesanan belanjaan yang telah disiapkan.
+                                        </p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+                                        <input
+                                            type="checkbox"
+                                            checked={data.catalog_pickup_enabled}
+                                            onChange={(e) => setData("catalog_pickup_enabled", e.target.checked)}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                                    </label>
+                                </div>
+                                <div className="mt-3 flex items-center gap-1.5 text-[11px] font-medium">
+                                    <span className={`w-2 h-2 rounded-full ${data.catalog_pickup_enabled ? "bg-emerald-500" : "bg-slate-400"}`} />
+                                    <span className={data.catalog_pickup_enabled ? "text-emerald-700 dark:text-emerald-300" : "text-slate-500"}>
+                                        Status: {data.catalog_pickup_enabled ? "Ambil di Toko Aktif" : "Ambil di Toko Nonaktif"}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

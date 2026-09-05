@@ -29,6 +29,15 @@ export default function Warehouses({ warehouses = [] }) {
         phone: "",
         is_active: true,
         sort_order: 0,
+        catalog_delivery_enabled: true,
+        catalog_pickup_enabled: true,
+        is_24_hours: false,
+        open_time: "08:00",
+        close_time: "21:00",
+        operating_days: [1, 2, 3, 4, 5, 6, 7],
+        is_temporarily_closed: false,
+        closure_reason: "",
+        reopen_date: "",
     });
     const [errors, setErrors] = useState({});
 
@@ -38,7 +47,24 @@ export default function Warehouses({ warehouses = [] }) {
     }, [flash]);
 
     const resetForm = () => {
-        setForm({ code: "", name: "", type: "branch", address: "", phone: "", is_active: true, sort_order: 0 });
+        setForm({
+            code: "",
+            name: "",
+            type: "branch",
+            address: "",
+            phone: "",
+            is_active: true,
+            sort_order: 0,
+            catalog_delivery_enabled: true,
+            catalog_pickup_enabled: true,
+            is_24_hours: false,
+            open_time: "08:00",
+            close_time: "21:00",
+            operating_days: [1, 2, 3, 4, 5, 6, 7],
+            is_temporarily_closed: false,
+            closure_reason: "",
+            reopen_date: "",
+        });
         setErrors({});
         setEditing(null);
         setShowForm(false);
@@ -54,6 +80,15 @@ export default function Warehouses({ warehouses = [] }) {
             phone: w.phone || "",
             is_active: w.is_active,
             sort_order: w.sort_order,
+            catalog_delivery_enabled: w.catalog_delivery_enabled !== undefined ? Boolean(w.catalog_delivery_enabled) : true,
+            catalog_pickup_enabled: w.catalog_pickup_enabled !== undefined ? Boolean(w.catalog_pickup_enabled) : true,
+            is_24_hours: Boolean(w.is_24_hours),
+            open_time: w.open_time ? String(w.open_time).substring(0, 5) : "08:00",
+            close_time: w.close_time ? String(w.close_time).substring(0, 5) : "21:00",
+            operating_days: Array.isArray(w.operating_days) ? w.operating_days : [1, 2, 3, 4, 5, 6, 7],
+            is_temporarily_closed: Boolean(w.is_temporarily_closed),
+            closure_reason: w.closure_reason || "",
+            reopen_date: w.reopen_date ? String(w.reopen_date).substring(0, 10) : "",
         });
         setErrors({});
         setShowForm(true);
@@ -65,13 +100,27 @@ export default function Warehouses({ warehouses = [] }) {
 
         if (editing) {
             router.put(route("settings.warehouses.update", editing.id), form, {
-                onError: (err) => setErrors(err),
-                onSuccess: () => resetForm(),
+                onError: (err) => {
+                    setErrors(err);
+                    const firstErr = Object.values(err)[0];
+                    toast.error(firstErr || "Gagal memperbarui data gudang.");
+                },
+                onSuccess: () => {
+                    toast.success("Data cabang berhasil diperbarui.");
+                    resetForm();
+                },
             });
         } else {
             router.post(route("settings.warehouses.store"), form, {
-                onError: (err) => setErrors(err),
-                onSuccess: () => resetForm(),
+                onError: (err) => {
+                    setErrors(err);
+                    const firstErr = Object.values(err)[0];
+                    toast.error(firstErr || "Gagal menambahkan gudang.");
+                },
+                onSuccess: () => {
+                    toast.success("Cabang baru berhasil ditambahkan.");
+                    resetForm();
+                },
             });
         }
     };
@@ -145,8 +194,31 @@ export default function Warehouses({ warehouses = [] }) {
                                         <p className="text-sm text-slate-500 dark:text-slate-400">
                                             {w.code}
                                             {w.address ? ` • ${w.address}` : ""}
-                                            {w.phone ? ` • ${w.phone}` : ""}
+                                            {w.phone ? ` • WA: ${w.phone}` : ""}
                                         </p>
+                                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                            {w.operating_status && (
+                                                <span
+                                                    className={`px-2 py-0.5 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 ${
+                                                        w.operating_status.is_open
+                                                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                                            : w.operating_status.status === "temporarily_closed"
+                                                            ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400"
+                                                            : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                                                    }`}
+                                                    title={w.operating_status.schedule_info || ""}
+                                                >
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${w.operating_status.is_open ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+                                                    <span>{w.operating_status.badge_text}</span>
+                                                </span>
+                                            )}
+                                            <span className={`px-2 py-0.5 rounded-lg text-[11px] font-medium ${w.catalog_delivery_enabled !== false ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"}`}>
+                                                🚚 {w.catalog_delivery_enabled !== false ? "Kirim Aktif" : "Kirim Nonaktif"}
+                                            </span>
+                                            <span className={`px-2 py-0.5 rounded-lg text-[11px] font-medium ${w.catalog_pickup_enabled !== false ? "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"}`}>
+                                                🏪 {w.catalog_pickup_enabled !== false ? "Ambil di Toko" : "Pickup Nonaktif"}
+                                            </span>
+                                        </div>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                         {w.type !== "main" && (
@@ -263,6 +335,186 @@ export default function Warehouses({ warehouses = [] }) {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Jam Operasional Cabang */}
+                            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                        🕒 Jam Operasional Cabang
+                                    </p>
+                                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={form.is_24_hours}
+                                            onChange={(e) => setForm({ ...form, is_24_hours: e.target.checked })}
+                                            className="rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500"
+                                        />
+                                        <span>Buka 24 Jam Non-Stop</span>
+                                    </label>
+                                </div>
+
+                                {!form.is_24_hours && (
+                                    <>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                                    Jam Buka
+                                                </label>
+                                                <input
+                                                    type="time"
+                                                    value={form.open_time}
+                                                    onChange={(e) => setForm({ ...form, open_time: e.target.value })}
+                                                    className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500"
+                                                />
+                                                {errors.open_time && (
+                                                    <p className="text-xs text-danger-500 mt-1">{errors.open_time}</p>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                                                    Jam Tutup
+                                                </label>
+                                                <input
+                                                    type="time"
+                                                    value={form.close_time}
+                                                    onChange={(e) => setForm({ ...form, close_time: e.target.value })}
+                                                    className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500"
+                                                />
+                                                {errors.close_time && (
+                                                    <p className="text-xs text-danger-500 mt-1">{errors.close_time}</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                                                Hari Buka Operasional
+                                            </label>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {[
+                                                    { id: 1, label: "Senin" },
+                                                    { id: 2, label: "Selasa" },
+                                                    { id: 3, label: "Rabu" },
+                                                    { id: 4, label: "Kamis" },
+                                                    { id: 5, label: "Jumat" },
+                                                    { id: 6, label: "Sabtu" },
+                                                    { id: 7, label: "Minggu" },
+                                                ].map((d) => {
+                                                    const isSelected = form.operating_days?.includes(d.id);
+                                                    return (
+                                                        <button
+                                                            key={d.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const current = form.operating_days || [];
+                                                                const updated = isSelected
+                                                                    ? current.filter((x) => x !== d.id)
+                                                                    : [...current, d.id];
+                                                                setForm({ ...form, operating_days: updated });
+                                                            }}
+                                                            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                                                                isSelected
+                                                                    ? "bg-primary-600 text-white shadow-2xs"
+                                                                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                                                            }`}
+                                                        >
+                                                            {d.label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            {errors.operating_days && (
+                                                <p className="text-xs text-danger-500 mt-1">{errors.operating_days}</p>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Tutup Sementara / Libur Khusus */}
+                            <div className="p-3.5 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider">
+                                            🛑 Tutup Sementara / Libur Khusus
+                                        </p>
+                                        <p className="text-[11px] text-rose-600 dark:text-rose-400">
+                                            Gunakan jika toko tutup mendadak, sakit, musibah, atau libur hari raya.
+                                        </p>
+                                    </div>
+                                    <label className="flex items-center gap-2 text-xs font-bold text-rose-800 dark:text-rose-300 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={form.is_temporarily_closed}
+                                            onChange={(e) => setForm({ ...form, is_temporarily_closed: e.target.checked })}
+                                            className="rounded border-rose-300 dark:border-rose-700 text-rose-600 focus:ring-rose-500"
+                                        />
+                                        <span>Aktifkan Tutup Sementara</span>
+                                    </label>
+                                </div>
+
+                                {form.is_temporarily_closed && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-rose-200/80 dark:border-rose-900/60">
+                                        <div>
+                                            <label className="block text-xs font-medium text-rose-800 dark:text-rose-300 mb-1">
+                                                Alasan Penutupan
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder="Contoh: Libur Hari Raya Idul Fitri / Renovasi"
+                                                value={form.closure_reason}
+                                                onChange={(e) => setForm({ ...form, closure_reason: e.target.value })}
+                                                className="w-full h-10 px-3 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-rose-500"
+                                            />
+                                            {errors.closure_reason && (
+                                                <p className="text-xs text-danger-500 mt-1">{errors.closure_reason}</p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-rose-800 dark:text-rose-300 mb-1">
+                                                Estimasi Buka Kembali (Opsional)
+                                            </label>
+                                            <input
+                                                type="date"
+                                                value={form.reopen_date}
+                                                onChange={(e) => setForm({ ...form, reopen_date: e.target.value })}
+                                                className="w-full h-10 px-3 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-rose-500"
+                                            />
+                                            {errors.reopen_date && (
+                                                <p className="text-xs text-danger-500 mt-1">{errors.reopen_date}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Catalog online order settings */}
+                            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                                <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                    Layanan Toko Online (Katalog WhatsApp) Cabang Ini
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                    <label className="flex items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={form.catalog_delivery_enabled}
+                                            onChange={(e) => setForm({ ...form, catalog_delivery_enabled: e.target.checked })}
+                                            className="rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500"
+                                        />
+                                        <span>Bisa Kirim ke Alamat (Delivery)</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={form.catalog_pickup_enabled}
+                                            onChange={(e) => setForm({ ...form, catalog_pickup_enabled: e.target.checked })}
+                                            className="rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500"
+                                        />
+                                        <span>Bisa Ambil di Cabang (Pick-up)</span>
+                                    </label>
+                                </div>
+                            </div>
+
                             <div className="flex items-center gap-3">
                                 <button
                                     type="submit"

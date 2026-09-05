@@ -178,4 +178,89 @@ class WarehouseTest extends TestCase
             'sort_order' => 0,
         ])->assertInvalid(['code']);
     }
+
+    public function test_admin_can_save_and_update_catalog_fulfillment_settings_for_warehouse(): void
+    {
+        $response = $this->from(route('settings.warehouses.index'))
+            ->post(route('settings.warehouses.store'), [
+                'code' => 'CABANG-FULFILL',
+                'name' => 'Cabang Fulfillment',
+                'type' => 'branch',
+                'catalog_delivery_enabled' => false,
+                'catalog_pickup_enabled' => true,
+                'is_active' => true,
+                'sort_order' => 5,
+            ]);
+
+        $response->assertSessionHas('success');
+        $warehouse = Warehouse::where('code', 'CABANG-FULFILL')->first();
+        $this->assertNotNull($warehouse);
+        $this->assertFalse($warehouse->catalog_delivery_enabled);
+        $this->assertTrue($warehouse->catalog_pickup_enabled);
+
+        // Update toggles
+        $this->from(route('settings.warehouses.index'))
+            ->put(route('settings.warehouses.update', $warehouse->id), [
+                'code' => 'CABANG-FULFILL',
+                'name' => 'Cabang Fulfillment',
+                'type' => 'branch',
+                'catalog_delivery_enabled' => true,
+                'catalog_pickup_enabled' => false,
+                'is_active' => true,
+                'sort_order' => 5,
+            ])->assertSessionHas('success');
+
+        $warehouse->refresh();
+        $this->assertTrue($warehouse->catalog_delivery_enabled);
+        $this->assertFalse($warehouse->catalog_pickup_enabled);
+    }
+
+    public function test_admin_can_save_and_update_operating_hours_and_temporary_closure_for_warehouse(): void
+    {
+        $this->actingAs($this->admin);
+
+        $response = $this->from(route('settings.warehouses.index'))
+            ->post(route('settings.warehouses.store'), [
+                'code' => 'CABANG-JAM',
+                'name' => 'Cabang Jam Operasional',
+                'type' => 'branch',
+                'is_24_hours' => false,
+                'open_time' => '08:30',
+                'close_time' => '21:00',
+                'operating_days' => [1, 2, 3, 4, 5],
+                'is_temporarily_closed' => true,
+                'closure_reason' => 'Libur Hari Raya Idul Fitri',
+                'reopen_date' => '2026-09-15',
+                'is_active' => true,
+            ]);
+
+        $response->assertSessionHas('success');
+        $warehouse = Warehouse::where('code', 'CABANG-JAM')->first();
+        $this->assertNotNull($warehouse);
+        $this->assertFalse($warehouse->is_24_hours);
+        $this->assertEquals('08:30', $warehouse->open_time);
+        $this->assertEquals('21:00', $warehouse->close_time);
+        $this->assertEquals([1, 2, 3, 4, 5], $warehouse->operating_days);
+        $this->assertTrue($warehouse->is_temporarily_closed);
+        $this->assertEquals('Libur Hari Raya Idul Fitri', $warehouse->closure_reason);
+        $this->assertEquals('2026-09-15', $warehouse->reopen_date?->format('Y-m-d'));
+
+        // Update to 24 hours and remove temporary closure
+        $this->from(route('settings.warehouses.index'))
+            ->put(route('settings.warehouses.update', $warehouse->id), [
+                'code' => 'CABANG-JAM',
+                'name' => 'Cabang Jam Operasional 24 Jam',
+                'type' => 'branch',
+                'is_24_hours' => true,
+                'is_temporarily_closed' => false,
+                'closure_reason' => null,
+                'reopen_date' => null,
+                'is_active' => true,
+            ])->assertSessionHas('success');
+
+        $warehouse->refresh();
+        $this->assertTrue($warehouse->is_24_hours);
+        $this->assertFalse($warehouse->is_temporarily_closed);
+        $this->assertNull($warehouse->closure_reason);
+    }
 }

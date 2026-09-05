@@ -14,6 +14,7 @@ class WarehouseController extends Controller
     public function index()
     {
         $warehouses = Warehouse::orderBy('sort_order')->orderBy('code')->get();
+        $warehouses->each->append('operating_status');
 
         return Inertia::render('Dashboard/Settings/Warehouses', [
             'warehouses' => $warehouses,
@@ -30,7 +31,29 @@ class WarehouseController extends Controller
             'phone' => ['nullable', 'string', 'max:20'],
             'is_active' => ['boolean'],
             'sort_order' => ['integer', 'min:0'],
+            'catalog_delivery_enabled' => ['nullable', 'boolean'],
+            'catalog_pickup_enabled' => ['nullable', 'boolean'],
+            'is_24_hours' => ['nullable', 'boolean'],
+            'open_time' => ['nullable', 'string', 'max:8'],
+            'close_time' => ['nullable', 'string', 'max:8'],
+            'operating_days' => ['nullable', 'array'],
+            'is_temporarily_closed' => ['nullable', 'boolean'],
+            'closure_reason' => ['nullable', 'string', 'max:255'],
+            'reopen_date' => ['nullable', 'date'],
         ]);
+
+        if (! empty($validated['open_time'])) {
+            $validated['open_time'] = substr($validated['open_time'], 0, 5);
+        }
+        if (! empty($validated['close_time'])) {
+            $validated['close_time'] = substr($validated['close_time'], 0, 5);
+        }
+        if (empty($validated['closure_reason'])) {
+            $validated['closure_reason'] = null;
+        }
+        if (empty($validated['reopen_date'])) {
+            $validated['reopen_date'] = null;
+        }
 
         $warehouse = Warehouse::create($validated);
 
@@ -54,7 +77,29 @@ class WarehouseController extends Controller
             'phone' => ['nullable', 'string', 'max:20'],
             'is_active' => ['boolean'],
             'sort_order' => ['integer', 'min:0'],
+            'catalog_delivery_enabled' => ['nullable', 'boolean'],
+            'catalog_pickup_enabled' => ['nullable', 'boolean'],
+            'is_24_hours' => ['nullable', 'boolean'],
+            'open_time' => ['nullable', 'string', 'max:8'],
+            'close_time' => ['nullable', 'string', 'max:8'],
+            'operating_days' => ['nullable', 'array'],
+            'is_temporarily_closed' => ['nullable', 'boolean'],
+            'closure_reason' => ['nullable', 'string', 'max:255'],
+            'reopen_date' => ['nullable', 'date'],
         ]);
+
+        if (! empty($validated['open_time'])) {
+            $validated['open_time'] = substr($validated['open_time'], 0, 5);
+        }
+        if (! empty($validated['close_time'])) {
+            $validated['close_time'] = substr($validated['close_time'], 0, 5);
+        }
+        if (empty($validated['closure_reason'])) {
+            $validated['closure_reason'] = null;
+        }
+        if (empty($validated['reopen_date'])) {
+            $validated['reopen_date'] = null;
+        }
 
         $warehouse->update($validated);
 

@@ -15,6 +15,7 @@ import {
     IconExternalLink,
     IconRefresh,
     IconLayersLinked,
+    IconTruckDelivery,
 } from "@tabler/icons-react";
 import { applyThemeColors } from "@/Utils/brandingTheme";
 
@@ -57,6 +58,13 @@ export default function BrandingTab({ settings, branding }) {
         app_powered_by_text: settings.app_powered_by_text || "",
         app_powered_by_url: settings.app_powered_by_url || "",
         landing_page_mode: settings.landing_page_mode || "public_landing",
+        promo_banner_enabled: settings.promo_banner_enabled !== undefined ? Boolean(settings.promo_banner_enabled) : true,
+        promo_banner_badge: settings.promo_banner_badge || "PROMO SPESIAL",
+        promo_banner_title: settings.promo_banner_title || "",
+        promo_banner_subtitle: settings.promo_banner_subtitle || "",
+        promo_banner_action_text: settings.promo_banner_action_text || "Belanja Sekarang",
+        catalog_delivery_enabled: settings.catalog_delivery_enabled !== undefined ? Boolean(settings.catalog_delivery_enabled) : true,
+        catalog_pickup_enabled: settings.catalog_pickup_enabled !== undefined ? Boolean(settings.catalog_pickup_enabled) : true,
     });
 
     const [previewLight, setPreviewLight] = useState(branding.logoLight || null);
@@ -522,7 +530,7 @@ export default function BrandingTab({ settings, branding }) {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                             <label
                                 className={`cursor-pointer p-4 rounded-2xl border-2 transition relative flex flex-col justify-between ${
                                     data.landing_page_mode === "public_landing"
@@ -540,9 +548,9 @@ export default function BrandingTab({ settings, branding }) {
                                             onChange={(e) => setData("landing_page_mode", e.target.value)}
                                             className="sr-only"
                                         />
-                                        <p className="font-bold text-slate-900 dark:text-white text-base">Public Marketing Landing Page</p>
+                                        <p className="font-bold text-slate-900 dark:text-white text-base">Marketing Landing Page</p>
                                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                            Menampilkan landing page informasi fitur & navigasi sebelum pengguna login.
+                                            Menampilkan landing page informasi fitur software POS &amp; navigasi sebelum login.
                                         </p>
                                     </div>
                                     <div
@@ -553,6 +561,42 @@ export default function BrandingTab({ settings, branding }) {
                                         }`}
                                     >
                                         {data.landing_page_mode === "public_landing" && <span className="w-2 h-2 rounded-full bg-white" />}
+                                    </div>
+                                </div>
+                            </label>
+
+                            <label
+                                className={`cursor-pointer p-4 rounded-2xl border-2 transition relative flex flex-col justify-between ${
+                                    data.landing_page_mode === "storefront"
+                                        ? "border-primary-600 bg-primary-50/20 dark:bg-primary-950/20"
+                                        : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
+                                }`}
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div>
+                                        <input
+                                            type="radio"
+                                            name="landing_page_mode"
+                                            value="storefront"
+                                            checked={data.landing_page_mode === "storefront"}
+                                            onChange={(e) => setData("landing_page_mode", e.target.value)}
+                                            className="sr-only"
+                                        />
+                                        <div className="flex items-center gap-1.5">
+                                            <p className="font-bold text-slate-900 dark:text-white text-base">Toko Online / WhatsApp</p>
+                                        </div>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                            Akses URL utama (/) langsung menampilkan katalog produk toko online &amp; pemesanan WhatsApp.
+                                        </p>
+                                    </div>
+                                    <div
+                                        className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                                            data.landing_page_mode === "storefront"
+                                                ? "border-primary-600 bg-primary-600 text-white"
+                                                : "border-slate-300"
+                                        }`}
+                                    >
+                                        {data.landing_page_mode === "storefront" && <span className="w-2 h-2 rounded-full bg-white" />}
                                     </div>
                                 </div>
                             </label>
@@ -574,9 +618,9 @@ export default function BrandingTab({ settings, branding }) {
                                             onChange={(e) => setData("landing_page_mode", e.target.value)}
                                             className="sr-only"
                                         />
-                                        <p className="font-bold text-slate-900 dark:text-white text-base">Direct Login (Dedicated Client)</p>
+                                        <p className="font-bold text-slate-900 dark:text-white text-base">Direct Login Kasir/Admin</p>
                                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                            Akses URL utama (/) langsung dialihkan ke halaman login klien yang bermerek.
+                                            Akses URL utama (/) langsung dialihkan ke halaman login klien tanpa landing page.
                                         </p>
                                     </div>
                                     <div
@@ -591,9 +635,52 @@ export default function BrandingTab({ settings, branding }) {
                                 </div>
                             </label>
                         </div>
+
+                        {/* Online Store Delivery Toggle */}
+                        <div className="mt-5 pt-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+                                    <IconTruckDelivery size={18} />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                                        Layanan Pengiriman ke Alamat (Delivery)
+                                    </p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                        Nonaktifkan opsi ini jika toko Anda hanya melayani ambil di toko (Pick-up).
+                                    </p>
+                                </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                                <input
+                                    type="checkbox"
+                                    checked={data.catalog_delivery_enabled}
+                                    onChange={(e) => setData("catalog_delivery_enabled", e.target.checked)}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                            </label>
+                        </div>
                     </div>
 
-                    {/* Section 5: Footer & Watermark Agency */}
+                    {/* Notice: Pengelolaan Banner Katalog Terpusat di Tab Banner Promo */}
+                    <div className="bg-amber-50/70 dark:bg-amber-950/30 rounded-3xl border border-amber-200/80 dark:border-amber-900/50 p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3.5">
+                            <div className="p-2.5 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 shrink-0">
+                                <IconSparkles size={22} />
+                            </div>
+                            <div>
+                                <h3 className="text-sm sm:text-base font-bold text-amber-950 dark:text-amber-100">
+                                    Pengelolaan Banner Slider & Banner Statis Katalog
+                                </h3>
+                                <p className="text-xs text-amber-800/90 dark:text-amber-300/80 mt-0.5">
+                                    Hero slider banner promo (multi-gambar ala Alfagift) serta banner promo statis kini dikelola secara terpusat pada tab <strong>Banner Promo</strong>.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section 6: Footer & Watermark Agency */}
                     <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
                         <div className="flex items-center gap-3 pb-6 border-b border-slate-100 dark:border-slate-800">
                             <div className="p-2.5 rounded-xl bg-cyan-50 dark:bg-cyan-950/50 text-cyan-600 dark:text-cyan-400">

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\OperatingHoursService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -20,17 +21,37 @@ class Warehouse extends Model
         'phone',
         'is_active',
         'sort_order',
+        'catalog_delivery_enabled',
+        'catalog_pickup_enabled',
+        'is_24_hours',
+        'open_time',
+        'close_time',
+        'operating_days',
+        'is_temporarily_closed',
+        'closure_reason',
+        'reopen_date',
     ];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
+            'catalog_delivery_enabled' => 'boolean',
+            'catalog_pickup_enabled' => 'boolean',
+            'is_24_hours' => 'boolean',
+            'is_temporarily_closed' => 'boolean',
+            'operating_days' => 'array',
+            'reopen_date' => 'date',
             'sort_order' => 'integer',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
             'deleted_at' => 'datetime',
         ];
+    }
+
+    public function getOperatingStatusAttribute(): array
+    {
+        return app(OperatingHoursService::class)->getWarehouseStatus($this);
     }
 
     public function products(): BelongsToMany
