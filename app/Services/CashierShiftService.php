@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CashierShift;
+use App\Models\ReceivablePayment;
 use App\Models\SalesReturn;
 use App\Models\Transaction;
 use App\Models\User;
@@ -125,13 +126,20 @@ class CashierShiftService
             ->where('difference_amount', '>', 0)
             ->sum('difference_amount');
 
+        $cashReceivableTotal = (int) ReceivablePayment::query()
+            ->where('cashier_shift_id', $shift->id)
+            ->where('status', 'approved')
+            ->where('method', 'cash')
+            ->sum('amount');
+
         $transactionsCount = (int) (clone $transactions)->count();
         $salesReturnsCount = (int) (clone $salesReturns)->count();
-        $expectedCash = (int) $shift->opening_cash + $cashSalesTotal + $cashExchangeInTotal - $cashRefundTotal;
+        $expectedCash = (int) $shift->opening_cash + $cashSalesTotal + $cashExchangeInTotal + $cashReceivableTotal - $cashRefundTotal;
 
         return [
             'cash_sales_total' => $cashSalesTotal,
             'non_cash_sales_total' => $nonCashSalesTotal,
+            'cash_receivable_total' => $cashReceivableTotal,
             'cash_refund_total' => $cashRefundTotal,
             'non_cash_refund_total' => $nonCashRefundTotal,
             'transactions_count' => $transactionsCount,

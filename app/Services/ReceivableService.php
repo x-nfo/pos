@@ -8,10 +8,13 @@ use Illuminate\Support\Collection;
 
 class ReceivableService
 {
-    public function getAgingSummary(): Collection
+    public function getAgingSummary(?int $warehouseId = null): Collection
     {
         $receivables = Receivable::where('status', '!=', 'paid')
             ->whereNotNull('due_date')
+            ->when($warehouseId, function ($query) use ($warehouseId) {
+                $query->whereHas('transaction', fn ($t) => $t->where('warehouse_id', $warehouseId));
+            })
             ->get();
 
         $buckets = ['current', '0-30', '31-60', '61-90', '90+'];
@@ -58,13 +61,18 @@ class ReceivableService
         ];
     }
 
-    public function getCollectionRate(): array
+    public function getCollectionRate(?int $warehouseId = null): array
     {
-        $totalReceivables = Receivable::sum('total');
-        $totalPaid = Receivable::sum('paid');
+        $query = Receivable::query()
+            ->when($warehouseId, function ($q) use ($warehouseId) {
+                $q->whereHas('transaction', fn ($t) => $t->where('warehouse_id', $warehouseId));
+            });
 
-        $paidReceivables = Receivable::where('status', 'paid')->count();
-        $totalReceivablesCount = Receivable::count();
+        $totalReceivables = (clone $query)->sum('total');
+        $totalPaid = (clone $query)->sum('paid');
+
+        $paidReceivables = (clone $query)->where('status', 'paid')->count();
+        $totalReceivablesCount = (clone $query)->count();
 
         return [
             'total_receivables_amount' => $totalReceivables,
@@ -77,13 +85,15 @@ class ReceivableService
         ];
     }
 
-    public function getTopCustomersByReceivable(int $limit = 10): Collection
+    public function getTopCustomersByReceivable(int $limit = 10, ?int $warehouseId = null): Collection
     {
         return Customer::withSum([
-            'receivables as total_receivable' => fn ($q) => $q->where('status', '!=', 'paid'),
+            'receivables as total_receivable' => fn ($q) => $q->where('status', '!=', 'paid')
+                ->when($warehouseId, fn ($sq) => $sq->whereHas('transaction', fn ($t) => $t->where('warehouse_id', $warehouseId))),
         ], 'total')
             ->withSum([
-                'receivables as total_paid' => fn ($q) => $q,
+                'receivables as total_paid' => fn ($q) => $q
+                    ->when($warehouseId, fn ($sq) => $sq->whereHas('transaction', fn ($t) => $t->where('warehouse_id', $warehouseId))),
             ], 'paid')
             ->orderByRaw('COALESCE(total_receivable, 0) DESC')
             ->limit($limit)

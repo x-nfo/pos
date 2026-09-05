@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Apps;
 
 use App\Http\Controllers\Controller;
 use App\Models\BankAccount;
+use App\Models\CashierShift;
 use App\Models\CustomerCampaignLog;
 use App\Models\Receivable;
 use App\Models\ReceivablePayment;
@@ -79,8 +80,10 @@ class ReceivableController extends Controller
         ]);
     }
 
-    public function show(Receivable $receivable)
+    public function show(Request $request, Receivable $receivable)
     {
+        $this->authorizeWarehouseAccess($request, $receivable);
+
         $receivable->load([
             'customer:id,name,no_telp',
             'transaction',
@@ -149,6 +152,8 @@ class ReceivableController extends Controller
 
     public function pay(Request $request, Receivable $receivable)
     {
+        $this->authorizeWarehouseAccess($request, $receivable);
+
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:1'],
             'paid_at' => ['required', 'date'],
@@ -166,6 +171,16 @@ class ReceivableController extends Controller
         $needsApproval = ($validated['method'] !== 'cash') || ($validated['amount'] >= $threshold);
 
         DB::transaction(function () use ($validated, $receivable, $request, $needsApproval) {
+            $user = $request->user();
+            $activeShift = CashierShift::query()
+                ->open()
+                ->where('user_id', $user->id)
+                ->latest('opened_at')
+                ->first();
+
+            $paymentWarehouseId = $user->warehouse_id ?? $receivable->transaction?->warehouse_id;
+            $shiftId = $activeShift?->id;
+
             if ($needsApproval) {
                 ReceivablePayment::create([
                     'receivable_id' => $receivable->id,
@@ -173,8 +188,10 @@ class ReceivableController extends Controller
                     'amount' => $validated['amount'],
                     'method' => $validated['method'],
                     'bank_account_id' => $validated['bank_account_id'] ?? null,
+                    'warehouse_id' => $paymentWarehouseId,
+                    'cashier_shift_id' => $shiftId,
                     'note' => $validated['note'] ?? null,
-                    'user_id' => $request->user()->id,
+                    'user_id' => $user->id,
                     'status' => 'pending',
                 ]);
             } else {
@@ -184,10 +201,12 @@ class ReceivableController extends Controller
                     'amount' => $validated['amount'],
                     'method' => $validated['method'],
                     'bank_account_id' => $validated['bank_account_id'] ?? null,
+                    'warehouse_id' => $paymentWarehouseId,
+                    'cashier_shift_id' => $shiftId,
                     'note' => $validated['note'] ?? null,
-                    'user_id' => $request->user()->id,
+                    'user_id' => $user->id,
                     'status' => 'approved',
-                    'approved_by' => $request->user()->id,
+                    'approved_by' => $user->id,
                     'approved_at' => now(),
                 ]);
 
@@ -216,11 +235,14 @@ class ReceivableController extends Controller
             ->with('success', $message);
     }
 
-    public function aging()
+    public function aging(Request $request)
     {
-        $summary = $this->receivableService->getAgingSummary();
-        $topCustomers = $this->receivableService->getTopCustomersByReceivable(10);
-        $collectionRate = $this->receivableService->getCollectionRate();
+        $user = $request->user();
+        $warehouseId = $user && ! $user->isHQ() ? $user->warehouse_id : null;
+
+        $summary = $this->receivableService->getAgingSummary($warehouseId);
+        $topCustomers = $this->receivableService->getTopCustomersByReceivable(10, $warehouseId);
+        $collectionRate = $this->receivableService->getCollectionRate($warehouseId);
 
         return response()->json([
             'aging_summary' => $summary,
@@ -242,6 +264,8 @@ class ReceivableController extends Controller
 
     public function updateCollectionNotes(Request $request, Receivable $receivable)
     {
+        $this->authorizeWarehouseAccess($request, $receivable);
+
         $validated = $request->validate([
             'collection_notes' => ['nullable', 'string', 'max:2000'],
         ]);
@@ -249,5 +273,16 @@ class ReceivableController extends Controller
         $receivable->update(['collection_notes' => $validated['collection_notes'] ?? null]);
 
         return back()->with('success', 'Catatan penagihan berhasil disimpan.');
+    }
+
+    private function authorizeWarehouseAccess(Request $request, Receivable $receivable): void
+    {
+        $user = $request->user();
+        if ($user && ! $user->isHQ()) {
+            $txWarehouseId = $receivable->transaction?->warehouse_id;
+            if ($txWarehouseId && (int) $txWarehouseId !== (int) $user->warehouse_id) {
+                abort(403, 'Anda tidak memiliki akses ke piutang cabang lain.');
+            }
+        }
     }
 }

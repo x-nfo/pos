@@ -15,6 +15,14 @@ class ReceivablePaymentApprovalController extends Controller
     {
         $user = $request->user();
 
+        if ($user && ! $user->isHQ()) {
+            $payment->loadMissing('receivable.transaction');
+            $txWarehouseId = $payment->receivable?->transaction?->warehouse_id;
+            if ($txWarehouseId && (int) $txWarehouseId !== (int) $user->warehouse_id) {
+                abort(403, 'Anda tidak memiliki wewenang menyetujui pembayaran piutang cabang lain.');
+            }
+        }
+
         // Edge case: Self approval prevention (except for super-admin)
         if ($payment->user_id === $user->id && ! $user->hasRole('super-admin')) {
             return back()->with('error', 'Anda tidak dapat menyetujui pembayaran yang Anda input sendiri.');
@@ -74,6 +82,14 @@ class ReceivablePaymentApprovalController extends Controller
         ]);
 
         $user = $request->user();
+
+        if ($user && ! $user->isHQ()) {
+            $payment->loadMissing('receivable.transaction');
+            $txWarehouseId = $payment->receivable?->transaction?->warehouse_id;
+            if ($txWarehouseId && (int) $txWarehouseId !== (int) $user->warehouse_id) {
+                abort(403, 'Anda tidak memiliki wewenang menolak pembayaran piutang cabang lain.');
+            }
+        }
 
         // Edge case: Self rejection prevention (except for super-admin)
         if ($payment->user_id === $user->id && ! $user->hasRole('super-admin')) {

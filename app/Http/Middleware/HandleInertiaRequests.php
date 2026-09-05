@@ -127,6 +127,7 @@ class HandleInertiaRequests extends Middleware
                         ->whereColumn('product_warehouse.stock', '<=', 'products.min_stock')
                         ->orWhere('product_warehouse.stock', '<=', 0);
                 })
+                ->when($scopedWarehouseId, fn ($q) => $q->where('product_warehouse.warehouse_id', $scopedWarehouseId))
                 ->whereNotExists(function ($query) use ($userId) {
                     $query->selectRaw('1')
                         ->from('product_notification_reads as pr')
@@ -155,49 +156,59 @@ class HandleInertiaRequests extends Middleware
                     ];
                 });
 
-            $payableAgingService = new PayableAgingService;
-            $receivableService = new ReceivableService;
+            if ($user->can('receivables-access')) {
+                $receivableService = new ReceivableService;
+                $receivableAgingSummary = $receivableService->getAgingSummary($scopedWarehouseId);
 
-            $payableAgingSummary = $payableAgingService->getAgingSummary();
-            $receivableAgingSummary = $receivableService->getAgingSummary();
+                $receivableNotifications = Receivable::whereNot('status', 'paid')
+                    ->whereNotNull('due_date')
+                    ->whereDate('due_date', '<=', now()->addDays(3))
+                    ->when($scopedWarehouseId, function ($q) use ($scopedWarehouseId) {
+                        $q->whereHas('transaction', fn ($t) => $t->where('warehouse_id', $scopedWarehouseId));
+                    })
+                    ->orderBy('due_date')
+                    ->limit(5)
+                    ->get(['id', 'invoice', 'customer_id', 'due_date', 'total', 'paid', 'status'])
+                    ->map(function ($item) {
+                        $remaining = max(0, ($item->total ?? 0) - ($item->paid ?? 0));
 
-            $receivableNotifications = Receivable::whereNot('status', 'paid')
-                ->whereNotNull('due_date')
-                ->whereDate('due_date', '<=', now()->addDays(3))
-                ->orderBy('due_date')
-                ->limit(5)
-                ->get(['id', 'invoice', 'customer_id', 'due_date', 'total', 'paid', 'status'])
-                ->map(function ($item) {
-                    $remaining = max(0, ($item->total ?? 0) - ($item->paid ?? 0));
+                        return [
+                            'id' => $item->id,
+                            'title' => "Piutang: {$item->invoice}",
+                            'subtitle' => 'Sisa '.number_format($remaining, 0, ',', '.'),
+                            'time' => optional($item->due_date)->diffForHumans(),
+                            'status' => $item->status,
+                            'aging_bucket' => $item->aging_bucket,
+                        ];
+                    });
+            }
 
-                    return [
-                        'id' => $item->id,
-                        'title' => "Piutang: {$item->invoice}",
-                        'subtitle' => 'Sisa '.number_format($remaining, 0, ',', '.'),
-                        'time' => optional($item->due_date)->diffForHumans(),
-                        'status' => $item->status,
-                        'aging_bucket' => $item->aging_bucket,
-                    ];
-                });
+            if ($user->can('payables-access')) {
+                $payableAgingService = new PayableAgingService;
+                $payableAgingSummary = $payableAgingService->getAgingSummary();
 
-            $payableNotifications = Payable::whereNot('status', 'paid')
-                ->whereNotNull('due_date')
-                ->whereDate('due_date', '<=', now()->addDays(3))
-                ->orderBy('due_date')
-                ->limit(5)
-                ->get(['id', 'document_number', 'due_date', 'total', 'paid', 'status'])
-                ->map(function ($item) {
-                    $remaining = max(0, ($item->total ?? 0) - ($item->paid ?? 0));
+                $payableNotifications = Payable::whereNot('status', 'paid')
+                    ->whereNotNull('due_date')
+                    ->whereDate('due_date', '<=', now()->addDays(3))
+                    ->when($scopedWarehouseId, function ($q) use ($scopedWarehouseId) {
+                        $q->whereHas('purchaseOrder', fn ($po) => $po->where('warehouse_id', $scopedWarehouseId));
+                    })
+                    ->orderBy('due_date')
+                    ->limit(5)
+                    ->get(['id', 'document_number', 'due_date', 'total', 'paid', 'status'])
+                    ->map(function ($item) {
+                        $remaining = max(0, ($item->total ?? 0) - ($item->paid ?? 0));
 
-                    return [
-                        'id' => $item->id,
-                        'title' => "Hutang: {$item->document_number}",
-                        'subtitle' => 'Sisa '.number_format($remaining, 0, ',', '.'),
-                        'time' => optional($item->due_date)->diffForHumans(),
-                        'status' => $item->status,
-                        'aging_bucket' => $item->aging_bucket,
-                    ];
-                });
+                        return [
+                            'id' => $item->id,
+                            'title' => "Hutang: {$item->document_number}",
+                            'subtitle' => 'Sisa '.number_format($remaining, 0, ',', '.'),
+                            'time' => optional($item->due_date)->diffForHumans(),
+                            'status' => $item->status,
+                            'aging_bucket' => $item->aging_bucket,
+                        ];
+                    });
+            }
 
             $activeShift = CashierShift::query()
                 ->with('user:id,name', 'warehouse:id,code,name')

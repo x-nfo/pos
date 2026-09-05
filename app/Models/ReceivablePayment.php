@@ -15,6 +15,8 @@ class ReceivablePayment extends Model
         'amount',
         'method',
         'bank_account_id',
+        'warehouse_id',
+        'cashier_shift_id',
         'user_id',
         'note',
         'status',
@@ -32,6 +34,16 @@ class ReceivablePayment extends Model
     public function receivable()
     {
         return $this->belongsTo(Receivable::class);
+    }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class)->withTrashed();
+    }
+
+    public function cashierShift()
+    {
+        return $this->belongsTo(CashierShift::class);
     }
 
     public function bankAccount()
