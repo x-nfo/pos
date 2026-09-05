@@ -19,7 +19,9 @@ class PaymentSetting extends Model
 
     public const SECRET_FIELDS = [
         'midtrans_server_key',
+        'midtrans_client_key',
         'xendit_secret_key',
+        'xendit_public_key',
         'xendit_callback_token',
         'qrisly_api_key',
     ];
@@ -53,7 +55,9 @@ class PaymentSetting extends Model
         'qrisly_production' => 'boolean',
         'qrisly_use_unique_amount' => 'boolean',
         'midtrans_server_key' => 'encrypted',
+        'midtrans_client_key' => 'encrypted',
         'xendit_secret_key' => 'encrypted',
+        'xendit_public_key' => 'encrypted',
         'xendit_callback_token' => 'encrypted',
         'qrisly_api_key' => 'encrypted',
     ];
@@ -112,10 +116,10 @@ class PaymentSetting extends Model
             self::GATEWAY_BANK_TRANSFER => $this->isBankTransferReady(),
             self::GATEWAY_MIDTRANS => $this->midtrans_enabled
             && filled($this->resolvedSecret('midtrans_server_key'))
-            && filled($this->midtrans_client_key),
+            && filled($this->resolvedSecret('midtrans_client_key')),
             self::GATEWAY_XENDIT => $this->xendit_enabled
             && filled($this->resolvedSecret('xendit_secret_key'))
-            && filled($this->xendit_public_key),
+            && filled($this->resolvedSecret('xendit_callback_token')),
             self::GATEWAY_QRISLY => $this->qrisly_enabled
             && filled($this->resolvedSecret('qrisly_api_key'))
             && filled($this->resolvedQrislyQrisId()),
@@ -128,7 +132,7 @@ class PaymentSetting extends Model
         return [
             'enabled' => $this->isGatewayReady(self::GATEWAY_MIDTRANS),
             'server_key' => $this->resolvedSecret('midtrans_server_key'),
-            'client_key' => $this->midtrans_client_key,
+            'client_key' => $this->resolvedSecret('midtrans_client_key'),
             'is_production' => $this->midtrans_production,
         ];
     }
@@ -138,7 +142,7 @@ class PaymentSetting extends Model
         return [
             'enabled' => $this->isGatewayReady(self::GATEWAY_XENDIT),
             'secret_key' => $this->resolvedSecret('xendit_secret_key'),
-            'public_key' => $this->xendit_public_key,
+            'public_key' => $this->resolvedSecret('xendit_public_key'),
             'callback_token' => $this->resolvedSecret('xendit_callback_token'),
             'is_production' => $this->xendit_production,
         ];
@@ -221,7 +225,9 @@ class PaymentSetting extends Model
     {
         return [
             'midtrans_server_key' => $this->secretMetadata('midtrans_server_key'),
+            'midtrans_client_key' => $this->secretMetadata('midtrans_client_key'),
             'xendit_secret_key' => $this->secretMetadata('xendit_secret_key'),
+            'xendit_public_key' => $this->secretMetadata('xendit_public_key'),
             'xendit_callback_token' => $this->secretMetadata('xendit_callback_token'),
             'qrisly_api_key' => $this->secretMetadata('qrisly_api_key'),
         ];
@@ -241,7 +247,9 @@ class PaymentSetting extends Model
     {
         return match ($field) {
             'midtrans_server_key' => config('services.midtrans.server_key'),
+            'midtrans_client_key' => config('services.midtrans.client_key'),
             'xendit_secret_key' => config('services.xendit.secret_key'),
+            'xendit_public_key' => config('services.xendit.public_key'),
             'xendit_callback_token' => config('services.xendit.callback_token'),
             'qrisly_api_key' => config('services.qrisly.api_key'),
             default => null,

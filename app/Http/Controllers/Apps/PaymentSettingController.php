@@ -70,10 +70,8 @@ class PaymentSettingController extends Controller
                 'default_gateway' => $setting->default_gateway,
                 'bank_transfer_enabled' => (bool) $setting->bank_transfer_enabled,
                 'midtrans_enabled' => (bool) $setting->midtrans_enabled,
-                'midtrans_client_key' => $setting->midtrans_client_key,
                 'midtrans_production' => (bool) $setting->midtrans_production,
                 'xendit_enabled' => (bool) $setting->xendit_enabled,
-                'xendit_public_key' => $setting->xendit_public_key,
                 'xendit_production' => (bool) $setting->xendit_production,
                 'qrisly_enabled' => (bool) $setting->qrisly_enabled,
                 'qrisly_qris_id' => $setting->qrisly_qris_id,
@@ -145,16 +143,24 @@ class PaymentSettingController extends Controller
         $qrislyEnabled = (bool) ($data['qrisly_enabled'] ?? false);
 
         $midtransServerKeyInput = $data['midtrans_server_key'] ?? null;
+        $midtransClientKeyInput = $data['midtrans_client_key'] ?? null;
         $xenditSecretKeyInput = $data['xendit_secret_key'] ?? null;
+        $xenditPublicKeyInput = $data['xendit_public_key'] ?? null;
         $xenditCallbackTokenInput = $data['xendit_callback_token'] ?? null;
         $qrislyApiKeyInput = $data['qrisly_api_key'] ?? null;
 
         $resolvedMidtransServerKey = $setting->secretManagedByEnvironment('midtrans_server_key')
             ? $setting->resolvedSecret('midtrans_server_key')
             : ($midtransServerKeyInput ?: $setting->getAttributeValue('midtrans_server_key'));
+        $resolvedMidtransClientKey = $setting->secretManagedByEnvironment('midtrans_client_key')
+            ? $setting->resolvedSecret('midtrans_client_key')
+            : ($midtransClientKeyInput ?: $setting->getAttributeValue('midtrans_client_key'));
         $resolvedXenditSecretKey = $setting->secretManagedByEnvironment('xendit_secret_key')
             ? $setting->resolvedSecret('xendit_secret_key')
             : ($xenditSecretKeyInput ?: $setting->getAttributeValue('xendit_secret_key'));
+        $resolvedXenditPublicKey = $setting->secretManagedByEnvironment('xendit_public_key')
+            ? $setting->resolvedSecret('xendit_public_key')
+            : ($xenditPublicKeyInput ?: $setting->getAttributeValue('xendit_public_key'));
         $resolvedXenditCallbackToken = $setting->secretManagedByEnvironment('xendit_callback_token')
             ? $setting->resolvedSecret('xendit_callback_token')
             : ($xenditCallbackTokenInput ?: $setting->getAttributeValue('xendit_callback_token'));
@@ -162,7 +168,7 @@ class PaymentSettingController extends Controller
             ? $setting->resolvedSecret('qrisly_api_key')
             : ($qrislyApiKeyInput ?: $setting->getAttributeValue('qrisly_api_key'));
 
-        if ($midtransEnabled && (blank($resolvedMidtransServerKey) || empty($data['midtrans_client_key'] ?? null))) {
+        if ($midtransEnabled && (blank($resolvedMidtransServerKey) || blank($resolvedMidtransClientKey))) {
             return back()->withErrors([
                 'midtrans_server_key' => 'Server key dan Client key Midtrans wajib diisi saat mengaktifkan Midtrans.',
             ])->withInput();
@@ -212,13 +218,17 @@ class PaymentSettingController extends Controller
             'midtrans_server_key' => $setting->secretManagedByEnvironment('midtrans_server_key')
                 ? $setting->getRawOriginal('midtrans_server_key')
                 : ($midtransServerKeyInput ?: $setting->getAttributeValue('midtrans_server_key')),
-            'midtrans_client_key' => $data['midtrans_client_key'] ?? $setting->midtrans_client_key,
+            'midtrans_client_key' => $setting->secretManagedByEnvironment('midtrans_client_key')
+                ? $setting->getRawOriginal('midtrans_client_key')
+                : ($midtransClientKeyInput ?: $setting->getAttributeValue('midtrans_client_key')),
             'midtrans_production' => (bool) ($data['midtrans_production'] ?? false),
             'xendit_enabled' => $xenditEnabled,
             'xendit_secret_key' => $setting->secretManagedByEnvironment('xendit_secret_key')
                 ? $setting->getRawOriginal('xendit_secret_key')
                 : ($xenditSecretKeyInput ?: $setting->getAttributeValue('xendit_secret_key')),
-            'xendit_public_key' => $data['xendit_public_key'] ?? $setting->xendit_public_key,
+            'xendit_public_key' => $setting->secretManagedByEnvironment('xendit_public_key')
+                ? $setting->getRawOriginal('xendit_public_key')
+                : ($xenditPublicKeyInput ?: $setting->getAttributeValue('xendit_public_key')),
             'xendit_callback_token' => $setting->secretManagedByEnvironment('xendit_callback_token')
                 ? $setting->getRawOriginal('xendit_callback_token')
                 : ($xenditCallbackTokenInput ?: $setting->getAttributeValue('xendit_callback_token')),

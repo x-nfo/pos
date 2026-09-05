@@ -39,11 +39,11 @@ export default function Payment({
         bank_transfer_enabled: setting?.bank_transfer_enabled ?? false,
         midtrans_enabled: setting?.midtrans_enabled ?? false,
         midtrans_server_key: "",
-        midtrans_client_key: setting?.midtrans_client_key ?? "",
+        midtrans_client_key: "",
         midtrans_production: setting?.midtrans_production ?? false,
         xendit_enabled: setting?.xendit_enabled ?? false,
         xendit_secret_key: "",
-        xendit_public_key: setting?.xendit_public_key ?? "",
+        xendit_public_key: "",
         xendit_callback_token: "",
         xendit_production: setting?.xendit_production ?? false,
         qrisly_enabled: setting?.qrisly_enabled ?? false,
@@ -458,14 +458,26 @@ export default function Payment({
                         )}
                         <Input
                             label="Client Key"
+                            type="password"
                             value={data.midtrans_client_key}
                             onChange={(e) =>
                                 setData("midtrans_client_key", e.target.value)
                             }
                             errors={errors?.midtrans_client_key}
-                            placeholder="SB-Mid-client-..."
-                            disabled={!canUpdatePaymentSettings}
+                            placeholder={
+                                paymentSettingSources?.midtrans_client_key?.configured
+                                    ? "Kosongkan untuk mempertahankan nilai saat ini"
+                                    : "SB-Mid-client-..."
+                            }
+                            disabled={
+                                !canUpdatePaymentSettings ||
+                                paymentSettingSources?.midtrans_client_key?.managed_by_environment
+                            }
                         />
+                        {renderSecretHint(
+                            "midtrans_client_key",
+                            "Isi ulang hanya jika ingin mengganti client key."
+                        )}
                         <label className="flex items-center gap-2 cursor-pointer">
                             <Checkbox
                                 checked={data.midtrans_production}
@@ -538,14 +550,26 @@ export default function Payment({
                         )}
                         <Input
                             label="Public Key (Opsional)"
+                            type="password"
                             value={data.xendit_public_key}
                             onChange={(e) =>
                                 setData("xendit_public_key", e.target.value)
                             }
                             errors={errors?.xendit_public_key}
-                            placeholder="xnd_public_development_..."
-                            disabled={!canUpdatePaymentSettings}
+                            placeholder={
+                                paymentSettingSources?.xendit_public_key?.configured
+                                    ? "Kosongkan untuk mempertahankan nilai saat ini"
+                                    : "xnd_public_development_..."
+                            }
+                            disabled={
+                                !canUpdatePaymentSettings ||
+                                paymentSettingSources?.xendit_public_key?.managed_by_environment
+                            }
                         />
+                        {renderSecretHint(
+                            "xendit_public_key",
+                            "Isi ulang hanya jika ingin mengganti public key."
+                        )}
                         <Input
                             label="Callback Token"
                             type="password"
