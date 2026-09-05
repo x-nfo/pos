@@ -21,6 +21,25 @@ const formatCurrency = (value = 0) =>
         minimumFractionDigits: 0,
     }).format(value);
 
+const calculateSuggestedQty = (product, conversionFactor = 1.0, warehouseId = null) => {
+    const factor = Number(conversionFactor) || 1.0;
+    const maxStock = Number(product.max_stock) || 0;
+    if (maxStock <= 0) {
+        return 1;
+    }
+
+    const currentStock = (warehouseId && product.warehouse_stocks && product.warehouse_stocks[warehouseId] !== undefined)
+        ? Number(product.warehouse_stocks[warehouseId]) || 0
+        : Number(product.stock) || 0;
+
+    const neededBase = Math.max(0, maxStock - currentStock);
+    if (neededBase <= 0) {
+        return 1;
+    }
+
+    return Math.max(1, Math.ceil(neededBase / factor));
+};
+
 export default function Edit({ order, suppliers = [], categories = [], products = [], warehouses = [] }) {
     const initialItems = (order.items || []).map((item) => {
         const matchedProduct = products.find((p) => p.id === item.product_id);
@@ -35,6 +54,7 @@ export default function Edit({ order, suppliers = [], categories = [], products 
             conversion_factor: Number(item.conversion_factor) || 1.0,
             qty_ordered: Number(item.qty_ordered) || 1,
             unit_price: Number(item.unit_price) || 0,
+            max_stock: Number(matchedProduct?.max_stock) || 0,
         };
     });
 
@@ -63,6 +83,8 @@ export default function Edit({ order, suppliers = [], categories = [], products 
 
         const productUnits = Array.isArray(product.units) ? product.units : [];
         const baseUnit = productUnits.find((u) => u.is_base) || productUnits[0] || null;
+        const conversionFactor = baseUnit ? Number(baseUnit.conversion_factor) || 1.0 : 1.0;
+        const defaultQty = calculateSuggestedQty(product, conversionFactor, data.warehouse_id);
 
         setData("items", [
             ...data.items,
@@ -72,9 +94,13 @@ export default function Edit({ order, suppliers = [], categories = [], products 
                 product_sku: product.sku || "-",
                 units: productUnits,
                 unit_id: baseUnit ? baseUnit.id : null,
-                conversion_factor: baseUnit ? Number(baseUnit.conversion_factor) || 1.0 : 1.0,
-                qty_ordered: 1,
+                conversion_factor: conversionFactor,
+                qty_ordered: defaultQty,
                 unit_price: baseUnit ? Number(baseUnit.buy_price) || 0 : Number(product.buy_price) || 0,
+                max_stock: Number(product.max_stock) || 0,
+                stock: (data.warehouse_id && product.warehouse_stocks && product.warehouse_stocks[data.warehouse_id] !== undefined)
+                    ? product.warehouse_stocks[data.warehouse_id]
+                    : (product.stock || 0),
             },
         ]);
         setSearchProduct("");
@@ -103,12 +129,20 @@ export default function Edit({ order, suppliers = [], categories = [], products 
         const items = [...data.items];
         const item = items[index];
         const selected = (item.units || []).find((u) => u.id === Number(unitId));
+        const conversionFactor = selected ? Number(selected.conversion_factor) || 1.0 : 1.0;
+        const product = products.find((p) => p.id === item.product_id);
+
+        let newQty = item.qty_ordered;
+        if (product && product.max_stock > 0) {
+            newQty = calculateSuggestedQty(product, conversionFactor, data.warehouse_id);
+        }
 
         if (selected) {
             items[index] = {
                 ...item,
                 unit_id: selected.id,
-                conversion_factor: Number(selected.conversion_factor) || 1.0,
+                conversion_factor: conversionFactor,
+                qty_ordered: newQty,
                 unit_price: Number(selected.buy_price) || 0,
             };
         } else {
@@ -116,6 +150,7 @@ export default function Edit({ order, suppliers = [], categories = [], products 
                 ...item,
                 unit_id: null,
                 conversion_factor: 1.0,
+                qty_ordered: newQty,
             };
         }
         setData("items", items);
@@ -261,7 +296,11 @@ export default function Edit({ order, suppliers = [], categories = [], products 
                                         <div>
                                             <p className="font-medium text-slate-800 dark:text-slate-200">{product.title}</p>
                                             <p className="text-xs text-slate-500">
-                                                {product.sku || "-"} &bull; Stok: {product.stock}
+                                                {product.sku || "-"} &bull; Stok:{" "}
+                                                {data.warehouse_id && product.warehouse_stocks && product.warehouse_stocks[data.warehouse_id] !== undefined
+                                                    ? product.warehouse_stocks[data.warehouse_id]
+                                                    : product.stock}
+                                                {product.max_stock > 0 && ` • Target: ${product.max_stock}`}
                                                 {product.units?.length > 1 && ` • ${product.units.length} Satuan`}
                                             </p>
                                         </div>
@@ -290,7 +329,14 @@ export default function Edit({ order, suppliers = [], categories = [], products 
                                             <tr key={index} className="border-b border-slate-100 dark:border-slate-800">
                                                 <td className="px-3 py-3">
                                                     <p className="font-medium text-slate-800 dark:text-slate-200">{item.product_title}</p>
-                                                    <p className="text-xs text-slate-500">{item.product_sku}</p>
+                                                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                        <span>{item.product_sku}</span>
+                                                        {item.max_stock > 0 && (
+                                                            <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                                                Target: {item.max_stock}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-3 py-3">
                                                     {item.units && item.units.length > 0 ? (
@@ -387,6 +433,7 @@ export default function Edit({ order, suppliers = [], categories = [], products 
                 categories={categories}
                 existingItems={data.items}
                 onAddProducts={handleBulkAdd}
+                warehouseId={data.warehouse_id}
             />
         </>
     );

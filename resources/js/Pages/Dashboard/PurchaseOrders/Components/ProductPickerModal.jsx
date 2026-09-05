@@ -19,6 +19,25 @@ const formatCurrency = (val = 0) =>
         minimumFractionDigits: 0,
     }).format(Number(val) || 0);
 
+const calculateSuggestedQty = (product, conversionFactor = 1.0, warehouseId = null) => {
+    const factor = Number(conversionFactor) || 1.0;
+    const maxStock = Number(product.max_stock) || 0;
+    if (maxStock <= 0) {
+        return 1;
+    }
+
+    const currentStock = (warehouseId && product.warehouse_stocks && product.warehouse_stocks[warehouseId] !== undefined)
+        ? Number(product.warehouse_stocks[warehouseId]) || 0
+        : Number(product.stock) || 0;
+
+    const neededBase = Math.max(0, maxStock - currentStock);
+    if (neededBase <= 0) {
+        return 1;
+    }
+
+    return Math.max(1, Math.ceil(neededBase / factor));
+};
+
 export default function ProductPickerModal({
     show = false,
     onClose = () => {},
@@ -26,6 +45,7 @@ export default function ProductPickerModal({
     categories = [],
     existingItems = [],
     onAddProducts = () => {},
+    warehouseId = null,
 }) {
     const [search, setSearch] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
@@ -51,16 +71,18 @@ export default function ProductPickerModal({
             products.forEach((p) => {
                 const units = Array.isArray(p.units) ? p.units : [];
                 const baseUnit = units.find((u) => u.is_base) || units[0] || null;
+                const conversionFactor = baseUnit ? Number(baseUnit.conversion_factor) || 1.0 : 1.0;
+                const defaultQty = calculateSuggestedQty(p, conversionFactor, warehouseId);
                 configs[p.id] = {
                     unit_id: baseUnit ? baseUnit.id : null,
-                    conversion_factor: baseUnit ? Number(baseUnit.conversion_factor) || 1.0 : 1.0,
-                    qty_ordered: 1,
+                    conversion_factor: conversionFactor,
+                    qty_ordered: defaultQty,
                     unit_price: baseUnit ? Number(baseUnit.buy_price) || 0 : Number(p.buy_price) || 0,
                 };
             });
             setRowConfigs(configs);
         }
-    }, [show, products]);
+    }, [show, products, warehouseId]);
 
     // Filter products
     const filteredProducts = useMemo(() => {
@@ -141,13 +163,16 @@ export default function ProductPickerModal({
     const handleUnitChange = (product, unitId) => {
         const units = Array.isArray(product.units) ? product.units : [];
         const selectedUnit = units.find((u) => u.id === Number(unitId));
+        const conversionFactor = selectedUnit ? Number(selectedUnit.conversion_factor) || 1.0 : 1.0;
+        const newQty = calculateSuggestedQty(product, conversionFactor, warehouseId);
 
         setRowConfigs((prev) => ({
             ...prev,
             [product.id]: {
                 ...(prev[product.id] || {}),
                 unit_id: selectedUnit ? selectedUnit.id : null,
-                conversion_factor: selectedUnit ? Number(selectedUnit.conversion_factor) || 1.0 : 1.0,
+                conversion_factor: conversionFactor,
+                qty_ordered: newQty,
                 unit_price: selectedUnit ? Number(selectedUnit.buy_price) || 0 : Number(product.buy_price) || 0,
             },
         }));
@@ -182,6 +207,11 @@ export default function ProductPickerModal({
                         : selectedUnit
                         ? Number(selectedUnit.buy_price) || 0
                         : Number(product.buy_price) || 0,
+                max_stock: Number(product.max_stock) || 0,
+                stock:
+                    warehouseId && product.warehouse_stocks && product.warehouse_stocks[warehouseId] !== undefined
+                        ? product.warehouse_stocks[warehouseId]
+                        : (product.stock || 0),
             });
         });
 
@@ -358,17 +388,32 @@ export default function ProductPickerModal({
                                                 </span>
                                             </td>
                                             <td className="p-3 text-center">
-                                                <span
-                                                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                                                        product.stock > 10
-                                                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-                                                            : product.stock > 0
-                                                            ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
-                                                            : "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400"
-                                                    }`}
-                                                >
-                                                    {product.stock}
-                                                </span>
+                                                {(() => {
+                                                    const displayedStock =
+                                                        warehouseId && product.warehouse_stocks && product.warehouse_stocks[warehouseId] !== undefined
+                                                            ? product.warehouse_stocks[warehouseId]
+                                                            : product.stock;
+                                                    return (
+                                                        <>
+                                                            <span
+                                                                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                                                    displayedStock > 10
+                                                                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                                                        : displayedStock > 0
+                                                                        ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                                                                        : "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400"
+                                                                }`}
+                                                            >
+                                                                {displayedStock}
+                                                            </span>
+                                                            {product.max_stock > 0 && (
+                                                                <span className="block text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 whitespace-nowrap">
+                                                                    Target: {product.max_stock}
+                                                                </span>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
                                             </td>
                                             <td className="p-3">
                                                 {product.units && product.units.length > 0 ? (

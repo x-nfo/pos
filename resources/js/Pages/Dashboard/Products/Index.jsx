@@ -634,7 +634,7 @@ export default function Index({ products, warehouses = [], filters = {} }) {
 
                                                         {product.min_stock > 0 && (
                                                             <span className="block text-[11px] text-slate-400 dark:text-slate-500 mt-1 whitespace-nowrap">
-                                                                Min: {product.min_stock}{product.max_stock > 0 ? ` / Max: ${product.max_stock}` : ''}
+                                                                Min: {product.min_stock}{product.max_stock > 0 ? ` / Target: ${product.max_stock}` : ''}
                                                             </span>
                                                         )}
                                                     </div>

@@ -73,7 +73,7 @@ class PurchaseOrderController extends Controller
         $categories = Category::orderBy('name')->get(['id', 'name']);
         $products = Product::with(['units', 'category:id,name', 'warehouses'])
             ->orderBy('title')
-            ->get(['id', 'category_id', 'title', 'sku', 'barcode', 'buy_price', 'sell_price'])
+            ->get(['id', 'category_id', 'title', 'sku', 'barcode', 'buy_price', 'sell_price', 'min_stock', 'max_stock'])
             ->map(function ($product) {
                 return [
                     'id' => $product->id,
@@ -85,6 +85,9 @@ class PurchaseOrderController extends Controller
                     'buy_price' => $product->buy_price,
                     'sell_price' => $product->sell_price,
                     'stock' => $product->stock,
+                    'min_stock' => (int) ($product->min_stock ?? 0),
+                    'max_stock' => (int) ($product->max_stock ?? 0),
+                    'warehouse_stocks' => $product->warehouses->mapWithKeys(fn ($w) => [$w->id => (int) ($w->pivot->stock ?? 0)])->toArray(),
                     'units' => $product->units->map(fn ($u) => [
                         'id' => $u->id,
                         'code' => $u->code,
@@ -205,7 +208,7 @@ class PurchaseOrderController extends Controller
         $categories = Category::orderBy('name')->get(['id', 'name']);
         $products = Product::with(['units', 'category:id,name', 'warehouses'])
             ->orderBy('title')
-            ->get(['id', 'category_id', 'title', 'sku', 'barcode', 'buy_price', 'sell_price'])
+            ->get(['id', 'category_id', 'title', 'sku', 'barcode', 'buy_price', 'sell_price', 'min_stock', 'max_stock'])
             ->map(function ($product) {
                 return [
                     'id' => $product->id,
@@ -217,6 +220,9 @@ class PurchaseOrderController extends Controller
                     'buy_price' => $product->buy_price,
                     'sell_price' => $product->sell_price,
                     'stock' => $product->stock,
+                    'min_stock' => (int) ($product->min_stock ?? 0),
+                    'max_stock' => (int) ($product->max_stock ?? 0),
+                    'warehouse_stocks' => $product->warehouses->mapWithKeys(fn ($w) => [$w->id => (int) ($w->pivot->stock ?? 0)])->toArray(),
                     'units' => $product->units->map(fn ($u) => [
                         'id' => $u->id,
                         'code' => $u->code,

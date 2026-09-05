@@ -318,7 +318,7 @@ export default function Edit({ categories = [], product, units = [] }) {
                                 <div>
                                     <Input
                                         type="number"
-                                        label={`Stok Maksimal (${baseUnitSymbol})`}
+                                        label={`Target Restock (${baseUnitSymbol})`}
                                         value={data.max_stock}
                                         onChange={(e) =>
                                             setData("max_stock", e.target.value)
@@ -327,7 +327,7 @@ export default function Edit({ categories = [], product, units = [] }) {
                                         placeholder="0"
                                     />
                                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                        Target kapasitas stok saat rekomendasi restock PO (0 = tanpa batas).
+                                        Target jumlah stok ideal saat rekomendasi restock PO (bukan pembatas pesanan, 0 = tanpa batas).
                                     </p>
                                 </div>
                             </div>
