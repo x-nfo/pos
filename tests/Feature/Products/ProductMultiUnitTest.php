@@ -4,8 +4,10 @@ namespace Tests\Feature\Products;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -151,6 +153,8 @@ class ProductMultiUnitTest extends TestCase
             'sell_price' => 15000,
             'stock' => 50,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 50]);
 
         $kg = Unit::where('code', 'KG')->first();
         $karton = Unit::where('code', 'KARTON')->first();
@@ -217,6 +221,8 @@ class ProductMultiUnitTest extends TestCase
             'sell_price' => 2800,
             'stock' => 50,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 50]);
 
         // Attach initial unit with 2800
         $product->units()->attach($pcs->id, [
@@ -324,6 +330,8 @@ class ProductMultiUnitTest extends TestCase
             'sell_price' => 4000,
             'stock' => 20,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $existingProduct->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 20]);
 
         $pcs = Unit::where('code', 'PCS')->first();
         $box = Unit::where('code', 'BOX')->first();

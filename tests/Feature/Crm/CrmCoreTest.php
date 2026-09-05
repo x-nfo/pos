@@ -10,6 +10,7 @@ use App\Models\Receivable;
 use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\Services\WhatsAppService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
@@ -200,6 +201,7 @@ class CrmCoreTest extends TestCase
             'no_telp' => '628111000006',
         ]);
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $user->id,
             'customer_id' => $customer->id,
             'invoice' => 'TRX-CRM-001',

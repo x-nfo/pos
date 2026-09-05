@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\PricingRule;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\Receivable;
 use App\Models\StockMutation;
 use App\Models\Transaction;
@@ -53,8 +54,11 @@ class MasterDataProtectionTest extends TestCase
             'stock' => 0,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 0]);
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'invoice' => 'TRX-PROTECT-001',
             'cashier_id' => $this->admin->id,
             'cash' => 10000,
@@ -100,8 +104,11 @@ class MasterDataProtectionTest extends TestCase
             'stock' => 25,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 25]);
 
         StockMutation::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'product_id' => $product->id,
             'reference_type' => 'manual',
             'mutation_type' => 'in',
@@ -135,6 +142,8 @@ class MasterDataProtectionTest extends TestCase
             'stock' => 0,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 0]);
 
         $this->actingAs($this->admin)
             ->from(route('products.index'))
@@ -161,6 +170,8 @@ class MasterDataProtectionTest extends TestCase
             'stock' => 0,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 0]);
 
         // Delete the product
         $this->actingAs($this->admin)
@@ -209,6 +220,8 @@ class MasterDataProtectionTest extends TestCase
             'stock' => 0,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 0]);
 
         // Attempt web delete
         $this->actingAs($this->admin)
@@ -269,6 +282,7 @@ class MasterDataProtectionTest extends TestCase
         ]);
 
         Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'invoice' => 'TRX-CUST-001',
             'customer_id' => $customer->id,
             'cashier_id' => $this->admin->id,
@@ -362,6 +376,7 @@ class MasterDataProtectionTest extends TestCase
         ]);
 
         Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'invoice' => 'TRX-WH-001',
             'warehouse_id' => $branch->id,
             'cashier_id' => $this->admin->id,
@@ -401,8 +416,11 @@ class MasterDataProtectionTest extends TestCase
             'stock' => 0,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 0]);
 
         StockMutation::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'product_id' => $product->id,
             'warehouse_id' => $branch->id,
             'reference_type' => 'manual',
@@ -458,8 +476,11 @@ class MasterDataProtectionTest extends TestCase
             'stock' => 0,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 0]);
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'invoice' => 'TRX-HIST-001',
             'customer_id' => $customer->id,
             'warehouse_id' => $warehouse->id,

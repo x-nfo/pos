@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\PaymentSetting;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\Unit;
@@ -59,6 +60,7 @@ class TransactionFlowTest extends TestCase
 
         $quantity = 2;
         $cart = Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => $quantity,
@@ -110,7 +112,7 @@ class TransactionFlowTest extends TestCase
         $this->assertSame($expectedProfit, (int) $profit->total);
 
         $this->assertDatabaseMissing('carts', ['id' => $cart->id]);
-        $this->assertSame($product->stock - $quantity, $product->fresh()->stock);
+        $this->assertSame(25 - $quantity, $product->fresh()->stock);
     }
 
     public function test_cashier_can_complete_transaction_for_default_walk_in_customer(): void
@@ -121,6 +123,7 @@ class TransactionFlowTest extends TestCase
 
         $quantity = 1;
         $cart = Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => $quantity,
@@ -170,6 +173,7 @@ class TransactionFlowTest extends TestCase
         $product = $this->createProduct();
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $cashier->id,
             'cashier_shift_id' => $shift->id,
             'customer_id' => $customer->id,
@@ -263,6 +267,7 @@ class TransactionFlowTest extends TestCase
         ]);
 
         $cart = Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 1,
@@ -318,6 +323,7 @@ class TransactionFlowTest extends TestCase
         $product = $this->createProduct();
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 1,
@@ -486,7 +492,7 @@ class TransactionFlowTest extends TestCase
         $response->assertRedirect();
 
         // Simulate another cashier/system updating DB stock to 15
-        $product->update(['stock' => 15]);
+        ProductWarehouse::where('product_id', $product->id)->update(['stock' => 15]);
 
         // Checkout the cart which has 20 pcs -> DB only has 15. Should fail at checkout.
         $checkoutResponse = $this
@@ -504,6 +510,10 @@ class TransactionFlowTest extends TestCase
 
     protected function openShiftFor(User $cashier, int $openingCash = 100000, ?int $warehouseId = null)
     {
+        if (is_null($warehouseId)) {
+            $warehouseId = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id;
+        }
+
         return CashierShift::create([
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,
@@ -523,7 +533,7 @@ class TransactionFlowTest extends TestCase
             'image' => 'category.png',
         ]);
 
-        return Product::create([
+        $product = Product::create([
             'category_id' => $category->id,
             'image' => 'product.png',
             'barcode' => 'BRCD-'.Str::upper(Str::random(10)),
@@ -534,6 +544,10 @@ class TransactionFlowTest extends TestCase
             'stock' => 25,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 25]);
+
+        return $product;
     }
 
     public function test_transaction_tax_respects_store_profile_default_rate(): void
@@ -559,8 +573,11 @@ class TransactionFlowTest extends TestCase
             'stock' => 10,
             'tax_rate' => null,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 10]);
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 1,
@@ -590,6 +607,7 @@ class TransactionFlowTest extends TestCase
         $cashier = $this->createCashier();
         $this->openShiftFor($cashier);
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $cashier->id,
             'customer_id' => null,
             'invoice' => 'TRX-TEST-AUTOPRINT-1',

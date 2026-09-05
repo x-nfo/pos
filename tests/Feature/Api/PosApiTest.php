@@ -220,10 +220,7 @@ class PosApiTest extends TestCase
             ->assertJsonPath('data.change', 30000);
 
         // Stock decremented
-        $this->assertDatabaseHas('products', [
-            'id' => $this->product->id,
-            'stock' => 48,
-        ]);
+        $this->assertSame(48, (int) $this->product->fresh()->stock);
 
         // Cart cleared
         $this->assertDatabaseCount('carts', 0);

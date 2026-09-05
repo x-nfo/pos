@@ -34,43 +34,40 @@ test.describe('Modul 3: Transaksi POS, Mobile PWA & Keranjang', () => {
         await firstProduct.click();
 
         // Handle unit option modal if presented
-        const unitOption = page.locator('button:has-text("Satuan Dasar"), button:has-text("pcs"), button:has-text("Pilih")').first();
-        if (await unitOption.isVisible({ timeout: 2500 }).catch(() => false)) {
-            await unitOption.click();
+        const modalUnitOption = page.locator('.animate-fade-in button:has-text("Satuan Dasar"), .animate-fade-in button:has-text("Pilih Satuan")').first();
+        if (await modalUnitOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+            await modalUnitOption.click();
             await page.waitForTimeout(500);
         }
 
-        // Open cart drawer if visible on mobile layout
-        const cartDrawerBtn = page.getByRole('button', { name: /Keranjang/i }).first();
-        if (await cartDrawerBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await expect(cartDrawerBtn).not.toBeDisabled({ timeout: 5000 });
-            await cartDrawerBtn.click();
-            await page.waitForTimeout(1000);
+        // Wait for item to be in cart
+        await expect(page.locator('text=/Item di Keranjang/i').or(page.getByText(/ditambahkan/i))).toBeVisible({ timeout: 10000 });
+
+        // If Mobile layout (Floating Cart Bar is visible), open cart and proceed to payment sheet
+        const floatingCartBtn = page.locator('button:has-text("Keranjang")').last();
+        if (await floatingCartBtn.isVisible()) {
+            await floatingCartBtn.click();
+            await page.waitForTimeout(500);
+
+            const proceedToPayBtn = page.locator('button:has-text("Bayar Sekarang")').first();
+            await expect(proceedToPayBtn).toBeVisible({ timeout: 5000 });
+            await proceedToPayBtn.click();
+            await page.waitForTimeout(500);
         }
 
-        // Click quick cash button (Uang Pas / Rp 100.000 / Rp 50.000) or open payment modal
+        // Click quick cash button (Uang Pas / Rp 100.000 / Rp 50.000)
         const quickCashBtn = page.locator('button:has-text("Uang Pas"), button:has-text("Rp 100.000"), button:has-text("Rp 50.000")').first();
-        const openPaymentModalBtn = page.getByRole('button', { name: /Bayar Sekarang|Selesaikan Transaksi|Bayar/i }).first();
+        await expect(quickCashBtn).toBeVisible({ timeout: 5000 });
+        await quickCashBtn.click();
+        await page.waitForTimeout(500);
 
-        if (await quickCashBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await quickCashBtn.click();
-            await page.waitForTimeout(500);
-        }
-
-        const submitBtn = page.locator('button:has-text("Selesaikan Transaksi"), button:has-text("Bayar")').first();
-        if (await submitBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await submitBtn.click();
-        } else if (await openPaymentModalBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await openPaymentModalBtn.click();
-            if (await quickCashBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-                await quickCashBtn.click();
-            }
-            const finalPayBtn = page.locator('button:has-text("Bayar Rp"), button:has-text("Bayar"), button:has-text("Selesaikan Transaksi")').last();
-            await finalPayBtn.click();
-        }
+        // Submit Payment
+        const submitBtn = page.locator('button:has-text("Selesaikan Transaksi"), button:has-text("Bayar Rp")').last();
+        await expect(submitBtn).toBeEnabled({ timeout: 5000 });
+        await submitBtn.click();
 
         // Verify success receipt
-        await expect(page.getByText(/Berhasil|Struk/i).first()).toBeVisible({ timeout: 10000 });
+        await expect(page.getByText(/Berhasil|Struk/i).first()).toBeVisible({ timeout: 15000 });
     });
 
     test('TC-POS-13 & TC-POS-14: Multi-Hold Cart & Resume Cart', async ({ page }) => {
@@ -84,9 +81,9 @@ test.describe('Modul 3: Transaksi POS, Mobile PWA & Keranjang', () => {
         await expect(firstProduct).toBeVisible({ timeout: 20000 });
         await firstProduct.click();
 
-        const unitOption = page.locator('button:has-text("Satuan Dasar"), button:has-text("pcs"), button:has-text("Pilih")').first();
-        if (await unitOption.isVisible({ timeout: 2500 }).catch(() => false)) {
-            await unitOption.click();
+        const modalUnitOption = page.locator('.animate-fade-in button:has-text("Satuan Dasar"), .animate-fade-in button:has-text("Pilih Satuan")').first();
+        if (await modalUnitOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+            await modalUnitOption.click();
             await page.waitForTimeout(500);
         }
 

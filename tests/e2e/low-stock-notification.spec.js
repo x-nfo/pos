@@ -55,12 +55,12 @@ test.describe('Low Stock Notification Flow', () => {
     await page.reload();
 
     // 7. Verify Notification Bell
-    const notifBtn = page.getByRole('button', { name: 'Notifikasi' });
+    const notifBtn = page.getByRole('button', { name: 'Notifikasi', exact: true });
     await expect(notifBtn).toBeVisible();
     await notifBtn.click();
 
     // Check for notification item in dropdown
-    const notifItem = page.getByText(new RegExp(`Stok (menipis|habis): ${productName}`));
+    const notifItem = page.getByText(new RegExp(`Stok (menipis|habis): ${productName}`)).first();
     await expect(notifItem).toBeVisible({ timeout: 5000 });
   });
 });

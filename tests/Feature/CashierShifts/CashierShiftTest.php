@@ -7,9 +7,11 @@ use App\Models\CashierShift;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\SalesReturn;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -69,6 +71,7 @@ class CashierShiftTest extends TestCase
         ]);
 
         CashierShift::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,
             'opened_at' => now(),
@@ -96,6 +99,7 @@ class CashierShiftTest extends TestCase
         ]);
 
         $shift = CashierShift::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,
             'opened_at' => now(),
@@ -122,6 +126,7 @@ class CashierShiftTest extends TestCase
         ]);
 
         $shift = CashierShift::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,
             'opened_at' => now(),
@@ -153,8 +158,11 @@ class CashierShiftTest extends TestCase
             'sell_price' => 60000,
             'stock' => 10,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 10]);
 
         Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $cashier->id,
             'cashier_shift_id' => $shift->id,
             'customer_id' => $customer->id,
@@ -173,6 +181,7 @@ class CashierShiftTest extends TestCase
         ]);
 
         Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $cashier->id,
             'cashier_shift_id' => $shift->id,
             'customer_id' => $customer->id,
@@ -232,6 +241,7 @@ class CashierShiftTest extends TestCase
         ]);
 
         $shift = CashierShift::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,
             'opened_at' => now(),
@@ -265,6 +275,7 @@ class CashierShiftTest extends TestCase
         ]);
 
         $shift = CashierShift::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,
             'opened_at' => now(),
@@ -289,6 +300,7 @@ class CashierShiftTest extends TestCase
         ]);
 
         $shift = CashierShift::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,
             'opened_at' => now(),
@@ -314,8 +326,11 @@ class CashierShiftTest extends TestCase
             'sell_price' => 25000,
             'stock' => 20,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 20]);
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 2,
@@ -349,6 +364,7 @@ class CashierShiftTest extends TestCase
         ]);
 
         $shift = CashierShift::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,
             'opened_at' => now(),

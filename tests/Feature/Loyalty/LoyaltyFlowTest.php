@@ -9,9 +9,11 @@ use App\Models\Customer;
 use App\Models\CustomerVoucher;
 use App\Models\LoyaltyPointHistory;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\Services\LoyaltyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -70,6 +72,7 @@ class LoyaltyFlowTest extends TestCase
         ]);
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 1,
@@ -130,6 +133,7 @@ class LoyaltyFlowTest extends TestCase
         ]);
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 1,
@@ -202,6 +206,7 @@ class LoyaltyFlowTest extends TestCase
         ]);
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 4,
@@ -260,6 +265,7 @@ class LoyaltyFlowTest extends TestCase
         ]);
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 1,
@@ -291,6 +297,8 @@ class LoyaltyFlowTest extends TestCase
 
     private function openShiftFor(User $cashier)
     {
+        $warehouseId = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id;
+
         return CashierShift::create([
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,
@@ -298,6 +306,7 @@ class LoyaltyFlowTest extends TestCase
             'opening_cash' => 100000,
             'expected_cash' => 100000,
             'status' => 'open',
+            'warehouse_id' => $warehouseId,
         ]);
     }
 
@@ -309,7 +318,7 @@ class LoyaltyFlowTest extends TestCase
             'image' => 'category.png',
         ]);
 
-        return Product::create([
+        $product = Product::create([
             'category_id' => $category->id,
             'image' => 'product.png',
             'barcode' => 'BRCD-'.Str::upper(Str::random(10)),
@@ -321,5 +330,9 @@ class LoyaltyFlowTest extends TestCase
             'stock' => 25,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 25]);
+
+        return $product;
     }
 }

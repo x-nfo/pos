@@ -6,6 +6,7 @@ use App\Models\CashierShift;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\Receivable;
 use App\Models\SalesReturn;
 use App\Models\Transaction;
@@ -1103,7 +1104,7 @@ class SalesReturnTest extends TestCase
             'image' => 'category.png',
         ]);
 
-        return Product::create([
+        $product = Product::create([
             'category_id' => $category->id,
             'image' => 'product.png',
             'barcode' => 'BRCD-'.Str::upper(Str::random(10)),
@@ -1115,6 +1116,10 @@ class SalesReturnTest extends TestCase
             'stock' => $stock,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => $stock]);
+
+        return $product;
     }
 
     private function createUserWithPermissions(array $permissions): User
@@ -1152,6 +1157,8 @@ class SalesReturnTest extends TestCase
             'stock' => $stock,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => $stock]);
 
         $customer = $withCustomer
             ? Customer::create([
@@ -1162,6 +1169,7 @@ class SalesReturnTest extends TestCase
             : null;
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $user->id,
             'cashier_shift_id' => null,
             'customer_id' => $customer?->id,
@@ -1205,6 +1213,8 @@ class SalesReturnTest extends TestCase
 
     private function openShiftFor(User $user)
     {
+        $warehouseId = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id;
+
         return CashierShift::create([
             'user_id' => $user->id,
             'opened_by' => $user->id,
@@ -1212,6 +1222,7 @@ class SalesReturnTest extends TestCase
             'opening_cash' => 100000,
             'expected_cash' => 100000,
             'status' => 'open',
+            'warehouse_id' => $warehouseId,
         ]);
     }
 }

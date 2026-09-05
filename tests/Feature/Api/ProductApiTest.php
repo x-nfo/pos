@@ -4,7 +4,9 @@ namespace Tests\Feature\Api;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -31,7 +33,7 @@ class ProductApiTest extends TestCase
 
     private function makeProduct(string $title, string $barcode): Product
     {
-        return Product::create([
+        $product = Product::create([
             'title' => $title,
             'barcode' => $barcode,
             'sku' => 'SKU-'.$barcode,
@@ -47,6 +49,10 @@ class ProductApiTest extends TestCase
             'max_stock' => 100,
             'is_composite' => false,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 10]);
+
+        return $product;
     }
 
     public function test_products_requires_auth(): void

@@ -35,42 +35,41 @@ test.describe('POS Cart Checkout Flow', () => {
     await expect(firstProduct).toBeVisible({ timeout: 20000 });
     await firstProduct.click();
 
-
-    // If multi-unit modal opens, pick the first unit option button
-    const unitOption = page.locator('button:has-text("Satuan Dasar"), button:has-text("pcs"), button:has-text("Pilih")').first();
-    if (await unitOption.isVisible({ timeout: 2500 }).catch(() => false)) {
-        await unitOption.click();
+    // If multi-unit modal opens, pick the first unit option button INSIDE the modal
+    const modalUnitOption = page.locator('.animate-fade-in button:has-text("Satuan Dasar"), .animate-fade-in button:has-text("Pilih Satuan")').first();
+    if (await modalUnitOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await modalUnitOption.click();
         await page.waitForTimeout(500);
     }
 
-    // Verify item added to cart
-    await expect(page.locator('h4, .truncate').first()).toBeVisible({ timeout: 10000 });
+    // 5. Wait for item to be added to cart
+    await expect(page.locator('text=/Item di Keranjang/i').or(page.getByText(/ditambahkan/i)).first()).toBeVisible({ timeout: 10000 });
 
-    // If cart drawer button is present (mobile/drawer view), click to open cart panel
-    const cartDrawerBtn = page.getByRole('button', { name: /Keranjang/i }).first();
-    if (await cartDrawerBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await expect(cartDrawerBtn).not.toBeDisabled({ timeout: 5000 });
-        await cartDrawerBtn.click();
-        await page.waitForTimeout(1000);
+    // 6. If Mobile layout (Floating Cart Bar is visible), open cart and proceed to payment sheet
+    const floatingCartBtn = page.locator('button:has-text("Keranjang")').last();
+    if (await floatingCartBtn.isVisible()) {
+        await floatingCartBtn.click();
+        await page.waitForTimeout(500);
+
+        const proceedToPayBtn = page.locator('button:has-text("Bayar Sekarang")').first();
+        await expect(proceedToPayBtn).toBeVisible({ timeout: 5000 });
+        await proceedToPayBtn.click();
+        await page.waitForTimeout(500);
     }
 
-    // 5. Click "Bayar Sekarang" to open Pembayaran Transaksi modal
-    const openPaymentModalBtn = page.getByRole('button', { name: /Bayar Sekarang|Selesaikan Transaksi/i }).first();
-    await expect(openPaymentModalBtn).toBeVisible({ timeout: 5000 });
-    await openPaymentModalBtn.click();
-
-    // 6. In Payment Modal, click quick cash button "Uang Pas" or "Rp 100.000"
+    // 7. Select quick cash (Uang Pas or Rp 100.000 or Rp 50.000)
     const quickCashBtn = page.locator('button:has-text("Uang Pas"), button:has-text("Rp 100.000"), button:has-text("Rp 50.000")').first();
     await expect(quickCashBtn).toBeVisible({ timeout: 5000 });
     await quickCashBtn.click();
+    await page.waitForTimeout(500);
 
-    // 7. Submit Transaction via modal pay button
-    const finalPayBtn = page.locator('button:has-text("Bayar Rp"), button:has-text("Bayar")').last();
-    await expect(finalPayBtn).not.toBeDisabled({ timeout: 5000 });
-    await finalPayBtn.click();
+    // 8. Submit Payment (Desktop: "Selesaikan Transaksi", Mobile: "Bayar Rp...")
+    const submitBtn = page.locator('button:has-text("Selesaikan Transaksi"), button:has-text("Bayar Rp")').last();
+    await expect(submitBtn).toBeEnabled({ timeout: 5000 });
+    await submitBtn.click();
 
-    // 8. Verify Success
-    await expect(page.getByText(/Berhasil|Struk/i).first()).toBeVisible({ timeout: 10000 });
+    // 9. Verify Success
+    await expect(page.getByText(/Berhasil|Struk/i).first()).toBeVisible({ timeout: 15000 });
 
 
 

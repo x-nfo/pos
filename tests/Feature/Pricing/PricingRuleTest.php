@@ -8,8 +8,10 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\PricingRule;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
@@ -97,6 +99,7 @@ class PricingRuleTest extends TestCase
         ]);
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 1,
@@ -148,6 +151,7 @@ class PricingRuleTest extends TestCase
         $product = $this->createProduct();
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 3,
@@ -200,12 +204,14 @@ class PricingRuleTest extends TestCase
         $productB = $this->createProduct('Produk Bundle B');
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $productA->id,
             'qty' => 1,
             'price' => $productA->sell_price,
         ]);
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $productB->id,
             'qty' => 1,
@@ -252,12 +258,14 @@ class PricingRuleTest extends TestCase
         $getProduct = $this->createProduct('Produk Get');
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $buyProduct->id,
             'qty' => 1,
             'price' => $buyProduct->sell_price,
         ]);
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $getProduct->id,
             'qty' => 1,
@@ -311,6 +319,7 @@ class PricingRuleTest extends TestCase
         ]);
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 2,
@@ -443,6 +452,8 @@ class PricingRuleTest extends TestCase
 
     private function openShiftFor(User $cashier)
     {
+        $warehouseId = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id;
+
         return CashierShift::create([
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,
@@ -450,6 +461,7 @@ class PricingRuleTest extends TestCase
             'opening_cash' => 100000,
             'expected_cash' => 100000,
             'status' => 'open',
+            'warehouse_id' => $warehouseId,
         ]);
     }
 
@@ -461,7 +473,7 @@ class PricingRuleTest extends TestCase
             'image' => 'category.png',
         ]);
 
-        return Product::create([
+        $product = Product::create([
             'category_id' => $category->id,
             'image' => 'product.png',
             'barcode' => 'BRCD-'.Str::upper(Str::random(10)),
@@ -473,5 +485,9 @@ class PricingRuleTest extends TestCase
             'stock' => 25,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 25]);
+
+        return $product;
     }
 }

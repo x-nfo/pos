@@ -14,6 +14,8 @@ class DatabaseSeeder extends Seeder
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
+        $this->seedDefaultWarehouse();
+
         $this->call([
             PermissionSeeder::class,
             RoleSeeder::class,
@@ -25,9 +27,9 @@ class DatabaseSeeder extends Seeder
             DineInSettingsSeeder::class,
         ]);
 
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->syncProductWarehouses();
 
-        $this->seedDefaultWarehouse();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
     private function seedDefaultWarehouse(): void
@@ -54,34 +56,42 @@ class DatabaseSeeder extends Seeder
                 'sort_order' => 1,
             ]);
         }
+    }
 
-        $defaultWarehouse = Warehouse::active()->orderBy('sort_order')->orderBy('code')->first() ?? $pusat;
-
-        // Assign default cashier to branch warehouse if not set
+    private function syncProductWarehouses(): void
+    {
+        $cabang = Warehouse::where('code', 'CABANG-1')->first();
         $cashier = User::where('email', 'kasir@mail.com')->first();
-        if ($cashier && is_null($cashier->warehouse_id)) {
+        if ($cashier && is_null($cashier->warehouse_id) && $cabang) {
             $cashier->update(['warehouse_id' => $cabang->id]);
         }
 
         // Ensure all products have product_warehouse records for all active warehouses
         $activeWarehouses = Warehouse::active()->get();
-        $productsList = DB::table('products')->get(['id', 'stock']);
+        $productsList = DB::table('products')->get(['id']);
 
         foreach ($activeWarehouses as $wh) {
             foreach ($productsList as $prod) {
-                $exists = DB::table('product_warehouse')
+                $record = DB::table('product_warehouse')
                     ->where('product_id', $prod->id)
                     ->where('warehouse_id', $wh->id)
-                    ->exists();
+                    ->first();
 
-                if (! $exists) {
+                if (! $record) {
                     DB::table('product_warehouse')->insert([
                         'product_id' => $prod->id,
                         'warehouse_id' => $wh->id,
-                        'stock' => max(10, (int) $prod->stock),
+                        'stock' => 50,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
+                } elseif ($record->stock <= 0) {
+                    DB::table('product_warehouse')
+                        ->where('id', $record->id)
+                        ->update([
+                            'stock' => 50,
+                            'updated_at' => now(),
+                        ]);
                 }
             }
         }

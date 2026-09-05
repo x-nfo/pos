@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
 use App\Models\ProductNotificationRead;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class NotificationController extends Controller
 {
@@ -33,12 +33,15 @@ class NotificationController extends Controller
      */
     public function markAllLowStockRead(Request $request)
     {
-        $productIds = Product::where(function ($query) {
-            $query->where('min_stock', '>', 0)
-                ->whereColumn('stock', '<=', 'min_stock')
-                ->orWhere('stock', '<=', 0);
-        })
-            ->pluck('id')
+        $productIds = DB::table('product_warehouse')
+            ->join('products', 'product_warehouse.product_id', '=', 'products.id')
+            ->where(function ($query) {
+                $query->where('products.min_stock', '>', 0)
+                    ->whereColumn('product_warehouse.stock', '<=', 'products.min_stock')
+                    ->orWhere('product_warehouse.stock', '<=', 0);
+            })
+            ->distinct()
+            ->pluck('products.id')
             ->all();
 
         if (count($productIds) === 0) {

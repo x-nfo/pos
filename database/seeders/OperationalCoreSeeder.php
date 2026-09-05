@@ -294,7 +294,7 @@ class OperationalCoreSeeder extends Seeder
 
         $stockBefore = (int) $product->stock;
         $stockAfter = $stockBefore + $qtyReturn;
-        $product->update(['stock' => $stockAfter]);
+        // $product->update(['stock' => $stockAfter]);
 
         $stockMutationService->recordSalesReturnRestock(
             product: $product,

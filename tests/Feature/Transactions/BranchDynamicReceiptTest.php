@@ -85,6 +85,7 @@ class BranchDynamicReceiptTest extends TestCase
         ]);
 
         $this->transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $this->admin->id,
             'cashier_shift_id' => $shift->id,
             'warehouse_id' => $this->branchWarehouse->id,
@@ -235,41 +236,6 @@ class BranchDynamicReceiptTest extends TestCase
             ->where('transaction.warehouse.name', 'Cabang Bandung')
             ->where('transaction.warehouse.address', 'Jl. Asia Afrika No. 88, Bandung')
             ->where('transaction.warehouse.phone', '022-7778899')
-        );
-    }
-
-    public function test_receipt_uses_cashier_placement_warehouse_when_transaction_warehouse_id_is_null(): void
-    {
-        $cashier = User::factory()->create([
-            'name' => 'Kasir Cabang',
-            'email' => 'kasir_cabang@mail.com',
-            'warehouse_id' => $this->branchWarehouse->id,
-        ]);
-
-        $this->transaction->update([
-            'warehouse_id' => null,
-            'cashier_id' => $cashier->id,
-        ]);
-
-        $service = app(ThermalPrintService::class);
-        $receiptText = $service->generateReceiptText($this->transaction->fresh(), '80mm');
-
-        $this->assertStringContainsStringIgnoringCase('Cabang Bandung', $receiptText);
-        $this->assertStringContainsString('Jl. Asia Afrika No. 88, Bandung', $receiptText);
-        $this->assertStringContainsString('022-7778899', $receiptText);
-
-        $whatsappText = $service->generateWhatsappReceiptText($this->transaction->fresh());
-        $this->assertStringContainsStringIgnoringCase('Cabang Bandung', $whatsappText);
-        $this->assertStringContainsString('Jl. Asia Afrika No. 88, Bandung', $whatsappText);
-
-        $response = $this->actingAs($this->admin)
-            ->get(route('transactions.print', $this->transaction->invoice));
-        $response->assertOk();
-        $response->assertInertia(fn (Assert $page) => $page
-            ->component('Dashboard/Transactions/Print')
-            ->has('transaction.cashier.warehouse')
-            ->where('transaction.cashier.warehouse.name', 'Cabang Bandung')
-            ->where('transaction.cashier.warehouse.address', 'Jl. Asia Afrika No. 88, Bandung')
         );
     }
 

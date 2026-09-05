@@ -287,10 +287,7 @@ class GoodsReceivingTest extends TestCase
         ]);
 
         // Master stock converted: 0 + (2 * 12) = 24
-        $this->assertDatabaseHas('products', [
-            'id' => $product->id,
-            'stock' => 24,
-        ]);
+        $this->assertSame(24, (int) $product->fresh()->stock);
 
         // Payable automatically created: 2 * 265000 = 530000
         $this->assertDatabaseHas('payables', [

@@ -16,4 +16,21 @@ class ProductWarehouse extends Pivot
             'stock' => 'integer',
         ];
     }
+
+    public function save(array $options = [])
+    {
+        if (! $this->exists && isset($this->product_id, $this->warehouse_id)) {
+            $existing = static::where('product_id', $this->product_id)
+                ->where('warehouse_id', $this->warehouse_id)
+                ->first();
+
+            if ($existing) {
+                $this->exists = true;
+                $this->id = $existing->id;
+                $this->attributes['id'] = $existing->id;
+            }
+        }
+
+        return parent::save($options);
+    }
 }

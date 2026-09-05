@@ -65,6 +65,7 @@ class StockMutationTest extends TestCase
         ]);
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 3,
@@ -133,6 +134,7 @@ class StockMutationTest extends TestCase
         ]);
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $bundle->id,
             'qty' => 2,
@@ -187,6 +189,11 @@ class StockMutationTest extends TestCase
         $shift = $this->openShiftFor($cashier, $warehouse->id);
 
         $product = $this->createProduct(['stock' => 15]);
+        ProductWarehouse::create([
+            'product_id' => $product->id,
+            'warehouse_id' => $warehouse->id,
+            'stock' => 15,
+        ]);
 
         $response = $this
             ->actingAs($cashier)
@@ -304,6 +311,10 @@ class StockMutationTest extends TestCase
 
     protected function openShiftFor(User $cashier, ?int $warehouseId = null): CashierShift
     {
+        if (is_null($warehouseId)) {
+            $warehouseId = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id;
+        }
+
         return CashierShift::create([
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,

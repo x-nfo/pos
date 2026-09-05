@@ -9,6 +9,16 @@ class StockMutation extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::creating(function (StockMutation $mutation) {
+            if (empty($mutation->warehouse_id)) {
+                $mutation->warehouse_id = auth()->user()?->warehouse_id
+                    ?? Warehouse::defaultId();
+            }
+        });
+    }
+
     protected $fillable = [
         'product_id',
         'warehouse_id',

@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\DiscountApprovalLog;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Permission;
@@ -46,6 +47,7 @@ class BankPaymentNotificationTest extends TestCase
         ]);
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $cashier->id,
             'customer_id' => $customer->id,
             'invoice' => 'TRX-BANK-001',
@@ -91,6 +93,7 @@ class BankPaymentNotificationTest extends TestCase
         ]);
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $cashier->id,
             'customer_id' => null,
             'invoice' => 'TRX-BANK-002',
@@ -129,6 +132,7 @@ class BankPaymentNotificationTest extends TestCase
         ]);
 
         Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $cashier->id,
             'customer_id' => null,
             'invoice' => 'TRX-BANK-003',
@@ -165,6 +169,7 @@ class BankPaymentNotificationTest extends TestCase
 
         // Already paid bank transfer
         Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $admin->id,
             'customer_id' => null,
             'invoice' => 'TRX-BANK-PAID',
@@ -179,6 +184,7 @@ class BankPaymentNotificationTest extends TestCase
 
         // Cash transaction
         Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $admin->id,
             'customer_id' => null,
             'invoice' => 'TRX-CASH-001',
@@ -213,6 +219,7 @@ class BankPaymentNotificationTest extends TestCase
         ]);
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $admin->id,
             'customer_id' => null,
             'invoice' => 'TRX-BANK-CONFIRM',
@@ -264,6 +271,7 @@ class BankPaymentNotificationTest extends TestCase
         ]);
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $admin->id,
             'customer_id' => null,
             'invoice' => 'TRX-BANK-DISC-001',

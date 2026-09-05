@@ -96,8 +96,10 @@ class ProductImportExportTest extends TestCase
             'title' => 'Indomie Goreng Original',
             'buy_price' => 3000,
             'sell_price' => 4000,
-            'stock' => 75,
         ]);
+
+        $p1 = Product::where('sku', 'SKU-001')->first();
+        $this->assertEquals(75, $p1->stock);
 
         $this->assertDatabaseHas('products', [
             'barcode' => '8990987654321',
@@ -105,8 +107,10 @@ class ProductImportExportTest extends TestCase
             'title' => 'Teh Botol Sosro',
             'buy_price' => 2000,
             'sell_price' => 3500,
-            'stock' => 100,
         ]);
+
+        $p2 = Product::where('sku', 'SKU-002')->first();
+        $this->assertEquals(100, $p2->stock);
     }
 
     public function test_import_products_rejects_duplicate_sku_in_database_and_returns_error_list(): void

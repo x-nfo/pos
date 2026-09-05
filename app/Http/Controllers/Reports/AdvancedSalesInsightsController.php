@@ -13,6 +13,7 @@ use App\Models\CustomerVoucher;
 use App\Models\LoyaltyPointHistory;
 use App\Models\PricingRule;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -152,7 +153,6 @@ class AdvancedSalesInsightsController extends Controller
                 p.title as product_title,
                 p.sku as product_sku,
                 c.name as category_name,
-                p.stock as current_stock,
                 SUM(td.qty) as qty_sold,
                 SUM(td.price) as revenue_total,
                 SUM((td.price - ROUND((COALESCE(t.discount, 0) * td.price) / NULLIF(tx.subtotal_after_promo, 0))) - (p.buy_price * td.qty)) as profit_total,
@@ -165,22 +165,28 @@ class AdvancedSalesInsightsController extends Controller
                 'tx',
                 fn ($join) => $join->on('tx.transaction_id', '=', 'td.transaction_id')
             )
-            ->groupBy('td.product_id', 'p.title', 'p.sku', 'c.name', 'p.stock')
+            ->groupBy('td.product_id', 'p.title', 'p.sku', 'c.name')
             ->orderByDesc('qty_sold')
             ->orderByDesc('revenue_total')
             ->limit(10)
             ->get()
-            ->map(fn ($row) => [
-                'product_id' => (int) $row->product_id,
-                'product_title' => $row->product_title,
-                'product_sku' => $row->product_sku,
-                'category_name' => $row->category_name,
-                'current_stock' => (int) $row->current_stock,
-                'qty_sold' => (int) $row->qty_sold,
-                'revenue_total' => (int) round($row->revenue_total),
-                'profit_total' => (int) round($row->profit_total),
-                'last_sold_at' => $row->last_sold_at ? Carbon::parse($row->last_sold_at)->toIso8601String() : null,
-            ])
+            ->map(function ($row) use ($filters) {
+                $currentStock = ProductWarehouse::where('product_id', $row->product_id)
+                    ->when($filters['warehouse_id'] ?? null, fn ($q, $wid) => $q->where('warehouse_id', $wid))
+                    ->sum('stock');
+
+                return [
+                    'product_id' => (int) $row->product_id,
+                    'product_title' => $row->product_title,
+                    'product_sku' => $row->product_sku,
+                    'category_name' => $row->category_name,
+                    'current_stock' => (int) $currentStock,
+                    'qty_sold' => (int) $row->qty_sold,
+                    'revenue_total' => (int) round($row->revenue_total),
+                    'profit_total' => (int) round($row->profit_total),
+                    'last_sold_at' => $row->last_sold_at ? Carbon::parse($row->last_sold_at)->toIso8601String() : null,
+                ];
+            })
             ->all();
     }
 
@@ -203,17 +209,23 @@ class AdvancedSalesInsightsController extends Controller
             )
             ->groupBy('td.product_id');
 
+        $stockSubquery = DB::table('product_warehouse')
+            ->selectRaw('product_id, SUM(stock) as total_stock')
+            ->when($filters['warehouse_id'] ?? null, fn ($q, $wid) => $q->where('warehouse_id', $wid))
+            ->groupBy('product_id');
+
         return Product::query()
             ->leftJoinSub($salesSubquery, 'sales', fn ($join) => $join->on('sales.product_id', '=', 'products.id'))
+            ->leftJoinSub($stockSubquery, 'stocks', fn ($join) => $join->on('stocks.product_id', '=', 'products.id'))
             ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
             ->when($filters['category_id'] ?? null, fn ($q, $categoryId) => $q->where('products.category_id', $categoryId))
-            ->where('products.stock', '>', 0)
+            ->where('stocks.total_stock', '>', 0)
             ->selectRaw('
                 products.id as product_id,
                 products.title as product_title,
                 products.sku as product_sku,
                 categories.name as category_name,
-                products.stock as current_stock,
+                COALESCE(stocks.total_stock, 0) as current_stock,
                 COALESCE(sales.qty_sold, 0) as qty_sold,
                 COALESCE(sales.revenue_total, 0) as revenue_total,
                 COALESCE(sales.profit_total, 0) as profit_total,
@@ -221,7 +233,7 @@ class AdvancedSalesInsightsController extends Controller
             ')
             ->orderBy('qty_sold')
             ->orderBy('revenue_total')
-            ->orderByDesc('products.stock')
+            ->orderByDesc('stocks.total_stock')
             ->limit(10)
             ->get()
             ->map(fn ($row) => [
@@ -472,17 +484,23 @@ class AdvancedSalesInsightsController extends Controller
             ')
             ->groupBy('td.product_id');
 
+        $stockSubquery = DB::table('product_warehouse')
+            ->selectRaw('product_id, SUM(stock) as total_stock')
+            ->when($filters['warehouse_id'] ?? null, fn ($q, $wid) => $q->where('warehouse_id', $wid))
+            ->groupBy('product_id');
+
         $rows = Product::query()
             ->leftJoinSub($salesSubquery, 'sales', fn ($join) => $join->on('sales.product_id', '=', 'products.id'))
+            ->leftJoinSub($stockSubquery, 'stocks', fn ($join) => $join->on('stocks.product_id', '=', 'products.id'))
             ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
             ->when($filters['category_id'] ?? null, fn ($q, $categoryId) => $q->where('products.category_id', $categoryId))
-            ->where('products.stock', '>', 0)
+            ->where('stocks.total_stock', '>', 0)
             ->selectRaw('
                 products.id as product_id,
                 products.title as product_title,
                 products.sku as product_sku,
                 categories.name as category_name,
-                products.stock as current_stock,
+                COALESCE(stocks.total_stock, 0) as current_stock,
                 COALESCE(sales.qty_sold, 0) as qty_sold,
                 COALESCE(sales.revenue_total, 0) as revenue_total,
                 sales.last_sold_at as last_sold_at

@@ -14,6 +14,12 @@ class Transaction extends Model
     {
         static::creating(function ($transaction) {
             $transaction->access_token = (string) Str::uuid();
+            if (empty($transaction->warehouse_id)) {
+                $transaction->warehouse_id = auth()->user()?->warehouse_id
+                    ?? CashierShift::where('id', $transaction->cashier_shift_id)->whereNotNull('warehouse_id')->value('warehouse_id')
+                    ?? User::find($transaction->cashier_id)?->warehouse_id
+                    ?? Warehouse::defaultId();
+            }
         });
     }
 

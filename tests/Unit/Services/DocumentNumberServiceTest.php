@@ -5,6 +5,7 @@ namespace Tests\Unit\Services;
 use App\Models\PurchaseOrder;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\Services\DocumentNumberService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -88,6 +89,7 @@ class DocumentNumberServiceTest extends TestCase
         $user = User::factory()->create();
 
         Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $user->id,
             'invoice' => 'TRX-UNIQUE-TEST',
             'cash' => 10000,
@@ -99,6 +101,7 @@ class DocumentNumberServiceTest extends TestCase
         $this->expectException(QueryException::class);
 
         Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $user->id,
             'invoice' => 'TRX-UNIQUE-TEST',
             'cash' => 10000,

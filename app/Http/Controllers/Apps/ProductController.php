@@ -201,7 +201,7 @@ class ProductController extends Controller
                     }
                 }
             } else {
-                $defaultWarehouse = $allActiveWarehouses->first();
+                $defaultWarehouse = Warehouse::defaultWarehouse();
                 if ($defaultWarehouse) {
                     $syncPayload = [];
                     foreach ($allActiveWarehouses as $w) {
@@ -275,7 +275,7 @@ class ProductController extends Controller
                 'max_stock' => (int) ($validated['max_stock'] ?? 0),
             ]);
 
-            $defaultWarehouse = Warehouse::active()->orderBy('code')->first();
+            $defaultWarehouse = Warehouse::defaultWarehouse();
             if ($defaultWarehouse && (int) $validated['stock'] > 0) {
                 $product->warehouses()->syncWithoutDetaching([
                     $defaultWarehouse->id => ['stock' => (int) $validated['stock']],

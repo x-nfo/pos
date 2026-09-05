@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -51,6 +52,7 @@ class PasswordConfirmationTest extends TestCase
         $user->givePermissionTo('transactions-confirm-payment');
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $user->id,
             'invoice' => 'TRX-CONFIRM',
             'cash' => 0,
@@ -106,6 +108,7 @@ class PasswordConfirmationTest extends TestCase
         $user->givePermissionTo('transactions-confirm-payment');
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $user->id,
             'invoice' => 'TRX-CONFIRM-JSON',
             'cash' => 0,

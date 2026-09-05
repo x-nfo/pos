@@ -4,6 +4,8 @@ namespace Tests\Unit\Models;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -31,6 +33,8 @@ class ProductAndCategoryImageAccessorTest extends TestCase
             'description' => 'Test',
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $productWithEmptyImage->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 10]);
 
         $this->assertNull($productWithEmptyImage->image);
     }
@@ -55,6 +59,8 @@ class ProductAndCategoryImageAccessorTest extends TestCase
             'description' => 'Test',
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $productWithFilename->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 10]);
 
         $this->assertStringContainsString('/storage/products/sample-product.jpg', $productWithFilename->image);
 
@@ -70,6 +76,8 @@ class ProductAndCategoryImageAccessorTest extends TestCase
             'description' => 'Test',
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $productWithFullUrl->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 10]);
 
         $this->assertSame('https://images.unsplash.com/photo-example.jpg', $productWithFullUrl->image);
     }

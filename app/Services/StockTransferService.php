@@ -128,7 +128,7 @@ class StockTransferService
                 ], ['stock' => 0]);
                 $pivot->decrement('stock', $baseQty);
 
-                $product->decrement('stock', $baseQty);
+                // $product->decrement('stock', $baseQty);
 
                 $unitNote = $factor > 1 && $item->unit ? ' ('.$item->qty.' '.$item->unit->name.')' : '';
                 StockMutation::create([
@@ -212,7 +212,7 @@ class StockTransferService
                     $destStockAfter = $destStockBefore + $receivedBaseQty;
 
                     $pwDest->increment('stock', $receivedBaseQty);
-                    $product->increment('stock', $receivedBaseQty);
+                    // $product->increment('stock', $receivedBaseQty);
 
                     $diff = $item->qty - $receivedQty;
                     $diffBase = (int) round($diff * $factor);
@@ -287,7 +287,7 @@ class StockTransferService
                     $pw->increment('stock', $baseQty);
 
                     $product = $item->product;
-                    $product->increment('stock', $baseQty);
+                    // $product->increment('stock', $baseQty);
 
                     StockMutation::create([
                         'product_id' => $product->id,

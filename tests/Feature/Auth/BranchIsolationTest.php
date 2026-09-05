@@ -234,6 +234,7 @@ class BranchIsolationTest extends TestCase
     public function test_transaction_history_is_isolated_per_branch(): void
     {
         Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'invoice' => 'TRX-A-001',
             'cashier_id' => $this->branchUserA->id,
             'warehouse_id' => $this->warehouseA->id,
@@ -246,6 +247,7 @@ class BranchIsolationTest extends TestCase
         ]);
 
         Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'invoice' => 'TRX-B-001',
             'cashier_id' => $this->branchUserB->id,
             'warehouse_id' => $this->warehouseB->id,
@@ -287,6 +289,7 @@ class BranchIsolationTest extends TestCase
     public function test_dashboard_metrics_are_scoped_per_branch(): void
     {
         $trxA = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'invoice' => 'TRX-A-002',
             'cashier_id' => $this->branchUserA->id,
             'warehouse_id' => $this->warehouseA->id,
@@ -304,6 +307,7 @@ class BranchIsolationTest extends TestCase
         ]);
 
         $trxB = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'invoice' => 'TRX-B-002',
             'cashier_id' => $this->branchUserB->id,
             'warehouse_id' => $this->warehouseB->id,
@@ -358,6 +362,7 @@ class BranchIsolationTest extends TestCase
     public function test_sales_report_is_locked_to_user_branch(): void
     {
         Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'invoice' => 'TRX-A-003',
             'cashier_id' => $this->branchUserA->id,
             'warehouse_id' => $this->warehouseA->id,
@@ -370,6 +375,7 @@ class BranchIsolationTest extends TestCase
         ]);
 
         Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'invoice' => 'TRX-B-003',
             'cashier_id' => $this->branchUserB->id,
             'warehouse_id' => $this->warehouseB->id,
@@ -396,6 +402,7 @@ class BranchIsolationTest extends TestCase
     public function test_stock_opname_authorization_for_branch_user(): void
     {
         $opnameA = StockOpname::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'code' => 'SO-A-001',
             'warehouse_id' => $this->warehouseA->id,
             'status' => 'draft',
@@ -403,6 +410,7 @@ class BranchIsolationTest extends TestCase
         ]);
 
         $opnameB = StockOpname::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'code' => 'SO-B-001',
             'warehouse_id' => $this->warehouseB->id,
             'status' => 'draft',
@@ -551,6 +559,7 @@ class BranchIsolationTest extends TestCase
         ]);
 
         $trxA = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'invoice' => 'TRX-REC-A',
             'cashier_id' => $this->branchUserA->id,
             'customer_id' => $customer->id,
@@ -574,6 +583,7 @@ class BranchIsolationTest extends TestCase
         ]);
 
         $trxB = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'invoice' => 'TRX-REC-B',
             'cashier_id' => $this->branchUserB->id,
             'customer_id' => $customer->id,

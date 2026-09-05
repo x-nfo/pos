@@ -4,6 +4,7 @@ namespace Tests\Feature\Products;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\User;
 use App\Models\Warehouse;
 use Database\Seeders\PermissionSeeder;
@@ -144,6 +145,8 @@ class ProductCreationBestPracticeTest extends TestCase
             'sell_price' => 75000,
             'stock' => 20,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 20]);
 
         $payload = [
             'barcode' => '899555666777', // Same barcode
@@ -249,6 +252,8 @@ class ProductCreationBestPracticeTest extends TestCase
             'sell_price' => 4000,
             'stock' => 20,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 20]);
         $product->warehouses()->sync([$wh1->id => ['stock' => 20]]);
 
         $response = $this->get(route('products.index'));

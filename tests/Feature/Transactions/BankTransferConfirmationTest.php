@@ -5,6 +5,7 @@ namespace Tests\Feature\Transactions;
 use App\Models\BankAccount;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\Services\ThermalPrintService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -29,6 +30,7 @@ class BankTransferConfirmationTest extends TestCase
         ]);
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $user->id,
             'customer_id' => null,
             'invoice' => 'TRX-'.Str::upper(Str::random(8)),

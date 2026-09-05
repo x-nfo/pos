@@ -57,7 +57,7 @@ class PayableTest extends TestCase
             'image' => 'category.png',
         ]);
 
-        return Product::create([
+        $product = Product::create([
             'category_id' => $category->id,
             'image' => 'product.png',
             'barcode' => 'BRCD-'.Str::upper(Str::random(10)),
@@ -69,6 +69,10 @@ class PayableTest extends TestCase
             'stock' => $stock,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => $stock]);
+
+        return $product;
     }
 
     public function test_unauthorized_user_cannot_access_payables(): void

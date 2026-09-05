@@ -252,7 +252,7 @@ class CheckoutService
                             ], ['stock' => 0]);
                             $pivot->decrement('stock', $componentQty);
                         }
-                        $component->decrement('stock', $componentQty);
+                        // $component->decrement('stock', $componentQty);
 
                         $this->stockMutationService->recordSaleOut(
                             product: $component,
@@ -277,7 +277,7 @@ class CheckoutService
                         ], ['stock' => 0]);
                         $pivot->decrement('stock', $baseQty);
                     }
-                    $product->decrement('stock', $baseQty);
+                    // $product->decrement('stock', $baseQty);
 
                     $this->stockMutationService->recordSaleOut(
                         product: $product,

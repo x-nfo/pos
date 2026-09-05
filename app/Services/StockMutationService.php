@@ -148,6 +148,7 @@ class StockMutationService
 
         $mutation = StockMutation::create([
             'product_id' => $product->id,
+            'warehouse_id' => $salesReturn->transaction->warehouse_id,
             'reference_type' => 'sales_return',
             'reference_id' => $salesReturn->id,
             'mutation_type' => 'in',
@@ -256,6 +257,7 @@ class StockMutationService
     ): StockMutation {
         $mutation = StockMutation::create([
             'product_id' => $product->id,
+            'warehouse_id' => $goodsReceiving->warehouse_id,
             'reference_type' => 'goods_receiving',
             'reference_id' => $goodsReceiving->id,
             'mutation_type' => 'in',
@@ -308,6 +310,7 @@ class StockMutationService
     ): StockMutation {
         $mutation = StockMutation::create([
             'product_id' => $product->id,
+            'warehouse_id' => $supplierReturn->warehouse_id ?? $supplierReturn->goodsReceiving?->warehouse_id,
             'reference_type' => 'supplier_return',
             'reference_id' => $supplierReturn->id,
             'mutation_type' => 'out',
@@ -493,7 +496,7 @@ class StockMutationService
                         $stockBefore = (int) $componentModel->stock;
                         $stockAfter = $stockBefore + $componentQty;
 
-                        $componentModel->increment('stock', $componentQty);
+                        // $componentModel->increment('stock', $componentQty);
 
                         if ($warehouseId) {
                             ProductWarehouse::firstOrCreate(
@@ -523,7 +526,7 @@ class StockMutationService
                     $stockBefore = (int) $productModel->stock;
                     $stockAfter = $stockBefore + $baseQty;
 
-                    $productModel->increment('stock', $baseQty);
+                    // $productModel->increment('stock', $baseQty);
 
                     if ($warehouseId) {
                         ProductWarehouse::firstOrCreate(

@@ -7,9 +7,11 @@ use App\Models\CashierShift;
 use App\Models\Category;
 use App\Models\DiscountApprovalLog;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -76,6 +78,8 @@ class DiscountApprovalSettingTest extends TestCase
         $cashier = User::factory()->create();
         $cashier->assignRole('cashier');
 
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+
         CashierShift::create([
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,
@@ -83,6 +87,7 @@ class DiscountApprovalSettingTest extends TestCase
             'opening_cash' => 100000,
             'expected_cash' => 100000,
             'status' => 'open',
+            'warehouse_id' => $defaultWarehouse->id,
         ]);
 
         $category = Category::create([
@@ -104,14 +109,18 @@ class DiscountApprovalSettingTest extends TestCase
             'unit' => 'pcs',
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 10]);
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 1,
             'price' => 100000,
         ]);
 
+        $this->withoutExceptionHandling();
         $response = $this->actingAs($cashier)->post(route('transactions.store'), [
             'discount' => 60000, // Diskon 60.000 > Threshold 50.000
             'grand_total' => 40000,
@@ -142,6 +151,7 @@ class DiscountApprovalSettingTest extends TestCase
         $cashier->assignRole('cashier');
 
         CashierShift::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,
             'opened_at' => now(),
@@ -169,8 +179,11 @@ class DiscountApprovalSettingTest extends TestCase
             'unit' => 'pcs',
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 10]);
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 1,
@@ -201,6 +214,7 @@ class DiscountApprovalSettingTest extends TestCase
         $cashier->assignRole('cashier');
 
         CashierShift::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,
             'opened_at' => now(),
@@ -228,8 +242,11 @@ class DiscountApprovalSettingTest extends TestCase
             'unit' => 'pcs',
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 10]);
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 1,
@@ -261,6 +278,7 @@ class DiscountApprovalSettingTest extends TestCase
         $cashier->assignRole('cashier');
 
         CashierShift::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,
             'opened_at' => now(),
@@ -288,8 +306,11 @@ class DiscountApprovalSettingTest extends TestCase
             'unit' => 'pcs',
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 10]);
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 1,
@@ -321,6 +342,7 @@ class DiscountApprovalSettingTest extends TestCase
         $cashier->assignRole('cashier');
 
         CashierShift::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'user_id' => $cashier->id,
             'opened_by' => $cashier->id,
             'opened_at' => now(),
@@ -348,8 +370,11 @@ class DiscountApprovalSettingTest extends TestCase
             'unit' => 'pcs',
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 10]);
 
         Cart::create([
+            'warehouse_id' => Warehouse::first()->id,
             'cashier_id' => $cashier->id,
             'product_id' => $product->id,
             'qty' => 1,
@@ -380,6 +405,7 @@ class DiscountApprovalSettingTest extends TestCase
         $admin->assignRole('super-admin');
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $cashier->id,
             'customer_id' => null,
             'invoice' => 'TRX-APPROVAL-TEST-001',
@@ -418,6 +444,7 @@ class DiscountApprovalSettingTest extends TestCase
 
         // Test Deny
         $transaction2 = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $cashier->id,
             'customer_id' => null,
             'invoice' => 'TRX-APPROVAL-TEST-002',

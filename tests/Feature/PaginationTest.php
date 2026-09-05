@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -43,7 +45,7 @@ class PaginationTest extends TestCase
 
     private function makeProduct(string $title, int $i): Product
     {
-        return Product::create([
+        $product = Product::create([
             'title' => $title,
             'barcode' => 'TEST-'.$i,
             'sku' => 'SKU-'.$i,
@@ -59,6 +61,10 @@ class PaginationTest extends TestCase
             'max_stock' => 100,
             'is_composite' => false,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 10]);
+
+        return $product;
     }
 
     public function test_unauthenticated_dashboard_route_redirects_to_login_not_500(): void

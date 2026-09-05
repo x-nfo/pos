@@ -4,8 +4,10 @@ namespace Tests\Feature\Units;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\Warehouse;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\UserSeeder;
@@ -191,6 +193,8 @@ class UnitTest extends TestCase
             'stock' => 50,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 50]);
 
         // Attach unit to product via product_units
         $product->units()->attach($unit->id, [

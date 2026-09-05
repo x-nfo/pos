@@ -5,6 +5,7 @@ namespace Tests\Feature\Transactions;
 use App\Models\DiscountApprovalLog;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,6 +28,7 @@ class DiscountApprovalVisibilityTest extends TestCase
         $cashier->assignRole('cashier');
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $cashier->id,
             'customer_id' => null,
             'invoice' => 'TRX-PENDING-DISC-001',
@@ -66,6 +68,7 @@ class DiscountApprovalVisibilityTest extends TestCase
         $supervisor->assignRole('super-admin');
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $cashier->id,
             'customer_id' => null,
             'invoice' => 'TRX-PENDING-DISC-002',

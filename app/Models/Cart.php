@@ -10,6 +10,18 @@ class Cart extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::creating(function (Cart $cart) {
+            if (empty($cart->warehouse_id)) {
+                $cart->warehouse_id = auth()->user()?->warehouse_id
+                    ?? CashierShift::where('user_id', $cart->cashier_id ?? auth()->id())->where('status', 'open')->whereNotNull('warehouse_id')->value('warehouse_id')
+                    ?? User::find($cart->cashier_id)?->warehouse_id
+                    ?? Warehouse::defaultId();
+            }
+        });
+    }
+
     protected $fillable = [
         'cashier_id', 'warehouse_id', 'product_id', 'unit_id', 'conversion_factor', 'qty', 'price', 'hold_id', 'hold_label', 'held_at',
     ];

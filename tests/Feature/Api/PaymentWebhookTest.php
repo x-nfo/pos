@@ -760,7 +760,7 @@ class PaymentWebhookTest extends TestCase
     {
         return Transaction::create([
             'cashier_id' => User::factory()->create()->id,
-            'warehouse_id' => $warehouseId,
+            'warehouse_id' => $warehouseId ?? Warehouse::defaultId(),
             'invoice' => 'TRX-WEBHOOK-'.strtoupper($paymentMethod).'-'.uniqid(),
             'cash' => 0,
             'change' => 0,

@@ -327,7 +327,9 @@ class SampleDataSeeder extends Seeder
             ['category' => 'Kebutuhan Rumah', 'barcode' => 'RMH-0003', 'title' => 'Pewangi Pakaian 900ml', 'description' => 'Pelembut dan pewangi pakaian', 'buy_price' => 18000, 'sell_price' => 26000, 'stock' => 70, 'image_url' => 'https://images.unsplash.com/photo-1626806819282-2c1dc01a5e0c?w=300&h=300&fit=crop'],
         ]);
 
-        return $products->map(function ($product) use ($categories) {
+        $defaultWarehouse = Warehouse::active()->orderBy('sort_order')->orderBy('code')->first();
+
+        return $products->map(function ($product) use ($categories, $defaultWarehouse) {
             $category = $categories->get($product['category']);
 
             // Download product image
@@ -338,7 +340,7 @@ class SampleDataSeeder extends Seeder
                 'prod-'.$slug
             );
 
-            return Product::create([
+            $newProduct = Product::create([
                 'category_id' => $category?->id,
                 'image' => $image ?? 'default.jpg',
                 'barcode' => $product['barcode'],
@@ -346,8 +348,13 @@ class SampleDataSeeder extends Seeder
                 'description' => $product['description'],
                 'buy_price' => $product['buy_price'],
                 'sell_price' => $product['sell_price'],
-                'stock' => $product['stock'],
             ]);
+
+            if ($defaultWarehouse) {
+                $newProduct->warehouses()->attach($defaultWarehouse->id, ['stock' => $product['stock']]);
+            }
+
+            return $newProduct;
         })->keyBy('barcode');
     }
 
@@ -501,7 +508,7 @@ class SampleDataSeeder extends Seeder
 
                     $stockBefore = (int) $item['product']->stock;
                     $stockAfter = max(0, $stockBefore - $item['qty']);
-                    $item['product']->update(['stock' => $stockAfter]);
+                    // $item['product']->update(['stock' => $stockAfter]); // stock column dropped
 
                     if ($defaultWarehouse) {
                         ProductWarehouse::where([

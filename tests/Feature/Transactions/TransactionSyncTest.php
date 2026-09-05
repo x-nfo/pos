@@ -287,7 +287,7 @@ class TransactionSyncTest extends TestCase
             'address' => 'Jl. HQ',
             'is_active' => true,
         ]);
-        
+
         $product = $this->createProduct($otherWarehouse->id, initialStock: 50);
 
         // Ensure no pivot row exists for the cashier's warehouse
@@ -333,10 +333,10 @@ class TransactionSyncTest extends TestCase
             'product_id' => $product->id,
             'warehouse_id' => $warehouse->id,
         ])->first();
-        
+
         $this->assertNotNull($whPivot, 'Pivot table was not created');
         $this->assertSame(-60, (int) $whPivot->stock);
-        
+
         // Audit log created with event 'stock.offline_negative_sync'
         $auditLog = AuditLog::where('event', 'stock.offline_negative_sync')
             ->where('auditable_type', Product::class)
@@ -373,6 +373,8 @@ class TransactionSyncTest extends TestCase
             'is_composite' => true,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $bundleProduct->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 0]);
 
         $bundleProduct->components()->attach([
             $comp1->id => ['qty' => 2], // 2 pcs comp1
@@ -501,6 +503,10 @@ class TransactionSyncTest extends TestCase
 
     protected function openShiftFor(User $cashier, ?int $warehouseId = null): CashierShift
     {
+        if (is_null($warehouseId)) {
+            $warehouseId = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id;
+        }
+
         return CashierShift::create([
             'user_id' => $cashier->id,
             'warehouse_id' => $warehouseId,

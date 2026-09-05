@@ -12,6 +12,7 @@ use App\Models\CustomerVoucher;
 use App\Models\LoyaltyPointHistory;
 use App\Models\PricingRule;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -424,7 +425,7 @@ class AdvancedSalesInsightsTest extends TestCase
         int $sellPrice,
         int $stock
     ): Product {
-        return Product::create([
+        $product = Product::create([
             'image' => 'product.png',
             'barcode' => $sku,
             'sku' => $sku,
@@ -436,6 +437,10 @@ class AdvancedSalesInsightsTest extends TestCase
             'stock' => $stock,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => $stock]);
+
+        return $product;
     }
 
     public function test_branch_locked_user_and_warehouse_filter_in_advanced_insights(): void
@@ -456,6 +461,8 @@ class AdvancedSalesInsightsTest extends TestCase
             'stock' => 10,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 10]);
 
         $hqUser = $this->createUser();
         $branchUser = $this->createUser();
@@ -506,9 +513,9 @@ class AdvancedSalesInsightsTest extends TestCase
     {
         $subtotal = collect($lines)->sum('line_total');
         $transaction = Transaction::create([
+            'warehouse_id' => $warehouseId ?? Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $cashier->id,
             'customer_id' => $customer->id,
-            'warehouse_id' => $warehouseId,
             'invoice' => 'TRX-'.strtoupper((string) str()->random(8)),
             'cash' => $subtotal,
             'change' => 0,

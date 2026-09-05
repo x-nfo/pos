@@ -5,6 +5,7 @@ namespace Tests\Feature\Notifications;
 use App\Models\DiscountApprovalLog;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Permission;
@@ -32,6 +33,7 @@ class DiscountApprovalNotificationTest extends TestCase
         $cashier = User::factory()->create(['name' => 'Budi Kasir']);
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $cashier->id,
             'customer_id' => null,
             'invoice' => 'TRX-NOTIF-TEST-001',
@@ -74,6 +76,7 @@ class DiscountApprovalNotificationTest extends TestCase
         $cashier = User::factory()->create(['name' => 'Siti Kasir']);
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $cashier->id,
             'customer_id' => null,
             'invoice' => 'TRX-NOTIF-TEST-002',
@@ -111,6 +114,7 @@ class DiscountApprovalNotificationTest extends TestCase
         $cashier->givePermissionTo('dashboard-access');
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $cashier->id,
             'customer_id' => null,
             'invoice' => 'TRX-NOTIF-TEST-003',
@@ -148,6 +152,7 @@ class DiscountApprovalNotificationTest extends TestCase
         $cashier = User::factory()->create();
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $cashier->id,
             'customer_id' => null,
             'invoice' => 'TRX-NOTIF-TEST-004',

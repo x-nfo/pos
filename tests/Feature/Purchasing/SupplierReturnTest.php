@@ -52,7 +52,7 @@ class SupplierReturnTest extends TestCase
             'image' => 'category.png',
         ]);
 
-        return Product::create([
+        $product = Product::create([
             'category_id' => $category->id,
             'image' => 'product.png',
             'barcode' => 'BRCD-'.Str::upper(Str::random(10)),
@@ -64,6 +64,10 @@ class SupplierReturnTest extends TestCase
             'stock' => $stock,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => $stock]);
+
+        return $product;
     }
 
     public function test_unauthorized_user_cannot_access_supplier_returns(): void
@@ -195,7 +199,7 @@ class SupplierReturnTest extends TestCase
         ]);
 
         // Stok produk berkurang menjadi 30 (misal sebagian sudah terjual di kasir)
-        $product->update(['stock' => 30]);
+        ProductWarehouse::where('product_id', $product->id)->update(['stock' => 30]);
 
         // Eksekusi complete retur 50 pcs
         $response = $this->actingAs($user)

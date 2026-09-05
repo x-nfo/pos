@@ -58,11 +58,11 @@ class ProductQuickStoreTest extends TestCase
             'barcode' => '8991234567890',
             'title' => 'Teh Botol Sosro 350ml',
             'sell_price' => 4500,
-            'stock' => 24,
         ]);
 
         $product = Product::where('barcode', '8991234567890')->first();
         $this->assertNotNull($product);
+        $this->assertSame(24, (int) $product->stock);
         $this->assertDatabaseHas('stock_mutations', [
             'product_id' => $product->id,
             'mutation_type' => 'in',

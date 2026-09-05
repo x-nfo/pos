@@ -5,9 +5,11 @@ namespace Tests\Feature\AuditLogs;
 use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\StockMutation;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\Services\AuditLogService;
 use App\Services\StockMutationService;
 use Illuminate\Console\Scheduling\Schedule;
@@ -119,8 +121,11 @@ class AuditLogOptimizationTest extends TestCase
             'stock' => 20,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 20]);
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $user->id,
             'invoice' => 'TRX-TEST-001',
             'cash' => 15000,

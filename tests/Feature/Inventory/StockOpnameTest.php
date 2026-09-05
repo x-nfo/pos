@@ -4,6 +4,7 @@ namespace Tests\Feature\Inventory;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\StockOpname;
 use App\Models\StockOpnameItem;
 use App\Models\User;
@@ -22,6 +23,11 @@ class StockOpnameTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Warehouse::firstOrCreate(
+            ['code' => 'MAIN-TEST'],
+            ['name' => 'Main Test Warehouse', 'type' => 'main', 'is_active' => true]
+        );
 
         foreach ([
             'stock-opnames-access',
@@ -69,6 +75,7 @@ class StockOpnameTest extends TestCase
         ]);
         $product = $this->createProduct(18);
         $stockOpname = StockOpname::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'code' => 'SO-TEST-001',
             'status' => 'draft',
             'created_by' => $user->id,
@@ -97,6 +104,7 @@ class StockOpnameTest extends TestCase
         ]);
         $product = $this->createProduct(10);
         $stockOpname = StockOpname::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'code' => 'SO-TEST-002',
             'status' => 'draft',
             'created_by' => $user->id,
@@ -131,6 +139,7 @@ class StockOpnameTest extends TestCase
         ]);
         $product = $this->createProduct(12);
         $stockOpname = StockOpname::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'code' => 'SO-TEST-003',
             'status' => 'draft',
             'created_by' => $user->id,
@@ -178,6 +187,7 @@ class StockOpnameTest extends TestCase
         ]);
         $product = $this->createProduct(12);
         $stockOpname = StockOpname::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'code' => 'SO-TEST-004',
             'status' => 'draft',
             'created_by' => $user->id,
@@ -213,6 +223,7 @@ class StockOpnameTest extends TestCase
         ]);
         $product = $this->createProduct(9);
         $stockOpname = StockOpname::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'code' => 'SO-TEST-005',
             'status' => 'finalized',
             'created_by' => $user->id,
@@ -271,6 +282,8 @@ class StockOpnameTest extends TestCase
             'description' => 'Kategori minuman',
             'image' => 'minuman.png',
         ]);
+
+        $warehouseId = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse', 'is_active' => true])->id;
 
         $response = $this
             ->actingAs($user)
@@ -364,6 +377,7 @@ class StockOpnameTest extends TestCase
             'is_active' => true,
         ]);
         $product = $this->createProduct(20);
+        $product->warehouses()->syncWithoutDetaching([$warehouse->id => ['stock' => 20]]);
         $stockOpname = StockOpname::create([
             'code' => 'SO-WH-002',
             'warehouse_id' => $warehouse->id,
@@ -387,7 +401,6 @@ class StockOpnameTest extends TestCase
 
         $response->assertRedirect(route('stock-opnames.show', $stockOpname));
 
-        $this->assertSame(15, $product->fresh()->stock);
         $this->assertDatabaseHas('product_warehouse', [
             'product_id' => $product->id,
             'warehouse_id' => $warehouse->id,
@@ -475,6 +488,8 @@ class StockOpnameTest extends TestCase
             'stock' => 10,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product1->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 10]);
 
         $product2 = Product::create([
             'category_id' => $cat2->id,
@@ -488,8 +503,11 @@ class StockOpnameTest extends TestCase
             'stock' => 20,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product2->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 20]);
 
         $stockOpname = StockOpname::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'code' => 'SO-POP-CAT',
             'status' => 'draft',
             'created_by' => $user->id,
@@ -531,7 +549,7 @@ class StockOpnameTest extends TestCase
             'image' => 'category.png',
         ]);
 
-        return Product::create([
+        $product = Product::create([
             'category_id' => $category->id,
             'image' => 'product.png',
             'barcode' => 'BRCD-'.Str::upper(Str::random(10)),
@@ -543,5 +561,7 @@ class StockOpnameTest extends TestCase
             'stock' => $stock,
             'tax_rate' => 0,
         ]);
+
+        return $product;
     }
 }

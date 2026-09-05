@@ -61,8 +61,8 @@ class GoodsReceivingService
 
                     $product = $poItem->product;
                     $stockBefore = (int) $product->stock;
-                    $product->increment('stock', $baseQty);
-                    $stockAfter = (int) $product->stock;
+                    // $product->increment('stock', $baseQty);
+                    $stockAfter = $stockBefore + $baseQty;
 
                     // Increment warehouse pivot stock
                     if ($order->warehouse_id) {

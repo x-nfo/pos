@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use App\Models\CashierShift;
 use App\Models\DineOrder;
 use App\Models\Payable;
-use App\Models\Product;
 use App\Models\Receivable;
 use App\Models\Setting;
 use App\Models\Transaction;
@@ -15,6 +14,7 @@ use App\Services\PayableAgingService;
 use App\Services\ReceivableService;
 use App\Services\WhatsAppService;
 use App\Support\ProductionSecurityBaseline;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -137,12 +137,12 @@ class HandleInertiaRequests extends Middleware
                 ->orderByDesc('product_warehouse.updated_at')
                 ->limit(10)
                 ->get([
-                    'products.id', 
-                    'products.title', 
-                    'product_warehouse.stock', 
-                    'products.min_stock', 
+                    'products.id',
+                    'products.title',
+                    'product_warehouse.stock',
+                    'products.min_stock',
                     'product_warehouse.updated_at',
-                    'warehouses.name as warehouse_name'
+                    'warehouses.name as warehouse_name',
                 ])
                 ->map(function ($row) {
                     return [
@@ -151,7 +151,7 @@ class HandleInertiaRequests extends Middleware
                         'stock' => (int) $row->stock,
                         'min_stock' => (int) $row->min_stock,
                         'warehouse' => $row->warehouse_name,
-                        'time' => \Carbon\Carbon::parse($row->updated_at)->diffForHumans(),
+                        'time' => Carbon::parse($row->updated_at)->diffForHumans(),
                     ];
                 });
 

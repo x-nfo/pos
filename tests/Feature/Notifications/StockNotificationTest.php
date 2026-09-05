@@ -18,6 +18,10 @@ class StockNotificationTest extends TestCase
     {
         parent::setUp();
         Permission::findOrCreate('products-access', 'web');
+        Warehouse::firstOrCreate(
+            ['name' => 'Toko Utama', 'type' => 'main'],
+            ['code' => 'MAIN', 'address' => 'Pusat', 'is_active' => true]
+        );
     }
 
     public function test_low_stock_product_appears_in_shared_inertia_notifications(): void
@@ -44,9 +48,6 @@ class StockNotificationTest extends TestCase
             'min_stock' => 5,
             'tax_rate' => 0,
         ]);
-
-        $warehouse = Warehouse::factory()->create(['name' => 'Toko Utama']);
-        $product->warehouses()->attach($warehouse->id, ['stock' => 3]);
 
         $response = $this->actingAs($user)->get(route('products.index'));
 
@@ -85,9 +86,6 @@ class StockNotificationTest extends TestCase
             'min_stock' => 5,
             'tax_rate' => 0,
         ]);
-
-        $warehouse = Warehouse::factory()->create(['name' => 'Toko Utama']);
-        $product->warehouses()->attach($warehouse->id, ['stock' => 2]);
 
         $response = $this->actingAs($user)->post(route('notifications.stock.read'), [
             'product_id' => $product->id,
@@ -146,10 +144,6 @@ class StockNotificationTest extends TestCase
             'tax_rate' => 0,
         ]);
 
-        $warehouse = Warehouse::factory()->create(['name' => 'Toko Utama']);
-        $product1->warehouses()->attach($warehouse->id, ['stock' => 2]);
-        $product2->warehouses()->attach($warehouse->id, ['stock' => 0]);
-
         $response = $this->actingAs($user)->post(route('notifications.stock.readAll'));
 
         $response->assertRedirect();
@@ -193,9 +187,6 @@ class StockNotificationTest extends TestCase
             'min_stock' => 0,
             'tax_rate' => 0,
         ]);
-
-        $warehouse = Warehouse::factory()->create(['name' => 'Toko Utama']);
-        $product->warehouses()->attach($warehouse->id, ['stock' => 0]);
 
         $response = $this->actingAs($user)->get(route('products.index'));
 

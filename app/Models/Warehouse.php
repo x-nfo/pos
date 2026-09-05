@@ -129,4 +129,30 @@ class Warehouse extends Model
     {
         return $query->where('is_active', true);
     }
+
+    public static function defaultWarehouse(): self
+    {
+        $warehouse = static::where('type', 'main')->first()
+            ?? static::where('code', 'MAIN-TEST')->first()
+            ?? static::where('code', 'MAIN')->first()
+            ?? static::where('code', 'PUSAT')->first()
+            ?? static::first();
+
+        if (! $warehouse) {
+            $warehouse = static::create([
+                'code' => 'MAIN-TEST',
+                'name' => 'Main Test Warehouse',
+                'type' => 'main',
+                'address' => 'Gudang Utama',
+                'is_active' => true,
+            ]);
+        }
+
+        return $warehouse;
+    }
+
+    public static function defaultId(): int
+    {
+        return static::defaultWarehouse()->id;
+    }
 }

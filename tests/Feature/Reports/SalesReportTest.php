@@ -5,6 +5,7 @@ namespace Tests\Feature\Reports;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\Profit;
 use App\Models\Transaction;
 use App\Models\User;
@@ -92,6 +93,8 @@ class SalesReportTest extends TestCase
             'stock' => 20,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $productA->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 20]);
 
         $productB = Product::create([
             'category_id' => $category->id,
@@ -105,6 +108,8 @@ class SalesReportTest extends TestCase
             'stock' => 15,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $productB->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 15]);
 
         // Transaction 1: 2x Product A, discount 5k => Grand Total 95k, Profit 45k
         $this->createTransactionWithLines($user, $customer, [
@@ -158,6 +163,8 @@ class SalesReportTest extends TestCase
             'stock' => 10,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 10]);
 
         // Initial transaction: Rp 100.000, Profit Rp 30.000
         $transaction = $this->createTransactionWithLines($user, $customer, [
@@ -209,6 +216,8 @@ class SalesReportTest extends TestCase
             'stock' => 30,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 30]);
 
         // Transaction A on 2026-06-01
         $this->createTransactionWithLines($cashierA, $customerA, [
@@ -279,6 +288,8 @@ class SalesReportTest extends TestCase
             'stock' => 20,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 20]);
 
         // Transaction in Warehouse A
         $this->createTransactionWithLines($branchUser, $customer, [
@@ -326,7 +337,7 @@ class SalesReportTest extends TestCase
         $transaction = Transaction::create([
             'cashier_id' => $cashier->id,
             'customer_id' => $customer->id,
-            'warehouse_id' => $warehouseId,
+            'warehouse_id' => $warehouseId ?? Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'invoice' => 'TRX-'.Str::upper(Str::random(8)),
             'cash' => $grandTotal,
             'change' => 0,

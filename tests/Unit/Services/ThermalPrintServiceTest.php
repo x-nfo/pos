@@ -6,6 +6,7 @@ use App\Models\CashierShift;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\User;
@@ -63,8 +64,11 @@ class ThermalPrintServiceTest extends TestCase
             'stock' => 50,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => 50]);
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $user->id,
             'cashier_shift_id' => $shift->id,
             'warehouse_id' => $warehouse->id,

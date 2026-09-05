@@ -8,11 +8,13 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\PaymentSetting;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\SalesReturn;
 use App\Models\StockOpname;
 use App\Models\StockOpnameItem;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -241,6 +243,7 @@ class AuditLogTest extends TestCase
 
         $product = $this->createProduct(stock: 10);
         $stockOpname = StockOpname::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'code' => 'SO-AUDIT-001',
             'status' => 'draft',
             'created_by' => $user->id,
@@ -270,6 +273,7 @@ class AuditLogTest extends TestCase
         ]);
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $user->id,
             'customer_id' => null,
             'invoice' => 'TRX-'.Str::upper(Str::random(8)),
@@ -303,6 +307,7 @@ class AuditLogTest extends TestCase
         ]);
 
         $shift = CashierShift::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'user_id' => $user->id,
             'opened_by' => $user->id,
             'opened_at' => now(),
@@ -320,6 +325,7 @@ class AuditLogTest extends TestCase
         $product = $this->createProduct(stock: 5, buyPrice: 20000, sellPrice: 30000);
 
         $transaction = Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => $user->id,
             'cashier_shift_id' => $shift->id,
             'customer_id' => $customer->id,
@@ -390,7 +396,7 @@ class AuditLogTest extends TestCase
             'image' => 'audit-category.png',
         ]);
 
-        return Product::create([
+        $product = Product::create([
             'category_id' => $category->id,
             'image' => 'audit-product.png',
             'barcode' => 'BRCD-'.Str::upper(Str::random(8)),
@@ -402,5 +408,9 @@ class AuditLogTest extends TestCase
             'stock' => $stock,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => $stock]);
+
+        return $product;
     }
 }

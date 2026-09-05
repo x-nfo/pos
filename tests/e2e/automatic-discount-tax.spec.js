@@ -52,10 +52,10 @@ test.describe('Automatic Discount & Tax Flow', () => {
     await expect(firstProductBtn).toBeVisible({ timeout: 20000 });
     await firstProductBtn.click();
 
-    // If multi-unit modal opens, pick the first unit option button
-    const unitOption = page.locator('button:has-text("Satuan Dasar"), button:has-text("pcs"), button:has-text("Pilih")').first();
-    if (await unitOption.isVisible({ timeout: 2500 }).catch(() => false)) {
-        await unitOption.click();
+    // If multi-unit modal opens, pick the first unit option button INSIDE modal
+    const modalUnitOption = page.locator('.animate-fade-in button:has-text("Satuan Dasar"), .animate-fade-in button:has-text("Pilih Satuan")').first();
+    if (await modalUnitOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await modalUnitOption.click();
         await page.waitForTimeout(500);
     }
 

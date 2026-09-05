@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\ProductWarehouse;
 use App\Models\SupplierReturn;
 use App\Models\SupplierReturnItem;
+use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -123,15 +124,14 @@ class SupplierReturnService
                 }
 
                 $stockBefore = (int) $product->stock;
-                $product->decrement('stock', $item->qty_returned);
+                // $product->decrement('stock', $item->qty_returned);
 
-                if ($return->warehouse_id) {
-                    $pivot = ProductWarehouse::firstOrCreate([
-                        'product_id' => $product->id,
-                        'warehouse_id' => $return->warehouse_id,
-                    ], ['stock' => 0]);
-                    $pivot->decrement('stock', $item->qty_returned);
-                }
+                $targetWarehouseId = $return->warehouse_id ?? Warehouse::defaultId();
+                $pivot = ProductWarehouse::firstOrCreate([
+                    'product_id' => $product->id,
+                    'warehouse_id' => $targetWarehouseId,
+                ], ['stock' => 0]);
+                $pivot->decrement('stock', $item->qty_returned);
 
                 $this->stockMutationService->recordSupplierReturnOut(
                     product: $product,

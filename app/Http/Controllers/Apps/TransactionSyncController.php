@@ -225,7 +225,7 @@ class TransactionSyncController extends Controller
                                 'warehouse_id' => $activeShift->warehouse_id,
                             ], ['stock' => 0]);
                             $pivot->decrement('stock', $componentQty);
-                            $component->decrement('stock', $componentQty);
+                            // $component->decrement('stock', $componentQty);
 
                             $isDeficit = $stockAfter < 0;
                             $notes = $isDeficit
@@ -307,7 +307,7 @@ class TransactionSyncController extends Controller
                             'warehouse_id' => $activeShift->warehouse_id,
                         ], ['stock' => 0]);
                         $pivot->decrement('stock', $baseQty);
-                        $product->decrement('stock', $baseQty);
+                        // $product->decrement('stock', $baseQty);
 
                         $isDeficit = $stockAfter < 0;
                         $notes = $isDeficit

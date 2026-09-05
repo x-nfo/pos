@@ -256,6 +256,7 @@ class FeatureCoverageSeeder extends Seeder
 
         $draftOrder = $purchaseOrderService->createOrder(
             [
+                'warehouse_id' => 1,
                 'supplier_id' => $suppliers->get('CV Makmur Jaya Distribusi')?->id,
                 'notes' => 'Draft pengadaan perlengkapan rumah tangga akhir minggu.',
             ],
@@ -281,6 +282,7 @@ class FeatureCoverageSeeder extends Seeder
 
         $cancelledOrder = $purchaseOrderService->createOrder(
             [
+                'warehouse_id' => 1,
                 'supplier_id' => $suppliers->get('UD Maju Retail Grosir')?->id,
                 'notes' => 'PO dibatalkan karena harga supplier berubah.',
             ],
@@ -309,6 +311,7 @@ class FeatureCoverageSeeder extends Seeder
 
         $partialOrder = $purchaseOrderService->createOrder(
             [
+                'warehouse_id' => 1,
                 'supplier_id' => $suppliers->get('PT Sumber Snack Indonesia')?->id,
                 'notes' => 'PO barang cepat laku untuk restock mingguan.',
             ],
@@ -365,6 +368,7 @@ class FeatureCoverageSeeder extends Seeder
 
         $completedOrder = $purchaseOrderService->createOrder(
             [
+                'warehouse_id' => 1,
                 'supplier_id' => $suppliers->get('PT Fresh Food Sentosa')?->id,
                 'notes' => 'PO lengkap untuk frozen food dan produk susu.',
             ],
@@ -503,6 +507,7 @@ class FeatureCoverageSeeder extends Seeder
         $auditLogService = app(AuditLogService::class);
 
         $draftOpname = StockOpname::create([
+            'warehouse_id' => 1,
             'code' => 'SO-DRAFT-001',
             'status' => 'draft',
             'notes' => 'Sesi stock opname rak depan, belum semua item dihitung.',
@@ -528,6 +533,7 @@ class FeatureCoverageSeeder extends Seeder
 
         $finalizedAt = now()->subHours(2);
         $finalizedOpname = StockOpname::create([
+            'warehouse_id' => 1,
             'code' => 'SO-FINAL-001',
             'status' => 'draft',
             'notes' => 'Opname gudang pendingin untuk batch awal pekan.',
@@ -590,9 +596,9 @@ class FeatureCoverageSeeder extends Seeder
                 $stockBefore = (int) $product->stock;
                 $stockAfter = (int) $item->physical_stock;
 
-                $product->update([
-                    'stock' => $stockAfter,
-                ]);
+                // $product->update([
+                //     'stock' => $stockAfter,
+                // ]);
 
                 $stockMutationService->recordStockOpnameAdjustment(
                     product: $product,

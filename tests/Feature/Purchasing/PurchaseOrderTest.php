@@ -4,6 +4,7 @@ namespace Tests\Feature\Purchasing;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductWarehouse;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Models\Unit;
@@ -50,7 +51,7 @@ class PurchaseOrderTest extends TestCase
             'image' => 'category.png',
         ]);
 
-        return Product::create([
+        $product = Product::create([
             'category_id' => $category->id,
             'image' => 'product.png',
             'barcode' => 'BRCD-'.Str::upper(Str::random(10)),
@@ -62,6 +63,10 @@ class PurchaseOrderTest extends TestCase
             'stock' => $stock,
             'tax_rate' => 0,
         ]);
+        $defaultWarehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(['product_id' => $product->id, 'warehouse_id' => $defaultWarehouse->id], ['stock' => $stock]);
+
+        return $product;
     }
 
     public function test_unauthorized_user_cannot_access_purchase_orders(): void

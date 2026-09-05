@@ -5,6 +5,7 @@ namespace Tests\Unit\Services\Payments;
 use App\Exceptions\PaymentGatewayException;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\Services\Payments\QrislyGateway;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -153,6 +154,7 @@ class QrislyGatewayTest extends TestCase
     private function createTransaction(int $amount): Transaction
     {
         return Transaction::create([
+            'warehouse_id' => Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse'])->id,
             'cashier_id' => User::factory()->create()->id,
             'invoice' => 'TRX-QRISLY-'.uniqid(),
             'cash' => 0,

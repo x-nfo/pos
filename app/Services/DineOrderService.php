@@ -36,7 +36,7 @@ class DineOrderService
                     $stockBefore = (int) $componentProduct->stock;
                     $stockAfter = $stockBefore - $qtyOut;
 
-                    $componentProduct->decrement('stock', $qtyOut);
+                    // $componentProduct->decrement('stock', $qtyOut);
                     ProductWarehouse::where('product_id', $componentProduct->id)
                         ->where('warehouse_id', $warehouseId)
                         ->decrement('stock', $qtyOut);
@@ -57,7 +57,7 @@ class DineOrderService
                 $stockBefore = (int) $product->stock;
                 $stockAfter = $stockBefore - $qtyOut;
 
-                $product->decrement('stock', $qtyOut);
+                // $product->decrement('stock', $qtyOut);
                 ProductWarehouse::where('product_id', $product->id)
                     ->where('warehouse_id', $warehouseId)
                     ->decrement('stock', $qtyOut);

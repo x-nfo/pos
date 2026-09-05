@@ -301,10 +301,6 @@ class SalesReturnController extends Controller
                         $stockBefore = (int) $product->stock;
                         $stockAfter = $stockBefore + $baseQtyReturn;
 
-                        $product->update([
-                            'stock' => $stockAfter,
-                        ]);
-
                         // Restock to return warehouse
                         if ($returnWarehouseId) {
                             $pivot = ProductWarehouse::firstOrCreate([
@@ -365,10 +361,6 @@ class SalesReturnController extends Controller
 
                     $stockBefore = (int) $product->stock;
                     $stockAfter = $stockBefore - $requiredBaseStock;
-
-                    $product->update([
-                        'stock' => $stockAfter,
-                    ]);
 
                     if ($returnWarehouseId) {
                         $pivot = ProductWarehouse::firstOrCreate([
@@ -527,7 +519,7 @@ class SalesReturnController extends Controller
     private function getAvailableProducts(?int $warehouseId = null): Collection
     {
         return Product::query()
-            ->select('id', 'barcode', 'sku', 'title', 'sell_price', 'buy_price', 'stock')
+            ->select('id', 'barcode', 'sku', 'title', 'sell_price', 'buy_price')
             ->with(['units'])
             ->when($warehouseId, function ($q) use ($warehouseId) {
                 $q->with(['warehouses' => fn ($w) => $w->where('warehouses.id', $warehouseId)]);

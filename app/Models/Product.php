@@ -20,7 +20,6 @@ class Product extends Model
         'deleted_at' => 'datetime',
         'buy_price' => 'integer',
         'sell_price' => 'integer',
-        'stock' => 'integer',
         'tax_rate' => 'decimal:2',
         'min_stock' => 'integer',
         'max_stock' => 'integer',
@@ -36,16 +35,42 @@ class Product extends Model
         'buy_price',
         'sell_price',
         'category_id',
-        'stock',
         'tax_type',
         'tax_rate',
         'min_stock',
         'max_stock',
+        'stock',
         'is_composite',
     ];
 
+    protected $appends = [
+        'stock',
+    ];
+
+    public ?int $_pending_stock = null;
+
     protected static function booted(): void
     {
+        static::saving(function (Product $product) {
+            if (array_key_exists('stock', $product->attributes)) {
+                $product->_pending_stock = (int) $product->attributes['stock'];
+                unset($product->attributes['stock']);
+            }
+        });
+
+        static::saved(function (Product $product) {
+            if ($product->_pending_stock !== null) {
+                $stock = $product->_pending_stock;
+                $product->_pending_stock = null;
+
+                if ($product->wasRecentlyCreated) {
+                    $defaultWarehouse = Warehouse::defaultWarehouse();
+                    $product->warehouses()->syncWithoutDetaching([
+                        $defaultWarehouse->id => ['stock' => $stock],
+                    ]);
+                }
+            }
+        });
         static::deleting(function (Product $product) {
             if (! $product->isForceDeleting()) {
                 $suffix = '_del_'.time().'_'.$product->id;
@@ -211,13 +236,33 @@ class Product extends Model
         return false;
     }
 
+    public function stock(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value) {
+                if ($value !== null) {
+                    return (int) $value;
+                }
+                if ($this->_pending_stock !== null) {
+                    return $this->_pending_stock;
+                }
+                if ($this->relationLoaded('warehouses')) {
+                    return (int) $this->warehouses->sum(fn ($w) => $w->pivot->stock ?? 0);
+                }
+
+                return (int) $this->warehouses()->sum('product_warehouse.stock');
+            },
+            set: function ($value) {
+                $this->_pending_stock = (int) $value;
+
+                return [];
+            }
+        );
+    }
+
     public function stockTotal(): int
     {
-        $warehouseStock = (int) $this->warehouses()->sum('product_warehouse.stock');
-
-        return $warehouseStock > 0 || $this->warehouses()->exists()
-            ? $warehouseStock
-            : (int) ($this->stock ?? 0);
+        return $this->stock;
     }
 
     public function isLowStock(?int $warehouseId = null): bool
