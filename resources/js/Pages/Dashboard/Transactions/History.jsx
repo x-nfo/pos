@@ -26,6 +26,7 @@ import {
     IconCreditCard,
     IconCash,
     IconCalendar,
+    IconDownload,
 } from "@tabler/icons-react";
 
 const defaultFilters = {
@@ -122,6 +123,15 @@ const History = ({ transactions, filters, warehouses = [] }) => {
     const hasActiveFilters =
         Boolean(filterData.invoice || filterData.start_date || filterData.end_date || filterData.warehouse_id || filterData.payment_status || filterData.payment_method);
 
+    const getExportUrl = () => {
+        const activeParams = Object.fromEntries(
+            Object.entries(filterData).filter(
+                ([_, v]) => v !== "" && v !== null && v !== undefined
+            )
+        );
+        return route("export.transactions", activeParams);
+    };
+
     return (
         <>
             <Head title="Riwayat Transaksi" />
@@ -161,6 +171,15 @@ const History = ({ transactions, filters, warehouses = [] }) => {
                                 <span className="w-2 h-2 rounded-full bg-primary-600 dark:bg-primary-400"></span>
                             )}
                         </button>
+
+                        <a
+                            href={getExportUrl()}
+                            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs sm:text-sm font-semibold transition-all active:scale-95 shadow-sm"
+                            title="Export Excel Transaksi"
+                        >
+                            <IconDownload size={18} />
+                            <span>Export</span>
+                        </a>
 
                         <Link
                             href={route("transactions.mobile")}
