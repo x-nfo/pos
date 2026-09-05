@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
+use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
 
 class PurchaseOrderService
@@ -13,12 +14,15 @@ class PurchaseOrderService
         private readonly DocumentNumberService $documentNumberService
     ) {}
 
-    public function generateDocumentNumber(): string
+    public function generateDocumentNumber(Warehouse|int|string|null $warehouse = null): string
     {
+        $branchCode = $this->documentNumberService->formatBranchCode($warehouse);
+        $prefix = 'PO-'.$branchCode.'-'.now()->format('Ymd').'-';
+
         return $this->documentNumberService->generateSequentialNumber(
             modelClass: PurchaseOrder::class,
             column: 'document_number',
-            prefix: 'PO-'.now()->format('Ymd').'-'
+            prefix: $prefix
         );
     }
 
@@ -29,7 +33,7 @@ class PurchaseOrderService
                 $order = PurchaseOrder::create([
                     'supplier_id' => $data['supplier_id'] ?? null,
                     'warehouse_id' => $data['warehouse_id'] ?? null,
-                    'document_number' => $data['document_number'] ?? $this->generateDocumentNumber(),
+                    'document_number' => $data['document_number'] ?? $this->generateDocumentNumber($data['warehouse_id'] ?? null),
                     'status' => 'draft',
                     'notes' => $data['notes'] ?? null,
                     'created_by' => $userId,

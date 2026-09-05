@@ -8,6 +8,7 @@ use App\Models\Payable;
 use App\Models\SalesReturn;
 use App\Models\StockOpname;
 use App\Models\Transaction;
+use App\Models\Warehouse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Str;
 
@@ -122,15 +123,43 @@ class DocumentNumberService
     }
 
     /**
-     * Generate collision-free payable document number (INV-XXXXXXXX).
+     * Format warehouse/branch code for document prefixes (alphanumeric only, uppercase, fallback 'HQ').
      */
-    public function generatePayableDocumentNumber(): string
+    public function formatBranchCode(Warehouse|int|string|null $warehouse = null): string
     {
-        do {
-            $code = 'INV-'.Str::upper(Str::random(8));
-        } while (Payable::where('document_number', $code)->exists());
+        if ($warehouse instanceof Warehouse) {
+            $code = $warehouse->code;
+        } elseif (is_numeric($warehouse)) {
+            $code = Warehouse::where('id', (int) $warehouse)->value('code');
+        } elseif (is_string($warehouse)) {
+            $code = $warehouse;
+        } else {
+            $code = null;
+        }
 
-        return $code;
+        if (empty($code)) {
+            return 'HQ';
+        }
+
+        $sanitized = Str::upper(preg_replace('/[^A-Za-z0-9]/', '', (string) $code));
+
+        return ! empty($sanitized) ? substr($sanitized, 0, 10) : 'HQ';
+    }
+
+    /**
+     * Generate sequential payable document number (AP-[KODE_CABANG]-[YYYYMMDD]-[0001]).
+     */
+    public function generatePayableDocumentNumber(Warehouse|int|string|null $warehouse = null): string
+    {
+        $branchCode = $this->formatBranchCode($warehouse);
+        $prefix = 'AP-'.$branchCode.'-'.now()->format('Ymd').'-';
+
+        return $this->generateSequentialNumber(
+            modelClass: Payable::class,
+            column: 'document_number',
+            prefix: $prefix,
+            padLength: 4
+        );
     }
 
     /**

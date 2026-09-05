@@ -178,7 +178,7 @@ export default function Create({ suppliers, products, categories = [], warehouse
                                     type="text"
                                     value={data.document_number}
                                     onChange={(e) => setData("document_number", e.target.value)}
-                                    placeholder="Kosongkan untuk auto-generate"
+                                    placeholder="Kosongkan untuk auto-generate (PO-[CABANG]-[TGL]-[NO])"
                                     className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                                 />
                             </div>

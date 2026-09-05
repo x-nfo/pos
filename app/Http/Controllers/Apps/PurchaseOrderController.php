@@ -143,7 +143,7 @@ class PurchaseOrderController extends Controller
 
         $purchaseOrder->load([
             'supplier:id,name,phone,email,address',
-            'warehouse:id,code,name',
+            'warehouse:id,code,name,address,phone,type',
             'items.product:id,title,sku,image',
             'items.unit:id,code,name,symbol',
             'goodsReceivings' => function ($q) {
@@ -167,7 +167,7 @@ class PurchaseOrderController extends Controller
 
         $purchaseOrder->load([
             'supplier:id,name,phone,email,address',
-            'warehouse:id,code,name',
+            'warehouse:id,code,name,address,phone,type',
             'items.product:id,title,sku,barcode,image',
             'items.unit:id,code,name,symbol',
             'creator:id,name',

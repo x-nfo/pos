@@ -218,7 +218,15 @@ class DocumentController extends Controller
     {
         $this->ensureFontDirectory();
 
-        $payable->load(['supplier', 'payments.bankAccount', 'payments.user']);
+        $payable->load([
+            'supplier',
+            'purchaseOrder.warehouse',
+            'payments.bankAccount',
+            'payments.user',
+        ]);
+        $payable->payments->each(function ($payment) use ($payable) {
+            $payment->setRelation('payable', $payable);
+        });
 
         $pdf = Pdf::loadView('pdf.payable', [
             'payable' => $payable,

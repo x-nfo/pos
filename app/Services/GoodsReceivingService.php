@@ -8,6 +8,7 @@ use App\Models\Payable;
 use App\Models\ProductBatch;
 use App\Models\ProductWarehouse;
 use App\Models\PurchaseOrder;
+use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
 
 class GoodsReceivingService
@@ -18,12 +19,15 @@ class GoodsReceivingService
         private readonly DocumentNumberService $documentNumberService
     ) {}
 
-    public function generateDocumentNumber(): string
+    public function generateDocumentNumber(Warehouse|int|string|null $warehouse = null): string
     {
+        $branchCode = $this->documentNumberService->formatBranchCode($warehouse);
+        $prefix = 'GR-'.$branchCode.'-'.now()->format('Ymd').'-';
+
         return $this->documentNumberService->generateSequentialNumber(
             modelClass: GoodsReceiving::class,
             column: 'document_number',
-            prefix: 'GR-'.now()->format('Ymd').'-'
+            prefix: $prefix
         );
     }
 
@@ -35,7 +39,7 @@ class GoodsReceivingService
                     'purchase_order_id' => $order->id,
                     'supplier_id' => $order->supplier_id,
                     'warehouse_id' => $order->warehouse_id,
-                    'document_number' => $this->generateDocumentNumber(),
+                    'document_number' => $this->generateDocumentNumber($order->warehouse_id),
                     'notes' => $notes,
                     'received_by' => $userId,
                     'received_at' => now(),
@@ -155,7 +159,7 @@ class GoodsReceivingService
             ['purchase_order_id' => $order->id],
             [
                 'supplier_id' => $order->supplier_id,
-                'document_number' => $existingPayable?->document_number ?? $receiving->document_number,
+                'document_number' => $existingPayable?->document_number ?? $this->documentNumberService->generatePayableDocumentNumber($order->warehouse_id),
                 'total' => $total,
                 'paid' => $paid,
                 'due_date' => $dueDate,

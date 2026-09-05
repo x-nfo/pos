@@ -5,6 +5,7 @@ namespace Tests\Feature\Payables;
 use App\Models\BankAccount;
 use App\Models\Category;
 use App\Models\Payable;
+use App\Models\PayablePayment;
 use App\Models\Product;
 use App\Models\ProductWarehouse;
 use App\Models\PurchaseOrder;
@@ -501,5 +502,99 @@ class PayableTest extends TestCase
         $this->assertEquals(200000, $payable->paid);
         $this->assertCount(1, $payable->payments);
         $this->assertDatabaseHas('payable_payments', ['id' => $payment->id]);
+    }
+
+    public function test_authorized_user_can_view_payable_with_purchase_order_and_branch_warehouse(): void
+    {
+        $user = $this->createUserWithPermissions(['payables-access']);
+        $supplier = Supplier::create(['name' => 'Supplier PO Test', 'phone' => '081233334444']);
+        $branchWarehouse = Warehouse::create([
+            'code' => 'CBG-SBY',
+            'name' => 'Cabang Surabaya',
+            'type' => 'branch',
+            'address' => 'Jl. Pemuda No. 45, Surabaya',
+            'phone' => '081298765432',
+        ]);
+
+        $po = PurchaseOrder::create([
+            'supplier_id' => $supplier->id,
+            'warehouse_id' => $branchWarehouse->id,
+            'document_number' => 'PO-20260905-SBY',
+            'status' => 'ordered',
+            'created_by' => $user->id,
+        ]);
+
+        $payable = Payable::create([
+            'supplier_id' => $supplier->id,
+            'purchase_order_id' => $po->id,
+            'document_number' => 'PAY-20260905-001',
+            'vendor_invoice_number' => 'INV-SBY-001',
+            'total' => 1500000,
+            'paid' => 0,
+            'due_date' => now()->addDays(30),
+            'status' => 'unpaid',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->get(route('payables.show', $payable));
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Dashboard/Payables/Show')
+            ->has('payable')
+            ->where('payable.purchase_order.document_number', 'PO-20260905-SBY')
+            ->where('payable.purchase_order.warehouse.code', 'CBG-SBY')
+            ->where('payable.purchase_order.warehouse.name', 'Cabang Surabaya')
+            ->where('payable.purchase_order.warehouse.address', 'Jl. Pemuda No. 45, Surabaya')
+            ->where('payable.purchase_order.warehouse.phone', '081298765432')
+            ->where('payable.purchase_order.warehouse.type', 'branch')
+        );
+    }
+
+    public function test_store_payable_auto_generates_branch_document_number_and_shows_voucher_number(): void
+    {
+        $branchWarehouse = Warehouse::create([
+            'code' => 'CBG-BDG',
+            'name' => 'Cabang Bandung',
+            'type' => 'branch',
+        ]);
+
+        $user = $this->createUserWithPermissions(['payables-access']);
+        $user->warehouse_id = $branchWarehouse->id;
+        $user->save();
+
+        $supplier = Supplier::create(['name' => 'Supplier BDG']);
+
+        $response = $this->actingAs($user)
+            ->post(route('payables.store'), [
+                'supplier_id' => $supplier->id,
+                'total' => 250000,
+                'due_date' => now()->addDays(14)->format('Y-m-d'),
+                'note' => 'Hutang pengadaan Bandung',
+            ]);
+
+        $response->assertRedirect(route('payables.index'));
+        $today = now()->format('Ymd');
+        $expectedDoc = "AP-CBGBDG-{$today}-0001";
+
+        $payable = Payable::where('document_number', $expectedDoc)->first();
+        $this->assertNotNull($payable);
+
+        // Record a payment
+        $payment = PayablePayment::create([
+            'payable_id' => $payable->id,
+            'paid_at' => now()->format('Y-m-d'),
+            'amount' => 100000,
+            'method' => 'cash',
+            'user_id' => $user->id,
+        ]);
+
+        $showResponse = $this->actingAs($user)->get(route('payables.show', $payable));
+        $showResponse->assertOk();
+        $showResponse->assertInertia(fn ($page) => $page
+            ->component('Dashboard/Payables/Show')
+            ->where('payable.document_number', $expectedDoc)
+            ->where('payable.payments.0.voucher_number', fn ($val) => str_starts_with($val, 'PV-'))
+        );
     }
 }

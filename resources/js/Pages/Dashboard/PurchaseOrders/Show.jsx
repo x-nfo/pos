@@ -8,10 +8,13 @@ import { shareWhatsappPurchaseOrder } from "@/Utils/whatsappPurchaseOrder";
 import {
     IconArrowLeft,
     IconBrandWhatsapp,
+    IconBuildingWarehouse,
     IconCheck,
     IconCircleX,
     IconEdit,
+    IconMapPin,
     IconPackage,
+    IconPhone,
     IconPrinter,
     IconShoppingCart,
     IconTruckDelivery,
@@ -140,7 +143,7 @@ export default function Show({ order }) {
                             {statusBadge(order.status)}
                         </div>
                         <p className="text-sm text-slate-500 dark:text-slate-400 break-words">
-                            Supplier: {order.supplier?.name || "-"} &bull; Dibuat oleh {order.creator?.name || "-"} &bull; {formatDateTime(order.created_at)}
+                            Supplier: {order.supplier?.name || "-"} &bull; Tujuan: {order.warehouse ? `${order.warehouse.code} - ${order.warehouse.name}` : "Gudang Utama"} &bull; Dibuat oleh {order.creator?.name || "-"} &bull; {formatDateTime(order.created_at)}
                         </p>
                         {order.ordered_at && (
                             <p className="text-sm text-slate-500">Dipesan: {formatDateTime(order.ordered_at)}</p>
@@ -301,6 +304,46 @@ export default function Show({ order }) {
                 </div>
 
                 <div className="space-y-6 min-w-0">
+                    {/* Tujuan Pengiriman Card */}
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden shadow-sm">
+                        <div className="flex items-center justify-between mb-3">
+                            <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                                <IconBuildingWarehouse size={20} className="text-primary-600 dark:text-primary-400" />
+                                Tujuan Pengiriman
+                            </h2>
+                            {order.warehouse?.type && (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 uppercase">
+                                    {order.warehouse.type === "branch" ? "Cabang" : (order.warehouse.type === "main" ? "Pusat" : "Gudang")}
+                                </span>
+                            )}
+                        </div>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-slate-500 dark:text-slate-400">Gudang / Unit</span>
+                                <span className="font-semibold text-slate-800 dark:text-slate-200 text-right">
+                                    {order.warehouse ? `${order.warehouse.code} - ${order.warehouse.name}` : "Gudang Utama"}
+                                </span>
+                            </div>
+                            {order.warehouse?.address ? (
+                                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                                    <div className="flex items-start gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                                        <IconMapPin size={16} className="text-slate-400 shrink-0 mt-0.5" />
+                                        <span className="leading-relaxed">{order.warehouse.address}</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-xs text-amber-600 dark:text-amber-400 italic pt-1">
+                                    Alamat gudang belum diisi di Master Data.
+                                </p>
+                            )}
+                            {order.warehouse?.phone && (
+                                <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 pt-1">
+                                    <IconPhone size={14} className="text-slate-400 shrink-0" />
+                                    <span>Telp Gudang: {order.warehouse.phone}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                     {order.notes && (
                         <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                             <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">Catatan</h2>

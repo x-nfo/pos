@@ -406,9 +406,17 @@ class PurchaseOrderTest extends TestCase
 
         $supplier = Supplier::create(['name' => 'Supplier Print', 'phone' => '081299998888']);
         $product = $this->createProduct();
+        $branchWarehouse = Warehouse::create([
+            'code' => 'CBG-BDG',
+            'name' => 'Cabang Bandung',
+            'type' => 'branch',
+            'address' => 'Jl. Ir. H. Juanda No. 123, Bandung',
+            'phone' => '081234567890',
+        ]);
 
         $po = PurchaseOrder::create([
             'supplier_id' => $supplier->id,
+            'warehouse_id' => $branchWarehouse->id,
             'document_number' => 'PO-20260817-PRINT',
             'status' => 'draft',
             'created_by' => $user->id,
@@ -429,6 +437,22 @@ class PurchaseOrderTest extends TestCase
             ->component('Dashboard/PurchaseOrders/Print')
             ->has('order')
             ->where('order.document_number', 'PO-20260817-PRINT')
+            ->where('order.warehouse.code', 'CBG-BDG')
+            ->where('order.warehouse.name', 'Cabang Bandung')
+            ->where('order.warehouse.address', 'Jl. Ir. H. Juanda No. 123, Bandung')
+            ->where('order.warehouse.phone', '081234567890')
+            ->where('order.warehouse.type', 'branch')
+        );
+
+        $showResponse = $this->actingAs($user)
+            ->get(route('purchase-orders.show', $po));
+
+        $showResponse->assertOk();
+        $showResponse->assertInertia(fn ($page) => $page
+            ->component('Dashboard/PurchaseOrders/Show')
+            ->has('order')
+            ->where('order.warehouse.address', 'Jl. Ir. H. Juanda No. 123, Bandung')
+            ->where('order.warehouse.phone', '081234567890')
         );
     }
 
@@ -485,5 +509,40 @@ class PurchaseOrderTest extends TestCase
 
         $response->assertOk();
         $response->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_store_po_auto_generates_branch_coded_document_number(): void
+    {
+        $user = $this->createUserWithPermissions(['purchase-orders-access', 'purchase-orders-create']);
+        $warehouse = Warehouse::create([
+            'code' => 'SBY',
+            'name' => 'Cabang Surabaya',
+            'type' => 'branch',
+        ]);
+        $supplier = Supplier::create(['name' => 'Supplier SBY Test']);
+        $product = $this->createProduct();
+
+        $response = $this->actingAs($user)
+            ->post(route('purchase-orders.store'), [
+                'supplier_id' => $supplier->id,
+                'warehouse_id' => $warehouse->id,
+                'document_number' => '', // auto-generate
+                'items' => [
+                    [
+                        'product_id' => $product->id,
+                        'qty_ordered' => 5,
+                        'unit_price' => 20000,
+                    ],
+                ],
+            ]);
+
+        $response->assertRedirect();
+        $today = now()->format('Ymd');
+        $expectedDoc = "PO-SBY-{$today}-0001";
+
+        $this->assertDatabaseHas('purchase_orders', [
+            'warehouse_id' => $warehouse->id,
+            'document_number' => $expectedDoc,
+        ]);
     }
 }

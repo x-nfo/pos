@@ -293,7 +293,12 @@
             @forelse($payable->payments as $index => $pay)
                 <tr style="background: {{ $index % 2 === 0 ? '#ffffff' : '#f8fafc' }};">
                     <td style="text-align: center; color: #64748b;">{{ $index + 1 }}</td>
-                    <td>{{ \Carbon\Carbon::parse($pay->paid_at)->format('d M Y') }}</td>
+                    <td>
+                        <div>{{ \Carbon\Carbon::parse($pay->paid_at)->format('d M Y') }}</div>
+                        @if(!empty($pay->voucher_number))
+                            <div style="font-family: monospace; font-size: 10px; color: #4338ca; font-weight: 600; margin-top: 2px;">{{ $pay->voucher_number }}</div>
+                        @endif
+                    </td>
                     <td>
                         @php
                             $methodKey = strtolower($pay->method ?? 'cash');

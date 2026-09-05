@@ -183,6 +183,25 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                                     No. Faktur: <span className="font-mono font-medium text-slate-700 dark:text-slate-300">{payable.vendor_invoice_number}</span>
                                 </p>
                             )}
+                            {payable.purchase_order && (
+                                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                                    No. PO:{" "}
+                                    <Link
+                                        href={route("purchase-orders.show", payable.purchase_order.id)}
+                                        className="font-mono font-semibold text-primary-600 dark:text-primary-400 hover:underline"
+                                    >
+                                        {payable.purchase_order.document_number}
+                                    </Link>
+                                    {payable.purchase_order.warehouse && (
+                                        <span className="ml-2">
+                                            &bull; Unit/Cabang:{" "}
+                                            <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                                {payable.purchase_order.warehouse.name} ({payable.purchase_order.warehouse.code})
+                                            </span>
+                                        </span>
+                                    )}
+                                </p>
+                            )}
                         </div>
 
                         <div className="flex items-center gap-2 flex-wrap">
@@ -332,6 +351,11 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                                                     <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
                                                         {formatCurrency(pay.amount)}
                                                     </p>
+                                                    {pay.voucher_number && (
+                                                        <span className="px-2 py-0.5 text-[11px] font-mono font-semibold rounded-md bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300 border border-primary-200 dark:border-primary-800">
+                                                            {pay.voucher_number}
+                                                        </span>
+                                                    )}
                                                     <span className="px-2 py-0.5 text-[11px] font-semibold rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 uppercase tracking-wide">
                                                         {pay.method === "bank_transfer" ? "Transfer" : "Tunai"}
                                                     </span>
@@ -674,6 +698,16 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                                                 Faktur: {payable.vendor_invoice_number}
                                             </p>
                                         )}
+                                        {payable.purchase_order && (
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                                                PO: {payable.purchase_order.document_number}
+                                            </p>
+                                        )}
+                                        {payable.purchase_order?.warehouse && (
+                                            <p className="text-xs font-semibold text-primary-600 dark:text-primary-400">
+                                                Unit: {payable.purchase_order.warehouse.name} ({payable.purchase_order.warehouse.code})
+                                            </p>
+                                        )}
                                         <p className="text-xs text-slate-500 dark:text-slate-400">
                                             Jatuh tempo: <span className="font-medium text-slate-700 dark:text-slate-300">{formatDate(payable.due_date)}</span>
                                         </p>
@@ -739,9 +773,16 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                                                     className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700"
                                                 >
                                                     <div className="min-w-0">
-                                                        <p className="font-bold text-slate-800 dark:text-white">
-                                                            {formatCurrency(pay.amount)}
-                                                        </p>
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <p className="font-bold text-slate-800 dark:text-white">
+                                                                {formatCurrency(pay.amount)}
+                                                            </p>
+                                                            {pay.voucher_number && (
+                                                                <span className="px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                                                                    {pay.voucher_number}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         <p className="text-xs text-slate-500 dark:text-slate-400">
                                                             {formatDate(pay.paid_at)} &bull; {pay.method === "bank_transfer" ? "Transfer" : "Tunai"}
                                                             {pay.bank_account && ` &bull; ${pay.bank_account.bank_name}`}

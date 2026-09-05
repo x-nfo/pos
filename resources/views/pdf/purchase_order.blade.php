@@ -269,6 +269,22 @@
                                 {{ $order->warehouse ? $order->warehouse->code . ' - ' . $order->warehouse->name : 'Gudang Utama' }}
                             </td>
                         </tr>
+                        @if(!empty($order->warehouse?->address))
+                        <tr>
+                            <td class="muted" style="padding: 1px 0; vertical-align: top;">Alamat Kirim:</td>
+                            <td style="font-weight: 600; color: #0f172a; padding: 1px 0;">
+                                {{ $order->warehouse->address }}
+                            </td>
+                        </tr>
+                        @endif
+                        @if(!empty($order->warehouse?->phone))
+                        <tr>
+                            <td class="muted" style="padding: 1px 0;">Telp Gudang:</td>
+                            <td style="font-weight: 600; color: #0f172a; padding: 1px 0;">
+                                {{ $order->warehouse->phone }}
+                            </td>
+                        </tr>
+                        @endif
                         <tr>
                             <td class="muted" style="padding: 1px 0;">Dibuat Oleh:</td>
                             <td style="font-weight: 600; padding: 1px 0;">

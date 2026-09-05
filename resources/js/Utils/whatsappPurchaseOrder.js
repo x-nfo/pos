@@ -82,6 +82,12 @@ export function generateWhatsappPurchaseOrderText(
         lines.push(`*Tgl Pesan:* ${formatDateTime(order.ordered_at)}`);
     }
     lines.push(`*Tujuan Kirim:* ${warehouseName}`);
+    if (order.warehouse?.address) {
+        lines.push(`*Alamat Kirim:* ${order.warehouse.address}`);
+    }
+    if (order.warehouse?.phone) {
+        lines.push(`*Kontak Gudang/Penerima:* ${order.warehouse.phone}`);
+    }
     lines.push(`*Pembuat PO:* ${creatorName}`);
     lines.push("");
 

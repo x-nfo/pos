@@ -80,7 +80,9 @@ class PayableController extends Controller
         ]);
 
         if (empty($data['document_number'])) {
-            $data['document_number'] = $this->documentNumberService->generatePayableDocumentNumber();
+            $user = $request->user();
+            $warehouseId = $user && ! $user->isHQ() ? $user->warehouse_id : null;
+            $data['document_number'] = $this->documentNumberService->generatePayableDocumentNumber($warehouseId);
         }
         $data['status'] = 'unpaid';
         $data['paid'] = 0;
@@ -96,11 +98,15 @@ class PayableController extends Controller
     {
         $payable->load([
             'supplier:id,name,phone,email,address',
-            'purchaseOrder:id,document_number,status',
+            'purchaseOrder:id,document_number,status,warehouse_id',
+            'purchaseOrder.warehouse:id,code,name,address,phone,type',
             'payments' => function ($query) {
                 $query->orderByDesc('paid_at')->with(['bankAccount:id,bank_name,account_number,account_name,logo', 'user:id,name']);
             },
         ]);
+        $payable->payments->each(function ($payment) use ($payable) {
+            $payment->setRelation('payable', $payable);
+        });
         $bankAccounts = BankAccount::active()->ordered()->get(['id', 'bank_name', 'account_number', 'account_name', 'logo']);
 
         return Inertia::render('Dashboard/Payables/Show', [

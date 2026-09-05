@@ -2,6 +2,8 @@
 
 namespace Tests\Unit\Services;
 
+use App\Models\Payable;
+use App\Models\PayablePayment;
 use App\Models\PurchaseOrder;
 use App\Models\Transaction;
 use App\Models\User;
@@ -109,5 +111,84 @@ class DocumentNumberServiceTest extends TestCase
             'discount' => 0,
             'grand_total' => 10000,
         ]);
+    }
+
+    public function test_format_branch_code_sanitizes_correctly(): void
+    {
+        $this->assertSame('HQ', $this->service->formatBranchCode(null));
+        $this->assertSame('HQ', $this->service->formatBranchCode(''));
+
+        $warehouse = Warehouse::create([
+            'code' => 'SBY-01',
+            'name' => 'Gudang Surabaya 1',
+            'type' => 'branch',
+        ]);
+
+        $this->assertSame('SBY01', $this->service->formatBranchCode($warehouse));
+        $this->assertSame('SBY01', $this->service->formatBranchCode($warehouse->id));
+        $this->assertSame('BDG', $this->service->formatBranchCode('BDG'));
+        $this->assertSame('HQ', $this->service->formatBranchCode('---'));
+    }
+
+    public function test_can_generate_branch_coded_payable_document_number(): void
+    {
+        $today = now()->format('Ymd');
+        $hqDoc = $this->service->generatePayableDocumentNumber();
+        $this->assertSame("AP-HQ-{$today}-0001", $hqDoc);
+
+        $warehouse = Warehouse::create([
+            'code' => 'SBY',
+            'name' => 'Gudang Surabaya',
+            'type' => 'branch',
+        ]);
+
+        $branchDoc1 = $this->service->generatePayableDocumentNumber($warehouse);
+        $this->assertSame("AP-SBY-{$today}-0001", $branchDoc1);
+
+        Payable::create([
+            'document_number' => $branchDoc1,
+            'total' => 100000,
+            'paid' => 0,
+            'status' => 'unpaid',
+        ]);
+
+        $branchDoc2 = $this->service->generatePayableDocumentNumber($warehouse);
+        $this->assertSame("AP-SBY-{$today}-0002", $branchDoc2);
+    }
+
+    public function test_payable_payment_voucher_number_includes_branch_code(): void
+    {
+        $user = User::factory()->create();
+        $warehouse = Warehouse::create([
+            'code' => 'BDG',
+            'name' => 'Cabang Bandung',
+            'type' => 'branch',
+        ]);
+
+        $po = PurchaseOrder::create([
+            'warehouse_id' => $warehouse->id,
+            'document_number' => 'PO-BDG-20260905-0001',
+            'status' => 'ordered',
+            'created_by' => $user->id,
+        ]);
+
+        $payable = Payable::create([
+            'purchase_order_id' => $po->id,
+            'document_number' => 'AP-BDG-20260905-0001',
+            'total' => 200000,
+            'paid' => 100000,
+            'status' => 'partial',
+        ]);
+
+        $payment = PayablePayment::create([
+            'payable_id' => $payable->id,
+            'paid_at' => '2026-09-05',
+            'amount' => 100000,
+            'method' => 'cash',
+            'user_id' => $user->id,
+        ]);
+
+        $expectedVoucher = 'PV-BDG-20260905-'.str_pad((string) $payment->id, 4, '0', STR_PAD_LEFT);
+        $this->assertSame($expectedVoucher, $payment->voucher_number);
     }
 }

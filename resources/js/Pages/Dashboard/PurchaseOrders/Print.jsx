@@ -199,9 +199,16 @@ export default function Print({ order, defaultPaperSize = "a4" }) {
                             </div>
 
                             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 print:bg-white print:border-slate-300">
-                                <p className="font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                    Tujuan Pengiriman & Informasi Dokumen:
-                                </p>
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="font-bold text-slate-500 uppercase tracking-wider">
+                                        Tujuan Pengiriman & Informasi Dokumen:
+                                    </p>
+                                    {order.warehouse?.type && (
+                                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-700 uppercase">
+                                            {order.warehouse.type === "branch" ? "Cabang" : (order.warehouse.type === "main" ? "Pusat" : "Gudang")}
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="space-y-1">
                                     <div className="flex justify-between">
                                         <span className="text-slate-500">Tanggal PO:</span>
@@ -215,10 +222,24 @@ export default function Print({ order, defaultPaperSize = "a4" }) {
                                     )}
                                     <div className="flex justify-between">
                                         <span className="text-slate-500">Gudang Tujuan:</span>
-                                        <span className="font-bold text-slate-900">
+                                        <span className="font-bold text-slate-900 text-right">
                                             {order.warehouse ? `${order.warehouse.code} - ${order.warehouse.name}` : "Gudang Utama"}
                                         </span>
                                     </div>
+                                    {order.warehouse?.address && (
+                                        <div className="flex justify-between items-start gap-4">
+                                            <span className="text-slate-500 shrink-0">Alamat Kirim:</span>
+                                            <span className="font-medium text-slate-800 text-right leading-relaxed max-w-[280px]">
+                                                {order.warehouse.address}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {order.warehouse?.phone && (
+                                        <div className="flex justify-between">
+                                            <span className="text-slate-500">Telp Gudang:</span>
+                                            <span className="font-semibold text-slate-900">{order.warehouse.phone}</span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between">
                                         <span className="text-slate-500">Dibuat Oleh:</span>
                                         <span className="font-medium">{order.creator?.name || "-"}</span>
@@ -357,7 +378,9 @@ export default function Print({ order, defaultPaperSize = "a4" }) {
                             <p>No: {order.document_number}</p>
                             <p>Tgl: {formatDateTime(order.created_at)}</p>
                             <p>Supplier: {order.supplier?.name || "-"}</p>
-                            <p>Gudang: {order.warehouse?.code || "Utama"}</p>
+                            <p>Tujuan: {order.warehouse ? `${order.warehouse.code} - ${order.warehouse.name}` : "Utama"}</p>
+                            {order.warehouse?.address && <p className="text-[10px] text-slate-700">Kirim: {order.warehouse.address}</p>}
+                            {order.warehouse?.phone && <p className="text-[10px] text-slate-700">Telp Gudang: {order.warehouse.phone}</p>}
                             <p>Oleh: {order.creator?.name || "-"}</p>
                         </div>
 
