@@ -19,6 +19,7 @@ class Payable extends Model
         'status',
         'note',
         'purchase_order_id',
+        'warehouse_id',
     ];
 
     protected $casts = [
@@ -37,6 +38,11 @@ class Payable extends Model
         return $this->belongsTo(Supplier::class);
     }
 
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
     public function payments()
     {
         return $this->hasMany(PayablePayment::class);
@@ -45,6 +51,11 @@ class Payable extends Model
     public function purchaseOrder()
     {
         return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    public function getEffectiveWarehouseIdAttribute(): ?int
+    {
+        return $this->warehouse_id ?? $this->purchaseOrder?->warehouse_id;
     }
 
     public function getRemainingAttribute(): float

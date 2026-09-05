@@ -510,8 +510,15 @@ export default function Notification() {
                                 className="min-w-0 flex-1 group"
                                 onClick={close}
                             >
-                                <div className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                                    {item.title}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-semibold text-xs sm:text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                        {item.title}
+                                    </span>
+                                    {item.type === "payable" && item.is_overdue && (
+                                        <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400">
+                                            Lewat Tempo
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="text-slate-500 dark:text-slate-400 text-[11px] sm:text-xs truncate mt-0.5">
                                     {item.subtitle} {item.time && `• ${item.time}`}

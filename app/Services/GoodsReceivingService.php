@@ -159,6 +159,7 @@ class GoodsReceivingService
             ['purchase_order_id' => $order->id],
             [
                 'supplier_id' => $order->supplier_id,
+                'warehouse_id' => $order->warehouse_id,
                 'document_number' => $existingPayable?->document_number ?? $this->documentNumberService->generatePayableDocumentNumber($order->warehouse_id),
                 'total' => $total,
                 'paid' => $paid,

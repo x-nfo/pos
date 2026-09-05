@@ -7,6 +7,7 @@ use App\Models\BankAccount;
 use App\Models\Payable;
 use App\Models\PayablePayment;
 use App\Models\Supplier;
+use App\Models\Warehouse;
 use App\Services\AuditLogService;
 use App\Services\DocumentNumberService;
 use Illuminate\Http\Request;
@@ -23,17 +24,32 @@ class PayableController extends Controller
 
     public function index(Request $request)
     {
+        $user = $request->user();
+        $scopedWarehouseId = ! $user->isHQ() ? $user->warehouse_id : $request->input('warehouse_id');
+
         $filters = [
             'status' => $request->input('status'),
             'supplier' => $request->input('supplier'),
             'invoice' => $request->input('invoice'),
             'due_from' => $request->input('due_from'),
             'due_to' => $request->input('due_to'),
+            'warehouse_id' => $scopedWarehouseId,
         ];
 
-        $query = Payable::with('supplier:id,name')
+        $query = Payable::with([
+            'supplier:id,name',
+            'warehouse:id,code,name',
+            'purchaseOrder.warehouse:id,code,name',
+        ])
             ->withSum('payments as total_paid', 'amount')
             ->orderByDesc('created_at');
+
+        if ($scopedWarehouseId) {
+            $query->where(function ($q) use ($scopedWarehouseId) {
+                $q->where('warehouse_id', $scopedWarehouseId)
+                    ->orWhereHas('purchaseOrder', fn ($po) => $po->where('warehouse_id', $scopedWarehouseId));
+            });
+        }
 
         $query->when($filters['status'], function ($q, $status) {
             $q->where('status', $status);
@@ -60,11 +76,15 @@ class PayableController extends Controller
         });
 
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
+        $warehouses = $user->isHQ()
+            ? Warehouse::orderBy('name')->get(['id', 'code', 'name'])
+            : [];
 
         return Inertia::render('Dashboard/Payables/Index', [
             'payables' => $payables,
             'filters' => $filters,
             'suppliers' => $suppliers,
+            'warehouses' => $warehouses,
         ]);
     }
 
@@ -72,6 +92,7 @@ class PayableController extends Controller
     {
         $data = $request->validate([
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
+            'warehouse_id' => ['nullable', 'exists:warehouses,id'],
             'document_number' => ['nullable', 'string', 'max:100'],
             'vendor_invoice_number' => ['nullable', 'string', 'max:100'],
             'total' => ['required', 'numeric', 'min:1'],
@@ -79,9 +100,11 @@ class PayableController extends Controller
             'note' => ['nullable', 'string'],
         ]);
 
+        $user = $request->user();
+        $warehouseId = ! $user->isHQ() ? $user->warehouse_id : ($data['warehouse_id'] ?? null);
+        $data['warehouse_id'] = $warehouseId;
+
         if (empty($data['document_number'])) {
-            $user = $request->user();
-            $warehouseId = $user && ! $user->isHQ() ? $user->warehouse_id : null;
             $data['document_number'] = $this->documentNumberService->generatePayableDocumentNumber($warehouseId);
         }
         $data['status'] = 'unpaid';
@@ -94,10 +117,13 @@ class PayableController extends Controller
             ->with('success', 'Hutang supplier berhasil dibuat.');
     }
 
-    public function show(Payable $payable)
+    public function show(Request $request, Payable $payable)
     {
+        $this->authorizeWarehouseAccess($payable, $request->user());
+
         $payable->load([
             'supplier:id,name,phone,email,address',
+            'warehouse:id,code,name,address,phone,type',
             'purchaseOrder:id,document_number,status,warehouse_id',
             'purchaseOrder.warehouse:id,code,name,address,phone,type',
             'payments' => function ($query) {
@@ -121,12 +147,23 @@ class PayableController extends Controller
             'supplier_id' => ['required', 'exists:suppliers,id'],
         ]);
 
+        $user = $request->user();
+        $scopedWarehouseId = ! $user->isHQ() ? $user->warehouse_id : $request->input('warehouse_id');
+
         $supplier = Supplier::findOrFail($request->input('supplier_id'));
 
-        $payables = Payable::where('supplier_id', $supplier->id)
+        $query = Payable::where('supplier_id', $supplier->id)
             ->withSum('payments as total_paid', 'amount')
-            ->orderBy('due_date')
-            ->get();
+            ->orderBy('due_date');
+
+        if ($scopedWarehouseId) {
+            $query->where(function ($q) use ($scopedWarehouseId) {
+                $q->where('warehouse_id', $scopedWarehouseId)
+                    ->orWhereHas('purchaseOrder', fn ($po) => $po->where('warehouse_id', $scopedWarehouseId));
+            });
+        }
+
+        $payables = $query->get();
 
         $payables->transform(function ($item) {
             if ($item->status !== 'paid' && $item->due_date && now()->gt($item->due_date)) {
@@ -168,6 +205,8 @@ class PayableController extends Controller
 
     public function pay(Request $request, Payable $payable)
     {
+        $this->authorizeWarehouseAccess($payable, $request->user());
+
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:1'],
             'paid_at' => ['required', 'date'],
@@ -219,6 +258,8 @@ class PayableController extends Controller
 
     public function destroyPayment(Request $request, Payable $payable, PayablePayment $payment)
     {
+        $this->authorizeWarehouseAccess($payable, $request->user());
+
         if ($payment->payable_id !== $payable->id) {
             abort(404);
         }
@@ -267,5 +308,18 @@ class PayableController extends Controller
         return redirect()
             ->route('payables.show', $payable)
             ->with('success', 'Pembayaran hutang berhasil dihapus dan saldo dipulihkan.');
+    }
+
+    private function authorizeWarehouseAccess(Payable $payable, $user): void
+    {
+        if (! $user || $user->isHQ()) {
+            return;
+        }
+
+        $payableWarehouseId = $payable->warehouse_id ?? $payable->purchaseOrder?->warehouse_id;
+
+        if ($payableWarehouseId && (int) $payableWarehouseId !== (int) $user->warehouse_id) {
+            abort(403, 'Anda tidak memiliki akses ke data hutang cabang lain.');
+        }
     }
 }

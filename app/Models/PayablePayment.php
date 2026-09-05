@@ -34,10 +34,10 @@ class PayablePayment extends Model
     {
         $warehouse = null;
         if ($this->relationLoaded('payable') && $this->payable) {
-            $warehouse = $this->payable->purchaseOrder?->warehouse;
+            $warehouse = $this->payable->warehouse ?? $this->payable->purchaseOrder?->warehouse;
         } elseif ($this->payable_id) {
-            $payable = Payable::with('purchaseOrder.warehouse')->find($this->payable_id);
-            $warehouse = $payable?->purchaseOrder?->warehouse;
+            $payable = Payable::with(['warehouse', 'purchaseOrder.warehouse'])->find($this->payable_id);
+            $warehouse = $payable?->warehouse ?? $payable?->purchaseOrder?->warehouse;
         }
 
         $branchCode = app(DocumentNumberService::class)->formatBranchCode($warehouse);

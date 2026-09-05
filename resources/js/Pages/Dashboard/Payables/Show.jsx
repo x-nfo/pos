@@ -192,14 +192,22 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                                     >
                                         {payable.purchase_order.document_number}
                                     </Link>
-                                    {payable.purchase_order.warehouse && (
+                                    {(payable.warehouse || payable.purchase_order?.warehouse) && (
                                         <span className="ml-2">
                                             &bull; Unit/Cabang:{" "}
                                             <span className="font-semibold text-slate-800 dark:text-slate-200">
-                                                {payable.purchase_order.warehouse.name} ({payable.purchase_order.warehouse.code})
+                                                {(payable.warehouse || payable.purchase_order.warehouse).name} ({(payable.warehouse || payable.purchase_order.warehouse).code})
                                             </span>
                                         </span>
                                     )}
+                                </p>
+                            )}
+                            {!payable.purchase_order && payable.warehouse && (
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    Unit/Cabang:{" "}
+                                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                        {payable.warehouse.name} ({payable.warehouse.code})
+                                    </span>
                                 </p>
                             )}
                         </div>
@@ -703,9 +711,9 @@ export default function PayableShow({ payable, bankAccounts = [] }) {
                                                 PO: {payable.purchase_order.document_number}
                                             </p>
                                         )}
-                                        {payable.purchase_order?.warehouse && (
+                                        {(payable.warehouse || payable.purchase_order?.warehouse) && (
                                             <p className="text-xs font-semibold text-primary-600 dark:text-primary-400">
-                                                Unit: {payable.purchase_order.warehouse.name} ({payable.purchase_order.warehouse.code})
+                                                Unit: {(payable.warehouse || payable.purchase_order?.warehouse).name} ({(payable.warehouse || payable.purchase_order?.warehouse).code})
                                             </p>
                                         )}
                                         <p className="text-xs text-slate-500 dark:text-slate-400">

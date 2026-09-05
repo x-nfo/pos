@@ -28,13 +28,15 @@ const formatDate = (value) => {
     });
 };
 
-export default function PayablesIndex({ payables, filters = {}, suppliers = [] }) {
+export default function PayablesIndex({ payables, filters = {}, suppliers = [], warehouses = [] }) {
     const { flash } = usePage().props;
     const [search, setSearch] = useState(filters.invoice || "");
     const [status, setStatus] = useState(filters.status || "");
     const [supplierId, setSupplierId] = useState(filters.supplier || "");
+    const [warehouseId, setWarehouseId] = useState(filters.warehouse_id || "");
     const { data, setData, post, processing, reset, errors } = useForm({
         supplier_id: "",
+        warehouse_id: "",
         document_number: "",
         vendor_invoice_number: "",
         total: "",
@@ -51,7 +53,7 @@ export default function PayablesIndex({ payables, filters = {}, suppliers = [] }
         e.preventDefault();
         router.get(
             route("payables.index"),
-            { invoice: search, status, supplier: supplierId },
+            { invoice: search, status, supplier: supplierId, warehouse_id: warehouseId },
             { preserveScroll: true, preserveState: true }
         );
     };
@@ -191,7 +193,9 @@ export default function PayablesIndex({ payables, filters = {}, suppliers = [] }
                 {/* Filters */}
                 <form
                     onSubmit={applyFilter}
-                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end"
+                    className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 ${
+                        warehouses.length > 0 ? "lg:grid-cols-5" : "lg:grid-cols-4"
+                    } gap-3 items-end`}
                 >
                     <div className="relative w-full">
                         <IconSearch
@@ -205,6 +209,22 @@ export default function PayablesIndex({ payables, filters = {}, suppliers = [] }
                             className="w-full h-11 pl-10 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
                         />
                     </div>
+                    {warehouses.length > 0 && (
+                        <div className="w-full">
+                            <select
+                                value={warehouseId}
+                                onChange={(e) => setWarehouseId(e.target.value)}
+                                className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
+                            >
+                                <option value="">Semua Cabang</option>
+                                {warehouses.map((w) => (
+                                    <option key={w.id} value={w.id}>
+                                        {w.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                     <div className="w-full">
                         <select
                             value={supplierId}
@@ -272,6 +292,11 @@ export default function PayablesIndex({ payables, filters = {}, suppliers = [] }
                                                     Faktur: {item.vendor_invoice_number}
                                                 </p>
                                             )}
+                                            {(item.warehouse?.name || item.purchase_order?.warehouse?.name) && (
+                                                <span className="inline-block mt-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                                    {item.warehouse?.name || item.purchase_order?.warehouse?.name}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="col-span-2">
                                             <p className="text-sm text-slate-700 dark:text-slate-200">
@@ -325,6 +350,11 @@ export default function PayablesIndex({ payables, filters = {}, suppliers = [] }
                                                 <p className="text-xs text-slate-500 dark:text-slate-400">
                                                     Faktur: {item.vendor_invoice_number}
                                                 </p>
+                                            )}
+                                            {(item.warehouse?.name || item.purchase_order?.warehouse?.name) && (
+                                                <span className="inline-block px-1.5 py-0.5 text-[10px] font-medium rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                                    {item.warehouse?.name || item.purchase_order?.warehouse?.name}
+                                                </span>
                                             )}
                                             <p className="text-xs text-slate-500 dark:text-slate-400">
                                                 Jatuh tempo: {formatDate(item.due_date)}

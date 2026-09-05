@@ -66,6 +66,11 @@ class Warehouse extends Model
         return $this->hasMany(SupplierReturn::class);
     }
 
+    public function payables(): HasMany
+    {
+        return $this->hasMany(Payable::class);
+    }
+
     public function stockTransfersSource(): HasMany
     {
         return $this->hasMany(StockTransfer::class, 'source_warehouse_id');

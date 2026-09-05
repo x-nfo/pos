@@ -185,26 +185,45 @@ class HandleInertiaRequests extends Middleware
 
             if ($user->can('payables-access')) {
                 $payableAgingService = new PayableAgingService;
-                $payableAgingSummary = $payableAgingService->getAgingSummary();
+                $payableAgingSummary = $payableAgingService->getAgingSummary($scopedWarehouseId);
 
                 $payableNotifications = Payable::whereNot('status', 'paid')
                     ->whereNotNull('due_date')
                     ->whereDate('due_date', '<=', now()->addDays(3))
                     ->when($scopedWarehouseId, function ($q) use ($scopedWarehouseId) {
-                        $q->whereHas('purchaseOrder', fn ($po) => $po->where('warehouse_id', $scopedWarehouseId));
+                        $q->where(function ($sub) use ($scopedWarehouseId) {
+                            $sub->where('warehouse_id', $scopedWarehouseId)
+                                ->orWhereHas('purchaseOrder', fn ($po) => $po->where('warehouse_id', $scopedWarehouseId));
+                        });
                     })
+                    ->with([
+                        'supplier:id,name',
+                        'warehouse:id,code,name',
+                        'purchaseOrder:id,document_number,warehouse_id',
+                        'purchaseOrder.warehouse:id,code,name',
+                    ])
                     ->orderBy('due_date')
                     ->limit(5)
-                    ->get(['id', 'document_number', 'due_date', 'total', 'paid', 'status'])
+                    ->get(['id', 'supplier_id', 'purchase_order_id', 'warehouse_id', 'document_number', 'due_date', 'total', 'paid', 'status'])
                     ->map(function ($item) {
                         $remaining = max(0, ($item->total ?? 0) - ($item->paid ?? 0));
+                        $warehouseName = $item->warehouse?->name ?? $item->purchaseOrder?->warehouse?->name;
+                        $supplierName = $item->supplier?->name ?? 'Supplier';
+                        $isOverdue = $item->due_date && now()->gt($item->due_date);
+
+                        $prefix = $warehouseName ? "[{$warehouseName}] " : '';
 
                         return [
                             'id' => $item->id,
-                            'title' => "Hutang: {$item->document_number}",
-                            'subtitle' => 'Sisa '.number_format($remaining, 0, ',', '.'),
+                            'title' => "Hutang: {$supplierName}",
+                            'subtitle' => "{$prefix}No. {$item->document_number} • Sisa ".number_format($remaining, 0, ',', '.'),
                             'time' => optional($item->due_date)->diffForHumans(),
-                            'status' => $item->status,
+                            'status' => $isOverdue ? 'overdue' : $item->status,
+                            'is_overdue' => $isOverdue,
+                            'supplier_name' => $supplierName,
+                            'warehouse_name' => $warehouseName,
+                            'document_number' => $item->document_number,
+                            'remaining' => $remaining,
                             'aging_bucket' => $item->aging_bucket,
                         ];
                     });
