@@ -520,6 +520,8 @@ class PublicCatalogController extends Controller
 
         return response()->json([
             'success' => true,
+            'status' => $order->status,
+            'status_label' => $statusLabel,
             'order' => [
                 'id' => $order->id,
                 'order_number' => $order->order_number,

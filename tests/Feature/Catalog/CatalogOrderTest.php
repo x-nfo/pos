@@ -186,6 +186,8 @@ class CatalogOrderTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('success', true);
+        $response->assertJsonPath('status', CatalogOrder::STATUS_CONFIRMED);
+        $response->assertJsonPath('status_label', 'Dikonfirmasi Toko');
         $response->assertJsonPath('order.status', CatalogOrder::STATUS_CONFIRMED);
         $response->assertJsonPath('order.status_label', 'Dikonfirmasi Toko');
     }

@@ -9,6 +9,7 @@ import {
     IconBrandWhatsapp,
     IconShoppingCart,
     IconChevronDown,
+    IconReceipt,
 } from "@tabler/icons-react";
 
 export default function StorefrontHeader({
@@ -22,6 +23,7 @@ export default function StorefrontHeader({
     cartCount = 0,
     onOpenCart = null,
     isDeliveryAllowed = true,
+    latestActiveOrder = null,
 }) {
     const storeName = store.name || "Toko Kami";
     const branchName = activeBranch?.name || store.branch_name || "Gudang Utama";
@@ -195,8 +197,26 @@ export default function StorefrontHeader({
                         )}
                     </div>
 
-                    {/* 3. Action Buttons: WhatsApp & Shopping Cart */}
+                    {/* 3. Action Buttons: Active Order, WhatsApp & Shopping Cart */}
                     <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+                        {/* Active Order Live Tracker Shortcut */}
+                        {latestActiveOrder && (
+                            <a
+                                href={latestActiveOrder.status_url || `/katalog/order/${latestActiveOrder.access_token}`}
+                                className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-amber-950 text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0"
+                                title={`Pesanan Aktif: ${latestActiveOrder.order_number} (${latestActiveOrder.status_label || "Menunggu Konfirmasi"})`}
+                            >
+                                <span className="relative flex h-2 w-2 shrink-0">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-600 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-800"></span>
+                                </span>
+                                <IconReceipt size={16} className="shrink-0 hidden xs:inline" />
+                                <span className="max-w-[100px] sm:max-w-[140px] truncate text-[11px] sm:text-xs font-extrabold">
+                                    {latestActiveOrder.status_label || "Pesanan"}
+                                </span>
+                            </a>
+                        )}
+
                         {/* WhatsApp Contact */}
                         {waPhone && (
                             <a

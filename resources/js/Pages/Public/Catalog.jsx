@@ -21,6 +21,7 @@ import {
     IconChevronDown,
     IconAlertCircle,
     IconCheck,
+    IconClock,
 } from "@tabler/icons-react";
 import toast from "react-hot-toast";
 import PromoBannerCarousel from "@/Components/Public/PromoBannerCarousel";
@@ -53,6 +54,54 @@ const resolveCatalogStatusUrl = (token) => {
         }
     } catch (_) {}
     return `/katalog/order/${token}`;
+};
+
+const resolveCatalogStatusCheckUrl = (token) => {
+    try {
+        if (typeof route === "function" && route().has("catalog.order.status-check")) {
+            return route("catalog.order.status-check", token);
+        }
+    } catch (_) {}
+    return `/katalog/order/${token}/check`;
+};
+
+const STATUS_CONFIG = {
+    submitted: {
+        label: "Menunggu Konfirmasi",
+        badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800",
+        icon: IconClock,
+        desc: "Pesanan Anda sedang menunggu konfirmasi staf toko. Anda dapat memantau status secara live.",
+    },
+    confirmed: {
+        label: "Dikonfirmasi Toko",
+        badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800",
+        icon: IconCheck,
+        desc: "Pesanan telah dikonfirmasi oleh toko dan stok barang telah disiapkan.",
+    },
+    processing: {
+        label: "Sedang Disiapkan",
+        badgeColor: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800",
+        icon: IconPackage,
+        desc: "Produk pesanan Anda sedang dikemas dengan rapi oleh staf toko.",
+    },
+    ready: {
+        label: "Siap / Sedang Dikirim",
+        badgeColor: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800",
+        icon: IconTruckDelivery,
+        desc: "Pesanan Anda siap untuk diambil di toko atau sedang dalam perjalanan ke alamat.",
+    },
+    completed: {
+        label: "Selesai",
+        badgeColor: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800",
+        icon: IconCheck,
+        desc: "Pesanan telah selesai diterima. Terima kasih telah berbelanja!",
+    },
+    cancelled: {
+        label: "Dibatalkan",
+        badgeColor: "bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300 border border-rose-200 dark:border-rose-800",
+        icon: IconX,
+        desc: "Pesanan ini telah dibatalkan.",
+    },
 };
 
 export default function Catalog({
@@ -144,31 +193,82 @@ export default function Catalog({
         if (!latestActiveOrder?.access_token) return;
 
         let isMounted = true;
-        axios
-            .get(`/katalog/order/${latestActiveOrder.access_token}/check`)
-            .then((res) => {
-                if (!isMounted) return;
-                const fresh = res.data;
-                if (fresh?.status && fresh.status !== latestActiveOrder.status) {
-                    setRecentOrders((prev) => {
-                        const updated = prev.map((o) =>
-                            o.access_token === latestActiveOrder.access_token
-                                ? { ...o, status: fresh.status, status_label: fresh.status_label }
-                                : o
-                        );
-                        try {
-                            localStorage.setItem(RECENT_ORDERS_STORAGE_KEY, JSON.stringify(updated));
-                        } catch (_) {}
-                        return updated;
-                    });
-                }
-            })
-            .catch(() => {});
+
+        const checkStatus = () => {
+            axios
+                .get(resolveCatalogStatusCheckUrl(latestActiveOrder.access_token))
+                .then((res) => {
+                    if (!isMounted) return;
+                    const freshOrder = res.data?.order || res.data;
+                    const freshStatus = freshOrder?.status || res.data?.status;
+                    const freshLabel =
+                        freshOrder?.status_label ||
+                        res.data?.status_label ||
+                        STATUS_CONFIG[freshStatus]?.label;
+
+                    if (
+                        freshStatus &&
+                        (freshStatus !== latestActiveOrder.status ||
+                            (freshLabel && freshLabel !== latestActiveOrder.status_label))
+                    ) {
+                        // Toast notification for user if status progressed
+                        if (freshStatus !== latestActiveOrder.status) {
+                            if (freshStatus === "completed") {
+                                toast.success(
+                                    `Pesanan ${latestActiveOrder.order_number} telah selesai. Terima kasih!`,
+                                    { id: `order-${latestActiveOrder.order_number}`, duration: 5000 }
+                                );
+                            } else if (freshStatus === "cancelled") {
+                                toast.error(
+                                    `Pesanan ${latestActiveOrder.order_number} telah dibatalkan.`,
+                                    { id: `order-${latestActiveOrder.order_number}`, duration: 5000 }
+                                );
+                            } else if (freshLabel) {
+                                toast.success(`Status pesanan: ${freshLabel}`, {
+                                    id: `order-${latestActiveOrder.order_number}`,
+                                    duration: 4000,
+                                });
+                            }
+                        }
+
+                        setRecentOrders((prev) => {
+                            const updated = prev.map((o) =>
+                                o.access_token === latestActiveOrder.access_token
+                                    ? {
+                                          ...o,
+                                          status: freshStatus,
+                                          status_label:
+                                              freshLabel ||
+                                              o.status_label ||
+                                              STATUS_CONFIG[freshStatus]?.label ||
+                                              "Menunggu Konfirmasi",
+                                      }
+                                    : o
+                            );
+                            try {
+                                localStorage.setItem(
+                                    RECENT_ORDERS_STORAGE_KEY,
+                                    JSON.stringify(updated)
+                                );
+                            } catch (_) {}
+                            return updated;
+                        });
+                    }
+                })
+                .catch(() => {});
+        };
+
+        // Check immediately
+        checkStatus();
+
+        // Continue periodic polling every 6 seconds while active
+        const interval = setInterval(checkStatus, 6000);
 
         return () => {
             isMounted = false;
+            clearInterval(interval);
         };
-    }, [latestActiveOrder?.access_token]);
+    }, [latestActiveOrder?.access_token, latestActiveOrder?.status]);
 
     // Detail modal quantity & selected unit (UOM)
     const [modalQty, setModalQty] = useState(1);
@@ -526,7 +626,7 @@ export default function Catalog({
                     access_token: orderData.access_token,
                     status_url: trackingUrl,
                     status: orderData.status || "submitted",
-                    status_label: "Menunggu Konfirmasi",
+                    status_label: orderData.status_label || STATUS_CONFIG[orderData.status || "submitted"]?.label || "Menunggu Konfirmasi",
                     created_at: new Date().toISOString(),
                 };
                 setRecentOrders((prev) => {
@@ -648,7 +748,7 @@ export default function Catalog({
                     access_token: orderData.access_token,
                     status_url: trackingUrl,
                     status: orderData.status || "submitted",
-                    status_label: "Menunggu Konfirmasi",
+                    status_label: orderData.status_label || STATUS_CONFIG[orderData.status || "submitted"]?.label || "Menunggu Konfirmasi",
                     created_at: new Date().toISOString(),
                 };
                 setRecentOrders((prev) => {
@@ -698,6 +798,7 @@ export default function Catalog({
                 cartCount={cartCount}
                 onOpenCart={() => setIsCartOpen(true)}
                 isDeliveryAllowed={isDeliveryAllowed}
+                latestActiveOrder={latestActiveOrder}
             />
 
             {/* ============ MAIN PRODUCTS SECTION ============ */}
@@ -739,48 +840,56 @@ export default function Catalog({
                 )}
 
                 {/* Active Pending Order Banner */}
-                {latestActiveOrder && !dismissedActiveBanner && (
-                    <div className="mb-4 p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-sky-50 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-sky-950/40 border border-emerald-200/90 dark:border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-2xs">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                                <IconPackage size={18} />
-                            </span>
-                            <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                    <span className="font-bold text-slate-800 dark:text-slate-200">
-                                        Pesanan Berjalan:
-                                    </span>
-                                    <span className="font-extrabold text-primary-700 dark:text-primary-300">
-                                        {latestActiveOrder.order_number}
-                                    </span>
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/50">
-                                        {latestActiveOrder.status_label || "Menunggu Konfirmasi"}
-                                    </span>
+                {latestActiveOrder && !dismissedActiveBanner && (() => {
+                    const statusCfg = STATUS_CONFIG[latestActiveOrder.status] || STATUS_CONFIG.submitted;
+                    const StatusIcon = statusCfg.icon || IconPackage;
+                    const badgeClass = statusCfg.badgeColor || "bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/50";
+                    const statusDesc = statusCfg.desc || "Pesanan Anda sedang dalam proses toko. Anda dapat memantau status secara live.";
+
+                    return (
+                        <div className="mb-4 p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-sky-50 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-sky-950/40 border border-emerald-200/90 dark:border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-2xs">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <span className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                                    <StatusIcon size={18} />
+                                </span>
+                                <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                                            Pesanan Berjalan:
+                                        </span>
+                                        <span className="font-extrabold text-primary-700 dark:text-primary-300">
+                                            {latestActiveOrder.order_number}
+                                        </span>
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold inline-flex items-center gap-1 ${badgeClass}`}>
+                                            <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
+                                            {latestActiveOrder.status_label || statusCfg.label}
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                                        {statusDesc}
+                                    </p>
                                 </div>
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                                    Pesanan Anda sedang dalam proses toko. Anda dapat memantau status secara live.
-                                </p>
+                            </div>
+                            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                                <a
+                                    href={latestActiveOrder.status_url || `/katalog/order/${latestActiveOrder.access_token}`}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white transition shadow-xs"
+                                >
+                                    Pantau Status
+                                    <IconArrowRight size={13} />
+                                </a>
+                                <button
+                                    type="button"
+                                    onClick={() => setDismissedActiveBanner(true)}
+                                    className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+                                    title="Sembunyikan"
+                                >
+                                    <IconX size={15} />
+                                </button>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                            <a
-                                href={latestActiveOrder.status_url || `/katalog/order/${latestActiveOrder.access_token}`}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white transition shadow-xs"
-                            >
-                                Pantau Status
-                                <IconArrowRight size={13} />
-                            </a>
-                            <button
-                                type="button"
-                                onClick={() => setDismissedActiveBanner(true)}
-                                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
-                                title="Sembunyikan"
-                            >
-                                <IconX size={15} />
-                            </button>
-                        </div>
-                    </div>
-                )}
+                    );
+                })()}
 
                 {/* Category Chips (Horizontal Scroll) */}
                 <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 mb-3 sm:mb-4 scrollbar-hide -mx-1 px-1">
@@ -1316,7 +1425,7 @@ export default function Catalog({
                                             <IconAlertCircle size={16} className="shrink-0 text-amber-600 mt-0.5" />
                                             <div>
                                                 <span className="font-bold">Perhatian:</span> Anda memiliki pesanan aktif sebelumnya (
-                                                <span className="font-bold">{latestActiveOrder.order_number}</span>). Pesanan baru ini akan diproses sebagai pesanan terpisah.
+                                                <span className="font-bold">{latestActiveOrder.order_number}</span> — <span className="font-semibold">{latestActiveOrder.status_label || "Menunggu Konfirmasi"}</span>). Pesanan baru ini akan diproses sebagai pesanan terpisah.
                                             </div>
                                         </div>
                                     )}
