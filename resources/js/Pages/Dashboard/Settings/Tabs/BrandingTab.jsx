@@ -663,24 +663,7 @@ export default function BrandingTab({ settings, branding }) {
                         </div>
                     </div>
 
-                    {/* Notice: Pengelolaan Banner Katalog Terpusat di Tab Banner Promo */}
-                    <div className="bg-amber-50/70 dark:bg-amber-950/30 rounded-3xl border border-amber-200/80 dark:border-amber-900/50 p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3.5">
-                            <div className="p-2.5 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 shrink-0">
-                                <IconSparkles size={22} />
-                            </div>
-                            <div>
-                                <h3 className="text-sm sm:text-base font-bold text-amber-950 dark:text-amber-100">
-                                    Pengelolaan Banner Slider & Banner Statis Katalog
-                                </h3>
-                                <p className="text-xs text-amber-800/90 dark:text-amber-300/80 mt-0.5">
-                                    Hero slider banner promo (multi-gambar ala Alfagift) serta banner promo statis kini dikelola secara terpusat pada tab <strong>Banner Promo</strong>.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Section 6: Footer & Watermark Agency */}
+                    {/* Section 5: Footer & Watermark Agency */}
                     <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
                         <div className="flex items-center gap-3 pb-6 border-b border-slate-100 dark:border-slate-800">
                             <div className="p-2.5 rounded-xl bg-cyan-50 dark:bg-cyan-950/50 text-cyan-600 dark:text-cyan-400">
