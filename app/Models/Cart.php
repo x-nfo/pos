@@ -23,7 +23,7 @@ class Cart extends Model
     }
 
     protected $fillable = [
-        'cashier_id', 'warehouse_id', 'product_id', 'unit_id', 'conversion_factor', 'qty', 'price', 'hold_id', 'hold_label', 'held_at',
+        'cashier_id', 'warehouse_id', 'product_id', 'unit_id', 'conversion_factor', 'qty', 'price', 'hold_id', 'hold_label', 'held_at', 'catalog_order_id',
     ];
 
     protected $appends = [
@@ -61,6 +61,11 @@ class Cart extends Model
     public function unit()
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    public function catalogOrder()
+    {
+        return $this->belongsTo(CatalogOrder::class);
     }
 
     public function scopeActive($query)

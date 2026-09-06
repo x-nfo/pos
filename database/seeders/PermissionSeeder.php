@@ -172,6 +172,11 @@ class PermissionSeeder extends Seeder
         $create('dine-orders-access');
         $create('dine-orders-process');
 
+        // catalog orders permissions
+        $create('catalog-orders-access');
+        $create('catalog-orders-process');
+        $create('catalog-orders-cancel');
+
         // store profile settings
         $create('store-settings-access');
         $create('store-settings-update');

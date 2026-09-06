@@ -22,6 +22,8 @@ export function formatRupiah(val) {
 }
 
 export function generateWhatsAppOrderMessage({
+    orderNumber = "",
+    trackingUrl = "",
     storeName = "Toko",
     items = [],
     customerName = "",
@@ -34,6 +36,9 @@ export function generateWhatsAppOrderMessage({
     const lines = [];
 
     lines.push(`Halo *${storeName}*, saya ingin memesan dari toko online:`);
+    if (orderNumber) {
+        lines.push(`🔖 *No. Pesanan:* *${orderNumber}*`);
+    }
     lines.push("");
     lines.push("📋 *RINCIAN PESANAN:*");
 
@@ -41,7 +46,7 @@ export function generateWhatsAppOrderMessage({
         const qty = item.qty || 1;
         const price = item.final_price || item.sell_price || 0;
         const subtotal = price * qty;
-        lines.push(`${index + 1}. *${item.title}* (${qty}x) — ${formatRupiah(subtotal)}`);
+        lines.push(`${index + 1}. *${item.title || item.product_title}* (${qty}x) — ${formatRupiah(subtotal)}`);
     });
 
     lines.push("");
@@ -62,6 +67,11 @@ export function generateWhatsAppOrderMessage({
 
     if (notes) {
         lines.push(`• *Catatan:* ${notes}`);
+    }
+
+    if (trackingUrl) {
+        lines.push("");
+        lines.push(`📍 *Lacak Status Pesanan:* ${trackingUrl}`);
     }
 
     lines.push("");

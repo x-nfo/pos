@@ -43,6 +43,7 @@ export default function Mobile({
     carts_total = 0,
     heldCarts = [],
     customers = [],
+    activeCatalogCustomer = null,
     products = [],
     categories = [],
     initialPricingPreview = { items: [], summary: {} },
@@ -87,7 +88,15 @@ export default function Mobile({
     const [addingProductId, setAddingProductId] = useState(null);
 
     // Customer & Pricing State
-    const [selectedCustomer, setSelectedCustomer] = useState(WALK_IN_CUSTOMER);
+    const [selectedCustomer, setSelectedCustomer] = useState(
+        activeCatalogCustomer || WALK_IN_CUSTOMER
+    );
+
+    useEffect(() => {
+        if (activeCatalogCustomer && (!selectedCustomer || selectedCustomer.id !== activeCatalogCustomer.id)) {
+            setSelectedCustomer(activeCatalogCustomer);
+        }
+    }, [activeCatalogCustomer]);
     const [pricingPreview, setPricingPreview] = useState(initialPricingPreview);
     const [isLoadingPricing, setIsLoadingPricing] = useState(false);
     const [discountType, setDiscountType] = useState("nominal");

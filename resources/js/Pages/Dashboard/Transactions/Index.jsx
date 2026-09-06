@@ -58,6 +58,7 @@ export default function Index({
     carts_total = 0,
     heldCarts = [],
     customers = [],
+    activeCatalogCustomer = null,
     products = [],
     categories = [],
     initialPricingPreview = { items: [], summary: {} },
@@ -83,7 +84,15 @@ export default function Index({
     const [isSearching, setIsSearching] = useState(false);
     const [addingProductId, setAddingProductId] = useState(null);
     const [removingItemId, setRemovingItemId] = useState(null);
-    const [selectedCustomer, setSelectedCustomer] = useState(WALK_IN_CUSTOMER);
+    const [selectedCustomer, setSelectedCustomer] = useState(
+        activeCatalogCustomer || WALK_IN_CUSTOMER
+    );
+
+    useEffect(() => {
+        if (activeCatalogCustomer && (!selectedCustomer || selectedCustomer.id !== activeCatalogCustomer.id)) {
+            setSelectedCustomer(activeCatalogCustomer);
+        }
+    }, [activeCatalogCustomer]);
     const [pricingPreview, setPricingPreview] = useState(initialPricingPreview);
     const [isLoadingPricing, setIsLoadingPricing] = useState(false);
     const [discountType, setDiscountType] = useState("nominal");

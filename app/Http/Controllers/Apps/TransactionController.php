@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Models\BankAccount;
 use App\Models\Cart;
+use App\Models\CatalogOrder;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\CustomerVoucher;
@@ -84,11 +85,13 @@ class TransactionController extends Controller
         $warehouseId = $activeShift?->warehouse_id;
 
         // Get active cart items (not held)
-        $carts = Cart::with(['product.category', 'unit'])
+        $carts = Cart::with(['product.category', 'unit', 'catalogOrder.customer'])
             ->where('cashier_id', $userId)
             ->active()
             ->latest()
             ->get();
+
+        $activeCatalogCustomer = $carts->firstWhere('catalog_order_id', '!=', null)?->catalogOrder?->customer;
 
         $initialPricingPreview = $this->loyaltyService->previewCheckout(
             $this->pricingService->previewCart($carts, null)
@@ -226,6 +229,13 @@ class TransactionController extends Controller
             'carts_total' => $carts_total,
             'heldCarts' => $heldCarts,
             'customers' => $customers,
+            'activeCatalogCustomer' => $activeCatalogCustomer ? [
+                'id' => $activeCatalogCustomer->id,
+                'name' => $activeCatalogCustomer->name,
+                'phone' => $activeCatalogCustomer->phone,
+                'no_telp' => $activeCatalogCustomer->no_telp,
+                'address' => $activeCatalogCustomer->address,
+            ] : null,
             'products' => $products,
             'categories' => $categories,
             'initialPricingPreview' => $initialPricingPreview,
@@ -626,14 +636,26 @@ class TransactionController extends Controller
             return back()->with('error', 'Transaksi ditahan tidak ditemukan');
         }
 
+        $catalogOrderId = null;
+        if (str_starts_with($holdId, 'CATALOG-')) {
+            $orderNumber = substr($holdId, strlen('CATALOG-'));
+            $catalogOrder = CatalogOrder::where('order_number', $orderNumber)->first();
+            $catalogOrderId = $catalogOrder?->id;
+        }
+
         // Resume by clearing hold info
+        $updateData = [
+            'hold_id' => null,
+            'hold_label' => null,
+            'held_at' => null,
+        ];
+        if ($catalogOrderId) {
+            $updateData['catalog_order_id'] = $catalogOrderId;
+        }
+
         Cart::where('cashier_id', $userId)
             ->forHold($holdId)
-            ->update([
-                'hold_id' => null,
-                'hold_label' => null,
-                'held_at' => null,
-            ]);
+            ->update($updateData);
 
         return back()->with('success', 'Transaksi dilanjutkan');
     }

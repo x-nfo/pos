@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\PaymentGatewayException;
 use App\Models\BankAccount;
 use App\Models\Cart;
+use App\Models\CatalogOrder;
 use App\Models\Customer;
 use App\Models\CustomerVoucher;
 use App\Models\DiscountApprovalLog;
@@ -31,6 +32,7 @@ class CheckoutService
         private readonly UnitConversionService $unitConversionService,
         private readonly PaymentGatewayManager $paymentGatewayManager,
         private readonly ThermalPrintService $thermalPrintService,
+        private readonly AuditLogService $auditLogService,
     ) {}
 
     /**
@@ -119,6 +121,27 @@ class CheckoutService
                 abort(422, 'Keranjang kosong.');
             }
 
+            $catalogOrderId = $carts->pluck('catalog_order_id')->filter()->first();
+            $catalogOrder = $catalogOrderId ? CatalogOrder::with('items')->find($catalogOrderId) : null;
+            $isFromConfirmedCatalog = $catalogOrder && in_array($catalogOrder->status, [
+                CatalogOrder::STATUS_CONFIRMED,
+                CatalogOrder::STATUS_PROCESSING,
+                CatalogOrder::STATUS_READY,
+            ]);
+
+            if (! $customer && $catalogOrder?->customer_id) {
+                $customer = Customer::find($catalogOrder->customer_id);
+            } elseif (! $customer && $catalogOrder?->customer_name) {
+                $customer = app(CatalogOrderService::class)->findOrCreateCustomer(
+                    $catalogOrder->customer_name,
+                    $catalogOrder->customer_phone,
+                    $catalogOrder->delivery_address
+                );
+                if ($customer) {
+                    $catalogOrder->update(['customer_id' => $customer->id]);
+                }
+            }
+
             // Validate stock availability for all products in the cart using lockForUpdate
             $productRequests = [];
             foreach ($carts as $c) {
@@ -152,7 +175,8 @@ class CheckoutService
                         ? (int) ($product->warehouses()->where('warehouse_id', $effectiveWarehouseId)->lockForUpdate()->first()?->pivot->stock ?? 0)
                         : (int) $product->stock;
 
-                    if ($availableStock < $totalBaseQty) {
+                    // If items are from confirmed catalog order, their physical stock was already deducted/reserved on confirmation
+                    if (! $isFromConfirmedCatalog && $availableStock < $totalBaseQty) {
                         abort(422, "Stok untuk produk {$product->title} tidak mencukupi. Tersedia: {$availableStock}");
                     }
                 }
@@ -186,7 +210,7 @@ class CheckoutService
                 'cashier_id' => $cashier->id,
                 'cashier_shift_id' => $activeShift->id,
                 'warehouse_id' => $effectiveWarehouseId,
-                'customer_id' => $payload['customer_id'] ?? null,
+                'customer_id' => $payload['customer_id'] ?? $customer?->id ?? null,
                 'invoice' => $invoice,
                 'cash' => $cashAmount,
                 'change' => $changeAmount,
@@ -254,23 +278,26 @@ class CheckoutService
                         $stockBefore = (int) $component->stock;
                         $stockAfter = $stockBefore - $componentQty;
 
-                        if ($effectiveWarehouseId) {
-                            $pivot = ProductWarehouse::firstOrCreate([
-                                'product_id' => $component->id,
-                                'warehouse_id' => $effectiveWarehouseId,
-                            ], ['stock' => 0]);
-                            $pivot->decrement('stock', $componentQty);
+                        if (! $isFromConfirmedCatalog) {
+                            if ($effectiveWarehouseId) {
+                                $pivot = ProductWarehouse::firstOrCreate([
+                                    'product_id' => $component->id,
+                                    'warehouse_id' => $effectiveWarehouseId,
+                                ], ['stock' => 0]);
+                                $pivot->decrement('stock', $componentQty);
+                            }
                         }
-                        // $component->decrement('stock', $componentQty);
 
                         $this->stockMutationService->recordSaleOut(
                             product: $component,
                             transaction: $transaction,
                             qty: $componentQty,
                             stockBefore: $stockBefore,
-                            stockAfter: $stockAfter,
+                            stockAfter: $isFromConfirmedCatalog ? $stockBefore : $stockAfter,
                             warehouseId: $effectiveWarehouseId,
-                            notes: 'Komponen '.$component->title.' untuk bundle '.$product->title.' pada transaksi '.$transaction->invoice,
+                            notes: $isFromConfirmedCatalog
+                                ? 'Komponen '.$component->title.' untuk bundle '.$product->title.' pada transaksi '.$transaction->invoice.' (Pesanan Online '.$catalogOrder->order_number.')'
+                                : 'Komponen '.$component->title.' untuk bundle '.$product->title.' pada transaksi '.$transaction->invoice,
                             userId: $cashier->id
                         );
                     }
@@ -279,29 +306,47 @@ class CheckoutService
                     $stockBefore = (int) $product->stock;
                     $stockAfter = $stockBefore - $baseQty;
 
-                    if ($effectiveWarehouseId) {
-                        $pivot = ProductWarehouse::firstOrCreate([
-                            'product_id' => $product->id,
-                            'warehouse_id' => $effectiveWarehouseId,
-                        ], ['stock' => 0]);
-                        $pivot->decrement('stock', $baseQty);
+                    if (! $isFromConfirmedCatalog) {
+                        if ($effectiveWarehouseId) {
+                            $pivot = ProductWarehouse::firstOrCreate([
+                                'product_id' => $product->id,
+                                'warehouse_id' => $effectiveWarehouseId,
+                            ], ['stock' => 0]);
+                            $pivot->decrement('stock', $baseQty);
+                        }
                     }
-                    // $product->decrement('stock', $baseQty);
 
                     $this->stockMutationService->recordSaleOut(
                         product: $product,
                         transaction: $transaction,
                         qty: $baseQty,
                         stockBefore: $stockBefore,
-                        stockAfter: $stockAfter,
+                        stockAfter: $isFromConfirmedCatalog ? $stockBefore : $stockAfter,
                         warehouseId: $effectiveWarehouseId,
-                        notes: 'Penjualan transaksi '.$transaction->invoice,
+                        notes: $isFromConfirmedCatalog
+                            ? 'Penjualan transaksi '.$transaction->invoice.' (Pesanan Online '.$catalogOrder->order_number.')'
+                            : 'Penjualan transaksi '.$transaction->invoice,
                         userId: $cashier->id
                     );
                 }
             }
 
             Cart::where('cashier_id', $cashier->id)->active()->delete();
+
+            if ($catalogOrder) {
+                $catalogOrder->update([
+                    'status' => CatalogOrder::STATUS_COMPLETED,
+                    'transaction_id' => $transaction->id,
+                    'completed_at' => now(),
+                ]);
+
+                $this->auditLogService->log(
+                    event: 'catalog_order.completed_via_pos',
+                    module: 'catalog',
+                    auditable: $catalogOrder,
+                    description: "Pesanan online {$catalogOrder->order_number} diselesaikan melalui kasir POS dengan nomor transaksi {$transaction->invoice}",
+                );
+            }
 
             $this->loyaltyService->finalizeTransaction($transaction, $customer, $checkoutPreview);
 

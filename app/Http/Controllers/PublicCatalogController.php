@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CatalogOrder;
 use App\Models\Category;
 use App\Models\PricingRule;
 use App\Models\Product;
 use App\Models\PromoBanner;
 use App\Models\Setting;
 use App\Models\Warehouse;
+use App\Services\CatalogOrderService;
 use App\Services\OperatingHoursService;
 use App\Services\PricingService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,6 +24,7 @@ class PublicCatalogController extends Controller
     public function __construct(
         private PricingService $pricingService,
         private OperatingHoursService $operatingHoursService,
+        private CatalogOrderService $catalogOrderService,
     ) {}
 
     public function index(Request $request): Response
@@ -303,6 +309,180 @@ class PublicCatalogController extends Controller
                 'q' => $search,
                 'category_id' => $categoryId ?? 'all',
                 'cabang' => $activeBranch?->code,
+            ],
+        ]);
+    }
+
+    /**
+     * Submit an online order from the public catalog
+     */
+    public function checkout(Request $request): JsonResponse|RedirectResponse
+    {
+        $validated = $request->validate([
+            'warehouse_id' => ['required', 'integer', 'exists:warehouses,id'],
+            'customer_name' => ['required', 'string', 'max:100'],
+            'customer_phone' => ['nullable', 'string', 'max:30'],
+            'delivery_method' => ['required', 'string', 'in:pickup,delivery'],
+            'delivery_address' => ['required_if:delivery_method,delivery', 'nullable', 'string', 'max:500'],
+            'notes' => ['nullable', 'string', 'max:500'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
+            'items.*.qty' => ['required', 'integer', 'min:1'],
+            'items.*.unit_id' => ['nullable', 'integer', 'exists:units,id'],
+            'items.*.note' => ['nullable', 'string', 'max:255'],
+        ], [
+            'warehouse_id.required' => 'Cabang toko harus dipilih.',
+            'customer_name.required' => 'Nama pemesan wajib diisi.',
+            'delivery_method.required' => 'Metode pengambilan pesanan harus dipilih.',
+            'delivery_address.required_if' => 'Alamat pengiriman wajib diisi untuk opsi kirim ke alamat.',
+            'items.required' => 'Keranjang belanja masih kosong.',
+            'items.min' => 'Keranjang belanja minimal memuat 1 barang.',
+        ]);
+
+        $warehouse = Warehouse::findOrFail($validated['warehouse_id']);
+        $opStatus = $this->operatingHoursService->getWarehouseStatus($warehouse);
+
+        if (! ($opStatus['is_open'] ?? true)) {
+            throw ValidationException::withMessages([
+                'store' => 'Maaf, toko sedang tutup ('.($opStatus['badge_text'] ?? 'Tutup').'). Pemesanan online belum dapat diproses.',
+            ]);
+        }
+
+        if ($validated['delivery_method'] === CatalogOrder::DELIVERY_SHIPPING) {
+            $globalDelivery = Setting::getBool('catalog_delivery_enabled', true);
+            $branchDelivery = $warehouse->catalog_delivery_enabled ?? true;
+            if (! $globalDelivery || ! $branchDelivery) {
+                throw ValidationException::withMessages([
+                    'delivery_method' => 'Layanan pengiriman ke alamat sedang dinonaktifkan untuk cabang ini.',
+                ]);
+            }
+
+            if (empty(trim($validated['delivery_address'] ?? ''))) {
+                throw ValidationException::withMessages([
+                    'delivery_address' => 'Alamat pengiriman wajib diisi untuk opsi kirim ke alamat.',
+                ]);
+            }
+        }
+
+        $order = $this->catalogOrderService->createOrder($validated);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Pesanan Anda berhasil dibuat!',
+                'order' => [
+                    'id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'access_token' => $order->access_token,
+                    'subtotal' => $order->subtotal,
+                    'grand_total' => $order->grand_total,
+                    'status' => $order->status,
+                    'status_url' => route('catalog.order.status', $order->access_token),
+                ],
+            ]);
+        }
+
+        return redirect()->route('catalog.order.status', $order->access_token);
+    }
+
+    /**
+     * Display the public order tracking page
+     */
+    public function orderStatus(string $accessToken): Response
+    {
+        $order = CatalogOrder::with(['items.product', 'warehouse'])
+            ->where('access_token', $accessToken)
+            ->firstOrFail();
+
+        $storeLogo = Setting::get('store_logo');
+        if ($storeLogo && ! str_starts_with($storeLogo, 'http') && ! str_starts_with($storeLogo, '/storage')) {
+            $storeLogo = asset('storage/'.ltrim($storeLogo, '/'));
+        }
+
+        $branchPhone = $order->warehouse?->phone;
+        $rawPhone = $branchPhone ?: Setting::get('store_phone', '');
+        $cleanPhone = preg_replace('/[^0-9]/', '', $rawPhone);
+        if (str_starts_with($cleanPhone, '0')) {
+            $cleanPhone = '62'.substr($cleanPhone, 1);
+        }
+
+        $storeInfo = [
+            'name' => Setting::get('store_name', config('app.name', 'Toko Kami')),
+            'logo' => $storeLogo,
+            'phone' => $rawPhone,
+            'wa_number' => $cleanPhone,
+            'address' => $order->warehouse?->address ?: Setting::get('store_address', ''),
+        ];
+
+        return Inertia::render('Public/CatalogOrderStatus', [
+            'order' => [
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'access_token' => $order->access_token,
+                'status' => $order->status,
+                'customer_name' => $order->customer_name,
+                'customer_phone' => $order->customer_phone,
+                'delivery_method' => $order->delivery_method,
+                'delivery_address' => $order->delivery_address,
+                'notes' => $order->notes,
+                'subtotal' => $order->subtotal,
+                'shipping_cost' => $order->shipping_cost,
+                'grand_total' => $order->grand_total,
+                'cancellation_reason' => $order->cancellation_reason,
+                'created_at' => $order->created_at?->toISOString(),
+                'confirmed_at' => $order->confirmed_at?->toISOString(),
+                'completed_at' => $order->completed_at?->toISOString(),
+                'cancelled_at' => $order->cancelled_at?->toISOString(),
+                'warehouse' => [
+                    'id' => $order->warehouse?->id,
+                    'name' => $order->warehouse?->name,
+                    'address' => $order->warehouse?->address,
+                    'phone' => $order->warehouse?->phone,
+                ],
+                'items' => $order->items->map(fn ($item) => [
+                    'id' => $item->id,
+                    'product_title' => $item->product_title,
+                    'qty' => $item->qty,
+                    'price' => $item->price,
+                    'subtotal' => $item->subtotal,
+                    'note' => $item->note,
+                    'image' => $item->product?->image,
+                ]),
+            ],
+            'store' => $storeInfo,
+        ]);
+    }
+
+    /**
+     * Polling endpoint for real-time status checks
+     */
+    public function orderStatusCheck(string $accessToken): JsonResponse
+    {
+        $order = CatalogOrder::where('access_token', $accessToken)
+            ->firstOrFail(['id', 'order_number', 'status', 'cancellation_reason', 'confirmed_at', 'completed_at', 'cancelled_at', 'updated_at']);
+
+        $statusLabel = match ($order->status) {
+            CatalogOrder::STATUS_SUBMITTED => 'Menunggu Konfirmasi',
+            CatalogOrder::STATUS_CONFIRMED => 'Dikonfirmasi Toko',
+            CatalogOrder::STATUS_PROCESSING => 'Sedang Disiapkan',
+            CatalogOrder::STATUS_READY => 'Siap Diambil / Sedang Dikirim',
+            CatalogOrder::STATUS_COMPLETED => 'Selesai',
+            CatalogOrder::STATUS_CANCELLED => 'Dibatalkan',
+            default => $order->status,
+        };
+
+        return response()->json([
+            'success' => true,
+            'order' => [
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'status' => $order->status,
+                'status_label' => $statusLabel,
+                'cancellation_reason' => $order->cancellation_reason,
+                'confirmed_at' => $order->confirmed_at?->toISOString(),
+                'completed_at' => $order->completed_at?->toISOString(),
+                'cancelled_at' => $order->cancelled_at?->toISOString(),
+                'updated_at' => $order->updated_at?->toISOString(),
             ],
         ]);
     }

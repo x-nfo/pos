@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\CashierShift;
+use App\Models\CatalogOrder;
 use App\Models\DineOrder;
 use App\Models\Payable;
 use App\Models\Receivable;
@@ -45,6 +46,7 @@ class HandleInertiaRequests extends Middleware
         $pendingApprovalCount = 0;
         $pendingBankPaymentCount = 0;
         $pendingDineOrdersCount = 0;
+        $pendingCatalogOrdersCount = 0;
 
         if ($request->user()) {
             $user = $request->user();
@@ -117,6 +119,12 @@ class HandleInertiaRequests extends Middleware
 
             if ($user->can('dine-orders-access')) {
                 $pendingDineOrdersCount = DineOrder::pending()->count();
+            }
+
+            if ($user->can('catalog-orders-access')) {
+                $pendingCatalogOrdersCount = CatalogOrder::pending()
+                    ->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
+                    ->count();
             }
 
             $lowStockNotifications = DB::table('product_warehouse')
@@ -322,6 +330,7 @@ class HandleInertiaRequests extends Middleware
             'storeProfile' => $storeProfile,
             'pendingApprovalCount' => $pendingApprovalCount,
             'pendingDineOrdersCount' => $pendingDineOrdersCount,
+            'pendingCatalogOrdersCount' => $pendingCatalogOrdersCount,
             'appVersion' => config('app.version'),
             'wa_ready' => $waReady,
             'security' => [

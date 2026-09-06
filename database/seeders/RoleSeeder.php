@@ -67,6 +67,7 @@ class RoleSeeder extends Seeder
         $this->createRoleWithPermissions('printer-settings-access', '%printer-settings%');
         $this->createRoleWithPermissions('loyalty-settings-access', '%loyalty-settings%');
         $this->createRoleWithPermissions('target-settings-access', '%target-settings%');
+        $this->createRoleWithPermissions('catalog-orders-access', '%catalog-orders%');
 
         $superAdminRole = Role::firstOrCreate(['name' => 'super-admin']);
         $superAdminRole->syncPermissions(Permission::all());
@@ -113,6 +114,9 @@ class RoleSeeder extends Seeder
             'dine-tables-access',
             'dine-orders-access',
             'dine-orders-process',
+            'catalog-orders-access',
+            'catalog-orders-process',
+            'catalog-orders-cancel',
             'store-settings-access',
             'store-settings-update',
         ])->get();
@@ -133,6 +137,8 @@ class RoleSeeder extends Seeder
             'sales-returns-create',
             'dine-orders-access',
             'dine-orders-process',
+            'catalog-orders-access',
+            'catalog-orders-process',
         ])->get();
         $cashierRole->syncPermissions($cashierPermissions);
 

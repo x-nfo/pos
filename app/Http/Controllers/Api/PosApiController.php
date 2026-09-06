@@ -10,6 +10,7 @@ use App\Http\Resources\ProductResource;
 use App\Http\Resources\TransactionResource;
 use App\Http\Traits\ApiResponder;
 use App\Models\Cart;
+use App\Models\CatalogOrder;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Transaction;
@@ -476,11 +477,23 @@ class PosApiController extends Controller
             return $this->notFound('Transaksi ditahan tidak ditemukan.');
         }
 
-        Cart::where('cashier_id', $userId)->forHold($holdId)->update([
+        $catalogOrderId = null;
+        if (str_starts_with($holdId, 'CATALOG-')) {
+            $orderNumber = substr($holdId, strlen('CATALOG-'));
+            $catalogOrder = CatalogOrder::where('order_number', $orderNumber)->first();
+            $catalogOrderId = $catalogOrder?->id;
+        }
+
+        $updateData = [
             'hold_id' => null,
             'hold_label' => null,
             'held_at' => null,
-        ]);
+        ];
+        if ($catalogOrderId) {
+            $updateData['catalog_order_id'] = $catalogOrderId;
+        }
+
+        Cart::where('cashier_id', $userId)->forHold($holdId)->update($updateData);
 
         return $this->ok(null, 'Transaksi dilanjutkan');
     }

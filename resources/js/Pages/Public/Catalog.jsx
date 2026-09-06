@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Head, router } from "@inertiajs/react";
+import axios from "axios";
 import PublicLayout from "@/Layouts/PublicLayout";
 import {
     IconSearch,
@@ -19,6 +20,7 @@ import {
     IconArrowRight,
     IconChevronDown,
     IconAlertCircle,
+    IconCheck,
 } from "@tabler/icons-react";
 import toast from "react-hot-toast";
 import PromoBannerCarousel from "@/Components/Public/PromoBannerCarousel";
@@ -32,6 +34,26 @@ import {
 } from "@/Utils/whatsappOrder";
 
 const CART_STORAGE_KEY = "pos_catalog_cart_v1";
+const CUSTOMER_STORAGE_KEY = "pos_catalog_customer_info_v1";
+const RECENT_ORDERS_STORAGE_KEY = "pos_catalog_recent_orders_v1";
+
+const resolveCatalogCheckoutUrl = () => {
+    try {
+        if (typeof route === "function" && route().has("catalog.checkout")) {
+            return route("catalog.checkout");
+        }
+    } catch (_) {}
+    return "/katalog/order";
+};
+
+const resolveCatalogStatusUrl = (token) => {
+    try {
+        if (typeof route === "function" && route().has("catalog.order.status")) {
+            return route("catalog.order.status", token);
+        }
+    } catch (_) {}
+    return `/katalog/order/${token}`;
+};
 
 export default function Catalog({
     categories = [],
@@ -70,17 +92,136 @@ export default function Catalog({
         badge_color: "emerald",
     };
     const isStoreOpen = opStatus.is_open !== false;
-    const [customerName, setCustomerName] = useState("");
-    const [customerPhone, setCustomerPhone] = useState("");
+
+    // Load saved customer info from localStorage for returning customers
+    const [savedCustomer, setSavedCustomer] = useState(() => {
+        try {
+            const raw = localStorage.getItem(CUSTOMER_STORAGE_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (_) {
+            return null;
+        }
+    });
+    const [isAutoFilled, setIsAutoFilled] = useState(() => !!savedCustomer?.name);
+
+    const [customerName, setCustomerName] = useState(() => savedCustomer?.name || "");
+    const [customerPhone, setCustomerPhone] = useState(() => savedCustomer?.phone || "");
+    const [deliveryAddress, setDeliveryAddress] = useState(() => savedCustomer?.address || "");
+    const [rememberCustomer, setRememberCustomer] = useState(true);
+
     const [deliveryMethod, setDeliveryMethod] = useState(() => {
         if (store.delivery_enabled === false) return "pickup";
         return "delivery";
     });
-    const [deliveryAddress, setDeliveryAddress] = useState("");
     const [orderNotes, setOrderNotes] = useState("");
+    const [submittingOrder, setSubmittingOrder] = useState(false);
+
+    // Recent orders stored on device
+    const [recentOrders, setRecentOrders] = useState(() => {
+        try {
+            const raw = localStorage.getItem(RECENT_ORDERS_STORAGE_KEY);
+            if (!raw) return [];
+            const list = JSON.parse(raw);
+            const cutoff = Date.now() - 48 * 3600 * 1000;
+            return list.filter((o) => new Date(o.created_at).getTime() > cutoff);
+        } catch (_) {
+            return [];
+        }
+    });
+    const [dismissedActiveBanner, setDismissedActiveBanner] = useState(false);
+
+    // Latest active order (status not completed / cancelled)
+    const latestActiveOrder = useMemo(() => {
+        return (
+            recentOrders.find(
+                (o) => !["completed", "cancelled"].includes(o.status)
+            ) || null
+        );
+    }, [recentOrders]);
+
+    // Poll live status for latest active order
+    useEffect(() => {
+        if (!latestActiveOrder?.access_token) return;
+
+        let isMounted = true;
+        axios
+            .get(`/katalog/order/${latestActiveOrder.access_token}/check`)
+            .then((res) => {
+                if (!isMounted) return;
+                const fresh = res.data;
+                if (fresh?.status && fresh.status !== latestActiveOrder.status) {
+                    setRecentOrders((prev) => {
+                        const updated = prev.map((o) =>
+                            o.access_token === latestActiveOrder.access_token
+                                ? { ...o, status: fresh.status, status_label: fresh.status_label }
+                                : o
+                        );
+                        try {
+                            localStorage.setItem(RECENT_ORDERS_STORAGE_KEY, JSON.stringify(updated));
+                        } catch (_) {}
+                        return updated;
+                    });
+                }
+            })
+            .catch(() => {});
+
+        return () => {
+            isMounted = false;
+        };
+    }, [latestActiveOrder?.access_token]);
 
     // Detail modal quantity
     const [modalQty, setModalQty] = useState(1);
+
+    // Persist customer info to localStorage when rememberCustomer is enabled
+    useEffect(() => {
+        if (rememberCustomer && customerName.trim()) {
+            try {
+                const info = {
+                    name: customerName.trim(),
+                    phone: customerPhone.trim(),
+                    address: deliveryAddress.trim(),
+                    updated_at: new Date().toISOString(),
+                };
+                localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify(info));
+                setSavedCustomer(info);
+            } catch (_) {}
+        }
+    }, [customerName, customerPhone, deliveryAddress, rememberCustomer]);
+
+    const handleToggleRemember = (checked) => {
+        setRememberCustomer(checked);
+        if (!checked) {
+            try {
+                localStorage.removeItem(CUSTOMER_STORAGE_KEY);
+                setSavedCustomer(null);
+                setIsAutoFilled(false);
+            } catch (_) {}
+        } else if (customerName.trim()) {
+            try {
+                const info = {
+                    name: customerName.trim(),
+                    phone: customerPhone.trim(),
+                    address: deliveryAddress.trim(),
+                    updated_at: new Date().toISOString(),
+                };
+                localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify(info));
+                setSavedCustomer(info);
+            } catch (_) {}
+        }
+    };
+
+    const handleResetCustomerInfo = () => {
+        setCustomerName("");
+        setCustomerPhone("");
+        setDeliveryAddress("");
+        setSavedCustomer(null);
+        setIsAutoFilled(false);
+        try {
+            localStorage.removeItem(CUSTOMER_STORAGE_KEY);
+        } catch (_) {}
+        toast.success("Data pemesan dibersihkan");
+    };
 
     // Save cart to localStorage
     useEffect(() => {
@@ -237,7 +378,7 @@ export default function Catalog({
     };
 
     // WhatsApp Checkout handler
-    const handleWhatsAppCheckout = () => {
+    const handleWhatsAppCheckout = async () => {
         if (!isStoreOpen) {
             toast.error(`Toko sedang tutup (${opStatus.badge_text || "Tutup"}). Pemesanan belum dapat diproses.`);
             return;
@@ -258,33 +399,109 @@ export default function Catalog({
             return;
         }
 
+        const effectiveDeliveryMethod = isDeliveryAllowed ? deliveryMethod : "pickup";
         const storeDisplayName = activeBranch
             ? `${store.name || "Toko"} (${activeBranch.name})`
             : (store.name || "Toko");
 
-        const effectiveDeliveryMethod = isDeliveryAllowed ? deliveryMethod : "pickup";
+        setSubmittingOrder(true);
+        const toastId = toast.loading("Memproses pesanan Anda...");
 
-        const message = generateWhatsAppOrderMessage({
-            storeName: storeDisplayName,
-            items: cart,
-            customerName: customerName.trim(),
-            customerPhone: customerPhone.trim(),
-            deliveryMethod: effectiveDeliveryMethod,
-            deliveryAddress: effectiveDeliveryMethod === "delivery" ? deliveryAddress.trim() : "",
-            notes: orderNotes.trim(),
-            totalAmount: cartTotal,
-        });
+        try {
+            const payload = {
+                warehouse_id: activeBranch?.id || branches[0]?.id,
+                customer_name: customerName.trim(),
+                customer_phone: customerPhone.trim() || null,
+                delivery_method: effectiveDeliveryMethod,
+                delivery_address: effectiveDeliveryMethod === "delivery" ? deliveryAddress.trim() : null,
+                notes: orderNotes.trim() || null,
+                items: cart.map((item) => ({
+                    product_id: item.id,
+                    qty: item.qty,
+                    unit_id: item.unit_id || null,
+                })),
+            };
 
-        openWhatsAppOrder({
-            phone: store.wa_number || store.phone,
-            message,
-        });
+            const res = await axios.post(resolveCatalogCheckoutUrl(), payload);
+            const orderData = res.data?.order;
 
-        toast.success("Membuka obrolan WhatsApp...", { duration: 3000 });
+            toast.success("Pesanan berhasil dibuat!", { id: toastId });
+
+            const trackingUrl = orderData?.status_url || (orderData?.access_token ? resolveCatalogStatusUrl(orderData.access_token) : "");
+
+            const message = generateWhatsAppOrderMessage({
+                orderNumber: orderData?.order_number,
+                trackingUrl,
+                storeName: storeDisplayName,
+                items: cart,
+                customerName: customerName.trim(),
+                customerPhone: customerPhone.trim(),
+                deliveryMethod: effectiveDeliveryMethod,
+                deliveryAddress: effectiveDeliveryMethod === "delivery" ? deliveryAddress.trim() : "",
+                notes: orderNotes.trim(),
+                totalAmount: cartTotal,
+            });
+
+            openWhatsAppOrder({
+                phone: store.wa_number || store.phone,
+                message,
+            });
+
+            setCart([]);
+            try {
+                localStorage.removeItem(CART_STORAGE_KEY);
+            } catch (_) {}
+
+            setIsCartOpen(false);
+
+            if (rememberCustomer && customerName.trim()) {
+                try {
+                    const info = {
+                        name: customerName.trim(),
+                        phone: customerPhone.trim(),
+                        address: deliveryAddress.trim(),
+                        updated_at: new Date().toISOString(),
+                    };
+                    localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify(info));
+                    setSavedCustomer(info);
+                } catch (_) {}
+            }
+
+            if (orderData?.order_number && orderData?.access_token) {
+                const newRecentOrder = {
+                    order_number: orderData.order_number,
+                    access_token: orderData.access_token,
+                    status_url: trackingUrl,
+                    status: orderData.status || "submitted",
+                    status_label: "Menunggu Konfirmasi",
+                    created_at: new Date().toISOString(),
+                };
+                setRecentOrders((prev) => {
+                    const updated = [newRecentOrder, ...prev.filter((o) => o.order_number !== newRecentOrder.order_number)].slice(0, 5);
+                    try {
+                        localStorage.setItem(RECENT_ORDERS_STORAGE_KEY, JSON.stringify(updated));
+                    } catch (_) {}
+                    return updated;
+                });
+            }
+
+            if (trackingUrl) {
+                router.visit(trackingUrl);
+            }
+        } catch (err) {
+            console.error(err);
+            const errMsg =
+                err.response?.data?.errors?.customer_phone?.[0] ||
+                err.response?.data?.errors?.items?.[0] ||
+                err.response?.data?.message ||
+                "Gagal membuat pesanan. Silakan periksa kembali keranjang Anda.";
+            toast.error(errMsg, { id: toastId, duration: 6000 });
+            setSubmittingOrder(false);
+        }
     };
 
     // Instant buy from modal
-    const handleInstantBuy = (product, qty) => {
+    const handleInstantBuy = async (product, qty) => {
         if (!isStoreOpen) {
             toast.error(`Maaf, toko sedang tutup (${opStatus.badge_text || "Tutup"})`);
             return;
@@ -298,35 +515,104 @@ export default function Catalog({
             return;
         }
 
+        const effectiveDeliveryMethod = isDeliveryAllowed ? deliveryMethod : "pickup";
+        if (effectiveDeliveryMethod === "delivery" && !deliveryAddress.trim()) {
+            addToCart(product, qty, false);
+            setSelectedProduct(null);
+            setIsCartOpen(true);
+            toast("Silakan lengkapi alamat pengiriman di keranjang", { icon: "📝" });
+            return;
+        }
+
         const storeDisplayName = activeBranch
             ? `${store.name || "Toko"} (${activeBranch.name})`
             : (store.name || "Toko");
 
-        const message = generateWhatsAppOrderMessage({
-            storeName: storeDisplayName,
-            items: [
-                {
-                    id: product.id,
-                    title: product.title,
-                    sell_price: product.sell_price,
-                    final_price: product.final_price,
-                    qty,
-                },
-            ],
-            customerName: customerName.trim(),
-            customerPhone: customerPhone.trim(),
-            deliveryMethod: isDeliveryAllowed ? deliveryMethod : "pickup",
-            deliveryAddress: isDeliveryAllowed && deliveryMethod === "delivery" ? deliveryAddress.trim() : "",
-            notes: orderNotes.trim(),
-            totalAmount: (product.final_price || product.sell_price) * qty,
-        });
+        setSubmittingOrder(true);
+        const toastId = toast.loading("Memproses pesanan langsung...");
 
-        openWhatsAppOrder({
-            phone: store.wa_number || store.phone,
-            message,
-        });
+        try {
+            const payload = {
+                warehouse_id: activeBranch?.id || branches[0]?.id,
+                customer_name: customerName.trim(),
+                customer_phone: customerPhone.trim() || null,
+                delivery_method: effectiveDeliveryMethod,
+                delivery_address: effectiveDeliveryMethod === "delivery" ? deliveryAddress.trim() : null,
+                notes: orderNotes.trim() || null,
+                items: [
+                    {
+                        product_id: product.id,
+                        qty,
+                    },
+                ],
+            };
 
-        setSelectedProduct(null);
+            const res = await axios.post(resolveCatalogCheckoutUrl(), payload);
+            const orderData = res.data?.order;
+
+            toast.success("Pesanan berhasil dibuat!", { id: toastId });
+
+            const trackingUrl = orderData?.status_url || (orderData?.access_token ? resolveCatalogStatusUrl(orderData.access_token) : "");
+
+            const message = generateWhatsAppOrderMessage({
+                orderNumber: orderData?.order_number,
+                trackingUrl,
+                storeName: storeDisplayName,
+                items: [
+                    {
+                        id: product.id,
+                        title: product.title,
+                        sell_price: product.sell_price,
+                        final_price: product.final_price,
+                        qty,
+                    },
+                ],
+                customerName: customerName.trim(),
+                customerPhone: customerPhone.trim(),
+                deliveryMethod: effectiveDeliveryMethod,
+                deliveryAddress: effectiveDeliveryMethod === "delivery" ? deliveryAddress.trim() : "",
+                notes: orderNotes.trim(),
+                totalAmount: (product.final_price || product.sell_price) * qty,
+            });
+
+            openWhatsAppOrder({
+                phone: store.wa_number || store.phone,
+                message,
+            });
+
+            setSelectedProduct(null);
+
+            if (orderData?.order_number && orderData?.access_token) {
+                const newRecentOrder = {
+                    order_number: orderData.order_number,
+                    access_token: orderData.access_token,
+                    status_url: trackingUrl,
+                    status: orderData.status || "submitted",
+                    status_label: "Menunggu Konfirmasi",
+                    created_at: new Date().toISOString(),
+                };
+                setRecentOrders((prev) => {
+                    const updated = [newRecentOrder, ...prev.filter((o) => o.order_number !== newRecentOrder.order_number)].slice(0, 5);
+                    try {
+                        localStorage.setItem(RECENT_ORDERS_STORAGE_KEY, JSON.stringify(updated));
+                    } catch (_) {}
+                    return updated;
+                });
+            }
+
+            if (trackingUrl) {
+                router.visit(trackingUrl);
+            }
+        } catch (err) {
+            console.error(err);
+            const errMsg =
+                err.response?.data?.errors?.customer_phone?.[0] ||
+                err.response?.data?.errors?.items?.[0] ||
+                err.response?.data?.message ||
+                "Gagal membuat pesanan.";
+            toast.error(errMsg, { id: toastId, duration: 6000 });
+            setSubmittingOrder(false);
+        }
     };
 
     return (
@@ -389,6 +675,50 @@ export default function Catalog({
                         <span className="hidden sm:inline-flex px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-[11px] font-bold shrink-0">
                             Hanya Lihat Katalog
                         </span>
+                    </div>
+                )}
+
+                {/* Active Pending Order Banner */}
+                {latestActiveOrder && !dismissedActiveBanner && (
+                    <div className="mb-4 p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-sky-50 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-sky-950/40 border border-emerald-200/90 dark:border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-2xs">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                                <IconPackage size={18} />
+                            </span>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                                        Pesanan Berjalan:
+                                    </span>
+                                    <span className="font-extrabold text-primary-700 dark:text-primary-300">
+                                        {latestActiveOrder.order_number}
+                                    </span>
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/50">
+                                        {latestActiveOrder.status_label || "Menunggu Konfirmasi"}
+                                    </span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                                    Pesanan Anda sedang dalam proses toko. Anda dapat memantau status secara live.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                            <a
+                                href={latestActiveOrder.status_url || `/katalog/order/${latestActiveOrder.access_token}`}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white transition shadow-xs"
+                            >
+                                Pantau Status
+                                <IconArrowRight size={13} />
+                            </a>
+                            <button
+                                type="button"
+                                onClick={() => setDismissedActiveBanner(true)}
+                                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+                                title="Sembunyikan"
+                            >
+                                <IconX size={15} />
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -857,9 +1187,45 @@ export default function Catalog({
                             {/* Customer Form */}
                             {cart.length > 0 && (
                                 <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
-                                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                        Data Pemesan
-                                    </h3>
+                                    {/* Notice if user already has an active order */}
+                                    {latestActiveOrder && (
+                                        <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                                            <IconAlertCircle size={16} className="shrink-0 text-amber-600 mt-0.5" />
+                                            <div>
+                                                <span className="font-bold">Perhatian:</span> Anda memiliki pesanan aktif sebelumnya (
+                                                <span className="font-bold">{latestActiveOrder.order_number}</span>). Pesanan baru ini akan diproses sebagai pesanan terpisah.
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                            Data Pemesan
+                                        </h3>
+                                        {isAutoFilled && customerName && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/40">
+                                                <IconCheck size={12} />
+                                                Tersimpan
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Auto-fill notification if data was restored from localStorage */}
+                                    {isAutoFilled && customerName && (
+                                        <div className="flex items-center justify-between text-[11px] text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-xl border border-emerald-200/80 dark:border-emerald-900/50">
+                                            <span className="flex items-center gap-1.5 font-medium">
+                                                <IconCheck size={14} className="text-emerald-600 shrink-0" />
+                                                Data terisi otomatis dari pesanan sebelumnya
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={handleResetCustomerInfo}
+                                                className="text-slate-400 hover:text-rose-600 text-[10px] font-semibold underline shrink-0 ml-2"
+                                            >
+                                                Reset
+                                            </button>
+                                        </div>
+                                    )}
 
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -960,6 +1326,19 @@ export default function Catalog({
                                             className="w-full px-3 py-1.5 text-xs sm:text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-primary-500/20 text-slate-900 dark:text-white"
                                         />
                                     </div>
+
+                                    {/* Remember Customer Info Option */}
+                                    <label className="flex items-center gap-2 cursor-pointer pt-1 select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={rememberCustomer}
+                                            onChange={(e) => handleToggleRemember(e.target.checked)}
+                                            className="rounded text-primary-600 focus:ring-primary-500 w-4 h-4 border-slate-300 dark:border-slate-600 dark:bg-slate-700"
+                                        />
+                                        <span className="text-xs text-slate-600 dark:text-slate-400">
+                                            Ingat data saya di perangkat ini untuk pesanan berikutnya
+                                        </span>
+                                    </label>
                                 </div>
                             )}
                         </div>
@@ -978,16 +1357,25 @@ export default function Catalog({
 
                                 <button
                                     type="button"
-                                    disabled={!isStoreOpen}
+                                    disabled={!isStoreOpen || submittingOrder}
                                     onClick={handleWhatsAppCheckout}
                                     className={`w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
-                                        !isStoreOpen
+                                        !isStoreOpen || submittingOrder
                                             ? "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none"
                                             : "bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white shadow-md shadow-emerald-600/25 cursor-pointer"
                                     }`}
                                 >
-                                    <IconBrandWhatsapp size={18} />
-                                    {!isStoreOpen ? "Toko Tutup — Belum Dapat Memesan" : "Kirim Pesanan via WhatsApp"}
+                                    {submittingOrder ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            <span>Memproses Pesanan...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <IconBrandWhatsapp size={18} />
+                                            {!isStoreOpen ? "Toko Tutup — Belum Dapat Memesan" : "Kirim Pesanan via WhatsApp"}
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         )}

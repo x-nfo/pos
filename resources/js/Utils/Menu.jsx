@@ -51,6 +51,7 @@ export default function Menu() {
 
     const pendingApprovalCount = props?.pendingApprovalCount || 0;
     const pendingBankPaymentCount = props?.pendingBankPaymentCount || 0;
+    const pendingCatalogOrdersCount = props?.pendingCatalogOrdersCount || 0;
 
     // define grouped menu navigations
     const menuNavigation = [
@@ -83,6 +84,14 @@ export default function Menu() {
                         !cleanUrl.includes("/history"),
                     icon: <IconShoppingCart size={20} strokeWidth={1.5} />,
                     permissions: hasAnyPermission(["transactions-access"]),
+                },
+                {
+                    title: t("sidebar.items.catalogOrders", { defaultValue: "Pesanan Online" }),
+                    href: route("catalog-orders.index"),
+                    active: cleanUrl.startsWith("/dashboard/catalog-orders"),
+                    icon: <IconTruckDelivery size={20} strokeWidth={1.5} />,
+                    permissions: hasAnyPermission(["catalog-orders-access"]),
+                    badge: pendingCatalogOrdersCount > 0 ? pendingCatalogOrdersCount : null,
                 },
                 {
                     title: t("sidebar.items.transactionHistory"),

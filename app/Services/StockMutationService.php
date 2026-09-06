@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CatalogOrder;
 use App\Models\DineOrder;
 use App\Models\GoodsReceiving;
 use App\Models\Product;
@@ -396,6 +397,54 @@ class StockMutationService
             'stock_before' => $stockBefore,
             'stock_after' => $stockAfter,
             'notes' => $notes ?: 'Stok keluar dari pesanan meja #'.$order->table_id,
+            'created_by' => $userId,
+        ]);
+    }
+
+    public function recordCatalogOrderOut(
+        Product $product,
+        CatalogOrder $order,
+        int $qty,
+        int $stockBefore,
+        int $stockAfter,
+        ?int $warehouseId = null,
+        ?string $notes = null,
+        ?int $userId = null
+    ): StockMutation {
+        return StockMutation::create([
+            'product_id' => $product->id,
+            'warehouse_id' => $warehouseId,
+            'reference_type' => 'catalog_order',
+            'reference_id' => $order->id,
+            'mutation_type' => 'out',
+            'qty' => $qty,
+            'stock_before' => $stockBefore,
+            'stock_after' => $stockAfter,
+            'notes' => $notes ?: 'Stok keluar dari pesanan online katalog '.$order->order_number,
+            'created_by' => $userId,
+        ]);
+    }
+
+    public function recordCatalogOrderRestore(
+        Product $product,
+        CatalogOrder $order,
+        int $qty,
+        int $stockBefore,
+        int $stockAfter,
+        ?int $warehouseId = null,
+        ?string $notes = null,
+        ?int $userId = null
+    ): StockMutation {
+        return StockMutation::create([
+            'product_id' => $product->id,
+            'warehouse_id' => $warehouseId,
+            'reference_type' => 'catalog_order_restore',
+            'reference_id' => $order->id,
+            'mutation_type' => 'in',
+            'qty' => $qty,
+            'stock_before' => $stockBefore,
+            'stock_after' => $stockAfter,
+            'notes' => $notes ?: 'Pengembalian stok pesanan katalog dibatalkan '.$order->order_number,
             'created_by' => $userId,
         ]);
     }

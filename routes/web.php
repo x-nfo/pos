@@ -4,6 +4,7 @@ use App\Http\Controllers\Apps\AgingController;
 use App\Http\Controllers\Apps\AuditLogController;
 use App\Http\Controllers\Apps\BankAccountController;
 use App\Http\Controllers\Apps\CashierShiftController;
+use App\Http\Controllers\Apps\CatalogOrderController;
 use App\Http\Controllers\Apps\CategoryController;
 use App\Http\Controllers\Apps\CrmCampaignController;
 use App\Http\Controllers\Apps\CrmReminderController;
@@ -80,6 +81,9 @@ Route::get('/', function (Request $request) {
 });
 
 Route::get('/katalog', [PublicCatalogController::class, 'index'])->name('catalog.index');
+Route::post('/katalog/order', [PublicCatalogController::class, 'checkout'])->name('catalog.checkout');
+Route::get('/katalog/order/{accessToken}', [PublicCatalogController::class, 'orderStatus'])->name('catalog.order.status');
+Route::get('/katalog/order/{accessToken}/check', [PublicCatalogController::class, 'orderStatusCheck'])->name('catalog.order.status-check');
 
 Route::get('/manifest.json', ManifestController::class)->name('manifest');
 
@@ -464,6 +468,13 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::get('/dine-orders', [App\Http\Controllers\Apps\DineOrderController::class, 'index'])->middleware('permission:dine-orders-access')->name('dine-orders.index');
     Route::post('/dine-orders/{dineOrder}/accept', [App\Http\Controllers\Apps\DineOrderController::class, 'accept'])->middleware('permission:dine-orders-process')->name('dine-orders.accept');
     Route::post('/dine-orders/{dineOrder}/reject', [App\Http\Controllers\Apps\DineOrderController::class, 'reject'])->middleware('permission:dine-orders-process')->name('dine-orders.reject');
+
+    // catalog online orders
+    Route::get('/catalog-orders', [CatalogOrderController::class, 'index'])->middleware('permission:catalog-orders-access')->name('catalog-orders.index');
+    Route::post('/catalog-orders/{catalogOrder}/confirm', [CatalogOrderController::class, 'confirm'])->middleware('permission:catalog-orders-process')->name('catalog-orders.confirm');
+    Route::post('/catalog-orders/{catalogOrder}/status', [CatalogOrderController::class, 'updateStatus'])->middleware('permission:catalog-orders-process')->name('catalog-orders.status');
+    Route::post('/catalog-orders/{catalogOrder}/cancel', [CatalogOrderController::class, 'cancel'])->middleware('permission:catalog-orders-process')->name('catalog-orders.cancel');
+    Route::post('/catalog-orders/{catalogOrder}/load-to-pos', [CatalogOrderController::class, 'loadToPos'])->middleware('permission:catalog-orders-process')->name('catalog-orders.load-to-pos');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
