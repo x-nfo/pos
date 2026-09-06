@@ -14,6 +14,7 @@ import { toast } from "react-hot-toast";
 
 export default function DashboardBottomNav() {
     const { url } = usePage();
+    const { pendingCatalogOrdersCount = 0 } = usePage().props;
     const { triggerHaptic } = useHaptic();
 
     const isDashboard = url === "/dashboard";
@@ -176,6 +177,11 @@ export default function DashboardBottomNav() {
                 >
                     <div className="relative">
                         <IconGridDots size={22} strokeWidth={isMenu ? 2.2 : 1.7} />
+                        {pendingCatalogOrdersCount > 0 && (
+                            <span className="absolute -top-1 -right-2 px-1 min-w-[15px] h-[15px] bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-xs animate-pulse">
+                                {pendingCatalogOrdersCount > 99 ? "99+" : pendingCatalogOrdersCount}
+                            </span>
+                        )}
                         {isMenu && (
                             <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary-600 dark:bg-primary-400" />
                         )}

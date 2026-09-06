@@ -123,12 +123,22 @@ const MENU_SECTIONS = [
                 highlight: true,
             },
             {
+                title: "Pesanan Online",
+                desc: "Pesanan masuk dari katalog web pelanggan",
+                routeName: "catalog-orders.index",
+                icon: IconTruckDelivery,
+                color: "text-blue-500 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400",
+                permissions: ["catalog-orders-access"],
+                badgeKey: "pendingCatalogOrdersCount",
+            },
+            {
                 title: "Riwayat Transaksi",
                 desc: "Daftar invoice, struk & pembayaran",
                 routeName: "transactions.history",
                 icon: IconHistory,
                 color: "text-teal-500 bg-teal-50 dark:bg-teal-950/60 dark:text-teal-400",
                 permissions: ["transactions-access"],
+                badgeKey: "pendingBankPaymentCount",
             },
             {
                 title: "Retur Penjualan",
@@ -153,6 +163,7 @@ const MENU_SECTIONS = [
                 icon: IconPercentage,
                 color: "text-amber-500 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-400",
                 permissions: ["discounts-approve"],
+                badgeKey: "pendingApprovalCount",
             },
         ],
     },
@@ -183,6 +194,7 @@ const MENU_SECTIONS = [
                 icon: IconReceipt2,
                 color: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-400",
                 permissions: ["dine-orders-access"],
+                badgeKey: "pendingDineOrdersCount",
             },
         ],
     },
@@ -461,10 +473,24 @@ const MENU_SECTIONS = [
 ];
 
 export default function MenuIndex() {
-    const { auth, storeProfile } = usePage().props;
+    const {
+        auth,
+        storeProfile,
+        pendingCatalogOrdersCount = 0,
+        pendingBankPaymentCount = 0,
+        pendingDineOrdersCount = 0,
+        pendingApprovalCount = 0,
+    } = usePage().props;
     const { canAny } = useAuthorization();
     const { triggerHaptic } = useHaptic();
     const [search, setSearch] = useState("");
+
+    const badgeCounts = {
+        pendingCatalogOrdersCount,
+        pendingBankPaymentCount,
+        pendingDineOrdersCount,
+        pendingApprovalCount,
+    };
 
     const user = auth?.user || {};
     const roleName = user?.roles?.[0]?.name || "Staff";
@@ -688,6 +714,35 @@ export default function MenuIndex() {
                     </div>
                 </div>
 
+                {/* 1.5. Pending Catalog Orders Alert Banner */}
+                {pendingCatalogOrdersCount > 0 && canAny(["catalog-orders-access"]) && (
+                    <Link
+                        href={resolveRoute("catalog-orders.index")}
+                        onClick={() => triggerHaptic("tap")}
+                        className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-primary-600 to-indigo-700 text-white shadow-md active:scale-[0.98] transition-all group"
+                    >
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center flex-shrink-0 shadow-xs">
+                                <IconTruckDelivery size={22} className="animate-pulse text-white" />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <p className="text-xs sm:text-sm font-black leading-tight">
+                                        {pendingCatalogOrdersCount} Pesanan Online Baru
+                                    </p>
+                                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                                </div>
+                                <p className="text-[11px] text-white/80 truncate mt-0.5">
+                                    Ada pesanan masuk dari katalog pelanggan menunggu tindakan
+                                </p>
+                            </div>
+                        </div>
+                        <span className="px-3 py-1 rounded-xl bg-white text-primary-700 text-xs font-black flex-shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                            Buka
+                        </span>
+                    </Link>
+                )}
+
                 {/* 2. Instant Search Menu */}
                 <div className="relative">
                     <IconSearch
@@ -731,6 +786,7 @@ export default function MenuIndex() {
                                 {section.items.map((item, iIdx) => {
                                     const IconComponent = item.icon;
                                     const targetHref = resolveRoute(item.routeName, item.routeParams);
+                                    const itemBadgeCount = item.badgeKey ? badgeCounts[item.badgeKey] : 0;
 
                                     return (
                                         <Link
@@ -757,10 +813,17 @@ export default function MenuIndex() {
                                                 </div>
                                             </div>
 
-                                            <IconChevronRight
-                                                size={18}
-                                                className="text-slate-300 dark:text-slate-600 flex-shrink-0"
-                                            />
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                {itemBadgeCount > 0 && (
+                                                    <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-rose-500 text-white shadow-xs animate-pulse">
+                                                        {itemBadgeCount > 99 ? "99+" : itemBadgeCount}
+                                                    </span>
+                                                )}
+                                                <IconChevronRight
+                                                    size={18}
+                                                    className="text-slate-300 dark:text-slate-600 flex-shrink-0"
+                                                />
+                                            </div>
                                         </Link>
                                     );
                                 })}

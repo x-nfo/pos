@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "@inertiajs/react";
+import { Link, usePage } from "@inertiajs/react";
 import {
     IconBuildingStore,
     IconShoppingCart,
@@ -15,6 +15,7 @@ export default function MobileBottomNav({
     cartCount = 0,
     onOpenShiftModal,
 }) {
+    const { pendingCatalogOrdersCount = 0 } = usePage().props;
     const { triggerHaptic } = useHaptic();
 
     return (
@@ -104,7 +105,14 @@ export default function MobileBottomNav({
                     onClick={() => triggerHaptic("tap")}
                     className="flex flex-col items-center justify-center gap-1 transition-all active:scale-95 text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400"
                 >
-                    <IconGridDots size={22} strokeWidth={1.8} />
+                    <div className="relative">
+                        <IconGridDots size={22} strokeWidth={1.8} />
+                        {pendingCatalogOrdersCount > 0 && (
+                            <span className="absolute -top-1 -right-2 px-1 min-w-[15px] h-[15px] bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-xs animate-pulse">
+                                {pendingCatalogOrdersCount > 99 ? "99+" : pendingCatalogOrdersCount}
+                            </span>
+                        )}
+                    </div>
                     <span className="text-[10px]">Menu</span>
                 </Link>
             </div>

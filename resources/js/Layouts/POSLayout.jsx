@@ -19,12 +19,13 @@ import {
     IconCloudUpload,
     IconDeviceMobile,
     IconGridDots,
+    IconTruckDelivery,
 } from "@tabler/icons-react";
 import Notification from "@/Components/Dashboard/Notification";
 import hasAnyPermission from "@/Utils/Permission";
 
 export default function POSLayout({ children }) {
-    const { auth, storeProfile, activeCashierShift, appVersion, branding } = usePage().props;
+    const { auth, storeProfile, activeCashierShift, appVersion, branding, pendingCatalogOrdersCount = 0 } = usePage().props;
     const { darkMode, themeSwitcher } = useTheme();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -165,6 +166,21 @@ export default function POSLayout({ children }) {
                             >
                                 <IconGridDots size={18} />
                                 <span>Menu Aplikasi</span>
+                            </Link>
+                        )}
+                        {hasAnyPermission(["catalog-orders-access"]) && (
+                            <Link
+                                href={route("catalog-orders.index")}
+                                onClick={(e) => handleOfflineRestrictedNav(e, "Pesanan Online")}
+                                className="relative flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <IconTruckDelivery size={18} />
+                                <span>Pesanan Online</span>
+                                {pendingCatalogOrdersCount > 0 && (
+                                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-500 text-white animate-pulse">
+                                        {pendingCatalogOrdersCount > 99 ? "99+" : pendingCatalogOrdersCount}
+                                    </span>
+                                )}
                             </Link>
                         )}
                         <Link
@@ -319,6 +335,26 @@ export default function POSLayout({ children }) {
                                 >
                                     <IconGridDots size={20} className="text-primary-500" />
                                     <span className="font-medium">Menu Aplikasi</span>
+                                </Link>
+                            )}
+                            {hasAnyPermission(["catalog-orders-access"]) && (
+                                <Link
+                                    href={route("catalog-orders.index")}
+                                    onClick={(e) => {
+                                        handleOfflineRestrictedNav(e, "Pesanan Online");
+                                        setShowMobileMenu(false);
+                                    }}
+                                    className="flex items-center justify-between px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <IconTruckDelivery size={20} className="text-blue-500" />
+                                        <span className="font-medium">Pesanan Online</span>
+                                    </div>
+                                    {pendingCatalogOrdersCount > 0 && (
+                                        <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-rose-500 text-white animate-pulse">
+                                            {pendingCatalogOrdersCount > 99 ? "99+" : pendingCatalogOrdersCount}
+                                        </span>
+                                    )}
                                 </Link>
                             )}
                             <Link

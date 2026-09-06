@@ -15,6 +15,7 @@ import {
     IconShoppingCart,
     IconGridDots,
     IconCloudUpload,
+    IconTruckDelivery,
 } from "@tabler/icons-react";
 import { useHaptic } from "@/Hooks/useHaptic";
 import hasAnyPermission from "@/Utils/Permission";
@@ -26,7 +27,7 @@ export default function MobileHeader({
     cartCount = 0,
     onOpenCart,
 }) {
-    const { auth, storeProfile } = usePage().props;
+    const { auth, storeProfile, pendingCatalogOrdersCount = 0 } = usePage().props;
     const { darkMode, themeSwitcher } = useTheme();
     const { triggerHaptic } = useHaptic();
     const { isOnline, pendingCount, syncOfflineTransactions } = useOfflineSync();
@@ -208,6 +209,27 @@ export default function MobileHeader({
                                     <IconDeviceDesktop size={15} />
                                     <span>Mode Desktop POS</span>
                                 </Link>
+
+                                {hasAnyPermission(["catalog-orders-access"]) && (
+                                    <Link
+                                        href={route("catalog-orders.index")}
+                                        className="flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-200"
+                                        onClick={(e) => {
+                                            handleOfflineRestrictedNav(e, "Pesanan Online");
+                                            setMenuOpen(false);
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <IconTruckDelivery size={15} className="text-blue-500" />
+                                            <span>Pesanan Online</span>
+                                        </div>
+                                        {pendingCatalogOrdersCount > 0 && (
+                                            <span className="px-1.5 py-0.5 text-[9px] font-black rounded-full bg-rose-500 text-white animate-pulse">
+                                                {pendingCatalogOrdersCount > 99 ? "99+" : pendingCatalogOrdersCount}
+                                            </span>
+                                        )}
+                                    </Link>
+                                )}
 
                                 <Link
                                     href={route("transactions.history")}
