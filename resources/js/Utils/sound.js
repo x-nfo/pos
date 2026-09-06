@@ -5,6 +5,33 @@
 
 const STORAGE_KEY = "pos_sound_enabled";
 
+let sharedAudioCtx = null;
+
+export function getOrCreateAudioContext() {
+    if (typeof window === "undefined") return null;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return null;
+
+    if (!sharedAudioCtx) {
+        sharedAudioCtx = new AudioCtx();
+    }
+    return sharedAudioCtx;
+}
+
+// Auto-unlock AudioContext on first user interaction anywhere on the page
+if (typeof window !== "undefined") {
+    const unlockAudio = () => {
+        const ctx = getOrCreateAudioContext();
+        if (ctx && ctx.state === "suspended") {
+            ctx.resume().catch(() => {});
+        }
+    };
+
+    window.addEventListener("pointerdown", unlockAudio, { capture: true, passive: true });
+    window.addEventListener("keydown", unlockAudio, { capture: true, passive: true });
+    window.addEventListener("touchstart", unlockAudio, { capture: true, passive: true });
+}
+
 export function isSoundEnabled() {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(STORAGE_KEY) !== "false";
@@ -29,12 +56,11 @@ export function toggleSoundEnabled() {
  */
 export function playSynthesizedKaChing() {
     try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return;
+        const ctx = getOrCreateAudioContext();
+        if (!ctx) return;
 
-        const ctx = new AudioCtx();
         if (ctx.state === "suspended") {
-            ctx.resume();
+            ctx.resume().catch(() => {});
         }
 
         const now = ctx.currentTime;
@@ -184,18 +210,17 @@ export function playOrderAlertChime() {
     if (typeof window === "undefined") return;
 
     try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return;
+        const ctx = getOrCreateAudioContext();
+        if (!ctx) return;
 
-        const ctx = new AudioCtx();
         if (ctx.state === "suspended") {
-            ctx.resume();
+            ctx.resume().catch(() => {});
         }
 
         const now = ctx.currentTime;
         const notes = [
-            { time: 0, freq: 880, dur: 0.35, gain: 0.18 },
-            { time: 0.15, freq: 1174.66, dur: 0.65, gain: 0.22 },
+            { time: 0, freq: 880, dur: 0.35, gain: 0.22 },
+            { time: 0.15, freq: 1174.66, dur: 0.65, gain: 0.28 },
         ];
 
         notes.forEach(({ time, freq, dur, gain: noteGain }) => {
