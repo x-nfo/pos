@@ -303,7 +303,7 @@ class CatalogOrderTest extends TestCase
 
         $response = $this->actingAs($admin)->post(route('catalog-orders.load-to-pos', $order->id));
 
-        $response->assertRedirect(route('transactions.index'));
+        $response->assertRedirect(route('transactions.index', ['resume_hold' => 'CATALOG-'.$order->order_number]));
 
         $this->assertDatabaseHas('carts', [
             'cashier_id' => $admin->id,
@@ -424,9 +424,15 @@ class CatalogOrderTest extends TestCase
             'catalog_order_id' => $order->id,
         ]);
 
-        // Completing the order clears the held cart
-        $this->actingAs($admin)->post(route('catalog-orders.status', $order->id), [
+        // Manual status update to completed is rejected (must be completed via POS checkout)
+        $failResponse = $this->actingAs($admin)->post(route('catalog-orders.status', $order->id), [
             'status' => CatalogOrder::STATUS_COMPLETED,
+        ]);
+        $failResponse->assertSessionHasErrors(['status']);
+
+        // Cancelling the order clears the held cart
+        $this->actingAs($admin)->post(route('catalog-orders.cancel', $order->id), [
+            'reason' => 'Pelanggan membatalkan pesanan',
         ]);
 
         $this->assertDatabaseMissing('carts', [
@@ -583,5 +589,87 @@ class CatalogOrderTest extends TestCase
 
         // Restored to 50
         $this->assertEquals(50, ProductWarehouse::where('product_id', $this->product->id)->where('warehouse_id', $this->warehouse->id)->value('stock'));
+    }
+
+    public function test_catalog_order_transaction_appears_in_sales_report_and_can_be_filtered_by_source(): void
+    {
+        $admin = User::factory()->create(['warehouse_id' => $this->warehouse->id]);
+        $admin->assignRole('super-admin');
+
+        CashierShift::create([
+            'user_id' => $admin->id,
+            'warehouse_id' => $this->warehouse->id,
+            'starting_cash' => 100000,
+            'status' => 'open',
+            'opened_by' => $admin->id,
+            'opened_at' => now(),
+        ]);
+
+        // 1. Create and checkout catalog order via POS
+        $order = CatalogOrder::create([
+            'warehouse_id' => $this->warehouse->id,
+            'customer_name' => 'Online Customer',
+            'customer_phone' => '081233334444',
+            'delivery_method' => 'pickup',
+            'subtotal' => 10000,
+            'grand_total' => 10000,
+            'status' => CatalogOrder::STATUS_SUBMITTED,
+        ]);
+        $order->items()->create([
+            'product_id' => $this->product->id,
+            'product_title' => $this->product->title,
+            'qty' => 2,
+            'price' => 5000,
+            'subtotal' => 10000,
+        ]);
+
+        $this->actingAs($admin)->post(route('catalog-orders.confirm', $order->id));
+        $this->actingAs($admin)->post(route('catalog-orders.load-to-pos', $order->id));
+        $this->actingAs($admin)->post(route('transactions.resume', 'CATALOG-'.$order->order_number));
+        $this->actingAs($admin)->post(route('transactions.store'), [
+            'grand_total' => 10000,
+            'cash' => 10000,
+            'change' => 0,
+        ]);
+
+        // 2. Create a normal walk-in transaction directly
+        $walkinTrx = Transaction::create([
+            'cashier_id' => $admin->id,
+            'warehouse_id' => $this->warehouse->id,
+            'invoice' => 'TRX-WALKIN-1',
+            'cash' => 5000,
+            'change' => 0,
+            'discount' => 0,
+            'grand_total' => 5000,
+        ]);
+
+        // 3. Test Sales Report without filter: contains both
+        $responseAll = $this->actingAs($admin)->get(route('reports.sales.index'));
+        $responseAll->assertOk();
+        $responseAll->assertInertia(
+            fn (Assert $page) => $page
+                ->component('Dashboard/Reports/Sales')
+                ->has('transactions.data', 2)
+        );
+
+        // 4. Filter by catalog source: only the catalog order transaction
+        $responseCatalog = $this->actingAs($admin)->get(route('reports.sales.index', ['order_source' => 'catalog']));
+        $responseCatalog->assertOk();
+        $responseCatalog->assertInertia(
+            fn (Assert $page) => $page
+                ->component('Dashboard/Reports/Sales')
+                ->has('transactions.data', 1)
+                ->where('transactions.data.0.catalog_order.order_number', $order->order_number)
+        );
+
+        // 5. Filter by direct pos source: only the walk-in transaction
+        $responsePos = $this->actingAs($admin)->get(route('reports.sales.index', ['order_source' => 'pos']));
+        $responsePos->assertOk();
+        $responsePos->assertInertia(
+            fn (Assert $page) => $page
+                ->component('Dashboard/Reports/Sales')
+                ->has('transactions.data', 1)
+                ->where('transactions.data.0.invoice', 'TRX-WALKIN-1')
+        );
     }
 }

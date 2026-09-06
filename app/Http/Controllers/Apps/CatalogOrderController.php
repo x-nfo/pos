@@ -39,7 +39,7 @@ class CatalogOrderController extends Controller
         ];
 
         $ordersQuery = (clone $baseQuery)
-            ->with(['warehouse:id,code,name,phone', 'cashier:id,name', 'items.product:id,title,barcode,image', 'items.unit:id,name,code,symbol'])
+            ->with(['warehouse:id,code,name,phone', 'cashier:id,name', 'items.product:id,title,barcode,image', 'items.unit:id,name,code,symbol', 'transaction:id,invoice'])
             ->when($status !== 'all', function ($q) use ($status) {
                 if ($status === 'active') {
                     $q->whereIn('status', [
@@ -118,7 +118,9 @@ class CatalogOrderController extends Controller
     public function updateStatus(Request $request, CatalogOrder $catalogOrder): RedirectResponse
     {
         $validated = $request->validate([
-            'status' => ['required', 'string', 'in:processing,ready,completed'],
+            'status' => ['required', 'string', 'in:processing,ready'],
+        ], [
+            'status.in' => 'Pesanan online hanya dapat diselesaikan melalui transaksi kasir POS.',
         ]);
 
         try {
@@ -127,7 +129,6 @@ class CatalogOrderController extends Controller
             $label = match ($validated['status']) {
                 CatalogOrder::STATUS_PROCESSING => 'Sedang Disiapkan',
                 CatalogOrder::STATUS_READY => $catalogOrder->delivery_method === 'delivery' ? 'Sedang Dikirim' : 'Siap Diambil',
-                CatalogOrder::STATUS_COMPLETED => 'Selesai',
                 default => $validated['status'],
             };
 
@@ -157,9 +158,9 @@ class CatalogOrderController extends Controller
     public function loadToPos(CatalogOrder $catalogOrder): RedirectResponse
     {
         try {
-            $this->catalogOrderService->loadToPosCart($catalogOrder, auth()->id());
+            $holdId = $this->catalogOrderService->loadToPosCart($catalogOrder, auth()->id());
 
-            return redirect()->route('transactions.index')->with('success', "Pesanan {$catalogOrder->order_number} berhasil dimuat ke kasir POS!");
+            return redirect()->route('transactions.index', ['resume_hold' => $holdId])->with('success', "Pesanan {$catalogOrder->order_number} berhasil dimuat ke kasir POS!");
         } catch (\Throwable $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         }

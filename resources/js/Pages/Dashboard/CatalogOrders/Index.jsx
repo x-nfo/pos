@@ -15,6 +15,7 @@ import {
     IconAlertCircle,
     IconFilter,
     IconEye,
+    IconReceipt2,
 } from "@tabler/icons-react";
 import { useAuthorization } from "@/Utils/authorization";
 import { formatRupiah, cleanWhatsAppNumber } from "@/Utils/whatsappOrder";
@@ -564,23 +565,29 @@ export default function Index({ orders, metrics, warehouses, filters }) {
                                                             )}
 
                                                             {order.status === "ready" && (
-                                                                <>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleUpdateStatus(order, "completed", "Selesai")}
-                                                                        className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition cursor-pointer"
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleLoadToPos(order)}
+                                                                    title="Selesaikan pesanan di kasir POS untuk pembayaran dan pencatatan laporan"
+                                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition cursor-pointer"
+                                                                >
+                                                                    <IconShoppingCart size={14} />
+                                                                    Selesaikan di POS
+                                                                </button>
+                                                            )}
+
+                                                            {order.status === "completed" && (
+                                                                order.transaction ? (
+                                                                    <span
+                                                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                                                        title={`Nomor Faktur POS: ${order.transaction.invoice}`}
                                                                     >
-                                                                        Selesaikan
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleLoadToPos(order)}
-                                                                        title="Muat ke Kasir POS untuk Pembayaran"
-                                                                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-900 text-white dark:bg-slate-700 dark:hover:bg-slate-600 font-bold text-xs transition cursor-pointer"
-                                                                    >
-                                                                        Ke POS
-                                                                    </button>
-                                                                </>
+                                                                        <IconReceipt2 size={13} />
+                                                                        {order.transaction.invoice}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-xs text-slate-400 italic">Selesai</span>
+                                                                )
                                                             )}
                                                         </>
                                                     )}
@@ -660,6 +667,15 @@ export default function Index({ orders, metrics, warehouses, filters }) {
                                         <p className="italic">{selectedOrder.notes}</p>
                                     </div>
                                 )}
+                                {selectedOrder.transaction && (
+                                    <div className="pt-1 border-t border-slate-200/60 dark:border-slate-700 flex justify-between items-center">
+                                        <span className="text-slate-500">Nomor Transaksi POS:</span>
+                                        <span className="inline-flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
+                                            <IconReceipt2 size={13} />
+                                            {selectedOrder.transaction.invoice}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Items List */}
@@ -693,6 +709,20 @@ export default function Index({ orders, metrics, warehouses, filters }) {
                         </div>
 
                         <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+                            {canProcess && ["confirmed", "processing", "ready"].includes(selectedOrder.status) && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const orderToLoad = selectedOrder;
+                                        setSelectedOrder(null);
+                                        handleLoadToPos(orderToLoad);
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition cursor-pointer"
+                                >
+                                    <IconShoppingCart size={14} />
+                                    Selesaikan di Kasir POS
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 onClick={() => setSelectedOrder(null)}

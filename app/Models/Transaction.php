@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class Transaction extends Model
@@ -137,6 +138,11 @@ class Transaction extends Model
     public function receivable()
     {
         return $this->hasOne(Receivable::class);
+    }
+
+    public function catalogOrder(): HasOne
+    {
+        return $this->hasOne(CatalogOrder::class);
     }
 
     public function salesReturns()

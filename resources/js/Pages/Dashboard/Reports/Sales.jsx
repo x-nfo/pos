@@ -16,6 +16,7 @@ import {
     IconX,
     IconSearch,
     IconCalendar,
+    IconBuildingStore,
 } from "@tabler/icons-react";
 
 // Summary Card Component
@@ -50,7 +51,14 @@ const defaultFilterState = {
     cashier_id: "",
     customer_id: "",
     warehouse_id: "",
+    order_source: "",
 };
+
+const ORDER_SOURCE_OPTIONS = [
+    { id: "", name: "Semua Sumber Penjualan" },
+    { id: "pos", name: "Kasir Langsung (POS)" },
+    { id: "catalog", name: "Katalog Online (Web)" },
+];
 
 const formatCurrency = (value = 0) =>
     new Intl.NumberFormat("id-ID", {
@@ -72,6 +80,7 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
         cashier_id: castFilterString(filters?.cashier_id),
         customer_id: castFilterString(filters?.customer_id),
         warehouse_id: castFilterString(filters?.warehouse_id),
+        order_source: castFilterString(filters?.order_source),
     });
 
     const cashierFromFilters = useMemo(
@@ -98,11 +107,21 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
         [warehouses, filterData.warehouse_id]
     );
 
+    const orderSourceFromFilters = useMemo(
+        () =>
+            ORDER_SOURCE_OPTIONS.find(
+                (o) => o.id === filterData.order_source
+            ) ?? ORDER_SOURCE_OPTIONS[0],
+        [filterData.order_source]
+    );
+
     const [selectedCashier, setSelectedCashier] = useState(cashierFromFilters);
     const [selectedCustomer, setSelectedCustomer] =
         useState(customerFromFilters);
     const [selectedWarehouse, setSelectedWarehouse] =
         useState(warehouseFromFilters);
+    const [selectedOrderSource, setSelectedOrderSource] =
+        useState(orderSourceFromFilters);
 
     useEffect(
         () => setSelectedCashier(cashierFromFilters),
@@ -116,6 +135,10 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
         () => setSelectedWarehouse(warehouseFromFilters),
         [warehouseFromFilters]
     );
+    useEffect(
+        () => setSelectedOrderSource(orderSourceFromFilters),
+        [orderSourceFromFilters]
+    );
     useEffect(() => {
         setFilterData({
             ...defaultFilterState,
@@ -125,6 +148,7 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
             cashier_id: castFilterString(filters?.cashier_id),
             customer_id: castFilterString(filters?.customer_id),
             warehouse_id: castFilterString(filters?.warehouse_id),
+            order_source: castFilterString(filters?.order_source),
         });
     }, [filters]);
 
@@ -150,6 +174,11 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
         handleChange("warehouse_id", warehouse?.id ? String(warehouse.id) : "");
     };
 
+    const handleSelectOrderSource = (source) => {
+        setSelectedOrderSource(source);
+        handleChange("order_source", source?.id ? String(source.id) : "");
+    };
+
     const applyFilters = (e) => {
         e.preventDefault();
         router.get(route("reports.sales.index"), filterData, {
@@ -164,6 +193,7 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
         setSelectedCashier(null);
         setSelectedCustomer(null);
         setSelectedWarehouse(null);
+        setSelectedOrderSource(ORDER_SOURCE_OPTIONS[0]);
         router.get(route("reports.sales.index"), defaultFilterState, {
             preserveScroll: true,
             preserveState: true,
@@ -184,7 +214,8 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
         filterData.end_date ||
         filterData.cashier_id ||
         filterData.customer_id ||
-        filterData.warehouse_id;
+        filterData.warehouse_id ||
+        filterData.order_source;
 
     const safeSummary = {
         orders_count: summary?.orders_count ?? 0,
@@ -318,6 +349,13 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
                                     />
                                 </div>
                                 <InputSelect
+                                    label="Sumber Penjualan"
+                                    data={ORDER_SOURCE_OPTIONS}
+                                    selected={selectedOrderSource}
+                                    setSelected={handleSelectOrderSource}
+                                    placeholder="Semua sumber penjualan"
+                                />
+                                <InputSelect
                                     label="Kasir"
                                     data={cashiers}
                                     selected={selectedCashier}
@@ -419,8 +457,21 @@ const Sales = ({ transactions, summary, filters, cashiers, customers, warehouses
                                                     (currentPage - 1) * perPage}
                                             </td>
                                             <td className="px-4 py-4 text-sm font-semibold text-slate-900 dark:text-white">
-                                                <div className="flex flex-col sm:flex-row sm:items-center gap-1.5">
+                                                <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 flex-wrap">
                                                     <span>{trx.invoice}</span>
+                                                    {trx.catalog_order ? (
+                                                        <span
+                                                            className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-md"
+                                                            title={`Pesanan Online: ${trx.catalog_order.order_number}`}
+                                                        >
+                                                            <IconBuildingStore size={11} />
+                                                            Online ({trx.catalog_order.order_number})
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded">
+                                                            POS
+                                                        </span>
+                                                    )}
                                                     {trx.discount_approval_status === "pending" && (
                                                         <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 rounded w-fit">
                                                             Pending Approval

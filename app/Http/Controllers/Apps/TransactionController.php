@@ -84,6 +84,30 @@ class TransactionController extends Controller
         $activeShift = $this->cashierShiftService->getActiveShiftForUser($userId);
         $warehouseId = $activeShift?->warehouse_id;
 
+        if ($resumeHold = request('resume_hold')) {
+            $hasActive = Cart::where('cashier_id', $userId)->active()->exists();
+            if (! $hasActive) {
+                $heldItems = Cart::where('cashier_id', $userId)->forHold($resumeHold)->get();
+                if ($heldItems->isNotEmpty()) {
+                    $catalogOrderId = null;
+                    if (str_starts_with($resumeHold, 'CATALOG-')) {
+                        $orderNumber = substr($resumeHold, strlen('CATALOG-'));
+                        $catalogOrder = CatalogOrder::where('order_number', $orderNumber)->first();
+                        $catalogOrderId = $catalogOrder?->id;
+                    }
+
+                    Cart::where('cashier_id', $userId)
+                        ->forHold($resumeHold)
+                        ->update([
+                            'hold_id' => null,
+                            'hold_label' => null,
+                            'held_at' => null,
+                            'catalog_order_id' => $catalogOrderId,
+                        ]);
+                }
+            }
+        }
+
         // Get active cart items (not held)
         $carts = Cart::with(['product.category', 'unit', 'catalogOrder.customer'])
             ->where('cashier_id', $userId)

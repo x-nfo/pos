@@ -31,11 +31,12 @@ class SalesReportController extends Controller
             'cashier_id' => $request->input('cashier_id'),
             'customer_id' => $request->input('customer_id'),
             'warehouse_id' => $warehouseId,
+            'order_source' => $request->input('order_source'),
         ];
 
         $baseListQuery = $this->applyFilters(
             Transaction::query()
-                ->with(['cashier:id,name', 'customer:id,name', 'warehouse:id,code,name'])
+                ->with(['cashier:id,name', 'customer:id,name', 'warehouse:id,code,name', 'catalogOrder:id,order_number,transaction_id'])
                 ->withSum('details as total_items', 'qty')
                 ->withSum('profits as total_profit', 'total'),
             $filters
@@ -108,6 +109,8 @@ class SalesReportController extends Controller
             ->when($filters['customer_id'] ?? null, fn ($q, $customer) => $q->where('customer_id', $customer))
             ->when($filters['start_date'] ?? null, fn ($q, $start) => $q->whereDate('created_at', '>=', $start))
             ->when($filters['end_date'] ?? null, fn ($q, $end) => $q->whereDate('created_at', '<=', $end))
-            ->when($filters['warehouse_id'] ?? null, fn ($q, $warehouse) => $q->where('warehouse_id', $warehouse));
+            ->when($filters['warehouse_id'] ?? null, fn ($q, $warehouse) => $q->where('warehouse_id', $warehouse))
+            ->when(($filters['order_source'] ?? null) === 'catalog', fn ($q) => $q->whereHas('catalogOrder'))
+            ->when(($filters['order_source'] ?? null) === 'pos', fn ($q) => $q->whereDoesntHave('catalogOrder'));
     }
 }

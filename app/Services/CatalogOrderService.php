@@ -282,6 +282,10 @@ class CatalogOrderService
             return;
         }
 
+        if ($status === CatalogOrder::STATUS_COMPLETED && ! $order->transaction_id) {
+            throw new \RuntimeException('Pesanan online hanya dapat diselesaikan melalui transaksi kasir POS.');
+        }
+
         $updates = ['status' => $status];
         if ($status === CatalogOrder::STATUS_COMPLETED) {
             $updates['completed_at'] = now();
