@@ -46,7 +46,8 @@ export function generateWhatsAppOrderMessage({
         const qty = item.qty || 1;
         const price = item.final_price || item.sell_price || 0;
         const subtotal = price * qty;
-        lines.push(`${index + 1}. *${item.title || item.product_title}* (${qty}x) — ${formatRupiah(subtotal)}`);
+        const unitLabel = item.unit_name || item.unit_symbol || item.unit_code ? ` ${item.unit_name || item.unit_symbol || item.unit_code}` : "x";
+        lines.push(`${index + 1}. *${item.title || item.product_title}* (${qty}${unitLabel}) — ${formatRupiah(subtotal)}`);
     });
 
     lines.push("");

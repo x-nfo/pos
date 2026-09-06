@@ -153,7 +153,7 @@ export default function PromoBannerCarousel({
                     className="w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-xs border border-slate-200/80 dark:border-slate-800 bg-slate-900 cursor-pointer relative"
                 >
                     {hasImage ? (
-                        <div className="relative w-full aspect-[16/7] sm:aspect-[16/6] md:aspect-[21/7] max-h-[360px] bg-slate-900">
+                        <div className="relative w-full aspect-[16/7] sm:aspect-[16/6] md:aspect-[21/7] max-h-[500px] bg-slate-900">
                             <img
                                 src={singleBanner.image_url}
                                 alt={singleBanner.title || "Banner Promo"}
@@ -356,8 +356,8 @@ export default function PromoBannerCarousel({
                             onClick={() => goToSlide(idx)}
                             aria-label={`Ke slide ${idx + 1}`}
                             className={`rounded-full transition-all duration-300 cursor-pointer ${idx === activeDotIndex
-                                    ? "w-2.5 h-2.5 bg-primary-600 dark:bg-primary-500 ring-2 ring-primary-500/25 scale-110"
-                                    : "w-2 h-2 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600"
+                                ? "w-2.5 h-2.5 bg-primary-600 dark:bg-primary-500 ring-2 ring-primary-500/25 scale-110"
+                                : "w-2 h-2 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600"
                                 }`}
                         />
                     ))}

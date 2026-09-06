@@ -39,7 +39,7 @@ class CatalogOrderController extends Controller
         ];
 
         $ordersQuery = (clone $baseQuery)
-            ->with(['warehouse:id,code,name,phone', 'cashier:id,name', 'items.product:id,title,barcode,image'])
+            ->with(['warehouse:id,code,name,phone', 'cashier:id,name', 'items.product:id,title,barcode,image', 'items.unit:id,name,code,symbol'])
             ->when($status !== 'all', function ($q) use ($status) {
                 if ($status === 'active') {
                     $q->whereIn('status', [

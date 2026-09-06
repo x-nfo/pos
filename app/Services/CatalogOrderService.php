@@ -17,6 +17,7 @@ class CatalogOrderService
         private readonly PricingService $pricingService,
         private readonly StockMutationService $stockMutationService,
         private readonly AuditLogService $auditLogService,
+        private readonly UnitConversionService $unitConversionService,
     ) {}
 
     /**
@@ -86,22 +87,58 @@ class CatalogOrderService
                     continue;
                 }
 
+                // Resolve selected unit
+                $unitId = ! empty($item['unit_id']) ? (int) $item['unit_id'] : null;
+                $unit = null;
+                if ($unitId) {
+                    $unit = $product->units->firstWhere('id', $unitId);
+                }
+                if (! $unit) {
+                    $unit = $product->baseUnit() ?: $product->units->first();
+                }
+
+                $conversionFactor = $unit ? (float) ($unit->pivot->conversion_factor ?? 1) : 1.0;
+                $baseQty = (int) round($qty * $conversionFactor);
+                if ($baseQty <= 0) {
+                    $baseQty = 1;
+                }
+
                 if ($branchStock <= 0) {
                     throw ValidationException::withMessages([
                         'items' => "Produk {$product->title} sedang habis (Sold Out).",
                     ]);
                 }
 
+                if ($branchStock < $baseQty) {
+                    $unitLabel = $unit ? ($unit->name ?: $unit->symbol) : 'satuan';
+                    throw ValidationException::withMessages([
+                        'items' => "Stok {$product->title} tidak mencukupi untuk pemesanan {$qty} {$unitLabel} (tersedia {$branchStock} unit dasar).",
+                    ]);
+                }
+
                 $pricing = $pricingBadges->get($product->id);
-                $unitPrice = (int) ($pricing['final_price'] ?? $product->sell_price);
+                $originalProductPrice = (int) $product->sell_price;
+                $finalProductPrice = (int) ($pricing['final_price'] ?? $originalProductPrice);
+
+                $unitSellPrice = $unit
+                    ? $this->unitConversionService->getSellPrice($product, $unit->id)
+                    : $originalProductPrice;
+
+                if ($originalProductPrice > 0 && $finalProductPrice < $originalProductPrice) {
+                    $discountRate = ($originalProductPrice - $finalProductPrice) / $originalProductPrice;
+                    $unitPrice = (int) round($unitSellPrice * (1 - $discountRate));
+                } else {
+                    $unitPrice = $unitSellPrice;
+                }
+
                 $itemSubtotal = $unitPrice * $qty;
                 $subtotal += $itemSubtotal;
 
                 $orderItems[] = [
                     'product_id' => $product->id,
                     'product_title' => $product->title,
-                    'unit_id' => $item['unit_id'] ?? null,
-                    'conversion_factor' => 1,
+                    'unit_id' => $unit?->id,
+                    'conversion_factor' => $conversionFactor,
                     'qty' => $qty,
                     'price' => $unitPrice,
                     'subtotal' => $itemSubtotal,
@@ -172,7 +209,12 @@ class CatalogOrderService
                     continue;
                 }
 
-                $qtyOut = (int) $item->qty;
+                $factor = (float) ($item->conversion_factor ?: 1);
+                $qtyOut = (int) round($item->qty * $factor);
+                if ($qtyOut <= 0) {
+                    $qtyOut = 1;
+                }
+
                 $pw = ProductWarehouse::where('product_id', $product->id)
                     ->where('warehouse_id', $warehouseId)
                     ->lockForUpdate()
@@ -285,7 +327,12 @@ class CatalogOrderService
                         continue;
                     }
 
-                    $qtyIn = (int) $item->qty;
+                    $factor = (float) ($item->conversion_factor ?: 1);
+                    $qtyIn = (int) round($item->qty * $factor);
+                    if ($qtyIn <= 0) {
+                        $qtyIn = 1;
+                    }
+
                     $pw = ProductWarehouse::where('product_id', $product->id)
                         ->where('warehouse_id', $warehouseId)
                         ->lockForUpdate()

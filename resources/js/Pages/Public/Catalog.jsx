@@ -170,8 +170,9 @@ export default function Catalog({
         };
     }, [latestActiveOrder?.access_token]);
 
-    // Detail modal quantity
+    // Detail modal quantity & selected unit (UOM)
     const [modalQty, setModalQty] = useState(1);
+    const [selectedUnit, setSelectedUnit] = useState(null);
 
     // Persist customer info to localStorage when rememberCustomer is enabled
     useEffect(() => {
@@ -232,13 +233,40 @@ export default function Catalog({
         }
     }, [cart]);
 
-    // Reset modal quantity when selecting a different product
+    // Reset modal unit and quantity when selecting a different product
     useEffect(() => {
         if (selectedProduct) {
-            const existing = cart.find((item) => item.id === selectedProduct.id);
-            setModalQty(selectedProduct.stock <= 0 ? 0 : existing ? existing.qty : 1);
+            const baseU = selectedProduct.units?.find((u) => u.is_base) || selectedProduct.units?.[0] || null;
+            setSelectedUnit(baseU);
+            const factor = Number(baseU?.conversion_factor) || 1;
+            const maxUnitStock = factor > 0 ? Math.floor(selectedProduct.stock / factor) : 0;
+            setModalQty(selectedProduct.stock <= 0 || maxUnitStock <= 0 ? 0 : 1);
+        } else {
+            setSelectedUnit(null);
+            setModalQty(1);
         }
     }, [selectedProduct]);
+
+    const activeModalUnit = useMemo(() => {
+        if (!selectedProduct) return null;
+        return selectedUnit || selectedProduct.units?.find((u) => u.is_base) || selectedProduct.units?.[0] || null;
+    }, [selectedProduct, selectedUnit]);
+
+    const activeModalUnitPrice = useMemo(() => {
+        if (!selectedProduct) return 0;
+        return activeModalUnit?.final_price || activeModalUnit?.sell_price || selectedProduct.final_price || selectedProduct.sell_price || 0;
+    }, [selectedProduct, activeModalUnit]);
+
+    const activeModalUnitOriginalPrice = useMemo(() => {
+        if (!selectedProduct) return 0;
+        return activeModalUnit?.sell_price || selectedProduct.sell_price || 0;
+    }, [selectedProduct, activeModalUnit]);
+
+    const activeModalMaxQty = useMemo(() => {
+        if (!selectedProduct) return 0;
+        const factor = Number(activeModalUnit?.conversion_factor) || 1;
+        return factor > 0 ? Math.floor(selectedProduct.stock / factor) : 0;
+    }, [selectedProduct, activeModalUnit]);
 
     // Filter products based on search term and category
     const filteredProducts = useMemo(() => {
@@ -275,22 +303,34 @@ export default function Catalog({
     );
 
     // Cart actions
-    const addToCart = (product, quantity = 1, showToast = true) => {
+    const addToCart = (product, quantity = 1, showToast = true, unit = null) => {
         if (!isStoreOpen) {
             toast.error(`Maaf, toko sedang tutup (${opStatus.badge_text || "Tutup"})`);
             return;
         }
 
-        if (product.stock <= 0) {
-            toast.error("Maaf, stok produk ini habis");
+        const chosenUnit = unit || product.units?.find((u) => u.is_base) || product.units?.[0] || null;
+        const factor = Number(chosenUnit?.conversion_factor) || 1;
+        const maxUnitQty = factor > 0 ? Math.floor(product.stock / factor) : 0;
+
+        if (maxUnitQty <= 0 || product.stock <= 0) {
+            toast.error("Maaf, stok untuk kemasan ini tidak mencukupi");
             return;
         }
 
+        const cartKey = `${product.id}_${chosenUnit?.id || "base"}`;
+        const unitPrice = chosenUnit?.final_price || chosenUnit?.sell_price || product.final_price || product.sell_price;
+        const unitOriginalPrice = chosenUnit?.sell_price || product.sell_price;
+
         setCart((prev) => {
-            const existingIndex = prev.findIndex((item) => item.id === product.id);
+            const existingIndex = prev.findIndex(
+                (item) =>
+                    (item.cart_key || item.id) === cartKey ||
+                    (item.id === product.id && (item.unit_id || null) === (chosenUnit?.id || null))
+            );
             if (existingIndex > -1) {
                 const current = prev[existingIndex];
-                const newQty = Math.min(product.stock, current.qty + quantity);
+                const newQty = Math.min(maxUnitQty, current.qty + quantity);
                 const updated = [...prev];
                 updated[existingIndex] = { ...current, qty: newQty };
                 return updated;
@@ -300,32 +340,42 @@ export default function Catalog({
                 ...prev,
                 {
                     id: product.id,
+                    cart_key: cartKey,
                     title: product.title,
-                    sell_price: product.sell_price,
-                    final_price: product.final_price,
+                    sell_price: unitOriginalPrice,
+                    final_price: unitPrice,
                     image: product.image,
                     category_name: product.category_name,
                     stock: product.stock,
-                    qty: Math.min(product.stock, quantity),
+                    max_unit_stock: maxUnitQty,
+                    unit_id: chosenUnit?.id || null,
+                    unit_name: chosenUnit?.name || chosenUnit?.code || "Pcs",
+                    unit_code: chosenUnit?.code || "PCS",
+                    unit_symbol: chosenUnit?.symbol || "pcs",
+                    conversion_factor: factor,
+                    qty: Math.min(maxUnitQty, quantity),
                 },
             ];
         });
 
         if (showToast) {
-            toast.success(`${product.title} ditambahkan`, {
+            const unitLabel = chosenUnit?.name ? ` (${chosenUnit.name})` : "";
+            toast.success(`${product.title}${unitLabel} ditambahkan`, {
                 icon: "🛒",
                 duration: 1500,
             });
         }
     };
 
-    const updateCartQty = (productId, newQty) => {
+    const updateCartQty = (itemOrKey, newQty) => {
+        const cartKey = typeof itemOrKey === "object" ? (itemOrKey.cart_key || itemOrKey.id) : itemOrKey;
+
         if (newQty <= 0) {
-            removeFromCart(productId);
+            removeFromCart(cartKey);
             return;
         }
 
-        const currentItem = cart.find((i) => i.id === productId);
+        const currentItem = cart.find((i) => (i.cart_key || i.id) === cartKey || i.id === cartKey);
         if (!isStoreOpen && currentItem && newQty > currentItem.qty) {
             toast.error(`Toko sedang tutup. Tidak dapat menambah jumlah item.`);
             return;
@@ -333,8 +383,10 @@ export default function Catalog({
 
         setCart((prev) =>
             prev.map((item) => {
-                if (item.id === productId) {
-                    const finalQty = Math.min(item.stock, newQty);
+                if ((item.cart_key || item.id) === cartKey || item.id === cartKey) {
+                    const factor = Number(item.conversion_factor) || 1;
+                    const maxStock = item.max_unit_stock || (factor > 0 ? Math.floor(item.stock / factor) : item.stock);
+                    const finalQty = Math.min(maxStock, newQty);
                     return { ...item, qty: finalQty };
                 }
                 return item;
@@ -342,8 +394,9 @@ export default function Catalog({
         );
     };
 
-    const removeFromCart = (productId) => {
-        setCart((prev) => prev.filter((item) => item.id !== productId));
+    const removeFromCart = (itemOrKey) => {
+        const cartKey = typeof itemOrKey === "object" ? (itemOrKey.cart_key || itemOrKey.id) : itemOrKey;
+        setCart((prev) => prev.filter((item) => (item.cart_key || item.id) !== cartKey && item.id !== cartKey));
         toast("Item dihapus dari keranjang", { icon: "🗑️" });
     };
 
@@ -501,14 +554,18 @@ export default function Catalog({
     };
 
     // Instant buy from modal
-    const handleInstantBuy = async (product, qty) => {
+    const handleInstantBuy = async (product, qty, unit = null) => {
         if (!isStoreOpen) {
             toast.error(`Maaf, toko sedang tutup (${opStatus.badge_text || "Tutup"})`);
             return;
         }
 
+        const chosenUnit = unit || product.units?.find((u) => u.is_base) || product.units?.[0] || null;
+        const unitPrice = chosenUnit?.final_price || chosenUnit?.sell_price || product.final_price || product.sell_price;
+        const unitOriginalPrice = chosenUnit?.sell_price || product.sell_price;
+
         if (!customerName.trim()) {
-            addToCart(product, qty, false);
+            addToCart(product, qty, false, chosenUnit);
             setSelectedProduct(null);
             setIsCartOpen(true);
             toast("Silakan lengkapi data pemesan di keranjang", { icon: "📝" });
@@ -517,7 +574,7 @@ export default function Catalog({
 
         const effectiveDeliveryMethod = isDeliveryAllowed ? deliveryMethod : "pickup";
         if (effectiveDeliveryMethod === "delivery" && !deliveryAddress.trim()) {
-            addToCart(product, qty, false);
+            addToCart(product, qty, false, chosenUnit);
             setSelectedProduct(null);
             setIsCartOpen(true);
             toast("Silakan lengkapi alamat pengiriman di keranjang", { icon: "📝" });
@@ -543,6 +600,7 @@ export default function Catalog({
                     {
                         product_id: product.id,
                         qty,
+                        unit_id: chosenUnit?.id || null,
                     },
                 ],
             };
@@ -562,8 +620,10 @@ export default function Catalog({
                     {
                         id: product.id,
                         title: product.title,
-                        sell_price: product.sell_price,
-                        final_price: product.final_price,
+                        sell_price: unitOriginalPrice,
+                        final_price: unitPrice,
+                        unit_name: chosenUnit?.name || chosenUnit?.code || "Pcs",
+                        unit_symbol: chosenUnit?.symbol || "pcs",
                         qty,
                     },
                 ],
@@ -572,7 +632,7 @@ export default function Catalog({
                 deliveryMethod: effectiveDeliveryMethod,
                 deliveryAddress: effectiveDeliveryMethod === "delivery" ? deliveryAddress.trim() : "",
                 notes: orderNotes.trim(),
-                totalAmount: (product.final_price || product.sell_price) * qty,
+                totalAmount: unitPrice * qty,
             });
 
             openWhatsAppOrder({
@@ -794,9 +854,13 @@ export default function Catalog({
                 {filteredProducts.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-5">
                         {filteredProducts.map((product) => {
-                            const inCart = cart.find((item) => item.id === product.id);
+                            const inCartItems = cart.filter((item) => item.id === product.id);
+                            const inCartQty = inCartItems.reduce((acc, item) => acc + item.qty, 0);
+                            const inCart = inCartItems[0];
                             const price = product.final_price || product.sell_price;
                             const isSoldOut = product.stock <= 0;
+                            const hasMultiUnits = Array.isArray(product.units) && product.units.length > 1;
+                            const baseUnit = product.units?.find((u) => u.is_base) || product.units?.[0];
 
                             return (
                                 <div
@@ -851,11 +915,18 @@ export default function Catalog({
                                     {/* Product Details */}
                                     <div className="p-2 sm:p-3.5 flex-1 flex flex-col justify-between">
                                         <div>
-                                            {product.category_name && (
-                                                <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5 truncate">
-                                                    {product.category_name}
-                                                </span>
-                                            )}
+                                            <div className="flex items-center justify-between gap-1 mb-0.5">
+                                                {product.category_name && (
+                                                    <span className="text-[10px] sm:text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider block truncate">
+                                                        {product.category_name}
+                                                    </span>
+                                                )}
+                                                {hasMultiUnits && (
+                                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-primary-50 dark:bg-primary-950/60 text-primary-700 dark:text-primary-300 border border-primary-200/50 dark:border-primary-800/40 shrink-0">
+                                                        {product.units.length} Satuan
+                                                    </span>
+                                                )}
+                                            </div>
 
                                             <h3
                                                 onClick={() => setSelectedProduct(product)}
@@ -884,14 +955,21 @@ export default function Catalog({
                                                         {formatRupiah(product.sell_price)}
                                                     </span>
                                                 )}
-                                                <span className={`text-xs sm:text-sm md:text-base font-extrabold block truncate ${
-                                                    isSoldOut ? "text-slate-500 dark:text-slate-400" : "text-primary-600 dark:text-primary-400"
-                                                }`}>
-                                                    {formatRupiah(price)}
-                                                </span>
+                                                <div className="flex items-baseline gap-1 truncate">
+                                                    <span className={`text-xs sm:text-sm md:text-base font-extrabold block truncate ${
+                                                        isSoldOut ? "text-slate-500 dark:text-slate-400" : "text-primary-600 dark:text-primary-400"
+                                                    }`}>
+                                                        {formatRupiah(price)}
+                                                    </span>
+                                                    {baseUnit?.name && (
+                                                        <span className="text-[10px] text-slate-400 font-medium shrink-0">
+                                                            /{baseUnit.name}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
 
-                                            {/* Add to Cart / Stepper Button */}
+                                            {/* Add to Cart / Multi-Unit / Stepper Button */}
                                             {isSoldOut ? (
                                                 <span
                                                     className="px-2 py-1 sm:py-1.5 rounded-lg sm:rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-bold text-[10px] sm:text-xs border border-slate-200/80 dark:border-slate-700 cursor-not-allowed select-none shrink-0"
@@ -899,13 +977,50 @@ export default function Catalog({
                                                 >
                                                     Habis
                                                 </span>
+                                            ) : hasMultiUnits ? (
+                                                inCartQty > 0 ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedProduct(product);
+                                                        }}
+                                                        className="flex items-center gap-1 bg-primary-50 dark:bg-primary-950/50 hover:bg-primary-100 text-primary-700 dark:text-primary-300 rounded-lg px-2 py-1 border border-primary-200 dark:border-primary-800 text-[11px] font-bold shrink-0 transition"
+                                                        title="Lihat / pilih satuan produk"
+                                                    >
+                                                        <span>{inCartQty}</span>
+                                                        <span className="text-[10px] font-medium opacity-80">di Keranjang</span>
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        disabled={!isStoreOpen}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedProduct(product);
+                                                        }}
+                                                        className={`px-2 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-1 shrink-0 shadow-xs transition-all ${
+                                                            !isStoreOpen
+                                                                ? "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none"
+                                                                : "bg-primary-600 hover:bg-primary-700 active:scale-95 text-white cursor-pointer"
+                                                        }`}
+                                                        title={
+                                                            !isStoreOpen
+                                                                ? `Toko Sedang Tutup (${opStatus.badge_text || "Tutup"})`
+                                                                : "Pilih Satuan / Kemasan"
+                                                        }
+                                                    >
+                                                        <IconPackage size={13} />
+                                                        <span>Pilih</span>
+                                                    </button>
+                                                )
                                             ) : inCart ? (
                                                 <div className="flex items-center bg-primary-50 dark:bg-primary-950/50 rounded-lg p-0.5 border border-primary-200 dark:border-primary-800 shrink-0">
                                                     <button
                                                         type="button"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            updateCartQty(product.id, inCart.qty - 1);
+                                                            updateCartQty(inCart, inCart.qty - 1);
                                                         }}
                                                         className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-xs"
                                                     >
@@ -918,7 +1033,7 @@ export default function Catalog({
                                                         type="button"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            updateCartQty(product.id, inCart.qty + 1);
+                                                            updateCartQty(inCart, inCart.qty + 1);
                                                         }}
                                                         disabled={!isStoreOpen || inCart.qty >= product.stock}
                                                         className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-primary-600 text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
@@ -1109,10 +1224,11 @@ export default function Catalog({
                                     {cart.map((item) => {
                                         const price = item.final_price || item.sell_price || 0;
                                         const subtotal = price * item.qty;
+                                        const maxStock = item.max_unit_stock || (item.conversion_factor ? Math.floor(item.stock / item.conversion_factor) : item.stock);
 
                                         return (
                                             <div
-                                                key={item.id}
+                                                key={item.cart_key || item.id}
                                                 className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800"
                                             >
                                                 {item.image ? (
@@ -1131,8 +1247,15 @@ export default function Catalog({
                                                     <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
                                                         {item.title}
                                                     </h4>
-                                                    <div className="text-xs font-semibold text-primary-600 dark:text-primary-400 mt-0.5">
-                                                        {formatRupiah(price)}
+                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                        <span className="text-xs font-semibold text-primary-600 dark:text-primary-400">
+                                                            {formatRupiah(price)}
+                                                        </span>
+                                                        {item.unit_name && (
+                                                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-primary-50 dark:bg-primary-950/60 text-primary-700 dark:text-primary-300 border border-primary-200/60 dark:border-primary-800/60">
+                                                                {item.unit_name}
+                                                            </span>
+                                                        )}
                                                     </div>
 
                                                     {/* Stepper */}
@@ -1140,7 +1263,7 @@ export default function Catalog({
                                                         <div className="flex items-center bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-0.5">
                                                             <button
                                                                 type="button"
-                                                                onClick={() => updateCartQty(item.id, item.qty - 1)}
+                                                                onClick={() => updateCartQty(item, item.qty - 1)}
                                                                 className="w-5 h-5 rounded flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100"
                                                             >
                                                                 <IconMinus size={11} />
@@ -1150,10 +1273,10 @@ export default function Catalog({
                                                             </span>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => updateCartQty(item.id, item.qty + 1)}
-                                                                disabled={!isStoreOpen || item.qty >= item.stock}
+                                                                onClick={() => updateCartQty(item, item.qty + 1)}
+                                                                disabled={!isStoreOpen || item.qty >= maxStock}
                                                                 className="w-5 h-5 rounded flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
-                                                                title={!isStoreOpen ? "Toko sedang tutup" : undefined}
+                                                                title={!isStoreOpen ? "Toko sedang tutup" : item.qty >= maxStock ? "Stok maksimal" : undefined}
                                                             >
                                                                 <IconPlus size={11} />
                                                             </button>
@@ -1167,7 +1290,7 @@ export default function Catalog({
 
                                                 <button
                                                     type="button"
-                                                    onClick={() => removeFromCart(item.id)}
+                                                    onClick={() => removeFromCart(item)}
                                                     className="text-slate-400 hover:text-rose-500 p-1"
                                                     title="Hapus"
                                                 >
@@ -1446,30 +1569,40 @@ export default function Catalog({
                             <span className={`text-lg sm:text-xl font-extrabold ${
                                 selectedProduct.stock <= 0 ? "text-slate-500 dark:text-slate-400" : "text-primary-600 dark:text-primary-400"
                             }`}>
-                                {formatRupiah(selectedProduct.final_price || selectedProduct.sell_price)}
+                                {formatRupiah(activeModalUnitPrice)}
                             </span>
-                            {selectedProduct.has_discount && selectedProduct.stock > 0 && (
+                            {activeModalUnitOriginalPrice > activeModalUnitPrice && (
                                 <>
                                     <span className="text-xs text-slate-400 line-through">
-                                        {formatRupiah(selectedProduct.sell_price)}
+                                        {formatRupiah(activeModalUnitOriginalPrice)}
                                     </span>
                                     <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400">
-                                        -{selectedProduct.discount_percentage}%
+                                        -{Math.round(((activeModalUnitOriginalPrice - activeModalUnitPrice) / activeModalUnitOriginalPrice) * 100)}%
                                     </span>
                                 </>
+                            )}
+                            {activeModalUnit && (
+                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                    / {activeModalUnit.name || activeModalUnit.code}
+                                </span>
                             )}
                         </div>
 
                         <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 py-1.5 border-y border-slate-100 dark:border-slate-800">
                             <span>
                                 Stok:{" "}
-                                {selectedProduct.stock <= 0 ? (
+                                {selectedProduct.stock <= 0 || activeModalMaxQty <= 0 ? (
                                     <span className="inline-flex items-center gap-1 font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-md">
-                                        Stok Habis (0 unit)
+                                        {selectedProduct.stock <= 0 ? "Stok Habis (0 unit)" : "Stok Tidak Cukup untuk Satuan Ini"}
                                     </span>
                                 ) : (
                                     <strong className="text-slate-800 dark:text-slate-200">
-                                        {selectedProduct.stock} unit
+                                        {activeModalMaxQty} {activeModalUnit?.name || activeModalUnit?.code || "unit"}{" "}
+                                        {activeModalUnit && !activeModalUnit.is_base && (
+                                            <span className="font-normal text-slate-400">
+                                                (Total {selectedProduct.stock} unit dasar)
+                                            </span>
+                                        )}
                                     </strong>
                                 )}
                             </span>
@@ -1482,6 +1615,64 @@ export default function Catalog({
                                 </span>
                             )}
                         </div>
+
+                        {/* UOM Selector Pills */}
+                        {selectedProduct.units && selectedProduct.units.length > 1 && (
+                            <div className="my-3">
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5 block">
+                                    Pilih Satuan / Kemasan:
+                                </label>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {selectedProduct.units.map((u) => {
+                                        const isSelected = (activeModalUnit?.id || null) === (u.id || null);
+                                        const factor = Number(u.conversion_factor) || 1;
+                                        const maxAvail = factor > 0 ? Math.floor(selectedProduct.stock / factor) : 0;
+                                        const isAvail = maxAvail > 0;
+                                        return (
+                                            <button
+                                                key={u.id || "base"}
+                                                type="button"
+                                                disabled={!isAvail}
+                                                onClick={() => {
+                                                    setSelectedUnit(u);
+                                                    setModalQty(1);
+                                                }}
+                                                className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                                                    isSelected
+                                                        ? "border-primary-600 bg-primary-50/70 dark:bg-primary-950/40 text-primary-900 dark:text-primary-100 ring-1 ring-primary-500 shadow-xs"
+                                                        : isAvail
+                                                        ? "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 text-slate-800 dark:text-slate-200 cursor-pointer"
+                                                        : "border-slate-200/50 dark:border-slate-800/50 bg-slate-100/50 dark:bg-slate-900/50 text-slate-400 dark:text-slate-600 cursor-not-allowed opacity-60"
+                                                }`}
+                                            >
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="font-bold text-xs capitalize">
+                                                        {u.name || u.code}
+                                                    </span>
+                                                    {u.is_base ? (
+                                                        <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 font-semibold">
+                                                            Utama
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[9px] text-slate-400">
+                                                            isi {factor}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-[11px] font-black text-primary-600 dark:text-primary-400">
+                                                    {formatRupiah(u.final_price || u.sell_price)}
+                                                </div>
+                                                {!isAvail && (
+                                                    <span className="text-[9px] text-rose-500 mt-0.5 font-medium">
+                                                        Stok kurang
+                                                    </span>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Description */}
                         {selectedProduct.description && (
@@ -1521,7 +1712,7 @@ export default function Catalog({
                                 <div className="flex items-center gap-2">
                                     <button
                                         type="button"
-                                        disabled={!isStoreOpen || selectedProduct.stock <= 0 || modalQty <= 1}
+                                        disabled={!isStoreOpen || activeModalMaxQty <= 0 || modalQty <= 1}
                                         onClick={() => setModalQty((q) => Math.max(1, q - 1))}
                                         className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
                                     >
@@ -1532,13 +1723,13 @@ export default function Catalog({
                                     </span>
                                     <button
                                         type="button"
-                                        disabled={!isStoreOpen || selectedProduct.stock <= 0 || modalQty >= selectedProduct.stock}
+                                        disabled={!isStoreOpen || activeModalMaxQty <= 0 || modalQty >= activeModalMaxQty}
                                         onClick={() =>
-                                            setModalQty((q) => Math.min(selectedProduct.stock, q + 1))
+                                            setModalQty((q) => Math.min(activeModalMaxQty, q + 1))
                                         }
                                         className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
                                         title={
-                                            selectedProduct.stock <= 0
+                                            activeModalMaxQty <= 0
                                                 ? "Stok Habis"
                                                 : !isStoreOpen
                                                 ? "Toko sedang tutup"
@@ -1553,9 +1744,9 @@ export default function Catalog({
                             <div className="grid grid-cols-2 sm:flex sm:flex-1 gap-2 w-full">
                                 <button
                                     type="button"
-                                    disabled={!isStoreOpen || selectedProduct.stock <= 0}
+                                    disabled={!isStoreOpen || activeModalMaxQty <= 0}
                                     onClick={() => {
-                                        if (selectedProduct.stock <= 0) {
+                                        if (activeModalMaxQty <= 0) {
                                             toast.error("Maaf, produk ini sedang habis.");
                                             return;
                                         }
@@ -1563,16 +1754,16 @@ export default function Catalog({
                                             toast.error(`Maaf, toko sedang tutup (${opStatus.badge_text || "Tutup"})`);
                                             return;
                                         }
-                                        addToCart(selectedProduct, modalQty);
+                                        addToCart(selectedProduct, modalQty, true, activeModalUnit);
                                         setSelectedProduct(null);
                                     }}
                                     className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition ${
-                                        !isStoreOpen || selectedProduct.stock <= 0
+                                        !isStoreOpen || activeModalMaxQty <= 0
                                             ? "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none"
                                             : "bg-primary-600 hover:bg-primary-700 text-white cursor-pointer"
                                     }`}
                                     title={
-                                        selectedProduct.stock <= 0
+                                        activeModalMaxQty <= 0
                                             ? "Stok Habis"
                                             : !isStoreOpen
                                             ? "Toko sedang tutup"
@@ -1580,7 +1771,7 @@ export default function Catalog({
                                     }
                                 >
                                     <IconShoppingCart size={16} />
-                                    {selectedProduct.stock <= 0
+                                    {activeModalMaxQty <= 0
                                         ? "Stok Habis"
                                         : !isStoreOpen
                                         ? "Toko Tutup"
@@ -1590,10 +1781,11 @@ export default function Catalog({
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        if (selectedProduct.stock <= 0) {
+                                        if (activeModalMaxQty <= 0) {
                                             const targetNumber = store.wa_number || "6281234567890";
+                                            const unitLabel = activeModalUnit ? ` (Satuan ${activeModalUnit.name || activeModalUnit.code})` : "";
                                             const text = encodeURIComponent(
-                                                `Halo ${store.name || "Admin Toko"}, saya ingin menanyakan apakah produk *${selectedProduct.title}* yang sedang habis akan segera restock/tersedia kembali? Terima kasih.`
+                                                `Halo ${store.name || "Admin Toko"}, saya ingin menanyakan apakah produk *${selectedProduct.title}${unitLabel}* yang sedang habis akan segera restock/tersedia kembali? Terima kasih.`
                                             );
                                             window.open(`https://wa.me/${targetNumber}?text=${text}`, "_blank");
                                             return;
@@ -1602,17 +1794,17 @@ export default function Catalog({
                                             toast.error(`Maaf, toko sedang tutup (${opStatus.badge_text || "Tutup"})`);
                                             return;
                                         }
-                                        handleInstantBuy(selectedProduct, modalQty);
+                                        handleInstantBuy(selectedProduct, modalQty, activeModalUnit);
                                     }}
                                     className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition ${
-                                        selectedProduct.stock <= 0
+                                        activeModalMaxQty <= 0
                                             ? "bg-slate-800 hover:bg-slate-900 text-white cursor-pointer"
                                             : !isStoreOpen
                                             ? "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none"
                                             : "bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
                                     }`}
                                     title={
-                                        selectedProduct.stock <= 0
+                                        activeModalMaxQty <= 0
                                             ? "Tanya ketersediaan restock via WhatsApp"
                                             : !isStoreOpen
                                             ? "Toko sedang tutup"
@@ -1620,7 +1812,7 @@ export default function Catalog({
                                     }
                                 >
                                     <IconBrandWhatsapp size={16} />
-                                    {selectedProduct.stock <= 0
+                                    {activeModalMaxQty <= 0
                                         ? "Tanya Stok via WA"
                                         : !isStoreOpen
                                         ? "Toko Tutup"

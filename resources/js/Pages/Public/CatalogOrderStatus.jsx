@@ -409,7 +409,7 @@ export default function CatalogOrderStatus({ order: initialOrder, store }) {
                                             {item.product_title}
                                         </h4>
                                         <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-                                            {item.qty} × {formatRupiah(item.price)}
+                                            {item.qty} {item.unit?.name || item.unit?.symbol || ""} × {formatRupiah(item.price)}
                                         </p>
                                     </div>
                                 </div>

@@ -107,6 +107,46 @@ class PublicCatalogController extends Controller
 
             $branchStock = (int) ($product->warehouses->firstWhere('id', $branchId)?->pivot->stock ?? 0);
 
+            $units = $product->units->map(function ($u) use ($product, $hasDiscount, $discountPercentage, $originalPrice) {
+                $isBase = (bool) ($u->pivot->is_base ?? false);
+                $factor = (float) ($u->pivot->conversion_factor ?? 1);
+
+                $unitSellPrice = $isBase
+                    ? (int) $product->sell_price
+                    : (int) (($u->pivot->sell_price && (int) $u->pivot->sell_price > 0) ? $u->pivot->sell_price : round($product->sell_price * $factor));
+
+                $unitFinalPrice = $unitSellPrice;
+                if ($hasDiscount && $originalPrice > 0 && $discountPercentage > 0) {
+                    $unitFinalPrice = (int) round($unitSellPrice * (1 - ($discountPercentage / 100)));
+                }
+
+                return [
+                    'id' => $u->id,
+                    'code' => $u->code,
+                    'name' => $u->name,
+                    'symbol' => $u->symbol,
+                    'is_base' => $isBase,
+                    'conversion_factor' => $factor,
+                    'sell_price' => $unitSellPrice,
+                    'final_price' => $unitFinalPrice,
+                ];
+            })->values()->toArray();
+
+            if (empty($units)) {
+                $units = [
+                    [
+                        'id' => null,
+                        'code' => 'PCS',
+                        'name' => 'Pcs',
+                        'symbol' => 'pcs',
+                        'is_base' => true,
+                        'conversion_factor' => 1.0,
+                        'sell_price' => $originalPrice,
+                        'final_price' => $finalPrice,
+                    ],
+                ];
+            }
+
             return [
                 'id' => $product->id,
                 'barcode' => $product->barcode,
@@ -122,6 +162,7 @@ class PublicCatalogController extends Controller
                 'category_id' => $product->category_id,
                 'category_name' => $product->category?->name,
                 'stock' => $branchStock,
+                'units' => $units,
                 'is_low_stock' => $product->min_stock > 0 && $branchStock <= $product->min_stock,
                 'is_sold_out' => $branchStock <= 0,
             ];
@@ -390,7 +431,7 @@ class PublicCatalogController extends Controller
      */
     public function orderStatus(string $accessToken): Response
     {
-        $order = CatalogOrder::with(['items.product', 'warehouse'])
+        $order = CatalogOrder::with(['items.product', 'items.unit', 'warehouse'])
             ->where('access_token', $accessToken)
             ->firstOrFail();
 
@@ -447,6 +488,12 @@ class PublicCatalogController extends Controller
                     'subtotal' => $item->subtotal,
                     'note' => $item->note,
                     'image' => $item->product?->image,
+                    'unit' => $item->unit ? [
+                        'id' => $item->unit->id,
+                        'name' => $item->unit->name,
+                        'code' => $item->unit->code,
+                        'symbol' => $item->unit->symbol,
+                    ] : null,
                 ]),
             ],
             'store' => $storeInfo,

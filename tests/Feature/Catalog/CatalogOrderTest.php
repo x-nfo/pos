@@ -6,8 +6,10 @@ use App\Models\CashierShift;
 use App\Models\CatalogOrder;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductUnit;
 use App\Models\ProductWarehouse;
 use App\Models\Transaction;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\Warehouse;
 use Database\Seeders\PermissionSeeder;
@@ -492,5 +494,92 @@ class CatalogOrderTest extends TestCase
 
         // Stock must still be 48 (NOT decremented again to 46)
         $this->assertEquals(48, ProductWarehouse::where('product_id', $this->product->id)->where('warehouse_id', $this->warehouse->id)->value('stock'));
+    }
+
+    public function test_customer_can_order_with_uom_and_conversion_factor_affects_stock_on_confirm_and_cancel(): void
+    {
+        $baseUnit = Unit::firstOrCreate(['code' => 'PCS'], ['name' => 'Pcs', 'symbol' => 'pcs']);
+        $boxUnit = Unit::firstOrCreate(['code' => 'BOX'], ['name' => 'Box', 'symbol' => 'box']);
+
+        ProductUnit::create([
+            'product_id' => $this->product->id,
+            'unit_id' => $baseUnit->id,
+            'is_base' => true,
+            'conversion_factor' => 1,
+            'buy_price' => 2000,
+            'sell_price' => 5000,
+        ]);
+
+        ProductUnit::create([
+            'product_id' => $this->product->id,
+            'unit_id' => $boxUnit->id,
+            'is_base' => false,
+            'conversion_factor' => 10,
+            'buy_price' => 18000,
+            'sell_price' => 45000,
+        ]);
+
+        // 1. Stock validation fails if ordering more than available base stock
+        // Available stock is 50. 6 boxes = 60 pcs -> should fail
+        $failPayload = [
+            'warehouse_id' => $this->warehouse->id,
+            'customer_name' => 'Budi Wholesale',
+            'customer_phone' => '081234567899',
+            'delivery_method' => 'pickup',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'unit_id' => $boxUnit->id,
+                    'qty' => 6,
+                ],
+            ],
+        ];
+        $response = $this->postJson(route('catalog.checkout'), $failPayload);
+        $response->assertStatus(422);
+
+        // 2. Order 2 boxes (20 pcs base qty) successfully
+        $orderPayload = [
+            'warehouse_id' => $this->warehouse->id,
+            'customer_name' => 'Budi Wholesale',
+            'customer_phone' => '081234567899',
+            'delivery_method' => 'pickup',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'unit_id' => $boxUnit->id,
+                    'qty' => 2,
+                ],
+            ],
+        ];
+        $response = $this->postJson(route('catalog.checkout'), $orderPayload);
+        $response->assertOk();
+        $orderId = $response->json('order.id');
+
+        $this->assertDatabaseHas('catalog_order_items', [
+            'catalog_order_id' => $orderId,
+            'product_id' => $this->product->id,
+            'unit_id' => $boxUnit->id,
+            'qty' => 2,
+            'price' => 45000,
+            'subtotal' => 90000,
+            'conversion_factor' => 10,
+        ]);
+
+        // 3. Confirm order: stock must be deducted by (2 * 10) = 20 base units
+        $admin = User::factory()->create(['warehouse_id' => $this->warehouse->id]);
+        $admin->assignRole('super-admin');
+
+        $this->actingAs($admin)->post(route('catalog-orders.confirm', $orderId));
+
+        // Initial 50 - 20 = 30
+        $this->assertEquals(30, ProductWarehouse::where('product_id', $this->product->id)->where('warehouse_id', $this->warehouse->id)->value('stock'));
+
+        // 4. Cancel order: stock must be restored by (2 * 10) = 20 base units
+        $this->actingAs($admin)->post(route('catalog-orders.cancel', $orderId), [
+            'reason' => 'Customer requested cancellation',
+        ]);
+
+        // Restored to 50
+        $this->assertEquals(50, ProductWarehouse::where('product_id', $this->product->id)->where('warehouse_id', $this->warehouse->id)->value('stock'));
     }
 }

@@ -439,7 +439,7 @@ export default function Index({ orders, metrics, warehouses, filters }) {
                                                 <div className="space-y-0.5 max-w-[180px]">
                                                     {order.items.slice(0, 2).map((item) => (
                                                         <div key={item.id} className="text-xs truncate text-slate-800 dark:text-slate-200">
-                                                            <span className="font-bold">{item.qty}×</span> {item.product_title}
+                                                            <span className="font-bold">{item.qty}{item.unit ? ` ${item.unit.symbol || item.unit.name}` : ""}×</span> {item.product_title}
                                                         </div>
                                                     ))}
                                                     {order.items.length > 2 && (
@@ -675,7 +675,7 @@ export default function Index({ orders, metrics, warehouses, filters }) {
                                                     {item.product_title}
                                                 </p>
                                                 <p className="text-xs text-slate-400">
-                                                    {item.qty} × {formatRupiah(item.price)}
+                                                    {item.qty} {item.unit?.name || item.unit?.symbol || ""} × {formatRupiah(item.price)}
                                                 </p>
                                             </div>
                                             <span className="font-bold text-slate-900 dark:text-white">
