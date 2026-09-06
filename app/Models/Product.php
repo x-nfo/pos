@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ReorderService;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -277,13 +278,21 @@ class Product extends Model
         return $stock <= $this->min_stock;
     }
 
-    public function suggestedOrderQty(): int
+    public function suggestedOrderQty(?int $warehouseId = null, bool $deductIncoming = true): int
     {
         if ($this->max_stock <= 0 || $this->min_stock <= 0) {
             return 0;
         }
 
-        return max(0, $this->max_stock - $this->stockTotal());
+        $stock = $warehouseId
+            ? (int) ($this->warehouses()->where('warehouse_id', $warehouseId)->first()?->pivot->stock ?? 0)
+            : $this->stockTotal();
+
+        $incoming = $deductIncoming
+            ? app(ReorderService::class)->getIncomingPoQty($this->id, $warehouseId)
+            : 0;
+
+        return max(0, $this->max_stock - ($stock + $incoming));
     }
 
     protected function image(): Attribute
