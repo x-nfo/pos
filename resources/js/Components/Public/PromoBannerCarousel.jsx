@@ -153,7 +153,7 @@ export default function PromoBannerCarousel({
                     className="w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-xs border border-slate-200/80 dark:border-slate-800 bg-slate-900 cursor-pointer relative"
                 >
                     {hasImage ? (
-                        <div className="relative w-full aspect-[16/7.5] sm:aspect-[16/6.3] md:aspect-[21/7.25] max-h-[500px] bg-slate-900">
+                        <div className="relative w-full aspect-[16/8] bg-slate-900">
                             <img
                                 src={singleBanner.image_url}
                                 alt={singleBanner.title || "Banner Promo"}
@@ -176,7 +176,7 @@ export default function PromoBannerCarousel({
                         </div>
                     ) : (
                         <div
-                            className={`w-full aspect-[16/7.5] sm:aspect-[16/6.3] md:aspect-[21/7.25] max-h-[370px] bg-gradient-to-r ${singleBanner.gradient || "from-rose-500 via-pink-600 to-indigo-700"
+                            className={`w-full aspect-[16/8] bg-gradient-to-r ${singleBanner.gradient || "from-rose-500 via-pink-600 to-indigo-700"
                                 } text-white p-5 sm:p-8 flex flex-col justify-between`}
                         >
                             <div className="relative z-10 pr-8">
@@ -263,7 +263,7 @@ export default function PromoBannerCarousel({
                             >
                                 {hasImage ? (
                                     /* Image Banner Slide (Alfagift style) */
-                                    <div className="relative w-full aspect-[16/8] sm:aspect-[16/6.3] md:aspect-[21/7.25] max-h-[370px] bg-slate-900 overflow-hidden">
+                                    <div className="relative w-full aspect-[16/8] bg-slate-900 overflow-hidden">
                                         <img
                                             src={banner.image_url}
                                             alt={banner.title || "Banner Promo"}
@@ -290,7 +290,7 @@ export default function PromoBannerCarousel({
                                 ) : (
                                     /* Gradient / Dynamic Pricing Rule Fallback Slide */
                                     <div
-                                        className={`w-full aspect-[16/8] sm:aspect-[16/6.3] md:aspect-[21/7.25] max-h-[370px] bg-gradient-to-r ${banner.gradient || "from-rose-500 via-pink-600 to-indigo-700"
+                                        className={`w-full aspect-[16/8] bg-gradient-to-r ${banner.gradient || "from-rose-500 via-pink-600 to-indigo-700"
                                             } text-white p-4 sm:p-7 flex flex-col justify-between overflow-hidden relative`}
                                     >
                                         <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
