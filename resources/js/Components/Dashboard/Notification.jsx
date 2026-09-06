@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Menu, Transition } from "@headlessui/react";
 import {
     IconBell,
@@ -11,11 +11,14 @@ import {
     IconCheck,
     IconX,
     IconEye,
+    IconTruckDelivery,
+    IconShoppingCart,
 } from "@tabler/icons-react";
 import { usePage, router, Link } from "@inertiajs/react";
 import { useHaptic } from "@/Hooks/useHaptic";
 import { useAuthorization } from "@/Utils/authorization";
 import { usePasswordConfirmation } from "@/Context/PasswordConfirmationContext";
+import { playOrderAlertChime } from "@/Utils/sound";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 
@@ -33,17 +36,36 @@ export default function Notification() {
         payableNotifications = [],
         discountApprovalNotifications = [],
         bankPaymentNotifications = [],
+        catalogOrderNotifications = [],
         pendingBankPaymentCount = 0,
+        pendingCatalogOrdersCount = 0,
         auth,
     } = usePage().props;
     const { triggerHaptic } = useHaptic();
     const { can } = useAuthorization();
     const [processingDiscountId, setProcessingDiscountId] = useState(null);
     const [processingBankPaymentId, setProcessingBankPaymentId] = useState(null);
+    const [processingOrderId, setProcessingOrderId] = useState(null);
 
     const canApproveDiscounts = can("discounts-approve");
     const canConfirmBankPayments = can("transactions-confirm-payment");
+    const canAccessCatalogOrders = can("catalog-orders-access");
+    const canProcessCatalogOrders = can("catalog-orders-process");
+    const canAccessPos = can("transactions-access");
     const { requirePasswordConfirmation } = usePasswordConfirmation();
+
+    // Sound alert when new catalog order arrives
+    const prevOrderCountRef = useRef(pendingCatalogOrdersCount);
+    useEffect(() => {
+        if (canAccessCatalogOrders && pendingCatalogOrdersCount > prevOrderCountRef.current) {
+            playOrderAlertChime();
+            toast.success(`Pesanan Online Baru (${pendingCatalogOrdersCount}) Masuk!`, {
+                icon: "🚚",
+                duration: 4500,
+            });
+        }
+        prevOrderCountRef.current = pendingCatalogOrdersCount;
+    }, [pendingCatalogOrdersCount, canAccessCatalogOrders]);
 
     const mapItems = (items) =>
         items.map((item) => ({
@@ -57,6 +79,10 @@ export default function Notification() {
                 ) : item.type === "discount" ? (
                     <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0 shadow-2xs">
                         <IconDiscount2 size={18} />
+                    </span>
+                ) : item.type === "catalog_order" ? (
+                    <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0 shadow-2xs">
+                        <IconTruckDelivery size={18} />
                     </span>
                 ) : item.type === "receivable" ? (
                     <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
@@ -95,6 +121,16 @@ export default function Notification() {
             }))
         ),
         ...mapItems(
+            catalogOrderNotifications.map((n) => ({
+                ...n,
+                id: `order-${n.id}`,
+                originalId: n.id,
+                title: `Pesanan Online: ${n.order_number}`,
+                subtitle: `Pemesan: ${n.customer_name} • Total: ${formatCurrency(n.grand_total)}`,
+                type: "catalog_order",
+            }))
+        ),
+        ...mapItems(
             lowStockNotifications.map((n) => ({
                 ...n,
                 id: `stock-${n.id}`,
@@ -130,14 +166,15 @@ export default function Notification() {
     }, [
         bankPaymentNotifications,
         discountApprovalNotifications,
+        catalogOrderNotifications,
         lowStockNotifications,
         receivableNotifications,
         payableNotifications,
     ]);
 
-    // Background polling for real-time discount approvals & bank payment confirmations
+    // Background polling for real-time discount approvals, bank payments & online catalog orders
     useEffect(() => {
-        if (!canApproveDiscounts && !canConfirmBankPayments) return;
+        if (!canApproveDiscounts && !canConfirmBankPayments && !canAccessCatalogOrders) return;
 
         const interval = setInterval(() => {
             if (document.visibilityState === "visible") {
@@ -147,6 +184,8 @@ export default function Notification() {
                         "pendingBankPaymentCount",
                         "discountApprovalNotifications",
                         "pendingApprovalCount",
+                        "catalogOrderNotifications",
+                        "pendingCatalogOrdersCount",
                         "lowStockNotifications",
                         "receivableNotifications",
                         "payableNotifications",
@@ -158,7 +197,7 @@ export default function Notification() {
         }, 30000);
 
         return () => clearInterval(interval);
-    }, [canApproveDiscounts, canConfirmBankPayments]);
+    }, [canApproveDiscounts, canConfirmBankPayments, canAccessCatalogOrders]);
 
     const handleReloadNotifications = () => {
         triggerHaptic("tap");
@@ -168,6 +207,8 @@ export default function Notification() {
                 "pendingBankPaymentCount",
                 "discountApprovalNotifications",
                 "pendingApprovalCount",
+                "catalogOrderNotifications",
+                "pendingCatalogOrdersCount",
                 "lowStockNotifications",
                 "receivableNotifications",
                 "payableNotifications",
@@ -297,6 +338,53 @@ export default function Notification() {
         });
     };
 
+    const handleLoadToPos = (item) => {
+        triggerHaptic("medium");
+        Swal.fire({
+            title: "Buka Pesanan di Kasir?",
+            html: `
+                <div class="text-left text-sm space-y-2 mt-2">
+                    <p>Muat pesanan <strong>${item.order_number}</strong> milik <strong>${item.customer_name}</strong> ke kasir POS?</p>
+                    <div class="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs space-y-1 text-slate-700 dark:text-slate-300">
+                        <p><strong>Total:</strong> ${formatCurrency(item.grand_total)}</p>
+                        <p><strong>Metode:</strong> ${item.delivery_method === "delivery" ? "🚚 Pengiriman" : "🛍️ Ambil di Toko"}</p>
+                    </div>
+                </div>
+            `,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#2563eb",
+            cancelButtonColor: "#64748b",
+            confirmButtonText: "Ya, Buka di Kasir",
+            cancelButtonText: "Batal",
+            customClass: {
+                popup: "rounded-2xl dark:bg-slate-900 dark:text-white",
+            },
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+
+            setProcessingOrderId(item.id);
+            router.post(
+                route("catalog-orders.load-to-pos", item.originalId),
+                {},
+                {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        toast.success(`Pesanan ${item.order_number} berhasil dimuat ke kasir POS!`);
+                        setProcessingOrderId(null);
+                    },
+                    onError: (err) => {
+                        toast.error(err?.error || "Gagal memuat pesanan ke kasir.");
+                        setProcessingOrderId(null);
+                    },
+                    onFinish: () => {
+                        setProcessingOrderId(null);
+                    },
+                }
+            );
+        });
+    };
+
     const handleMarkRead = (id) => {
         setData((prev) => prev.filter((item) => item.id !== id));
         const item = data.find((d) => d.id === id);
@@ -310,7 +398,7 @@ export default function Notification() {
     };
 
     const handleMarkAllRead = () => {
-        setData((prev) => prev.filter((item) => item.type === "discount" || item.type === "bank_payment"));
+        setData((prev) => prev.filter((item) => item.type === "discount" || item.type === "bank_payment" || item.type === "catalog_order"));
         router.post(
             route("notifications.stock.readAll"),
             {},
@@ -321,7 +409,8 @@ export default function Notification() {
     const badgeCount = data.length;
     const discountCount = data.filter((d) => d.type === "discount").length;
     const bankCount = data.filter((d) => d.type === "bank_payment").length;
-    const hasUrgentAction = discountCount > 0 || bankCount > 0;
+    const catalogOrderCount = data.filter((d) => d.type === "catalog_order").length;
+    const hasUrgentAction = discountCount > 0 || bankCount > 0 || catalogOrderCount > 0;
 
     const NotificationList = ({ close }) => (
         <div className="flex flex-col gap-2.5 items-stretch w-full">
@@ -492,6 +581,96 @@ export default function Notification() {
                     );
                 }
 
+                if (item.type === "catalog_order") {
+                    return (
+                        <div
+                            key={item.id}
+                            className="w-full p-3 sm:p-3.5 rounded-2xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200/90 dark:border-blue-800/60 shadow-2xs transition-all space-y-2.5"
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-start gap-3 min-w-0 flex-1">
+                                    {item.icon}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                                                {item.order_number}
+                                            </span>
+                                            <span className="px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300">
+                                                Pesanan Web
+                                            </span>
+                                            <span className="px-2 py-0.5 text-[9px] sm:text-[10px] font-medium rounded-full bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                                {item.delivery_method === "delivery" ? "🚚 Pengiriman" : "🛍️ Ambil di Toko"}
+                                            </span>
+                                        </div>
+                                        <div className="text-slate-600 dark:text-slate-300 text-[11px] sm:text-xs mt-1 space-y-0.5">
+                                            <p className="truncate">
+                                                Pemesan: <strong className="text-slate-800 dark:text-slate-100">{item.customer_name}</strong>
+                                                {item.customer_phone ? ` • ${item.customer_phone}` : ""}
+                                            </p>
+                                            <p>
+                                                Total:{" "}
+                                                <strong className="text-blue-700 dark:text-blue-300 font-bold">
+                                                    {formatCurrency(item.grand_total)}
+                                                </strong>
+                                                {item.items_count !== undefined && (
+                                                    <span className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-[11px] ml-1.5 font-medium">
+                                                        ({item.items_count} item)
+                                                    </span>
+                                                )}
+                                            </p>
+                                            {item.warehouse && (
+                                                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                                                    Gudang: {item.warehouse}
+                                                </p>
+                                            )}
+                                            {item.time && (
+                                                <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                                                    {item.time}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                <Link
+                                    href={route("catalog-orders.index", { status: "submitted", q: item.order_number })}
+                                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                                    title="Lihat Detail Pesanan"
+                                    onClick={close}
+                                >
+                                    <IconEye size={17} />
+                                </Link>
+                            </div>
+
+                            {/* Direct Action Buttons */}
+                            <div className="flex items-center gap-2 pt-1 border-t border-blue-200/60 dark:border-blue-900/40">
+                                <Link
+                                    href={route("catalog-orders.index", { status: "submitted", q: item.order_number })}
+                                    onClick={close}
+                                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-2xs hover:shadow-xs active:scale-95 transition-all"
+                                >
+                                    <IconEye size={14} />
+                                    <span>Lihat & Kelola</span>
+                                </Link>
+                                {canAccessPos && canProcessCatalogOrders && (
+                                    <button
+                                        type="button"
+                                        disabled={processingOrderId === item.id}
+                                        onClick={() => handleLoadToPos(item)}
+                                        className="inline-flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-white hover:bg-blue-50 dark:bg-slate-900 dark:hover:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 text-blue-600 dark:text-blue-400 text-[11px] font-bold active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+                                    >
+                                        {processingOrderId === item.id ? (
+                                            <div className="w-3.5 h-3.5 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
+                                        ) : (
+                                            <IconShoppingCart size={14} />
+                                        )}
+                                        <span>Buka di Kasir</span>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    );
+                }
+
                 return (
                     <div
                         className="flex items-center justify-between gap-3 w-full p-3 sm:p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 hover:border-primary-200 dark:hover:border-primary-800 shadow-2xs transition-all"
@@ -590,6 +769,11 @@ export default function Notification() {
                                     {badgeCount}
                                 </span>
                             )}
+                            {catalogOrderCount > 0 && (
+                                <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
+                                    {catalogOrderCount} Pesanan Baru
+                                </span>
+                            )}
                             {bankCount > 0 && (
                                 <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-cyan-100 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300">
                                     {bankCount} Perlu Konfirmasi Bank
@@ -602,6 +786,15 @@ export default function Notification() {
                             )}
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
+                            {canAccessCatalogOrders && catalogOrderCount > 0 && (
+                                <Link
+                                    href={route("catalog-orders.index", { status: "submitted" })}
+                                    className="text-[11px] sm:text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                                    onClick={close}
+                                >
+                                    Pesanan Online
+                                </Link>
+                            )}
                             {canConfirmBankPayments && bankCount > 0 && (
                                 <Link
                                     href={route("transactions.history", { payment_method: "bank_transfer", payment_status: "pending" })}

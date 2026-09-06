@@ -47,6 +47,7 @@ class HandleInertiaRequests extends Middleware
         $pendingBankPaymentCount = 0;
         $pendingDineOrdersCount = 0;
         $pendingCatalogOrdersCount = 0;
+        $catalogOrderNotifications = [];
 
         if ($request->user()) {
             $user = $request->user();
@@ -125,6 +126,31 @@ class HandleInertiaRequests extends Middleware
                 $pendingCatalogOrdersCount = CatalogOrder::pending()
                     ->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
                     ->count();
+
+                $catalogOrderNotifications = CatalogOrder::pending()
+                    ->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
+                    ->with([
+                        'warehouse:id,name',
+                    ])
+                    ->withCount('items')
+                    ->orderByDesc('created_at')
+                    ->limit(10)
+                    ->get(['id', 'order_number', 'customer_name', 'customer_phone', 'delivery_method', 'grand_total', 'warehouse_id', 'created_at'])
+                    ->map(function ($order) {
+                        return [
+                            'id' => $order->id,
+                            'order_number' => $order->order_number,
+                            'customer_name' => $order->customer_name,
+                            'customer_phone' => $order->customer_phone,
+                            'delivery_method' => $order->delivery_method,
+                            'items_count' => (int) $order->items_count,
+                            'grand_total' => (int) $order->grand_total,
+                            'warehouse' => $order->warehouse?->name,
+                            'time' => optional($order->created_at)->diffForHumans(),
+                            'created_at' => $order->created_at?->toISOString(),
+                        ];
+                    })
+                    ->toArray();
             }
 
             $lowStockNotifications = DB::table('product_warehouse')
@@ -331,6 +357,7 @@ class HandleInertiaRequests extends Middleware
             'pendingApprovalCount' => $pendingApprovalCount,
             'pendingDineOrdersCount' => $pendingDineOrdersCount,
             'pendingCatalogOrdersCount' => $pendingCatalogOrdersCount,
+            'catalogOrderNotifications' => $catalogOrderNotifications,
             'appVersion' => config('app.version'),
             'wa_ready' => $waReady,
             'security' => [

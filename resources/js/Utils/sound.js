@@ -176,3 +176,46 @@ export function playSuccessChime() {
     }
 }
 
+/**
+ * Synthesizes a clean, pleasant two-tone chime for incoming online orders.
+ */
+export function playOrderAlertChime() {
+    if (!isSoundEnabled()) return;
+    if (typeof window === "undefined") return;
+
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+
+        const ctx = new AudioCtx();
+        if (ctx.state === "suspended") {
+            ctx.resume();
+        }
+
+        const now = ctx.currentTime;
+        const notes = [
+            { time: 0, freq: 880, dur: 0.35, gain: 0.18 },
+            { time: 0.15, freq: 1174.66, dur: 0.65, gain: 0.22 },
+        ];
+
+        notes.forEach(({ time, freq, dur, gain: noteGain }) => {
+            const osc = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(freq, now + time);
+
+            gainNode.gain.setValueAtTime(noteGain, now + time);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, now + time + dur);
+
+            osc.connect(gainNode);
+            gainNode.connect(ctx.destination);
+
+            osc.start(now + time);
+            osc.stop(now + time + dur);
+        });
+    } catch {
+        // Silently catch autoplay restrictions
+    }
+}
+
