@@ -261,7 +261,9 @@ class CheckoutService
                 $totalBuyPrice = $unitBuyPrice * $cart->qty;
                 $lineShare = $subtotalAfterPromo > 0 ? $lineTotal / $subtotalAfterPromo : 0;
                 $allocatedManualDiscount = (int) round($appliedManualDiscount * $lineShare);
-                $netSellPrice = max(0, $lineTotal - $allocatedManualDiscount);
+                $allocatedVoucherDiscount = (int) round($voucherDiscount * $lineShare);
+                $allocatedLoyaltyDiscount = (int) round($loyaltyDiscount * $lineShare);
+                $netSellPrice = max(0, $lineTotal - $allocatedManualDiscount - $allocatedVoucherDiscount - $allocatedLoyaltyDiscount);
                 $profits = $netSellPrice - $totalBuyPrice;
 
                 $transaction->profits()->create([

@@ -22,8 +22,8 @@ class Receivable extends Model
     ];
 
     protected $casts = [
-        'total' => 'float',
-        'paid' => 'float',
+        'total' => 'integer',
+        'paid' => 'integer',
         'due_date' => 'date',
     ];
 
@@ -52,9 +52,9 @@ class Receivable extends Model
         return $this->hasMany(CustomerCampaignLog::class);
     }
 
-    public function getRemainingAttribute(): float
+    public function getRemainingAttribute(): int
     {
-        return max(0, ($this->total ?? 0) - ($this->paid ?? 0));
+        return (int) max(0, ($this->total ?? 0) - ($this->paid ?? 0));
     }
 
     public function getAgingBucketAttribute(): string

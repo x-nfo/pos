@@ -98,6 +98,7 @@ class CashierShiftService
 
         $nonCashSalesTotal = (int) (clone $transactions)
             ->where('payment_method', '!=', 'cash')
+            ->where('payment_status', 'paid')
             ->sum('grand_total');
 
         $cashRefundTotal = (int) (clone $salesReturns)

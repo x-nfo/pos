@@ -229,9 +229,9 @@ class LoyaltyService
             }
         }
 
-        // Also tax shipping if needed (simple: apply effective tax rate)
-        if ($shippingCost > 0 && $effectiveRate > 0) {
-            $shippingTax = (int) round($shippingCost * $effectiveRate / 100);
+        // Also tax shipping if needed (use store default rate, not per-product rate)
+        if ($shippingCost > 0 && $defaultRate > 0) {
+            $shippingTax = (int) round($shippingCost * $defaultRate / 100);
             $taxTotal += $shippingTax;
         }
 

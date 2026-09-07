@@ -29,9 +29,9 @@ class PayableAgingService
             return [
                 'bucket' => $bucket,
                 'count' => $filtered->count(),
-                'total' => (float) $filtered->sum('total'),
-                'paid' => (float) $filtered->sum('paid'),
-                'remaining' => (float) $filtered->sum(fn ($p) => max(0, $p->total - $p->paid)),
+                'total' => (int) $filtered->sum('total'),
+                'paid' => (int) $filtered->sum('paid'),
+                'remaining' => (int) $filtered->sum(fn ($p) => max(0, $p->total - $p->paid)),
             ];
         });
     }
