@@ -110,6 +110,15 @@ class Transaction extends Model
         return $this->belongsTo(CashierShift::class);
     }
 
+    /**
+     * Scope: only confirmed transactions (cash paid, gateway paid, or pay_later).
+     * Excludes gateway-pending, expired, and cancelled transactions.
+     */
+    public function scopeSettled($query)
+    {
+        return $query->whereIn('payment_status', ['paid', 'unpaid']);
+    }
+
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class)->withTrashed();
@@ -190,11 +199,11 @@ class Transaction extends Model
 
         if ($percentThreshold > 0) {
             $baseAmount = $this->relationLoaded('details') && $this->details->isNotEmpty()
-                ? (float) $this->details->sum('price')
-                : (float) $this->details()->sum('price');
+                ? (int) $this->details->sum('price')
+                : (int) $this->details()->sum('price');
 
             if ($baseAmount <= 0) {
-                $baseAmount = (float) (
+                $baseAmount = (int) (
                     $this->grand_total
                     + $this->discount
                     - ($this->tax_total ?? 0)

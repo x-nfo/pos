@@ -34,25 +34,25 @@ class DashboardController extends Controller
 
         $totalCategories = Category::count();
         $totalProducts = Product::count();
-        $totalTransactions = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))->count();
+        $totalTransactions = Transaction::settled()->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))->count();
         $totalCustomers = Customer::count();
-        $totalRevenue = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))->sum('grand_total');
+        $totalRevenue = Transaction::settled()->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))->sum('grand_total');
         $totalProfit = Profit::when($scopedWarehouseId, fn ($q) => $q->whereHas('transaction', fn ($t) => $t->where('warehouse_id', $scopedWarehouseId)))->sum('total');
-        $averageOrder = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))->avg('grand_total') ?? 0;
-        $todayTransactions = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))->whereDate('created_at', Carbon::today())->count();
+        $averageOrder = Transaction::settled()->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))->avg('grand_total') ?? 0;
+        $todayTransactions = Transaction::settled()->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))->whereDate('created_at', Carbon::today())->count();
 
         // New: Today's Sales and Profit
-        $todaySales = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))->whereDate('created_at', Carbon::today())->sum('grand_total');
+        $todaySales = Transaction::settled()->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))->whereDate('created_at', Carbon::today())->sum('grand_total');
         $todayProfit = Profit::when($scopedWarehouseId, fn ($q) => $q->whereHas('transaction', fn ($t) => $t->where('warehouse_id', $scopedWarehouseId)))->whereDate('created_at', Carbon::today())->sum('total');
 
         // New: Monthly Target (from settings)
         $monthlyTarget = Setting::where('key', 'monthly_sales_target')->first()?->value ?? 0;
-        $currentMonthSales = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
+        $currentMonthSales = Transaction::settled()->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
             ->whereMonth('created_at', Carbon::now()->month)
             ->whereYear('created_at', Carbon::now()->year)
             ->sum('grand_total');
 
-        $revenueTrend = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
+        $revenueTrend = Transaction::settled()->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
             ->selectRaw('DATE(created_at) as date, SUM(grand_total) as total')
             ->groupBy('date')
             ->orderBy('date', 'desc')
@@ -136,7 +136,7 @@ class DashboardController extends Controller
                 ];
             });
 
-        $recentTransactions = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
+        $recentTransactions = Transaction::settled()->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
             ->with('cashier:id,name', 'customer:id,name')
             ->latest()
             ->take(5)
@@ -151,7 +151,7 @@ class DashboardController extends Controller
                 ];
             });
 
-        $topCustomers = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
+        $topCustomers = Transaction::settled()->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))
             ->select('customer_id', DB::raw('COUNT(*) as orders'), DB::raw('SUM(grand_total) as total'))
             ->with('customer:id,name')
             ->whereNotNull('customer_id')
@@ -167,7 +167,7 @@ class DashboardController extends Controller
                 ];
             });
 
-        $topLocations = Transaction::when($scopedWarehouseId, fn ($q) => $q->where('transactions.warehouse_id', $scopedWarehouseId))
+        $topLocations = Transaction::settled()->when($scopedWarehouseId, fn ($q) => $q->where('transactions.warehouse_id', $scopedWarehouseId))
             ->join('customers', 'transactions.customer_id', '=', 'customers.id')
             ->select('customers.village_name', DB::raw('COUNT(*) as orders'))
             ->whereNotNull('customers.village_name')
