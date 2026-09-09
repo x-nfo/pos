@@ -245,6 +245,7 @@ class SalesReturnController extends Controller
 
             $salesReturn->load([
                 'transaction.receivable',
+                'transaction.details',
                 'items.product',
                 'items.transactionDetail',
                 'exchangeItems.product',
@@ -326,8 +327,29 @@ class SalesReturnController extends Controller
                         ? $this->unitConversionService->getBuyPrice($item->product, $detail->unit_id)
                         : (int) round($item->product->buy_price * $conversionFactor);
 
-                    $detailUnitPrice = $detail->getEffectiveUnitPrice();
-                    $margin = ($detailUnitPrice - $unitBuyPrice) * (int) $item->qty_return;
+                    // Reconstruct the net sell price per unit that was used when recording
+                    // original profit at checkout — must subtract the proportional share of
+                    // manual discount, voucher discount, and loyalty discount from the
+                    // transaction, otherwise the reversal over-states the profit clawback.
+                    $transaction = $salesReturn->transaction;
+                    $lineTotal   = (int) $detail->price; // price after promo (PricingService)
+                    $txSubtotal  = (int) $transaction->details->sum('price');
+
+                    if ($txSubtotal > 0) {
+                        $lineShare = $lineTotal / $txSubtotal;
+                        $allocatedManual  = (int) round((int) $transaction->discount                  * $lineShare);
+                        $allocatedVoucher = (int) round((int) $transaction->customer_voucher_discount * $lineShare);
+                        $allocatedLoyalty = (int) round((int) $transaction->loyalty_discount_total    * $lineShare);
+                    } else {
+                        $allocatedManual = $allocatedVoucher = $allocatedLoyalty = 0;
+                    }
+
+                    $netLineTotal = max(0, $lineTotal - $allocatedManual - $allocatedVoucher - $allocatedLoyalty);
+                    $netUnitPrice = (int) $detail->qty > 0
+                        ? (int) round($netLineTotal / (int) $detail->qty)
+                        : $netLineTotal;
+
+                    $margin = ($netUnitPrice - $unitBuyPrice) * (int) $item->qty_return;
 
                     Profit::create([
                         'transaction_id' => $salesReturn->transaction_id,

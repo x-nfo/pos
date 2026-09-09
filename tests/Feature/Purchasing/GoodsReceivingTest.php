@@ -85,6 +85,7 @@ class GoodsReceivingTest extends TestCase
         ]);
 
         $product = $this->createProduct(10);
+        $this->assertEquals(50000, $product->buy_price); // initial buy price
 
         $supplier = Supplier::create([
             'name' => 'Kopi Nusantara',
@@ -113,12 +114,14 @@ class GoodsReceivingTest extends TestCase
             'ordered_at' => now(),
         ]);
 
+        // Purchase with a new price to test buy_price sync (Issue #11)
+        $newBuyPrice = 55000;
         $poItem = PurchaseOrderItem::create([
             'purchase_order_id' => $po->id,
             'product_id' => $product->id,
             'qty_ordered' => 20,
             'qty_received' => 0,
-            'unit_price' => 50000,
+            'unit_price' => $newBuyPrice,
         ]);
 
         $response = $this->actingAs($user)
@@ -163,7 +166,7 @@ class GoodsReceivingTest extends TestCase
             'purchase_order_id' => $po->id,
             'supplier_id' => $supplier->id,
             'status' => 'unpaid',
-            'total' => 1000000, // 20 * 50000
+            'total' => 20 * $newBuyPrice,
         ]);
 
         // Stock mutation recorded
@@ -174,6 +177,9 @@ class GoodsReceivingTest extends TestCase
             'mutation_type' => 'in',
             'qty' => 20,
         ]);
+
+        // Verify product buy_price is synced with the latest PO cost
+        $this->assertEquals($newBuyPrice, $product->fresh()->buy_price);
     }
 
     public function test_authorized_user_can_receive_goods_with_multi_uom_conversion(): void

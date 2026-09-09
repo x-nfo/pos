@@ -98,6 +98,19 @@ class GoodsReceivingService
                         notes: 'Penerimaan dari PO '.$order->document_number,
                         userId: $userId,
                     );
+
+                    // Sync product.buy_price to the latest purchase cost so that
+                    // downstream profit calculations use an accurate COGS figure.
+                    // Divide by conversion_factor to convert PO unit price → base unit price.
+                    if ($poItem->unit_price > 0) {
+                        $baseBuyPrice = $conversionFactor > 0
+                            ? (int) round($poItem->unit_price / $conversionFactor)
+                            : (int) $poItem->unit_price;
+
+                        if ($baseBuyPrice !== (int) $product->buy_price) {
+                            $product->update(['buy_price' => $baseBuyPrice]);
+                        }
+                    }
                 }
 
                 $this->updateOrderStatus($order);

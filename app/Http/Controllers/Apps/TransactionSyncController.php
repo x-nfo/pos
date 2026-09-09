@@ -48,6 +48,9 @@ class TransactionSyncController extends Controller
             'shipping_cost' => 'nullable|numeric|min:0',
             'redeem_points' => 'nullable|numeric|min:0',
             'customer_voucher_id' => 'nullable|integer|exists:customer_vouchers,id',
+            // Discount totals from client — used to allocate profit correctly per line
+            'voucher_discount_total' => 'nullable|numeric|min:0',
+            'loyalty_discount_total' => 'nullable|numeric|min:0',
             'grand_total' => 'nullable|numeric|min:0',
             'cash' => 'nullable|numeric|min:0',
             'payment_gateway' => 'nullable|string',
@@ -95,6 +98,9 @@ class TransactionSyncController extends Controller
         $manualDiscount = max(0, (int) ($validated['discount'] ?? 0));
         $shippingCost = max(0, (int) ($validated['shipping_cost'] ?? 0));
         $requestedRedeemPoints = max(0, (int) ($validated['redeem_points'] ?? 0));
+        // Discount amounts calculated offline — accepted as-is to ensure profit allocation matches
+        $voucherDiscount = max(0, (int) ($validated['voucher_discount_total'] ?? 0));
+        $loyaltyDiscount = max(0, (int) ($validated['loyalty_discount_total'] ?? 0));
         $customer = ! empty($validated['customer_id'])
             ? Customer::find($validated['customer_id'])
             : null;
@@ -116,6 +122,8 @@ class TransactionSyncController extends Controller
                 $manualDiscount,
                 $shippingCost,
                 $requestedRedeemPoints,
+                $voucherDiscount,
+                $loyaltyDiscount,
                 $customer,
                 $voucher
             ) {
@@ -183,8 +191,8 @@ class TransactionSyncController extends Controller
                     'change' => $changeAmount,
                     'discount' => $manualDiscount,
                     'loyalty_points_redeemed' => $requestedRedeemPoints,
-                    'loyalty_discount_total' => 0,
-                    'customer_voucher_discount' => 0,
+                    'loyalty_discount_total' => $loyaltyDiscount,
+                    'customer_voucher_discount' => $voucherDiscount,
                     'customer_voucher_code' => $voucher?->code,
                     'customer_voucher_name' => $voucher?->name,
                     'shipping_cost' => $shippingCost,
@@ -214,9 +222,14 @@ class TransactionSyncController extends Controller
                         ? $this->unitConversionService->getBuyPrice($product, (int) $lineItem['unit_id'])
                         : (int) ($product->buy_price * ($lineItem['conversion_factor'] ?: 1));
                     $totalBuyPrice = $unitBuyPrice * $lineItem['qty'];
+                    // Allocate all discount components proportionally per line
+                    // — mirrors CheckoutService logic to prevent profit over-statement when
+                    //   voucher / loyalty discounts were applied during offline checkout.
                     $lineShare = $subtotalAfterPromo > 0 ? $lineItem['price'] / $subtotalAfterPromo : 0;
-                    $allocatedManualDiscount = (int) round($manualDiscount * $lineShare);
-                    $netSellPrice = max(0, $lineItem['price'] - $allocatedManualDiscount);
+                    $allocatedManualDiscount  = (int) round($manualDiscount  * $lineShare);
+                    $allocatedVoucherDiscount = (int) round($voucherDiscount * $lineShare);
+                    $allocatedLoyaltyDiscount = (int) round($loyaltyDiscount * $lineShare);
+                    $netSellPrice = max(0, $lineItem['price'] - $allocatedManualDiscount - $allocatedVoucherDiscount - $allocatedLoyaltyDiscount);
                     $profits = $netSellPrice - $totalBuyPrice;
 
                     $transaction->profits()->create([

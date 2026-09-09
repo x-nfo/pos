@@ -33,12 +33,15 @@ class CatalogOrderTest extends TestCase
         $this->seed([PermissionSeeder::class, RoleSeeder::class]);
 
         $this->warehouse = Warehouse::create([
-            'name' => 'Cabang Utama',
-            'code' => 'CBG01',
-            'is_active' => true,
-            'is_default' => true,
+            'name'                     => 'Cabang Utama',
+            'code'                     => 'CBG01',
+            'is_active'                => true,
+            'is_default'               => true,
             'catalog_delivery_enabled' => true,
-            'catalog_pickup_enabled' => true,
+            'catalog_pickup_enabled'   => true,
+            // Always open during tests — prevents time-dependent flakiness
+            'open_time'                => '00:00',
+            'close_time'               => '23:59',
         ]);
 
         $category = Category::create([

@@ -1282,4 +1282,201 @@ class SalesReturnTest extends TestCase
             'warehouse_id' => $warehouseId,
         ]);
     }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Issue #9 — Profit reversal must proportionally account for voucher/loyalty
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public function test_complete_sales_return_profit_reversal_accounts_for_voucher_discount(): void
+    {
+        // Transaction: sell 60000, buy 45000, voucher discount 10000 on single item
+        // Original profit = 60000 - 10000 - 45000 = 5000
+        // Reversal should be -5000, NOT -15000 (which would ignore the voucher allocation)
+        $user = $this->createUserWithPermissions([
+            'transactions-access',
+            'sales-returns-access',
+            'sales-returns-create',
+            'sales-returns-complete',
+        ]);
+
+        $category = Category::create(['name' => 'Kategori Voucher Test', 'description' => '', 'image' => 'c.png']);
+        $product  = Product::create([
+            'category_id' => $category->id,
+            'image'       => 'p.png',
+            'barcode'     => 'BRCD-'.Str::upper(Str::random(10)),
+            'title'       => 'Produk Voucher Retur',
+            'description' => '',
+            'buy_price'   => 45000,
+            'sell_price'  => 60000,
+            'stock'       => 5,
+            'tax_rate'    => 0,
+        ]);
+
+        $warehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(
+            ['product_id' => $product->id, 'warehouse_id' => $warehouse->id],
+            ['stock' => 5]
+        );
+
+        $customer = Customer::create(['name' => 'Pelanggan Voucher', 'no_telp' => '08100000001', 'address' => 'Jl. Test']);
+
+        // Simulate a transaction with voucher discount of 10000
+        $transaction = Transaction::create([
+            'warehouse_id'             => $warehouse->id,
+            'cashier_id'               => $user->id,
+            'cashier_shift_id'         => null,
+            'customer_id'              => $customer->id,
+            'invoice'                  => 'TRX-VOUCH-'.Str::upper(Str::random(6)),
+            'cash'                     => 50000,
+            'change'                   => 0,
+            'discount'                 => 0,
+            'customer_voucher_discount'=> 10000,  // ← voucher discount
+            'loyalty_discount_total'   => 0,
+            'shipping_cost'            => 0,
+            'grand_total'              => 50000,
+            'payment_method'           => 'cash',
+            'payment_status'           => 'paid',
+        ]);
+
+        $detail = $transaction->details()->create([
+            'product_id' => $product->id,
+            'qty'        => 1,
+            'unit_price' => 60000,
+            'price'      => 60000,  // line price before voucher allocation
+        ]);
+
+        // Original profit stored at checkout = netSell - buy = (60000-10000) - 45000 = 5000
+        $transaction->profits()->create(['total' => 5000]);
+
+        $shift = $this->openShiftFor($user);
+
+        $salesReturn = SalesReturn::create([
+            'code'                => 'SR-VOUCH-TEST',
+            'transaction_id'      => $transaction->id,
+            'customer_id'         => $customer->id,
+            'cashier_id'          => $user->id,
+            'status'              => 'draft',
+            'return_type'         => 'refund_cash',
+            'refund_amount'       => 50000,
+            'credited_amount'     => 0,
+            'total_return_amount' => 50000,
+        ]);
+
+        $salesReturn->items()->create([
+            'transaction_detail_id' => $detail->id,
+            'product_id'            => $product->id,
+            'qty_sold'              => 1,
+            'qty_returned_before'   => 0,
+            'qty_return'            => 1,
+            'unit_price'            => 60000,
+            'subtotal'              => 60000,
+            'return_reason'         => 'Produk rusak',
+            'restock_to_inventory'  => false,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('sales-returns.complete', $salesReturn));
+        $response->assertSessionDoesntHaveErrors();
+
+        // Reversal profit: netSellPrice = 60000 - 10000 (voucher) = 50000
+        // netUnitPrice = 50000/1 = 50000; margin = (50000-45000)*1 = 5000; reversal = -5000
+        $this->assertDatabaseHas('profits', [
+            'transaction_id' => $transaction->id,
+            'total'          => -5000,
+        ]);
+    }
+
+    public function test_complete_sales_return_profit_reversal_accounts_for_loyalty_discount(): void
+    {
+        // Transaction: sell 60000, buy 45000, loyalty discount 6000 on single item
+        // Original profit = 60000 - 6000 - 45000 = 9000
+        // Reversal should be -9000
+        $user = $this->createUserWithPermissions([
+            'transactions-access',
+            'sales-returns-access',
+            'sales-returns-create',
+            'sales-returns-complete',
+        ]);
+
+        $category = Category::create(['name' => 'Kategori Loyalty Test', 'description' => '', 'image' => 'c.png']);
+        $product  = Product::create([
+            'category_id' => $category->id,
+            'image'       => 'p.png',
+            'barcode'     => 'BRCD-'.Str::upper(Str::random(10)),
+            'title'       => 'Produk Loyalty Retur',
+            'description' => '',
+            'buy_price'   => 45000,
+            'sell_price'  => 60000,
+            'stock'       => 5,
+            'tax_rate'    => 0,
+        ]);
+
+        $warehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+        ProductWarehouse::updateOrCreate(
+            ['product_id' => $product->id, 'warehouse_id' => $warehouse->id],
+            ['stock' => 5]
+        );
+
+        $customer = Customer::create(['name' => 'Pelanggan Loyalty', 'no_telp' => '08100000002', 'address' => 'Jl. Test']);
+
+        $transaction = Transaction::create([
+            'warehouse_id'           => $warehouse->id,
+            'cashier_id'             => $user->id,
+            'cashier_shift_id'       => null,
+            'customer_id'            => $customer->id,
+            'invoice'                => 'TRX-LOYAL-'.Str::upper(Str::random(6)),
+            'cash'                   => 54000,
+            'change'                 => 0,
+            'discount'               => 0,
+            'loyalty_discount_total' => 6000,  // ← loyalty discount
+            'shipping_cost'          => 0,
+            'grand_total'            => 54000,
+            'payment_method'         => 'cash',
+            'payment_status'         => 'paid',
+        ]);
+
+        $detail = $transaction->details()->create([
+            'product_id' => $product->id,
+            'qty'        => 1,
+            'unit_price' => 60000,
+            'price'      => 60000,
+        ]);
+
+        $transaction->profits()->create(['total' => 9000]);
+
+        $shift = $this->openShiftFor($user);
+
+        $salesReturn = SalesReturn::create([
+            'code'                => 'SR-LOYAL-TEST',
+            'transaction_id'      => $transaction->id,
+            'customer_id'         => $customer->id,
+            'cashier_id'          => $user->id,
+            'status'              => 'draft',
+            'return_type'         => 'refund_cash',
+            'refund_amount'       => 54000,
+            'credited_amount'     => 0,
+            'total_return_amount' => 54000,
+        ]);
+
+        $salesReturn->items()->create([
+            'transaction_detail_id' => $detail->id,
+            'product_id'            => $product->id,
+            'qty_sold'              => 1,
+            'qty_returned_before'   => 0,
+            'qty_return'            => 1,
+            'unit_price'            => 60000,
+            'subtotal'              => 60000,
+            'return_reason'         => 'Barang tidak sesuai',
+            'restock_to_inventory'  => false,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('sales-returns.complete', $salesReturn));
+        $response->assertSessionDoesntHaveErrors();
+
+        // netSellPrice = 60000 - 6000 (loyalty) = 54000
+        // netUnitPrice = 54000; margin = (54000 - 45000) * 1 = 9000; reversal = -9000
+        $this->assertDatabaseHas('profits', [
+            'transaction_id' => $transaction->id,
+            'total'          => -9000,
+        ]);
+    }
 }
