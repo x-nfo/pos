@@ -225,6 +225,7 @@ class CashierShiftController extends Controller
                 : ($shift->cash_difference !== null ? (int) $shift->cash_difference : null),
             'cash_sales_total' => $shift->isOpen() ? $summary['cash_sales_total'] : (int) $shift->cash_sales_total,
             'non_cash_sales_total' => $shift->isOpen() ? $summary['non_cash_sales_total'] : (int) $shift->non_cash_sales_total,
+            'cash_receivable_total' => $shift->isOpen() ? $summary['cash_receivable_total'] : (int) ($shift->cash_receivable_total ?? 0),
             'cash_refund_total' => $shift->isOpen() ? $summary['cash_refund_total'] : (int) $shift->cash_refund_total,
             'non_cash_refund_total' => $shift->isOpen() ? $summary['non_cash_refund_total'] : (int) $shift->non_cash_refund_total,
             'transactions_count' => $shift->isOpen() ? $summary['transactions_count'] : (int) $shift->transactions_count,

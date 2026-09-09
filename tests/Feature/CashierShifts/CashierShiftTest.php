@@ -8,6 +8,8 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\ProductWarehouse;
+use App\Models\Receivable;
+use App\Models\ReceivablePayment;
 use App\Models\SalesReturn;
 use App\Models\Transaction;
 use App\Models\User;
@@ -382,6 +384,90 @@ class CashierShiftTest extends TestCase
             ->component('Dashboard/CashierShifts/Show')
             ->has('pendingHeldCarts', 0)
         );
+    }
+
+    public function test_cashier_shift_close_saves_cash_receivable_total(): void
+    {
+        $cashier = $this->createUserWithPermissions([
+            'cashier-shifts-access',
+            'cashier-shifts-close',
+        ]);
+
+        $warehouse = Warehouse::firstOrCreate(['code' => 'MAIN-TEST'], ['name' => 'Main Test Warehouse']);
+
+        $shift = CashierShift::create([
+            'warehouse_id' => $warehouse->id,
+            'user_id' => $cashier->id,
+            'opened_by' => $cashier->id,
+            'opened_at' => now(),
+            'opening_cash' => 100000,
+            'expected_cash' => 100000,
+            'status' => CashierShift::STATUS_OPEN,
+        ]);
+
+        $customer = Customer::create([
+            'name' => 'Customer Piutang',
+            'no_telp' => '081233344455',
+            'address' => 'Jl. Piutang',
+        ]);
+
+        $transaction = Transaction::create([
+            'warehouse_id' => $warehouse->id,
+            'cashier_id' => $cashier->id,
+            'customer_id' => $customer->id,
+            'invoice' => 'TRX-REC-'.Str::upper(Str::random(6)),
+            'cash' => 0,
+            'change' => 0,
+            'discount' => 0,
+            'shipping_cost' => 0,
+            'grand_total' => 50000,
+            'payment_method' => 'pay_later',
+            'payment_status' => 'unpaid',
+        ]);
+
+        $receivable = Receivable::create([
+            'customer_id' => $customer->id,
+            'transaction_id' => $transaction->id,
+            'invoice' => $transaction->invoice,
+            'total' => 50000,
+            'paid' => 20000,
+            'due_date' => now()->addDays(7),
+            'status' => 'partial',
+        ]);
+
+        // Create approved cash receivable payment during this shift
+        ReceivablePayment::create([
+            'receivable_id' => $receivable->id,
+            'user_id' => $cashier->id,
+            'cashier_shift_id' => $shift->id,
+            'warehouse_id' => $warehouse->id,
+            'amount' => 20000,
+            'payment_date' => now(),
+            'method' => 'cash',
+            'status' => 'approved',
+            'approval_status' => 'approved',
+            'approved_by' => $cashier->id,
+            'approved_at' => now(),
+        ]);
+
+        $response = $this
+            ->actingAs($cashier)
+            ->post(route('cashier-shifts.close', $shift), [
+                'actual_cash' => 120000,
+                'close_notes' => 'Tutup shift dengan pelunasan piutang',
+            ]);
+
+        $response->assertRedirect(route('cashier-shifts.show', $shift));
+
+        // Expected cash: 100000 (opening) + 20000 (receivable payment) = 120000
+        $this->assertDatabaseHas('cashier_shifts', [
+            'id' => $shift->id,
+            'status' => CashierShift::STATUS_CLOSED,
+            'expected_cash' => 120000,
+            'actual_cash' => 120000,
+            'cash_difference' => 0,
+            'cash_receivable_total' => 20000,
+        ]);
     }
 
     private function createUserWithPermissions(array $permissions): User
