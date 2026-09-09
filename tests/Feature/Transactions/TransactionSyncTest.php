@@ -508,40 +508,40 @@ class TransactionSyncTest extends TestCase
         }
 
         return CashierShift::create([
-            'user_id'      => $cashier->id,
+            'user_id' => $cashier->id,
             'warehouse_id' => $warehouseId,
-            'opened_by'    => $cashier->id,
-            'opened_at'    => now(),
+            'opened_by' => $cashier->id,
+            'opened_at' => now(),
             'opening_cash' => 100000,
-            'expected_cash'=> 100000,
-            'status'       => 'open',
+            'expected_cash' => 100000,
+            'status' => 'open',
         ]);
     }
 
     protected function createProduct(int $warehouseId, int $initialStock = 25): Product
     {
         $category = Category::create([
-            'name'        => 'Sembako',
+            'name' => 'Sembako',
             'description' => 'Kategori pengujian',
-            'image'       => 'category.png',
+            'image' => 'category.png',
         ]);
 
         $product = Product::create([
             'category_id' => $category->id,
-            'image'       => 'product.png',
-            'barcode'     => 'BRCD-'.Str::upper(Str::random(10)),
-            'title'       => 'Produk Offline Uji',
+            'image' => 'product.png',
+            'barcode' => 'BRCD-'.Str::upper(Str::random(10)),
+            'title' => 'Produk Offline Uji',
             'description' => 'Deskripsi produk uji.',
-            'buy_price'   => 45000,
-            'sell_price'  => 60000,
-            'stock'       => $initialStock,
-            'tax_rate'    => 0,
+            'buy_price' => 45000,
+            'sell_price' => 60000,
+            'stock' => $initialStock,
+            'tax_rate' => 0,
         ]);
 
         ProductWarehouse::create([
-            'product_id'   => $product->id,
+            'product_id' => $product->id,
             'warehouse_id' => $warehouseId,
-            'stock'        => $initialStock,
+            'stock' => $initialStock,
         ]);
 
         return $product;
@@ -556,29 +556,29 @@ class TransactionSyncTest extends TestCase
         // sell 60000, buy 45000 → margin 15000
         // voucher discount 10000 → netSell = 50000 → profit should be 50000 - 45000 = 5000
         // Before fix: profit was 60000 - 45000 = 15000 (over-stated by 10000)
-        $cashier   = $this->createCashier();
+        $cashier = $this->createCashier();
         $warehouse = Warehouse::create(['code' => 'WH-'.Str::upper(Str::random(4)), 'name' => 'Voucher WH', 'is_active' => true]);
         $this->openShiftFor($cashier, $warehouse->id);
         $product = $this->createProduct($warehouse->id, initialStock: 10);
 
-        $linePrice      = 60000;   // sell_price × 1
+        $linePrice = 60000;   // sell_price × 1
         $voucherDiscount = 10000;
-        $grandTotal     = $linePrice - $voucherDiscount; // 50000
+        $grandTotal = $linePrice - $voucherDiscount; // 50000
 
         $response = $this
             ->actingAs($cashier)
             ->postJson(route('transactions.sync-offline'), [
-                'client_tx_id'         => (string) Str::uuid(),
-                'grand_total'          => $grandTotal,
-                'cash'                 => $grandTotal,
-                'payment_gateway'      => 'cash',
+                'client_tx_id' => (string) Str::uuid(),
+                'grand_total' => $grandTotal,
+                'cash' => $grandTotal,
+                'payment_gateway' => 'cash',
                 'voucher_discount_total' => $voucherDiscount,
                 'loyalty_discount_total' => 0,
                 'items' => [[
-                    'product_id'        => $product->id,
-                    'qty'               => 1,
-                    'unit_price'        => $linePrice,
-                    'price'             => $linePrice,
+                    'product_id' => $product->id,
+                    'qty' => 1,
+                    'unit_price' => $linePrice,
+                    'price' => $linePrice,
                     'conversion_factor' => 1,
                 ]],
             ]);
@@ -599,29 +599,29 @@ class TransactionSyncTest extends TestCase
         // sell 60000, buy 45000
         // loyalty discount 6000 → netSell = 54000 → profit = 54000 - 45000 = 9000
         // Before fix: profit was 60000 - 45000 = 15000 (over-stated by 6000)
-        $cashier   = $this->createCashier();
+        $cashier = $this->createCashier();
         $warehouse = Warehouse::create(['code' => 'WH-'.Str::upper(Str::random(4)), 'name' => 'Loyalty WH', 'is_active' => true]);
         $this->openShiftFor($cashier, $warehouse->id);
         $product = $this->createProduct($warehouse->id, initialStock: 10);
 
-        $linePrice      = 60000;
+        $linePrice = 60000;
         $loyaltyDiscount = 6000;
-        $grandTotal     = $linePrice - $loyaltyDiscount; // 54000
+        $grandTotal = $linePrice - $loyaltyDiscount; // 54000
 
         $response = $this
             ->actingAs($cashier)
             ->postJson(route('transactions.sync-offline'), [
-                'client_tx_id'          => (string) Str::uuid(),
-                'grand_total'           => $grandTotal,
-                'cash'                  => $grandTotal,
-                'payment_gateway'       => 'cash',
+                'client_tx_id' => (string) Str::uuid(),
+                'grand_total' => $grandTotal,
+                'cash' => $grandTotal,
+                'payment_gateway' => 'cash',
                 'voucher_discount_total' => 0,
                 'loyalty_discount_total' => $loyaltyDiscount,
                 'items' => [[
-                    'product_id'        => $product->id,
-                    'qty'               => 1,
-                    'unit_price'        => $linePrice,
-                    'price'             => $linePrice,
+                    'product_id' => $product->id,
+                    'qty' => 1,
+                    'unit_price' => $linePrice,
+                    'price' => $linePrice,
                     'conversion_factor' => 1,
                 ]],
             ]);
@@ -640,27 +640,27 @@ class TransactionSyncTest extends TestCase
     public function test_offline_sync_without_discount_fields_still_works(): void
     {
         // Backward compatibility — old clients not sending voucher/loyalty fields
-        $cashier   = $this->createCashier();
+        $cashier = $this->createCashier();
         $warehouse = Warehouse::create(['code' => 'WH-'.Str::upper(Str::random(4)), 'name' => 'BW WH', 'is_active' => true]);
         $this->openShiftFor($cashier, $warehouse->id);
         $product = $this->createProduct($warehouse->id, initialStock: 5);
 
-        $linePrice  = 60000;
+        $linePrice = 60000;
         $grandTotal = $linePrice;
 
         $response = $this
             ->actingAs($cashier)
             ->postJson(route('transactions.sync-offline'), [
-                'client_tx_id'   => (string) Str::uuid(),
-                'grand_total'    => $grandTotal,
-                'cash'           => $grandTotal,
-                'payment_gateway'=> 'cash',
+                'client_tx_id' => (string) Str::uuid(),
+                'grand_total' => $grandTotal,
+                'cash' => $grandTotal,
+                'payment_gateway' => 'cash',
                 // intentionally omit voucher_discount_total and loyalty_discount_total
                 'items' => [[
-                    'product_id'        => $product->id,
-                    'qty'               => 1,
-                    'unit_price'        => $linePrice,
-                    'price'             => $linePrice,
+                    'product_id' => $product->id,
+                    'qty' => 1,
+                    'unit_price' => $linePrice,
+                    'price' => $linePrice,
                     'conversion_factor' => 1,
                 ]],
             ]);

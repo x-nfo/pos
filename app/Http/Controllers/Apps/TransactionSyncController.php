@@ -226,7 +226,7 @@ class TransactionSyncController extends Controller
                     // — mirrors CheckoutService logic to prevent profit over-statement when
                     //   voucher / loyalty discounts were applied during offline checkout.
                     $lineShare = $subtotalAfterPromo > 0 ? $lineItem['price'] / $subtotalAfterPromo : 0;
-                    $allocatedManualDiscount  = (int) round($manualDiscount  * $lineShare);
+                    $allocatedManualDiscount = (int) round($manualDiscount * $lineShare);
                     $allocatedVoucherDiscount = (int) round($voucherDiscount * $lineShare);
                     $allocatedLoyaltyDiscount = (int) round($loyaltyDiscount * $lineShare);
                     $netSellPrice = max(0, $lineItem['price'] - $allocatedManualDiscount - $allocatedVoucherDiscount - $allocatedLoyaltyDiscount);

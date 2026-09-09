@@ -6,8 +6,6 @@ use App\Models\Cart;
 use App\Models\CashierShift;
 use App\Models\Category;
 use App\Models\Customer;
-use App\Models\CustomerVoucher;
-use App\Models\LoyaltySetting;
 use App\Models\Product;
 use App\Models\ProductWarehouse;
 use App\Models\Profit;
@@ -17,6 +15,7 @@ use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -25,8 +24,11 @@ class CheckoutServiceTest extends TestCase
     use RefreshDatabase;
 
     private User $cashier;
+
     private CashierShift $shift;
+
     private Warehouse $warehouse;
+
     private Category $category;
 
     protected function setUp(): void
@@ -42,13 +44,13 @@ class CheckoutServiceTest extends TestCase
             Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
         }
 
-        $this->cashier   = $this->makeCashier();
+        $this->cashier = $this->makeCashier();
         $this->warehouse = Warehouse::firstOrCreate(['code' => 'CHK-WH'], ['name' => 'Checkout Warehouse']);
-        $this->shift     = $this->openShift($this->cashier, $this->warehouse);
-        $this->category  = Category::create([
-            'name'        => 'Checkout Category',
+        $this->shift = $this->openShift($this->cashier, $this->warehouse);
+        $this->category = Category::create([
+            'name' => 'Checkout Category',
             'description' => 'Test',
-            'image'       => 'cat.png',
+            'image' => 'cat.png',
         ]);
 
         Setting::set('tax_default_rate', '0.00'); // disable tax by default for simpler assertions
@@ -67,18 +69,19 @@ class CheckoutServiceTest extends TestCase
             'cashier-shifts-open',
             'cashier-shifts-close',
         ]);
+
         return $user;
     }
 
     private function openShift(User $cashier, Warehouse $warehouse): CashierShift
     {
         return CashierShift::create([
-            'user_id'      => $cashier->id,
-            'opened_by'    => $cashier->id,
-            'opened_at'    => now(),
+            'user_id' => $cashier->id,
+            'opened_by' => $cashier->id,
+            'opened_at' => now(),
             'opening_cash' => 0,
-            'expected_cash'=> 0,
-            'status'       => 'open',
+            'expected_cash' => 0,
+            'status' => 'open',
             'warehouse_id' => $warehouse->id,
         ]);
     }
@@ -87,20 +90,21 @@ class CheckoutServiceTest extends TestCase
     {
         $product = Product::create([
             'category_id' => $this->category->id,
-            'title'       => 'Product ' . Str::random(4),
-            'barcode'     => 'BC-' . Str::upper(Str::random(8)),
-            'sku'         => 'SK-' . Str::upper(Str::random(8)),
+            'title' => 'Product '.Str::random(4),
+            'barcode' => 'BC-'.Str::upper(Str::random(8)),
+            'sku' => 'SK-'.Str::upper(Str::random(8)),
             'description' => 'Test',
-            'image'       => 'test.png',
-            'sell_price'  => $sellPrice,
-            'buy_price'   => $buyPrice,
-            'tax_rate'    => 0,
+            'image' => 'test.png',
+            'sell_price' => $sellPrice,
+            'buy_price' => $buyPrice,
+            'tax_rate' => 0,
         ]);
         ProductWarehouse::create([
-            'product_id'   => $product->id,
+            'product_id' => $product->id,
             'warehouse_id' => $this->warehouse->id,
-            'stock'        => $stock,
+            'stock' => $stock,
         ]);
+
         return $product;
     }
 
@@ -108,21 +112,21 @@ class CheckoutServiceTest extends TestCase
     {
         return Cart::create([
             'warehouse_id' => $this->warehouse->id,
-            'cashier_id'   => $this->cashier->id,
-            'product_id'   => $product->id,
-            'qty'          => $qty,
-            'price'        => $product->sell_price * $qty,
+            'cashier_id' => $this->cashier->id,
+            'product_id' => $product->id,
+            'qty' => $qty,
+            'price' => $product->sell_price * $qty,
         ]);
     }
 
-    private function checkout(array $override = []): \Illuminate\Testing\TestResponse
+    private function checkout(array $override = []): TestResponse
     {
         return $this->actingAs($this->cashier)->post(route('transactions.store'), array_merge([
             'customer_id' => null,
-            'discount'    => 0,
+            'discount' => 0,
             'grand_total' => 0,
-            'cash'        => 0,
-            'change'      => 0,
+            'cash' => 0,
+            'change' => 0,
         ], $override));
     }
 
@@ -138,8 +142,8 @@ class CheckoutServiceTest extends TestCase
 
         $this->checkout([
             'grand_total' => 30000,
-            'cash'        => 50000,
-            'change'      => 20000,
+            'cash' => 50000,
+            'change' => 20000,
         ])->assertRedirect();
 
         $tx = Transaction::latest('id')->first();
@@ -163,7 +167,7 @@ class CheckoutServiceTest extends TestCase
 
         $this->checkout([
             'grand_total' => 20000,
-            'cash'        => 20000,
+            'cash' => 20000,
         ])->assertRedirect();
 
         $tx = Transaction::latest('id')->first();
@@ -186,9 +190,9 @@ class CheckoutServiceTest extends TestCase
         // manual discount 5000 → netSell = 15000, profit = 15000 - 5000 = 10000
         $grandTotal = 15000;
         $this->checkout([
-            'discount'    => 5000,
+            'discount' => 5000,
             'grand_total' => $grandTotal,
-            'cash'        => $grandTotal,
+            'cash' => $grandTotal,
         ])->assertRedirect();
 
         $tx = Transaction::latest('id')->first();
@@ -209,11 +213,11 @@ class CheckoutServiceTest extends TestCase
 
         $this->checkout([
             'grand_total' => 50000,
-            'cash'        => 50000,
+            'cash' => 50000,
         ])->assertRedirect();
 
         $pivot = ProductWarehouse::where([
-            'product_id'   => $product->id,
+            'product_id' => $product->id,
             'warehouse_id' => $this->warehouse->id,
         ])->first();
 
@@ -235,7 +239,7 @@ class CheckoutServiceTest extends TestCase
 
         $response = $this->checkout([
             'grand_total' => 30000,
-            'cash'        => 30000,
+            'cash' => 30000,
         ]);
 
         $response->assertStatus(422);
@@ -250,7 +254,7 @@ class CheckoutServiceTest extends TestCase
     public function test_pay_later_checkout_creates_receivable(): void
     {
         $customer = Customer::create([
-            'name'    => 'Pelanggan Kredit',
+            'name' => 'Pelanggan Kredit',
             'no_telp' => '08121111111',
             'address' => 'Jl. Test',
         ]);
@@ -259,11 +263,11 @@ class CheckoutServiceTest extends TestCase
         $this->addToCart($product, qty: 1);
 
         $this->checkout([
-            'customer_id'    => $customer->id,
-            'grand_total'    => 50000,
-            'cash'           => 0,
-            'pay_later'      => true,
-            'due_date'       => now()->addDays(30)->format('Y-m-d'),
+            'customer_id' => $customer->id,
+            'grand_total' => 50000,
+            'cash' => 0,
+            'pay_later' => true,
+            'due_date' => now()->addDays(30)->format('Y-m-d'),
         ])->assertRedirect();
 
         $tx = Transaction::latest('id')->first();
@@ -273,10 +277,10 @@ class CheckoutServiceTest extends TestCase
 
         $this->assertDatabaseHas('receivables', [
             'transaction_id' => $tx->id,
-            'customer_id'    => $customer->id,
-            'total'          => 50000,
-            'paid'           => 0,
-            'status'         => 'unpaid',
+            'customer_id' => $customer->id,
+            'total' => 50000,
+            'paid' => 0,
+            'status' => 'unpaid',
         ]);
     }
 
@@ -289,34 +293,34 @@ class CheckoutServiceTest extends TestCase
     {
         // Create one paid and one pending transaction directly
         Transaction::create([
-            'cashier_id'     => $this->cashier->id,
+            'cashier_id' => $this->cashier->id,
             'cashier_shift_id' => $this->shift->id,
-            'warehouse_id'   => $this->warehouse->id,
-            'invoice'        => 'INV-PAID-001',
-            'cash'           => 100000,
-            'change'         => 0,
-            'discount'       => 0,
-            'grand_total'    => 100000,
+            'warehouse_id' => $this->warehouse->id,
+            'invoice' => 'INV-PAID-001',
+            'cash' => 100000,
+            'change' => 0,
+            'discount' => 0,
+            'grand_total' => 100000,
             'payment_method' => 'cash',
             'payment_status' => 'paid',
         ]);
 
         Transaction::create([
-            'cashier_id'     => $this->cashier->id,
+            'cashier_id' => $this->cashier->id,
             'cashier_shift_id' => $this->shift->id,
-            'warehouse_id'   => $this->warehouse->id,
-            'invoice'        => 'INV-PEND-001',
-            'cash'           => 0,
-            'change'         => 0,
-            'discount'       => 0,
-            'grand_total'    => 50000,
+            'warehouse_id' => $this->warehouse->id,
+            'invoice' => 'INV-PEND-001',
+            'cash' => 0,
+            'change' => 0,
+            'discount' => 0,
+            'grand_total' => 50000,
             'payment_method' => 'midtrans',
             'payment_status' => 'pending', // not paid yet
         ]);
 
         // settled() should only include the paid one
         $revenue = Transaction::settled()->sum('grand_total');
-        $count   = Transaction::settled()->count();
+        $count = Transaction::settled()->count();
 
         $this->assertSame(100000, (int) $revenue);
         $this->assertSame(1, $count);
@@ -326,14 +330,14 @@ class CheckoutServiceTest extends TestCase
     public function test_settled_scope_includes_pay_later_transactions(): void
     {
         Transaction::create([
-            'cashier_id'     => $this->cashier->id,
+            'cashier_id' => $this->cashier->id,
             'cashier_shift_id' => $this->shift->id,
-            'warehouse_id'   => $this->warehouse->id,
-            'invoice'        => 'INV-PAYLATER-001',
-            'cash'           => 0,
-            'change'         => 0,
-            'discount'       => 0,
-            'grand_total'    => 75000,
+            'warehouse_id' => $this->warehouse->id,
+            'invoice' => 'INV-PAYLATER-001',
+            'cash' => 0,
+            'change' => 0,
+            'discount' => 0,
+            'grand_total' => 75000,
             'payment_method' => 'pay_later',
             'payment_status' => 'unpaid',
         ]);

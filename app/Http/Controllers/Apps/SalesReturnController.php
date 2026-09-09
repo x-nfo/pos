@@ -332,14 +332,14 @@ class SalesReturnController extends Controller
                     // manual discount, voucher discount, and loyalty discount from the
                     // transaction, otherwise the reversal over-states the profit clawback.
                     $transaction = $salesReturn->transaction;
-                    $lineTotal   = (int) $detail->price; // price after promo (PricingService)
-                    $txSubtotal  = (int) $transaction->details->sum('price');
+                    $lineTotal = (int) $detail->price; // price after promo (PricingService)
+                    $txSubtotal = (int) $transaction->details->sum('price');
 
                     if ($txSubtotal > 0) {
                         $lineShare = $lineTotal / $txSubtotal;
-                        $allocatedManual  = (int) round((int) $transaction->discount                  * $lineShare);
+                        $allocatedManual = (int) round((int) $transaction->discount * $lineShare);
                         $allocatedVoucher = (int) round((int) $transaction->customer_voucher_discount * $lineShare);
-                        $allocatedLoyalty = (int) round((int) $transaction->loyalty_discount_total    * $lineShare);
+                        $allocatedLoyalty = (int) round((int) $transaction->loyalty_discount_total * $lineShare);
                     } else {
                         $allocatedManual = $allocatedVoucher = $allocatedLoyalty = 0;
                     }
