@@ -29,6 +29,8 @@ class StockMutation extends Model
         'stock_before',
         'stock_after',
         'notes',
+        'batch_number',
+        'expired_at',
         'created_by',
     ];
 
@@ -39,6 +41,7 @@ class StockMutation extends Model
         'qty' => 'integer',
         'stock_before' => 'integer',
         'stock_after' => 'integer',
+        'expired_at' => 'date',
         'created_by' => 'integer',
     ];
 

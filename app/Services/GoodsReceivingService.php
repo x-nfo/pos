@@ -51,6 +51,9 @@ class GoodsReceivingService
                     $conversionFactor = (float) ($poItem->conversion_factor ?: 1.0);
                     $baseQty = (int) round($qtyReceived * $conversionFactor);
 
+                    $batchNumber = ! empty($item['batch_number']) ? trim($item['batch_number']) : null;
+                    $expiredAt = ! empty($item['expired_at']) ? $item['expired_at'] : null;
+
                     GoodsReceivingItem::create([
                         'goods_receiving_id' => $receiving->id,
                         'purchase_order_item_id' => $poItem->id,
@@ -58,6 +61,8 @@ class GoodsReceivingService
                         'unit_id' => $poItem->unit_id,
                         'conversion_factor' => $conversionFactor,
                         'qty_received' => $qtyReceived,
+                        'batch_number' => $batchNumber,
+                        'expired_at' => $expiredAt,
                         'notes' => $item['notes'] ?? null,
                     ]);
 
@@ -77,16 +82,19 @@ class GoodsReceivingService
                         $pivot->increment('stock', $baseQty);
                     }
 
-                    // Create batch record
-                    if (! empty($item['batch_number'])) {
-                        ProductBatch::create([
+                    // Create or update batch record
+                    if ($batchNumber) {
+                        $batch = ProductBatch::firstOrNew([
                             'product_id' => $product->id,
                             'warehouse_id' => $order->warehouse_id ?? 1,
-                            'batch_number' => $item['batch_number'],
-                            'expired_at' => $item['expired_at'] ?? null,
-                            'received_at' => now(),
-                            'stock' => $baseQty,
+                            'batch_number' => $batchNumber,
                         ]);
+                        $batch->stock = ($batch->exists ? $batch->stock : 0) + $baseQty;
+                        if ($expiredAt) {
+                            $batch->expired_at = $expiredAt;
+                        }
+                        $batch->received_at = now();
+                        $batch->save();
                     }
 
                     $this->stockMutationService->recordPurchaseInbound(
@@ -97,6 +105,8 @@ class GoodsReceivingService
                         stockAfter: $stockAfter,
                         notes: 'Penerimaan dari PO '.$order->document_number,
                         userId: $userId,
+                        batchNumber: $batchNumber,
+                        expiredAt: $expiredAt,
                     );
 
                     // Sync product.buy_price to the latest purchase cost so that

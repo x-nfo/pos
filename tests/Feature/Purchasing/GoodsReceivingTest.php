@@ -5,6 +5,7 @@ namespace Tests\Feature\Purchasing;
 use App\Models\Category;
 use App\Models\GoodsReceiving;
 use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Models\ProductWarehouse;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
@@ -176,6 +177,24 @@ class GoodsReceivingTest extends TestCase
             'reference_id' => $receiving->id,
             'mutation_type' => 'in',
             'qty' => 20,
+            'batch_number' => 'BATCH-KOP-01',
+        ]);
+
+        // Product batch created
+        $this->assertDatabaseHas('product_batches', [
+            'product_id' => $product->id,
+            'warehouse_id' => $warehouse->id,
+            'batch_number' => 'BATCH-KOP-01',
+            'stock' => 20,
+        ]);
+
+        // Goods receiving item has batch_number
+        $this->assertDatabaseHas('goods_receiving_items', [
+            'goods_receiving_id' => $receiving->id,
+            'purchase_order_item_id' => $poItem->id,
+            'product_id' => $product->id,
+            'batch_number' => 'BATCH-KOP-01',
+            'qty_received' => 20,
         ]);
 
         // Verify product buy_price is synced with the latest PO cost
@@ -311,6 +330,78 @@ class GoodsReceivingTest extends TestCase
             'qty' => 24,
             'stock_before' => 0,
             'stock_after' => 24,
+        ]);
+    }
+
+    public function test_receiving_goods_with_existing_batch_increments_batch_stock(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'goods-receivings-access',
+            'goods-receivings-create',
+            'purchase-orders-access',
+        ]);
+
+        $product = $this->createProduct(0);
+
+        $warehouse = Warehouse::create([
+            'code' => 'GUDANG-BATCH',
+            'name' => 'Gudang Batch',
+            'type' => 'main',
+            'is_active' => true,
+        ]);
+
+        ProductWarehouse::create([
+            'product_id' => $product->id,
+            'warehouse_id' => $warehouse->id,
+            'stock' => 0,
+        ]);
+
+        // Existing batch with 10 stock
+        $existingBatch = ProductBatch::create([
+            'product_id' => $product->id,
+            'warehouse_id' => $warehouse->id,
+            'batch_number' => 'BATCH-EXISTING-01',
+            'expired_at' => now()->addMonths(6)->format('Y-m-d'),
+            'received_at' => now()->subDay()->format('Y-m-d'),
+            'stock' => 10,
+        ]);
+
+        $po = PurchaseOrder::create([
+            'supplier_id' => null,
+            'warehouse_id' => $warehouse->id,
+            'document_number' => 'PO-20260825-0099',
+            'status' => 'ordered',
+            'created_by' => $user->id,
+            'ordered_at' => now(),
+        ]);
+
+        $poItem = PurchaseOrderItem::create([
+            'purchase_order_id' => $po->id,
+            'product_id' => $product->id,
+            'qty_ordered' => 15,
+            'qty_received' => 0,
+            'unit_price' => 20000,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('goods-receivings.store'), [
+                'purchase_order_id' => $po->id,
+                'items' => [
+                    [
+                        'purchase_order_item_id' => $poItem->id,
+                        'qty_received' => 15,
+                        'batch_number' => 'BATCH-EXISTING-01',
+                        'expired_at' => now()->addMonths(8)->format('Y-m-d'),
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        // Batch stock should be 10 + 15 = 25
+        $this->assertDatabaseHas('product_batches', [
+            'id' => $existingBatch->id,
+            'batch_number' => 'BATCH-EXISTING-01',
+            'stock' => 25,
         ]);
     }
 }

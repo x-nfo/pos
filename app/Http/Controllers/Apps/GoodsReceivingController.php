@@ -80,6 +80,8 @@ class GoodsReceivingController extends Controller
             'items' => ['required', 'array', 'min:1'],
             'items.*.purchase_order_item_id' => ['required', 'exists:purchase_order_items,id'],
             'items.*.qty_received' => ['required', 'integer', 'min:1'],
+            'items.*.batch_number' => ['nullable', 'string', 'max:100'],
+            'items.*.expired_at' => ['nullable', 'date'],
             'items.*.notes' => ['nullable', 'string', 'max:500'],
         ]);
 

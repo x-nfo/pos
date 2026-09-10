@@ -23,6 +23,13 @@ const formatDateTime = (value) =>
           }).format(new Date(value))
         : "-";
 
+const formatDateOnly = (value) =>
+    value
+        ? new Intl.DateTimeFormat("id-ID", {
+              dateStyle: "medium",
+          }).format(new Date(value))
+        : "-";
+
 export default function Show({ receiving }) {
     return (
         <>
@@ -65,6 +72,8 @@ export default function Show({ receiving }) {
                                 <Table.Th>Produk</Table.Th>
                                 <Table.Th>Satuan</Table.Th>
                                 <Table.Th>Qty Diterima</Table.Th>
+                                <Table.Th>No. Batch</Table.Th>
+                                <Table.Th>Tgl Expired</Table.Th>
                                 <Table.Th>Harga Satuan</Table.Th>
                                 <Table.Th>Subtotal</Table.Th>
                                 <Table.Th>Catatan</Table.Th>
@@ -93,6 +102,18 @@ export default function Show({ receiving }) {
                                                 </span>
                                             </Table.Td>
                                             <Table.Td className="font-semibold">{item.qty_received} {unitSymbol}</Table.Td>
+                                            <Table.Td>
+                                                {item.batch_number ? (
+                                                    <span className="inline-flex rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-mono font-medium text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
+                                                        {item.batch_number}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400">-</span>
+                                                )}
+                                            </Table.Td>
+                                            <Table.Td className="text-xs text-slate-600 dark:text-slate-300">
+                                                {item.expired_at ? formatDateOnly(item.expired_at) : "-"}
+                                            </Table.Td>
                                             <Table.Td>{formatCurrency(unitPrice)}</Table.Td>
                                             <Table.Td className="font-semibold">{formatCurrency(item.qty_received * unitPrice)}</Table.Td>
                                             <Table.Td className="text-xs text-slate-500">{item.notes || "-"}</Table.Td>
@@ -100,7 +121,7 @@ export default function Show({ receiving }) {
                                     );
                                 })
                             ) : (
-                                <Table.Empty colSpan={6} message={
+                                <Table.Empty colSpan={8} message={
                                     <div className="text-slate-500 dark:text-slate-400">Tidak ada item pada penerimaan ini.</div>
                                 }>
                                     <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">

@@ -9,7 +9,7 @@ import {
 import toast from "react-hot-toast";
 
 export default function Create({ orders }) {
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, transform } = useForm({
         purchase_order_id: "",
         notes: "",
         items: [],
@@ -38,6 +38,8 @@ export default function Create({ orders }) {
                     qty_received_already: item.qty_received || 0,
                     outstanding: item.qty_ordered - (item.qty_received || 0),
                     qty_received: item.qty_ordered - (item.qty_received || 0),
+                    batch_number: "",
+                    expired_at: "",
                     notes: "",
                 }));
             setData({
@@ -48,10 +50,14 @@ export default function Create({ orders }) {
         }
     };
 
-    const updateItem = (index, value) => {
+    const updateItem = (index, field, value) => {
         const items = [...data.items];
-        const maxQty = items[index].outstanding;
-        items[index] = { ...items[index], qty_received: Math.min(parseInt(value) || 0, maxQty) };
+        if (field === "qty_received") {
+            const maxQty = items[index].outstanding;
+            items[index] = { ...items[index], qty_received: Math.min(parseInt(value) || 0, maxQty) };
+        } else {
+            items[index] = { ...items[index], [field]: value };
+        }
         setData("items", items);
     };
 
@@ -66,7 +72,10 @@ export default function Create({ orders }) {
             toast.error("Terima minimal satu item.");
             return;
         }
-        setData("items", validItems);
+        transform((curr) => ({
+            ...curr,
+            items: validItems,
+        }));
         post(route("goods-receivings.store"), {
             onSuccess: () => toast.success("Penerimaan barang berhasil dicatat"),
             onError: () => toast.error("Gagal mencatat penerimaan"),
@@ -91,7 +100,15 @@ export default function Create({ orders }) {
                 </h1>
             </div>
 
-            <form onSubmit={submit} className="max-w-4xl">
+            <form
+                onSubmit={submit}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
+                        e.preventDefault();
+                    }
+                }}
+                className="max-w-6xl"
+            >
                 <div className="space-y-6">
                     <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
                         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">Pilih Purchase Order</h2>
@@ -125,6 +142,8 @@ export default function Create({ orders }) {
                                             <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Sudah Diterima</th>
                                             <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Sisa</th>
                                             <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Qty Diterima</th>
+                                            <th className="px-3 py-2 text-left font-semibold text-slate-700 dark:text-slate-200">No. Batch</th>
+                                            <th className="px-3 py-2 text-left font-semibold text-slate-700 dark:text-slate-200">Tgl Expired</th>
                                             <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Catatan</th>
                                         </tr>
                                     </thead>
@@ -150,19 +169,32 @@ export default function Create({ orders }) {
                                                         min="0"
                                                         max={item.outstanding}
                                                         value={item.qty_received}
-                                                        onChange={(e) => updateItem(index, e.target.value)}
+                                                        onChange={(e) => updateItem(index, "qty_received", e.target.value)}
                                                         className="h-10 w-24 rounded-lg border border-slate-200 bg-slate-50 px-3 text-right text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                                    />
+                                                </td>
+                                                <td className="px-3 py-3">
+                                                    <input
+                                                        type="text"
+                                                        value={item.batch_number || ""}
+                                                        onChange={(e) => updateItem(index, "batch_number", e.target.value)}
+                                                        placeholder="Opsional"
+                                                        className="h-10 w-28 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                                    />
+                                                </td>
+                                                <td className="px-3 py-3">
+                                                    <input
+                                                        type="date"
+                                                        value={item.expired_at || ""}
+                                                        onChange={(e) => updateItem(index, "expired_at", e.target.value)}
+                                                        className="h-10 w-36 rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                                                     />
                                                 </td>
                                                 <td className="px-3 py-3 text-right">
                                                     <input
                                                         type="text"
                                                         value={item.notes || ""}
-                                                        onChange={(e) => {
-                                                            const items = [...data.items];
-                                                            items[index] = { ...items[index], notes: e.target.value };
-                                                            setData("items", items);
-                                                        }}
+                                                        onChange={(e) => updateItem(index, "notes", e.target.value)}
                                                         placeholder="-"
                                                         className="h-10 w-32 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                                                     />

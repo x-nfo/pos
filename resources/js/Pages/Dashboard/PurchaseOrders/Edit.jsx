@@ -195,7 +195,15 @@ export default function Edit({ order, suppliers = [], categories = [], products 
                 </h1>
             </div>
 
-            <form onSubmit={submit} className="max-w-5xl">
+            <form
+                onSubmit={submit}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
+                        e.preventDefault();
+                    }
+                }}
+                className="max-w-5xl"
+            >
                 <div className="space-y-6">
                     <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
                         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">Informasi PO</h2>
@@ -280,6 +288,14 @@ export default function Edit({ order, suppliers = [], categories = [], products 
                                 type="text"
                                 value={searchProduct}
                                 onChange={(e) => setSearchProduct(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        if (filteredProducts.length > 0) {
+                                            addItem(filteredProducts[0]);
+                                        }
+                                    }
+                                }}
                                 placeholder="Cari cepat nama / SKU / barcode produk..."
                                 className="h-11 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                             />

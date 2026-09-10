@@ -16,12 +16,15 @@ class GoodsReceivingItem extends Model
         'unit_id',
         'conversion_factor',
         'qty_received',
+        'batch_number',
+        'expired_at',
         'notes',
     ];
 
     protected $casts = [
         'qty_received' => 'integer',
         'conversion_factor' => 'float',
+        'expired_at' => 'date',
     ];
 
     public function goodsReceiving()
