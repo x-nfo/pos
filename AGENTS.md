@@ -90,7 +90,7 @@ npm run build
 PermissionSeeder → RoleSeeder → UserSeeder → PaymentSettingSeeder → SampleDataSeeder → OperationalCoreSeeder → FeatureCoverageSeeder
 ```
 
-**Default users:** `admin@mail.com` / `password` (admin), `cashier@gmail.com` / `password` (cashier)
+**Default users:** `admin@mail.com` / `password` (admin), `kasir@mail.com` / `password` (cashier)
 
 ## Critical Gotchas
 

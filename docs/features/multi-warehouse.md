@@ -51,11 +51,17 @@ Memisahkan stok produk, operasional kasir, piutang, dan pelaporan per lokasi fis
 - **Laporan Penjualan & Laba Rugi**: Dilengkapi filter dropdown cabang dan kolom cabang di tabel transaksi.
 - **Advanced Sales Insights**: Analisis jam sibuk (*sales by hour*), produk terlaris, produk *slow moving*, retensi pelanggan, dan leaderboard performa kasir per cabang.
 
+### 6. Jam Operasional & Kanal Fulfillment Katalog Online
+- **Kanal Pemesanan Online**: Setiap cabang dapat mengaktifkan/menonaktifkan layanan pengantaran (`catalog_delivery_enabled`) dan pengambilan langsung di toko (`catalog_pickup_enabled`) untuk pesanan mandiri pelanggan via portal katalog publik (`/menu`).
+- **Jadwal Buka Toko**: Mendukung konfigurasi operasional 24 jam (`is_24_hours`), jam buka-tutup (`open_time` - `close_time`), serta pilihan hari aktif mingguan (`operating_days`).
+- **Penutupan Sementara (*Temporary Closure*)**: Mendukung penandaan toko tutup sementara (`is_temporarily_closed`) lengkap dengan alasan penutupan (`closure_reason`) dan estimasi tanggal buka kembali (`reopen_date`).
+- **Status Operasional Dinamis**: Diperiksa secara *real-time* oleh `OperatingHoursService` untuk menginformasikan pelanggan apakah cabang sedang buka, tutup, atau libur sebelum mereka membuat pesanan.
+
 ## Halaman dan Route
 
 | Route | Fungsi | Akses Peran |
 |-------|--------|-------------|
-| `settings.warehouses.index` | Manajemen master cabang & gudang (nama, alamat, telepon, tipe) | HQ / Super Admin |
+| `settings.warehouses.index` | Manajemen master cabang & gudang (nama, alamat, telepon, tipe, jam operasional, kanal order) | HQ / Super Admin |
 | `stock-transfers.index` | Daftar transfer stok antar-cabang | HQ & Cabang terkait |
 | `stock-transfers.create` | Formulir pengiriman transfer stok | HQ & Cabang terkait |
 | `stock-transfers.show` | Detail transfer & tombol aksi (Kirim / Terima / Batalkan) | HQ & Cabang terkait |
@@ -67,8 +73,8 @@ Memisahkan stok produk, operasional kasir, piutang, dan pelaporan per lokasi fis
 |-----------|----------|
 | `warehouses-access` | Melihat daftar gudang / cabang |
 | `warehouses-create` | Mendaftarkan cabang / gudang baru |
-| `warehouses-update` | Mengubah informasi cabang (alamat, nomor telp) |
-| `warehouses-delete` | Menghapus cabang (hanya jika saldo stok 0) |
+| `warehouses-update` | Mengubah informasi cabang (alamat, kontak, jam operasional, status fulfillment) |
+| `warehouses-delete` | Menghapus cabang (hanya jika tipe bukan `main`, saldo stok 0, dan tidak memiliki riwayat transaksi/mutasi/shift) |
 | `stock-transfers-access` | Mengakses modul transfer stok |
 | `stock-transfers-create` | Membuat dokumen transfer stok |
 | `stock-transfers-send` | Menjalankan pengiriman transfer stok |
@@ -77,8 +83,9 @@ Memisahkan stok produk, operasional kasir, piutang, dan pelaporan per lokasi fis
 
 ## Standar Operasional (SOP Multi-Cabang)
 
-1. **Setup Cabang**: Daftarkan cabang baru di `Settings > Gudang / Cabang`, lengkapi alamat dan kontak.
+1. **Setup Cabang**: Daftarkan cabang baru di `Settings > Gudang / Cabang`, lengkapi alamat, kontak, jam operasional, dan opsi fulfillment katalog.
 2. **Penugasan Karyawan**: Daftarkan kasir/staf di menu `Pengguna` dan pilih cabang penempatannya. Untuk pemilik/manajer area, kosongkan field cabang agar berstatus HQ.
 3. **Distribusi Stok**: Kirim barang dari Gudang Pusat ke Cabang Toko menggunakan menu `Transfer Stok`.
 4. **Operasional Kasir**: Kasir membuka shift, melayani pelanggan, dan mencetak struk dengan alamat cabang dinamis.
 5. **Monitoring & Audit**: Manajer/Owner memantau omzet konsolidasi atau memilih cabang tertentu di Dashboard & Laporan.
+6. **Proteksi Integritas Data**: Cabang yang telah memiliki riwayat transaksi operasional dilindungi dari penghapusan demi keutuhan audit keuangan dan perpajakan.

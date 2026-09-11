@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Unit;
 use App\Models\Warehouse;
 use App\Services\AuditLogService;
+use App\Services\CashierShiftService;
 use App\Services\StockMutationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -275,18 +276,39 @@ class ProductController extends Controller
                 'max_stock' => (int) ($validated['max_stock'] ?? 0),
             ]);
 
-            $defaultWarehouse = Warehouse::defaultWarehouse();
-            if ($defaultWarehouse && (int) $validated['stock'] > 0) {
+            $user = $request->user();
+            $targetWarehouseId = $user?->warehouse_id;
+            if (! $targetWarehouseId && $user) {
+                $activeShift = app(CashierShiftService::class)->getActiveShiftForUser($user->id);
+                $targetWarehouseId = $activeShift?->warehouse_id;
+            }
+
+            $targetWarehouse = $targetWarehouseId
+                ? Warehouse::find($targetWarehouseId)
+                : Warehouse::defaultWarehouse();
+            $targetWarehouseId = $targetWarehouse?->id ?? Warehouse::defaultId();
+
+            $allActiveWarehouses = Warehouse::active()->get();
+            if ($allActiveWarehouses->isNotEmpty()) {
+                $syncPayload = [];
+                foreach ($allActiveWarehouses as $w) {
+                    $syncPayload[$w->id] = ['stock' => $w->id === $targetWarehouseId ? (int) $validated['stock'] : 0];
+                }
+                $product->warehouses()->sync($syncPayload);
+            } else {
                 $product->warehouses()->syncWithoutDetaching([
-                    $defaultWarehouse->id => ['stock' => (int) $validated['stock']],
+                    $targetWarehouseId => ['stock' => (int) $validated['stock']],
                 ]);
             }
 
-            $this->stockMutationService->recordInitialStock(
-                $product,
-                $request->user()?->id,
-                $defaultWarehouse?->id
-            );
+            if ((int) $validated['stock'] > 0) {
+                $this->stockMutationService->recordInitialStock(
+                    product: $product,
+                    userId: $user?->id,
+                    warehouseId: $targetWarehouseId,
+                    qty: (int) $validated['stock']
+                );
+            }
 
             $this->auditLogService->log(
                 event: 'product.created',

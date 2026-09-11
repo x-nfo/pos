@@ -5,6 +5,7 @@ namespace Tests\Feature\Products;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -106,5 +107,69 @@ class ProductQuickStoreTest extends TestCase
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['barcode']);
+    }
+
+    public function test_quick_store_allocates_stock_to_cashier_active_warehouse(): void
+    {
+        $mainWarehouse = Warehouse::create([
+            'code' => 'MAIN',
+            'name' => 'Gudang Pusat',
+            'type' => 'main',
+            'is_active' => true,
+        ]);
+
+        $branchWarehouse = Warehouse::create([
+            'code' => 'BR-SURABAYA',
+            'name' => 'Cabang Surabaya',
+            'type' => 'branch',
+            'is_active' => true,
+        ]);
+
+        $cashier = User::factory()->create([
+            'warehouse_id' => $branchWarehouse->id,
+        ]);
+        $cashier->givePermissionTo('transactions-access');
+
+        $category = Category::create([
+            'name' => 'Snack',
+            'description' => 'Kategori Snack',
+            'image' => 'category.jpg',
+        ]);
+
+        $payload = [
+            'barcode' => '8999999000111',
+            'title' => 'Keripik Singkong',
+            'category_id' => $category->id,
+            'buy_price' => 5000,
+            'sell_price' => 8000,
+            'stock' => 15,
+        ];
+
+        $response = $this->actingAs($cashier)->postJson(route('products.quick-store'), $payload);
+        $response->assertStatus(201);
+
+        $product = Product::where('barcode', '8999999000111')->first();
+        $this->assertNotNull($product);
+
+        // Branch warehouse should have 15, main warehouse should have 0
+        $this->assertDatabaseHas('product_warehouse', [
+            'product_id' => $product->id,
+            'warehouse_id' => $branchWarehouse->id,
+            'stock' => 15,
+        ]);
+
+        $this->assertDatabaseHas('product_warehouse', [
+            'product_id' => $product->id,
+            'warehouse_id' => $mainWarehouse->id,
+            'stock' => 0,
+        ]);
+
+        // Stock mutation should record branchWarehouse ID
+        $this->assertDatabaseHas('stock_mutations', [
+            'product_id' => $product->id,
+            'warehouse_id' => $branchWarehouse->id,
+            'mutation_type' => 'in',
+            'qty' => 15,
+        ]);
     }
 }

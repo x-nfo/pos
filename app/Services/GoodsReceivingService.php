@@ -78,9 +78,7 @@ class GoodsReceivingService
                     $poItem->increment('qty_received', $qtyReceived);
 
                     $product = $poItem->product;
-                    $stockBefore = (int) $product->stock;
-                    // $product->increment('stock', $baseQty);
-                    $stockAfter = $stockBefore + $baseQty;
+                    $globalStockBefore = (int) $product->stock;
 
                     // Increment warehouse pivot stock
                     if ($order->warehouse_id) {
@@ -88,7 +86,12 @@ class GoodsReceivingService
                             'product_id' => $product->id,
                             'warehouse_id' => $order->warehouse_id,
                         ], ['stock' => 0]);
+                        $stockBefore = (int) $pivot->stock;
+                        $stockAfter = $stockBefore + $baseQty;
                         $pivot->increment('stock', $baseQty);
+                    } else {
+                        $stockBefore = $globalStockBefore;
+                        $stockAfter = $stockBefore + $baseQty;
                     }
 
                     // Create or update batch record
@@ -125,7 +128,7 @@ class GoodsReceivingService
                             ? (int) round($poItem->unit_price / $conversionFactor)
                             : (int) $poItem->unit_price;
 
-                        $existingStock = max(0, $stockBefore);
+                        $existingStock = max(0, $globalStockBefore);
                         $existingBuyPrice = (int) $product->buy_price;
 
                         if ($existingStock > 0 && $existingBuyPrice > 0) {

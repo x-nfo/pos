@@ -277,17 +277,21 @@ class CheckoutService
                     $product->load('components');
                     foreach ($product->components as $component) {
                         $componentQty = (int) round((float) $component->pivot->qty * $cart->qty);
-                        $stockBefore = (int) $component->stock;
-                        $stockAfter = $stockBefore - $componentQty;
 
-                        if (! $isFromConfirmedCatalog) {
-                            if ($effectiveWarehouseId) {
-                                $pivot = ProductWarehouse::firstOrCreate([
-                                    'product_id' => $component->id,
-                                    'warehouse_id' => $effectiveWarehouseId,
-                                ], ['stock' => 0]);
+                        if ($effectiveWarehouseId) {
+                            $pivot = ProductWarehouse::firstOrCreate([
+                                'product_id' => $component->id,
+                                'warehouse_id' => $effectiveWarehouseId,
+                            ], ['stock' => 0]);
+                            $stockBefore = (int) $pivot->stock;
+                            $stockAfter = $stockBefore - $componentQty;
+
+                            if (! $isFromConfirmedCatalog) {
                                 $pivot->decrement('stock', $componentQty);
                             }
+                        } else {
+                            $stockBefore = (int) $component->stock;
+                            $stockAfter = $stockBefore - $componentQty;
                         }
 
                         $this->stockMutationService->recordSaleOut(
@@ -305,17 +309,21 @@ class CheckoutService
                     }
                 } else {
                     $baseQty = (int) round($cart->qty * (float) ($cart->conversion_factor ?? 1));
-                    $stockBefore = (int) $product->stock;
-                    $stockAfter = $stockBefore - $baseQty;
 
-                    if (! $isFromConfirmedCatalog) {
-                        if ($effectiveWarehouseId) {
-                            $pivot = ProductWarehouse::firstOrCreate([
-                                'product_id' => $product->id,
-                                'warehouse_id' => $effectiveWarehouseId,
-                            ], ['stock' => 0]);
+                    if ($effectiveWarehouseId) {
+                        $pivot = ProductWarehouse::firstOrCreate([
+                            'product_id' => $product->id,
+                            'warehouse_id' => $effectiveWarehouseId,
+                        ], ['stock' => 0]);
+                        $stockBefore = (int) $pivot->stock;
+                        $stockAfter = $stockBefore - $baseQty;
+
+                        if (! $isFromConfirmedCatalog) {
                             $pivot->decrement('stock', $baseQty);
                         }
+                    } else {
+                        $stockBefore = (int) $product->stock;
+                        $stockAfter = $stockBefore - $baseQty;
                     }
 
                     $this->stockMutationService->recordSaleOut(
