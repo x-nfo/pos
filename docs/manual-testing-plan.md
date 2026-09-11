@@ -38,7 +38,7 @@ Dokumen ini berisi panduan, metodologi, dan matriks pengujian manual komprehensi
   ```
 - **Kredensial Default**:
   - Administrator: `admin@mail.com` / `password`
-  - Kasir: `cashier@gmail.com` / `password`
+  - Kasir: `kasir@mail.com` / `password`
 
 ### 1.2. Perangkat & Hardware Pendukung
 - Browser Desktop: Chrome / Firefox / Edge (Resolusi 1366x768, 1920x1080).
@@ -175,20 +175,40 @@ Gunakan kolom **Status** pada setiap tabel untuk menandai progres pengujian:
 
 ## 8. Modul 6: Inventori, Multi-Gudang & Mutasi Stok
 
-### 8.1. Multi-Gudang & Transfer Antar Gudang
+### 8.1. Master Gudang/Cabang, Jam Operasional & Proteksi Integritas
 | Status | Test ID | Fitur / Skenario | Langkah Pengujian & Data Uji | Expected Result | Tipe |
 | :---: | :--- | :--- | :--- | :--- | :--- |
-| [X] | **TC-WH-01** | Buat Transfer Antar Gudang | Buat transfer 50 Pcs dari Gudang Utama ke Gudang Toko. Status: `Draft`. | Belum ada stok yang berpindah; draft tersimpan rapi. | *Positive* |
-| [X] | **TC-WH-02** | Kirim Barang (Send Transfer) | Klik "Kirim" pada transfer draft. | Status: `in_transit`; stok Gudang Utama berkurang 50 Pcs; stok Toko belum bertambah. | *Positive* |
-| [X] | **TC-WH-03** | Terima Barang Sebagian (Partial Receive) | Gudang Toko hanya menerima 45 Pcs (5 Pcs rusak di perjalanan). | Stok Gudang Toko bertambah +45; tercatat selisih 5 Pcs di log transfer & mutasi. | **Edge Case** |
-| [X] | **TC-WH-04** | Batalkan Transfer yang Sedang In-Transit | Admin klik "Cancel Transfer" saat status `in_transit`. | Status `cancelled`; stok 50 Pcs otomatis dikembalikan ke Gudang Utama. | **Integrity** |
-| [X] | **TC-WH-05** | Transfer Stok Melebihi Saldo Gudang Asal | Gudang Utama hanya punya 10 Pcs, coba kirim 20 Pcs. | Ditolak dengan pesan "Stok gudang asal tidak mencukupi". | *Negative* |
+| [X] | **TC-WH-01** | Daftarkan Cabang Baru & Konfigurasi Jam Kerja | Masuk ke `Settings > Gudang / Cabang`, klik Tambah. Input kode `CABANG-BDO`, nama "Cabang Bandung", tipe `branch`, jam operasional 08:00 - 22:00, pilih hari Senin-Minggu, aktifkan toggle Delivery & Pickup katalog. | Cabang baru tersimpan; seluruh produk otomatis disinkronkan ke pivot `product_warehouse` dengan saldo `0`. | *Positive* |
+| [X] | **TC-WH-02** | Penutupan Sementara Cabang (*Temporary Closure*) | Edit cabang, aktifkan `is_temporarily_closed = true`, isi alasan "Renovasi Toko" dan tanggal buka kembali H+7. | Status tersimpan; portal katalog publik (`/menu`) menampilkan badge "Toko Tutup Sementara: Renovasi Toko" dan memblokir order baru. | *Positive* |
+| [X] | **TC-WH-03** | Proteksi Hapus Cabang dengan Riwayat Historis | Coba hapus cabang yang pernah digunakan untuk transaksi penjualan, shift kasir, PO, atau mutasi stok (`hasHistoricalRelations`). | Tombol hapus dicegah / request dibatalkan dengan error "Gudang tidak dapat dihapus karena memiliki riwayat transaksi, pergeseran kasir, atau mutasi stok." | **Security / Integrity** |
+| [X] | **TC-WH-04** | Hapus Cabang Kosong Tanpa Riwayat | Buat cabang baru pengujian, pastikan belum ada transaksi/stok (`totalStock = 0` dan tidak ada relasi). Klik hapus. | Cabang berhasil dihapus secara soft-delete. Gudang tipe `main` tetap diproteksi dan tidak bisa dihapus sama sekali. | *Positive* |
 
-### 8.2. Log Mutasi Stok (Stock Mutation Audit Trail)
+### 8.2. Isolasi Peran & Akses Cabang (Branch Hard-Isolation)
 | Status | Test ID | Fitur / Skenario | Langkah Pengujian & Data Uji | Expected Result | Tipe |
 | :---: | :--- | :--- | :--- | :--- | :--- |
-| [X] | **TC-MUT-01** | Verifikasi Rantai Mutasi Lengkap | Eksekusi: Penerimaan PO (+100) -> Penjualan POS (-20) -> Retur (+2) -> Transfer (-10). | Log mutasi di `/stock-mutations` mencatat semua urutan secara kronologis dengan saldo awal & akhir presisi. | *Integrity* |
-| [ ] | **TC-MUT-02** | Filter Log Mutasi | Filter mutasi berdasarkan Produk, Gudang, Tipe (Sale, PO, Return, Opname), dan Tanggal. | Hasil tabel terfilter akurat tanpa record hantu (*ghost records*). | *Positive* |
+| [X] | **TC-WH-05** | Isolasi Dashboard Staf Cabang | Login sebagai kasir cabang (`kasir@mail.com` / `password`, assigned ke Cabang 1). Buka Dashboard. | Metrik KPI (Omzet, Transaksi, Laba, Tren) otomatis terisolasi hanya untuk Cabang 1; header menampilkan badge terkunci nama cabang; dropdown switcher cabang disembunyikan. | *Security* |
+| [X] | **TC-WH-06** | Dashboard Konsolidasi Super Admin (HQ) | Login sebagai Super Admin (`admin@mail.com`). Buka Dashboard. | Header menampilkan dropdown switcher "Semua Cabang (Konsolidasi)"; saat memilih cabang tertentu, seluruh metrik KPI berubah seketika sesuai cabang terpilih. | *Positive* |
+| [X] | **TC-WH-07** | Buka Shift Kasir Terkunci ke Cabang | Kasir Cabang 1 mencoba membuka shift kasir di Cabang 2 via form injection / manipulasi request `warehouse_id`. | Validasi `StoreCashierShiftRequest` menolak dengan error "Kasir hanya dapat membuka shift di cabang penempatannya." | *Security* |
+| [X] | **TC-WH-08** | Isolasi Stok POS Kasir | Kasir Cabang 1 membuka halaman kasir `/transactions`. | Hanya produk yang memiliki saldo fisik > 0 pada cabang kasir (`product_warehouse.stock > 0`) yang muncul di grid POS. Kasir dapat melihat informasi stok cabang lain untuk edukasi pelanggan. | *Integrity* |
+| [X] | **TC-WH-09** | POS Quick Store Menautkan Stok ke Cabang Kasir | Kasir Cabang 1 menambah produk cepat via modal Quick Store di POS dengan stok awal 20 unit. | Stok awal 20 unit otomatis dialokasikan ke cabang kasir aktif (`Cabang 1`), gudang lain tersinkronisasi 0, dan mutasi awal mencatat `warehouse_id` Cabang 1. | *Integrity* |
+| [X] | **TC-WH-10** | Indeks Katalog Produk Scoped ke Cabang | Staf cabang membuka menu `Produk` (`/products`). | Kolom "Stok" otomatis menampilkan stok fisik di cabangnya; badge filter cabang terkunci tanpa bisa melihat total stok gabungan jika tidak memiliki izin HQ. | *Positive* |
+| [X] | **TC-WH-11** | Dynamic Receipt Header (Thermal & PDF) | Kasir Cabang 1 menyelesaikan transaksi dan mencetak struk thermal serta PDF invoice. | Header struk otomatis memuat Nama Cabang, Alamat Cabang, dan No. Telepon Cabang kasir bertugas. Jika alamat cabang belum diisi, sistem otomatis fallback rapi ke `StoreProfile`. | *Positive* |
+
+### 8.3. Transfer Stok Antar Gudang & Multi-UOM
+| Status | Test ID | Fitur / Skenario | Langkah Pengujian & Data Uji | Expected Result | Tipe |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| [X] | **TC-WH-12** | Buat Dokumen Transfer Stok (Draft) | Buat transfer 50 Pcs dari Gudang Pusat ke Cabang 1. Status: `Draft`. | Belum ada stok fisik yang berpindah; dokumen tersimpan dengan status `draft`. | *Positive* |
+| [X] | **TC-WH-13** | Kirim Barang (Send Transfer) & Mutasi Keluar | Klik "Kirim" pada transfer draft. | Status berubah menjadi `in_transit`; saldo fisik Gudang Pusat terpotong -50 Pcs; mutasi keluar (`out`) tercatat spesifik untuk Gudang Pusat; stok Cabang 1 belum bertambah. | *Integrity* |
+| [X] | **TC-WH-14** | Terima Sebagian & Selisih Rusak/Hilang | Cabang 1 melakukan konfirmasi penerimaan barang, tetapi hanya menerima 45 Pcs (5 Pcs rusak di jalan). Beri catatan "5 Pcs rusak". | Stok fisik Cabang 1 bertambah +45 Pcs; status transfer: `completed`; selisih 5 Pcs tercatat transparan di mutasi stok dan audit log penerimaan. | **Edge Case** |
+| [X] | **TC-WH-15** | Batalkan Transfer yang Sedang In-Transit | Admin membatalkan transfer yang berstatus `in_transit` karena pembatalan armada pengiriman. | Status berubah menjadi `cancelled`; seluruh barang otomatis dikembalikan ke saldo fisik gudang asal dengan mutasi pemulihan (`in`). | *Integrity* |
+| [X] | **TC-WH-16** | Transfer Stok Multi-Satuan (Multi-UOM) | Kirim 2 Karton (faktor konversi = 24 Pcs) dari Pusat ke Cabang. | Gudang asal terpotong 48 Pcs; saat diterima penuh di cabang tujuan, stok dasar bertambah +48 Pcs dengan catatan satuan Karton pada histori mutasi. | *Positive* |
+| [X] | **TC-WH-17** | Otorisasi Akses Transfer Staf Cabang | Staf Cabang 1 mencoba mengakses atau memanipulasi dokumen transfer antara Gudang Pusat dan Cabang 2 via direct URL. | Sistem memblokir request dengan HTTP 403 "Anda tidak memiliki akses ke transfer stok cabang ini." | *Security* |
+
+### 8.4. Log Mutasi Stok (Stock Mutation Audit Trail)
+| Status | Test ID | Fitur / Skenario | Langkah Pengujian & Data Uji | Expected Result | Tipe |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| [X] | **TC-MUT-01** | Verifikasi Rantai Mutasi Lengkap Per Cabang | Eksekusi urutan: Penerimaan PO di Cabang (+100) -> Penjualan POS di Cabang (-20) -> Retur Penjualan (+2) -> Transfer keluar (-10). | Log mutasi di `/stock-mutations` mencatat semua urutan secara kronologis dengan saldo awal & akhir presisi merefleksikan kartu stok fisik cabang tersebut. | *Integrity* |
+| [X] | **TC-MUT-02** | Filter Log Mutasi per Gudang & Tipe | Filter mutasi berdasarkan Gudang, Produk, Tanggal, dan Tipe mutasi (`in` / `out`). | Tabel menampilkan data mutasi spesifik gudang terpilih tanpa record hantu (*ghost records*). Staf cabang terkunci hanya melihat mutasi cabangnya. | *Positive* |
 
 ---
 
@@ -206,20 +226,34 @@ Gunakan kolom **Status** pada setiap tabel untuk menandai progres pengujian:
 
 ## 10. Modul 8: Rantai Pembelian (Purchasing, GR & Retur Supplier)
 
-### 10.1. Purchase Order (PO) & Goods Receiving (GR)
+### 10.1. Purchase Order (PO) & Multi-UOM
 | Status | Test ID | Fitur / Skenario | Langkah Pengujian & Data Uji | Expected Result | Tipe |
 | :---: | :--- | :--- | :--- | :--- | :--- |
-| [X] | **TC-PUR-01** | Buat & Terbitkan Purchase Order | Buat PO ke Supplier PT ABC untuk 100 Pcs @ Rp 50.000 + PPN 11%. Klik "Place Order". | Status PO: `placed`; nomor dokumen otomatis terbit (PO/YYYYMM/XXXX); stok belum bertambah. | *Positive* |
-| [X] | **TC-PUR-02** | Penerimaan Barang Bertahap (Partial GR) | Supplier mengirim 40 Pcs pertama. Buat Goods Receiving linked ke PO. | Stok gudang bertambah +40; status PO: `partially_received`; sisa PO tersisa 60 Pcs. | *Positive* |
-| [X] | **TC-PUR-03** | Over-Receiving (Menerima Melebihi PO) | Staff coba input penerimaan 70 Pcs pada sisa PO yang hanya 60 Pcs. | Sistem menolak / membatasi sesuai aturan toleransi over-receiving. | **Boundary / Edge** |
-| [X] | **TC-PUR-04** | Otomatisasi Terbit Hutang (Payables) dari GR | Penerimaan 40 Pcs @ Rp 50.000 (Total Rp 2.000.000) dengan TOP 30 Hari. | Otomatis terbuat invoice hutang di modul **Payables** jatuh tempo H+30. | *Integrity* |
-| [X] | **TC-PUR-05** | Cetak & Share PO Link Publik | Akses share link publik `/share/purchase-orders/{docNumber}` tanpa login. | Halaman web & PDF PO resmi dapat diakses publik tanpa login dashboard. | *Positive* |
+| [X] | **TC-PUR-01** | Buat & Terbitkan Purchase Order Multi-UOM | Buat PO ke Supplier PT ABC untuk 10 Karton (faktor konversi = 24 Pcs) @ Rp 240.000/Karton + PPN 11%, pilih Gudang Tujuan "Cabang 1". Klik "Place Order". | Status PO: `ordered`; nomor dokumen otomatis berformat cabang `PO-[BRANCH]-YYYYMMDD-XXXX`; stok belum bertambah. | *Positive* |
+| [X] | **TC-PUR-02** | Saran Kuantitas Restock (*Suggested Order Qty*) | Buka form PO, pilih produk dengan `min_stock = 20`, `max_stock = 100`, dan stok fisik cabang saat ini = 30 Pcs. | Sistem otomatis menghitung dan mengisi saran pemesanan = 70 Pcs (mengurangi kuantitas PO yang masih in-transit jika ada). | *Positive* |
+| [X] | **TC-PUR-03** | Lifecycle Status PO (Draft -> Ordered -> Cancel) | Buat PO draft, klik Place Order (status `ordered`), lalu uji tombol Cancel PO pada PO yang belum diterima. | PO berubah status menjadi `cancelled`; tidak dapat dibuatkan penerimaan barang (GR). | *Integrity* |
+| [X] | **TC-PUR-04** | Cetak Struk, Ekspor PDF A4 & Share Link Publik | Buka detail PO. Uji tombol Cetak Struk, Unduh PDF A4, dan buka tautan publik `/share/purchase-orders/{docNumber}` via browser incognito. | Dokumen PO tampil resmi tanpa perlu login dashboard; nomor dokumen dan rincian item presisi. | *Positive* |
+| [X] | **TC-PUR-05** | Isolasi PO Staf Cabang | Login sebagai staf Cabang 1. Akses `/purchase-orders`. Coba akses detail PO Cabang 2 via direct URL. | Daftar PO hanya menampilkan PO Cabang 1; akses direct ke PO cabang lain ditolak dengan HTTP 403 Forbidden. | *Security* |
 
-### 10.2. Retur Pembelian ke Supplier (Supplier Returns)
+### 10.2. Goods Receiving (GR), Batch Tracking & Moving Average Costing
 | Status | Test ID | Fitur / Skenario | Langkah Pengujian & Data Uji | Expected Result | Tipe |
 | :---: | :--- | :--- | :--- | :--- | :--- |
-| [X] | **TC-SUPRET-01** | Retur Barang ke Supplier | Buat retur 10 Pcs dari GR sebelumnya karena cacat. Klik "Complete". | Stok gudang terpotong -10 Pcs; saldo hutang ke supplier otomatis berkurang. | *Positive* |
-| [X] | **TC-SUPRET-02** | Retur Melebihi Stok Gudang Saat Ini | Coba retur 50 Pcs padahal sisa stok di gudang hanya 30 Pcs (sebagian sudah terjual). | Ditolak dengan notifikasi stok fisik tidak mencukupi untuk diretur ke supplier. | **Edge Case** |
+| [X] | **TC-PUR-06** | Penerimaan Barang Bertahap (Partial GR) | PO pesan 10 Karton (240 Pcs). Supplier kirim 4 Karton pertama. Buat Goods Receiving. | Stok gudang tujuan bertambah +96 Pcs; status PO berubah menjadi `partially_received`; sisa PO tersisa 6 Karton (144 Pcs). | *Positive* |
+| [X] | **TC-PUR-07** | Batch Tracking & Tanggal Kadaluarsa | Pada form GR, isi `batch_number: BATCH-2026-X1` dan `expired_at: H+365`. Simpan GR. | Data batch tersimpan di `goods_receiving_items`; stok batch otomatis terbentuk di tabel `product_batches` untuk gudang tujuan; mutasi stok mencatat referensi batch. | *Integrity* |
+| [X] | **TC-PUR-08** | Penerimaan Barang Multi-Satuan (Multi-UOM GR) | PO dalam satuan Box. Input penerimaan barang dalam satuan Pcs atau Box dengan faktor konversi valid. | Sistem mengonversi kuantitas ke satuan dasar (*base unit*) secara presisi sebelum menambah saldo fisik gudang. | *Positive* |
+| [X] | **TC-PUR-09** | Proteksi Over-Receiving & Row Locking | Staff mencoba input penerimaan 8 Karton pada sisa PO yang hanya 6 Karton. | Sistem menolak transaksi dengan pesan validasi "Kuantitas diterima melebihi sisa pesanan PO." Transaksi terkunci aman via `lockForUpdate`. | **Boundary / Edge** |
+| [X] | **TC-PUR-10** | Kalkulasi Biaya Rata-Rata Bergerak (*Perpetual Moving Average*) | Produk memiliki stok lama 50 Pcs @ Rp 10.000. Terima GR 50 Pcs @ Rp 12.000. | Nilai HPP master produk (`products.buy_price`) otomatis terhitung ulang secara tertimbang menjadi Rp 11.000. | *Integrity* |
+| [X] | **TC-PUR-11** | Otomatisasi Terbit Hutang (*Payables*) Cabang | Simpan GR senilai Rp 2.400.000. Buka menu `Hutang Supplier`. | Invoice hutang baru otomatis terbit dengan nomor `PAY-[BRANCH]-...`, mewarisi `warehouse_id` cabang tujuan, dan jatuh tempo default 30 hari. | *Integrity* |
+| [X] | **TC-PUR-12** | Saldo Kartu Mutasi Masuk Spesifik Cabang | Buka riwayat mutasi stok di `/stock-mutations` untuk transaksi GR di atas. | Kolom `stock_before` dan `stock_after` merefleksikan saldo fisik gudang cabang penerima (bukan agregat global toko). | *Integrity* |
+
+### 10.3. Retur Pembelian ke Supplier (Supplier Returns / SR)
+| Status | Test ID | Fitur / Skenario | Langkah Pengujian & Data Uji | Expected Result | Tipe |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| [X] | **TC-SUPRET-01** | Retur Supplier Berdasarkan Referensi GR | Buka menu Retur Supplier, klik Tambah, pilih dokumen rujukan GR. | Form otomatis mengisi data Supplier, Gudang Tujuan, dan dokumen Hutang (`payable_id`) terkait. | *Positive* |
+| [X] | **TC-SUPRET-02** | Retur Multi-Satuan & Pemotongan Stok Batch | Retur 1 Karton (24 Pcs) dengan memilih nomor batch `BATCH-2026-X1`. Selesaikan retur (Complete). | Stok fisik cabang terpotong -24 Pcs; stok batch `BATCH-2026-X1` berkurang 24; mutasi keluar tipe `supplier_return` tercatat. | *Integrity* |
+| [X] | **TC-SUPRET-03** | Otomatisasi Koreksi Saldo Hutang Supplier | Cek invoice hutang pada menu `Hutang Supplier` yang terhubung dengan GR tersebut. | Nilai total hutang berkurang secara otomatis dan proporsional senilai retur yang diselesaikan. | *Integrity* |
+| [X] | **TC-SUPRET-04** | Retur Melebihi Saldo Stok Fisik Cabang | Coba retur 10 Karton padahal sisa stok fisik di cabang tersebut hanya 2 Karton (sebagian sudah terjual di POS). | Sistem memblokir retur dengan notifikasi "Stok fisik di gudang tidak mencukupi untuk melakukan retur." | **Edge Case** |
+| [X] | **TC-SUPRET-05** | Isolasi Retur Supplier Staf Cabang | Staf Cabang 1 mencoba mengakses atau menyelesaikan dokumen retur milik Cabang 2 via direct route. | Akses ditolak dengan HTTP 403 Forbidden. | *Security* |
 
 ---
 
@@ -353,9 +387,9 @@ Gunakan kolom **Status** pada setiap tabel untuk menandai progres pengujian:
 | 3. Transaksi POS & Cart | 23 | 17 | 0 | 0 | 73.9% |
 | 4. Dine-In & QR Table | 9 | 2 | 0 | 0 | 22.2% |
 | 5. Retur Penjualan | 6 | 6 | 0 | 0 | 100% |
-| 6. Multi-Gudang & Mutasi Stok | 7 | 3 | 0 | 0 | 42.9% |
+| 6. Multi-Gudang & Mutasi Stok | 19 | 19 | 0 | 0 | 100% |
 | 7. Stock Opname | 5 | 4 | 0 | 0 | 80.0% |
-| 8. Purchasing & PO | 7 | 5 | 0 | 0 | 71.4% |
+| 8. Rantai Pembelian (PO, GR, Retur) | 17 | 17 | 0 | 0 | 100% |
 | 9. Hutang & Piutang | 9 | 6 | 0 | 0 | 66.7% |
 | 10. Promo, Diskon & Loyalty | 6 | 5 | 0 | 0 | 83.3% |
 | 11. CRM & WhatsApp Gateway | 7 | 6 | 0 | 0 | 85.7% |
@@ -363,7 +397,7 @@ Gunakan kolom **Status** pada setiap tabel untuk menandai progres pengujian:
 | 13. Import/Export & Settings | 6 | 6 | 0 | 0 | 100% |
 | 14. REST API & Webhooks | 5 | 5 | 0 | 0 | 100% |
 | 15. Chaos & Cross-Cutting Edges | 8 | 8 | 0 | 0 | 100% |
-| **TOTAL** | **121** | **94** | **0** | **0** | **77.7%** |
+| **TOTAL** | **143** | **122** | **0** | **0** | **85.3%** |
 
 ### 18.2. Kriteria Kelulusan Rilis (Sign-Off Criteria)
 Aplikasi dinyatakan **siap untuk rilis produksi (Ready for Production)** apabila:

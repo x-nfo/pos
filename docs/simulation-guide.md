@@ -320,7 +320,13 @@ sequenceDiagram
    - Masukkan kuantitas riil yang diterima: `5 Dus`.
    - Isi **Batch Number**: `BATCH-AUG26` dan **Expired Date**: `31/12/2028`.
    - Klik **Simpan Penerimaan**.
-   - *Hasil Sistem*: Stok di Gudang Pusat bertambah **30 Pcs**, tercatat di `StockMutation`, dan terbentuk data **Hutang Usaha (Payable)** sebesar `Rp 960.000` dengan jatuh tempo 30 hari ke depan.
+   - *Hasil Sistem*: Stok di Gudang Pusat bertambah **30 Pcs** (terkonversi dari 5 Dus x 6 Pcs), tercatat di `StockMutation` dengan `stock_before` dan `stock_after` spesifik gudang, dan otomatis terbit tagihan **Hutang Usaha (Payable)** sebesar `Rp 960.000` dengan jatuh tempo 30 hari ke depan.
+3. **Retur Barang ke Supplier / Supplier Return (`/dashboard/supplier-returns/create`)**:
+   - Jika ditemukan barang rusak (misal 1 Dus kemasan bocor), buka menu `Retur Supplier`.
+   - Pilih dokumen rujukan GR di atas; sistem otomatis mengisi data Supplier, Gudang, dan dokumen Hutang terkait (`payable_id`).
+   - Masukkan kuantitas retur: `1 Dus`, pilih nomor batch `BATCH-AUG26`, dan isi alasan "Kemasan Bocor".
+   - Klik **Selesaikan Retur (Complete)**.
+   - *Hasil Sistem*: Stok fisik gudang berkurang 6 Pcs, stok batch berkurang 6 Pcs, mutasi keluar tercatat, dan saldo tagihan hutang supplier di modul `Payables` otomatis terpotong Rp 192.000 menjadi `Rp 768.000`.
 
 ---
 
