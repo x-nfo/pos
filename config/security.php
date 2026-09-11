@@ -7,6 +7,7 @@ return [
         'forgot_password_throttle' => env('AUTH_FORGOT_PASSWORD_THROTTLE', '5,10'),
         'login_max_attempts' => (int) env('AUTH_LOGIN_MAX_ATTEMPTS', 5),
         'login_decay_seconds' => (int) env('AUTH_LOGIN_DECAY_SECONDS', 60),
+        'api_rate_limit_per_minute' => (int) env('API_RATE_LIMIT_PER_MINUTE', 120),
     ],
     'bot_guard' => [
         'enabled' => env('SECURITY_BOT_GUARD_ENABLED', true),

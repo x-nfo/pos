@@ -84,11 +84,12 @@ php artisan event:cache
 ## 6. Konfigurasi Background Worker (PM2)
 Aplikasi ini memiliki tugas berat di latar belakang seperti pengiriman pengingat WhatsApp. Jangan biarkan *cron* menangani tugas berat ini secara sinkronos. Kita akan menggunakan PM2.
 
-### A. Worker Antrean Khusus WhatsApp (Queue)
-Aplikasi utama (`www-data`) disarankan untuk menangani antrean `default` secara bawaan agar tugas cepat tidak terhambat. Untuk PM2, jalankan *worker* yang **dikhususkan** memantau antrean `whatsapp` (karena proses pengiriman WA sengaja diberi jeda waktu agar anti-blokir):
+### A. Worker Antrean WhatsApp & Default (Queue)
+Aplikasi disarankan menjalankan *worker* untuk memproses antrean. Jika menggunakan satu instance worker untuk seluruh antrean:
 ```bash
-pm2 start "php artisan queue:work --queue=whatsapp --sleep=3 --tries=3 --max-time=3600" --name "laravel-worker-wa"
+pm2 start "php artisan queue:work --queue=whatsapp,default --sleep=3 --tries=3 --max-time=3600" --name "laravel-worker"
 ```
+*Tips: Jika ingin memisahkan antrean agar pengiriman WhatsApp (yang memiliki jeda waktu anti-blokir) tidak memperlambat pekerjaan lain, jalankan dua worker terpisah: satu untuk `--queue=whatsapp` dan satu untuk `--queue=default`.*
 
 ### B. Service Gateway WhatsApp
 Aplikasi ini membutuhkan *Node.js service* terpisah untuk WhatsApp Web JS:

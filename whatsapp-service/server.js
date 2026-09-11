@@ -23,7 +23,7 @@ function createClient() {
             '--disable-gpu',
             '--disable-extensions',
             '--no-zygote',
-            '--single-porcess'],
+            '--single-process'],
     };
 
     const fs = require('fs');
