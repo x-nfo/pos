@@ -3,12 +3,16 @@
 namespace Tests\Feature\Purchasing;
 
 use App\Models\Category;
+use App\Models\GoodsReceiving;
 use App\Models\Payable;
 use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Models\ProductWarehouse;
+use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Models\SupplierReturn;
 use App\Models\SupplierReturnItem;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -359,6 +363,241 @@ class SupplierReturnTest extends TestCase
         $this->assertDatabaseHas('supplier_returns', [
             'id' => $return->id,
             'status' => 'cancelled',
+        ]);
+    }
+
+    public function test_supplier_return_auto_resolves_payable_from_goods_receiving_and_deducts_balance(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'supplier-returns-access',
+            'supplier-returns-create',
+            'supplier-returns-update',
+        ]);
+
+        $supplier = Supplier::create([
+            'name' => 'PT Auto Resolve Supplier',
+            'phone' => '08111222333',
+        ]);
+
+        $warehouse = Warehouse::create([
+            'code' => 'WH-TEST-AUTO',
+            'name' => 'Warehouse Test Auto',
+            'type' => 'branch',
+            'is_active' => true,
+        ]);
+
+        $product = $this->createProduct(50);
+        ProductWarehouse::updateOrCreate(
+            ['product_id' => $product->id, 'warehouse_id' => $warehouse->id],
+            ['stock' => 50]
+        );
+
+        $po = PurchaseOrder::create([
+            'supplier_id' => $supplier->id,
+            'warehouse_id' => $warehouse->id,
+            'document_number' => 'PO-WH-20260911-0001',
+            'status' => 'completed',
+            'created_by' => $user->id,
+            'ordered_at' => now(),
+        ]);
+
+        $payable = Payable::create([
+            'purchase_order_id' => $po->id,
+            'supplier_id' => $supplier->id,
+            'warehouse_id' => $warehouse->id,
+            'document_number' => 'AP-WH-20260911-0001',
+            'total' => 1000000,
+            'paid' => 0,
+            'status' => 'unpaid',
+            'due_date' => now()->addDays(30),
+        ]);
+
+        $gr = GoodsReceiving::create([
+            'purchase_order_id' => $po->id,
+            'supplier_id' => $supplier->id,
+            'warehouse_id' => $warehouse->id,
+            'document_number' => 'GR-WH-20260911-0001',
+            'received_by' => $user->id,
+            'received_at' => now(),
+        ]);
+
+        // Post store retur WITHOUT payable_id (simulating the frontend user flow)
+        $response = $this->actingAs($user)
+            ->post(route('supplier-returns.store'), [
+                'supplier_id' => $supplier->id,
+                'warehouse_id' => $warehouse->id,
+                'goods_receiving_id' => $gr->id,
+                'notes' => 'Retur barang dari GR',
+                'items' => [
+                    [
+                        'product_id' => $product->id,
+                        'qty_returned' => 10,
+                        'unit_price' => 30000, // Total = 300,000
+                        'reason' => 'Barang rusak',
+                    ],
+                ],
+            ]);
+
+        $return = SupplierReturn::where('goods_receiving_id', $gr->id)->first();
+        $this->assertNotNull($return);
+        $response->assertRedirect(route('supplier-returns.show', $return));
+
+        // Ensure payable_id was auto-resolved
+        $this->assertEquals($payable->id, $return->payable_id);
+
+        // Complete the return
+        $this->actingAs($user)
+            ->post(route('supplier-returns.complete', $return))
+            ->assertRedirect(route('supplier-returns.show', $return));
+
+        // Payable should be reduced: 1,000,000 - 300,000 = 700,000
+        $this->assertEquals(700000, (float) $payable->fresh()->total);
+    }
+
+    public function test_supplier_return_with_multi_uom_deducts_correct_base_stock(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'supplier-returns-access',
+            'supplier-returns-create',
+            'supplier-returns-update',
+        ]);
+
+        $warehouse = Warehouse::create([
+            'code' => 'WH-UOM-TEST',
+            'name' => 'Warehouse UOM Test',
+            'type' => 'main',
+            'is_active' => true,
+        ]);
+
+        $product = $this->createProduct(24);
+        ProductWarehouse::updateOrCreate(
+            ['product_id' => $product->id, 'warehouse_id' => $warehouse->id],
+            ['stock' => 24]
+        );
+
+        $cartonUnit = Unit::firstOrCreate(
+            ['code' => 'KRTN'],
+            ['name' => 'Karton', 'symbol' => 'krt']
+        );
+
+        $product->units()->attach($cartonUnit->id, [
+            'is_base' => false,
+            'conversion_factor' => 12.0000,
+            'buy_price' => 120000,
+            'sell_price' => 150000,
+        ]);
+
+        $supplier = Supplier::create([
+            'name' => 'Supplier Karton',
+            'phone' => '08222333444',
+        ]);
+
+        // Retur 1 Karton (= 12 base units)
+        $response = $this->actingAs($user)
+            ->post(route('supplier-returns.store'), [
+                'supplier_id' => $supplier->id,
+                'warehouse_id' => $warehouse->id,
+                'items' => [
+                    [
+                        'product_id' => $product->id,
+                        'unit_id' => $cartonUnit->id,
+                        'conversion_factor' => 12.0000,
+                        'qty_returned' => 1,
+                        'unit_price' => 120000,
+                    ],
+                ],
+            ]);
+
+        $return = SupplierReturn::first();
+        $this->assertNotNull($return);
+
+        $this->actingAs($user)
+            ->post(route('supplier-returns.complete', $return))
+            ->assertRedirect(route('supplier-returns.show', $return));
+
+        // Warehouse stock should be reduced by 12: 24 - 12 = 12
+        $this->assertEquals(
+            12,
+            ProductWarehouse::where(['product_id' => $product->id, 'warehouse_id' => $warehouse->id])->value('stock')
+        );
+
+        // Stock mutation should record 12 base units
+        $this->assertDatabaseHas('stock_mutations', [
+            'product_id' => $product->id,
+            'reference_type' => 'supplier_return',
+            'reference_id' => $return->id,
+            'qty' => 12,
+            'mutation_type' => 'out',
+        ]);
+    }
+
+    public function test_supplier_return_decrements_product_batch_stock(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'supplier-returns-access',
+            'supplier-returns-create',
+            'supplier-returns-update',
+        ]);
+
+        $warehouse = Warehouse::create([
+            'code' => 'WH-BATCH-RET',
+            'name' => 'Warehouse Batch Retur',
+            'type' => 'main',
+            'is_active' => true,
+        ]);
+
+        $product = $this->createProduct(30);
+        ProductWarehouse::updateOrCreate(
+            ['product_id' => $product->id, 'warehouse_id' => $warehouse->id],
+            ['stock' => 30]
+        );
+
+        $batch = ProductBatch::create([
+            'product_id' => $product->id,
+            'warehouse_id' => $warehouse->id,
+            'batch_number' => 'BATCH-RET-99',
+            'expired_at' => now()->addMonths(6)->format('Y-m-d'),
+            'received_at' => now()->subDays(2)->format('Y-m-d'),
+            'stock' => 20,
+        ]);
+
+        $supplier = Supplier::create([
+            'name' => 'Supplier Batch',
+            'phone' => '08333444555',
+        ]);
+
+        // Retur 5 items with batch number
+        $this->actingAs($user)
+            ->post(route('supplier-returns.store'), [
+                'supplier_id' => $supplier->id,
+                'warehouse_id' => $warehouse->id,
+                'items' => [
+                    [
+                        'product_id' => $product->id,
+                        'batch_number' => 'BATCH-RET-99',
+                        'qty_returned' => 5,
+                        'unit_price' => 50000,
+                    ],
+                ],
+            ])
+            ->assertRedirect();
+
+        $return = SupplierReturn::first();
+
+        $this->actingAs($user)
+            ->post(route('supplier-returns.complete', $return))
+            ->assertRedirect();
+
+        // Product batch stock should be decremented: 20 - 5 = 15
+        $this->assertEquals(15, $batch->fresh()->stock);
+
+        // Stock mutation should record the batch number
+        $this->assertDatabaseHas('stock_mutations', [
+            'product_id' => $product->id,
+            'reference_type' => 'supplier_return',
+            'reference_id' => $return->id,
+            'batch_number' => 'BATCH-RET-99',
+            'qty' => 5,
         ]);
     }
 }

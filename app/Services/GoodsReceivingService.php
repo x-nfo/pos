@@ -10,6 +10,7 @@ use App\Models\ProductWarehouse;
 use App\Models\PurchaseOrder;
 use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class GoodsReceivingService
 {
@@ -46,8 +47,16 @@ class GoodsReceivingService
                 ]);
 
                 foreach ($items as $item) {
-                    $poItem = $order->items()->findOrFail($item['purchase_order_item_id']);
+                    $poItem = $order->items()->lockForUpdate()->findOrFail($item['purchase_order_item_id']);
                     $qtyReceived = (int) $item['qty_received'];
+                    $outstanding = $poItem->qty_ordered - $poItem->qty_received;
+                    if ($qtyReceived > $outstanding) {
+                        $productTitle = $poItem->product?->title ?? "Item #{$poItem->product_id}";
+                        throw ValidationException::withMessages([
+                            'items' => "Qty diterima ({$qtyReceived}) melebihi sisa pesanan untuk {$productTitle} (sisa: {$outstanding}).",
+                        ]);
+                    }
+
                     $conversionFactor = (float) ($poItem->conversion_factor ?: 1.0);
                     $baseQty = (int) round($qtyReceived * $conversionFactor);
 
@@ -86,7 +95,7 @@ class GoodsReceivingService
                     if ($batchNumber) {
                         $batch = ProductBatch::firstOrNew([
                             'product_id' => $product->id,
-                            'warehouse_id' => $order->warehouse_id ?? 1,
+                            'warehouse_id' => $order->warehouse_id ?? Warehouse::defaultId(),
                             'batch_number' => $batchNumber,
                         ]);
                         $batch->stock = ($batch->exists ? $batch->stock : 0) + $baseQty;
@@ -109,16 +118,26 @@ class GoodsReceivingService
                         expiredAt: $expiredAt,
                     );
 
-                    // Sync product.buy_price to the latest purchase cost so that
-                    // downstream profit calculations use an accurate COGS figure.
-                    // Divide by conversion_factor to convert PO unit price → base unit price.
-                    if ($poItem->unit_price > 0) {
-                        $baseBuyPrice = $conversionFactor > 0
+                    // Recalculate product.buy_price using Perpetual Moving Average Costing
+                    // so downstream profit calculations (COGS) reflect accurate weighted inventory cost.
+                    if ($poItem->unit_price > 0 && $baseQty > 0) {
+                        $incomingBuyPrice = $conversionFactor > 0
                             ? (int) round($poItem->unit_price / $conversionFactor)
                             : (int) $poItem->unit_price;
 
-                        if ($baseBuyPrice !== (int) $product->buy_price) {
-                            $product->update(['buy_price' => $baseBuyPrice]);
+                        $existingStock = max(0, $stockBefore);
+                        $existingBuyPrice = (int) $product->buy_price;
+
+                        if ($existingStock > 0 && $existingBuyPrice > 0) {
+                            $totalValuation = ($existingStock * $existingBuyPrice) + ($baseQty * $incomingBuyPrice);
+                            $totalQty = $existingStock + $baseQty;
+                            $newBuyPrice = (int) round($totalValuation / $totalQty);
+                        } else {
+                            $newBuyPrice = $incomingBuyPrice;
+                        }
+
+                        if ($newBuyPrice !== (int) $product->buy_price) {
+                            $product->update(['buy_price' => $newBuyPrice]);
                         }
                     }
                 }

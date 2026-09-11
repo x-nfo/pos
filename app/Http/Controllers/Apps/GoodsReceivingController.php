@@ -85,9 +85,9 @@ class GoodsReceivingController extends Controller
             'items.*.notes' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $order = PurchaseOrder::with('items')->findOrFail($data['purchase_order_id']);
+        $order = PurchaseOrder::with(['items.product'])->findOrFail($data['purchase_order_id']);
 
-        if ($user && ! $user->isHQ() && $order->warehouse_id && (int) $order->warehouse_id !== (int) $user->warehouse_id) {
+        if ($user && ! $user->isHQ() && (! $order->warehouse_id || (int) $order->warehouse_id !== (int) $user->warehouse_id)) {
             abort(403, 'Anda tidak memiliki akses ke Purchase Order cabang ini.');
         }
 
@@ -102,7 +102,9 @@ class GoodsReceivingController extends Controller
             }
             $outstanding = $poItem->qty_ordered - $poItem->qty_received;
             if ($item['qty_received'] > $outstanding) {
-                return back()->with('error', "Qty diterima melebihi sisa item {$poItem->product_id}.");
+                $title = $poItem->product?->title ?? "Item #{$poItem->product_id}";
+
+                return back()->with('error', "Qty diterima melebihi sisa pesanan untuk {$title}.");
             }
         }
 
@@ -131,7 +133,8 @@ class GoodsReceivingController extends Controller
         ]);
 
         $user = $request->user();
-        if ($user && ! $user->isHQ() && $goodsReceiving->purchaseOrder && (int) $goodsReceiving->purchaseOrder->warehouse_id !== (int) $user->warehouse_id) {
+        $warehouseId = $goodsReceiving->warehouse_id ?? $goodsReceiving->purchaseOrder?->warehouse_id;
+        if ($user && ! $user->isHQ() && (! $warehouseId || (int) $warehouseId !== (int) $user->warehouse_id)) {
             abort(403, 'Anda tidak memiliki akses ke Penerimaan Barang cabang ini.');
         }
 

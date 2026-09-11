@@ -268,6 +268,26 @@ class DocumentController extends Controller
 
     public function publicPurchaseOrder(string $documentNumber)
     {
-        return $this->purchaseOrder($documentNumber);
+        $this->ensureFontDirectory();
+
+        $order = PurchaseOrder::with([
+            'supplier',
+            'warehouse',
+            'creator',
+            'items.product',
+            'items.unit',
+        ])
+            ->where('document_number', $documentNumber)
+            ->firstOrFail();
+
+        $barcode = $order->document_number ? $this->barcode($order->document_number) : null;
+
+        $pdf = Pdf::loadView('pdf.purchase_order', [
+            'order' => $order,
+            'store' => $this->storeProfile($order->warehouse),
+            'barcode' => $barcode,
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->stream("purchase-order-{$order->document_number}.pdf");
     }
 }

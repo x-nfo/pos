@@ -317,7 +317,7 @@ class PurchaseOrderController extends Controller
     private function authorizeWarehouseAccess(Request $request, PurchaseOrder $purchaseOrder): void
     {
         $user = $request->user();
-        if ($user && ! $user->isHQ() && $purchaseOrder->warehouse_id && (int) $purchaseOrder->warehouse_id !== (int) $user->warehouse_id) {
+        if ($user && ! $user->isHQ() && (! $purchaseOrder->warehouse_id || (int) $purchaseOrder->warehouse_id !== (int) $user->warehouse_id)) {
             abort(403, 'Anda tidak memiliki akses ke Purchase Order cabang ini.');
         }
     }

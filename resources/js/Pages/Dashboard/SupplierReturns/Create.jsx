@@ -17,10 +17,13 @@ const formatCurrency = (value = 0) =>
         minimumFractionDigits: 0,
     }).format(value);
 
-export default function Create({ suppliers, goodsReceivings, products }) {
+export default function Create({ suppliers, goodsReceivings = [], products = [], warehouses = [], is_locked_branch = false }) {
     const { errors } = usePage().props;
+    const initialWarehouseId = is_locked_branch && warehouses.length > 0 ? warehouses[0].id : (warehouses.length === 1 ? warehouses[0].id : "");
+
     const { data, setData, post, processing } = useForm({
         supplier_id: "",
+        warehouse_id: initialWarehouseId,
         goods_receiving_id: "",
         payable_id: "",
         notes: "",
@@ -38,15 +41,45 @@ export default function Create({ suppliers, goodsReceivings, products }) {
             (p.sku && p.sku.toLowerCase().includes(searchProduct.toLowerCase()))
     );
 
+    const handleSelectGr = (grId) => {
+        setSelectedGrId(grId);
+        if (!grId) {
+            setData((prev) => ({
+                ...prev,
+                goods_receiving_id: "",
+                payable_id: "",
+            }));
+            return;
+        }
+
+        const foundGr = goodsReceivings.find((gr) => gr.id === Number(grId));
+        if (foundGr) {
+            setData((prev) => ({
+                ...prev,
+                goods_receiving_id: grId,
+                warehouse_id: foundGr.warehouse_id || prev.warehouse_id,
+                payable_id: foundGr.purchase_order?.payable?.id || "",
+            }));
+        }
+    };
+
     const addItemFromProduct = (product) => {
         if (data.items.some((i) => i.product_id === product.id)) {
             toast.error("Produk sudah ada di daftar.");
             return;
         }
+
+        const baseUnit = product.units?.find((u) => u.is_base) || product.units?.[0];
+
         setData("items", [
             ...data.items,
             {
                 product_id: product.id,
+                unit_id: baseUnit ? baseUnit.id : null,
+                unit_name: baseUnit ? baseUnit.name : "Pcs",
+                unit_symbol: baseUnit ? baseUnit.symbol : "pcs",
+                conversion_factor: baseUnit ? Number(baseUnit.conversion_factor) || 1.0 : 1.0,
+                batch_number: "",
                 product_title: product.title,
                 product_sku: product.sku || "-",
                 qty_returned: 1,
@@ -62,15 +95,27 @@ export default function Create({ suppliers, goodsReceivings, products }) {
             toast.error("Item sudah ada di daftar.");
             return;
         }
+
+        const unitPrice = Number(grItem.purchase_order_item?.unit_price) || 0;
+        const unitName = grItem.unit?.name || grItem.purchase_order_item?.unit?.name || grItem.unit?.symbol || "Pcs";
+        const unitSymbol = grItem.unit?.symbol || grItem.purchase_order_item?.unit?.symbol || "pcs";
+        const conversionFactor = Number(grItem.conversion_factor || grItem.purchase_order_item?.conversion_factor) || 1.0;
+        const batchNumber = grItem.batch_number || "";
+
         setData("items", [
             ...data.items,
             {
                 goods_receiving_item_id: grItem.id,
                 product_id: grItem.product_id,
+                unit_id: grItem.unit_id || grItem.purchase_order_item?.unit_id || null,
+                unit_name: unitName,
+                unit_symbol: unitSymbol,
+                conversion_factor: conversionFactor,
+                batch_number: batchNumber,
                 product_title: grItem.product?.title || "Produk #" + grItem.product_id,
                 product_sku: grItem.product?.sku || "-",
                 qty_returned: 1,
-                unit_price: Number(grItem.purchase_order_item?.unit_price) || 0,
+                unit_price: unitPrice,
                 reason: "",
                 notes: "",
             },
@@ -101,6 +146,10 @@ export default function Create({ suppliers, goodsReceivings, products }) {
         }
         if (!data.supplier_id) {
             toast.error("Pilih supplier.");
+            return;
+        }
+        if (!data.warehouse_id) {
+            toast.error("Pilih gudang asal retur.");
             return;
         }
         post(route("supplier-returns.store"), {
@@ -139,13 +188,33 @@ export default function Create({ suppliers, goodsReceivings, products }) {
                 <div className="space-y-6">
                     <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
                         <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">Informasi Retur</h2>
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                            <div>
+                                <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Gudang Asal</label>
+                                {is_locked_branch ? (
+                                    <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-slate-100 px-3 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                        {warehouses[0]?.code} - {warehouses[0]?.name}
+                                    </div>
+                                ) : (
+                                    <select
+                                        value={data.warehouse_id}
+                                        onChange={(e) => setData("warehouse_id", e.target.value)}
+                                        className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                    >
+                                        <option value="">Pilih Gudang</option>
+                                        {warehouses.map((w) => (
+                                            <option key={w.id} value={w.id}>{w.code} - {w.name}</option>
+                                        ))}
+                                    </select>
+                                )}
+                                {errors.warehouse_id && <p className="mt-1 text-xs text-danger-500">{errors.warehouse_id}</p>}
+                            </div>
                             <div>
                                 <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Supplier</label>
                                 <select
                                     value={data.supplier_id}
                                     onChange={(e) => {
-                                        setData({ supplier_id: e.target.value, goods_receiving_id: "", payable_id: "", items: [] });
+                                        setData({ ...data, supplier_id: e.target.value, goods_receiving_id: "", payable_id: "", items: [] });
                                         setSelectedGrId("");
                                     }}
                                     className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
@@ -155,17 +224,15 @@ export default function Create({ suppliers, goodsReceivings, products }) {
                                         <option key={s.id} value={s.id}>{s.name}</option>
                                     ))}
                                 </select>
+                                {errors.supplier_id && <p className="mt-1 text-xs text-danger-500">{errors.supplier_id}</p>}
                             </div>
                             <div>
                                 <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                    Penerimaan Barang (Opsional)
+                                    Penerimaan Barang (GR)
                                 </label>
                                 <select
                                     value={selectedGrId}
-                                    onChange={(e) => {
-                                        setSelectedGrId(e.target.value);
-                                        setData("goods_receiving_id", e.target.value);
-                                    }}
+                                    onChange={(e) => handleSelectGr(e.target.value)}
                                     disabled={!data.supplier_id}
                                     className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 disabled:opacity-50"
                                 >
@@ -196,29 +263,40 @@ export default function Create({ suppliers, goodsReceivings, products }) {
                         {selectedGr && (
                             <div className="mb-4">
                                 <p className="mb-2 text-sm font-medium text-slate-600 dark:text-slate-400">
-                                    Item dari GR {selectedGr.document_number}
+                                    Pilih Item dari GR {selectedGr.document_number}:
                                 </p>
-                                <div className="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-slate-100 p-3 dark:border-slate-700">
+                                <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-slate-100 p-3 dark:border-slate-700">
                                     {selectedGr.items?.map((grItem) => {
-                                        const outstanding = grItem.qty_received || 0;
-                                        return outstanding > 0 ? (
+                                        const unitName = grItem.unit?.name || grItem.purchase_order_item?.unit?.name || grItem.unit?.symbol || "Pcs";
+                                        const factor = Number(grItem.conversion_factor || grItem.purchase_order_item?.conversion_factor) || 1;
+                                        return (
                                             <button
                                                 key={grItem.id}
                                                 type="button"
                                                 onClick={() => addItemFromGr(grItem)}
-                                                className="flex w-full items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-4 py-2 text-left text-sm transition hover:border-primary-200 hover:bg-primary-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-primary-700 dark:hover:bg-primary-950/20"
+                                                className="flex w-full items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-4 py-2.5 text-left text-sm transition hover:border-primary-200 hover:bg-primary-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-primary-700 dark:hover:bg-primary-950/20"
                                             >
                                                 <div>
-                                                    <p className="font-medium text-slate-800 dark:text-slate-200">
-                                                        {grItem.product?.title || "Produk #" + grItem.product_id}
-                                                    </p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-medium text-slate-800 dark:text-slate-200">
+                                                            {grItem.product?.title || "Produk #" + grItem.product_id}
+                                                        </p>
+                                                        <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                                                            {unitName} {factor > 1 && `(@${factor})`}
+                                                        </span>
+                                                        {grItem.batch_number && (
+                                                            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                                                                Batch: {grItem.batch_number}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <p className="text-xs text-slate-500">
-                                                        {grItem.product?.sku || "-"} &bull; Harga: {formatCurrency(grItem.purchase_order_item?.unit_price || 0)}
+                                                        {grItem.product?.sku || "-"} &bull; Diterima: {grItem.qty_received} {unitName} &bull; Harga PO: {formatCurrency(grItem.purchase_order_item?.unit_price || 0)}
                                                     </p>
                                                 </div>
-                                                <span className="text-xs text-primary-600">+ Tambah</span>
+                                                <span className="text-xs font-semibold text-primary-600">+ Tambah</span>
                                             </button>
-                                        ) : null;
+                                        );
                                     })}
                                 </div>
                             </div>
@@ -229,26 +307,31 @@ export default function Create({ suppliers, goodsReceivings, products }) {
                                 type="text"
                                 value={searchProduct}
                                 onChange={(e) => setSearchProduct(e.target.value)}
-                                placeholder="Cari produk untuk ditambahkan..."
+                                placeholder="Cari master produk untuk retur langsung..."
                                 className="h-11 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                             />
                         </div>
                         {searchProduct && filteredProducts.length > 0 && (
                             <div className="mb-4 max-h-48 space-y-2 overflow-y-auto rounded-xl border border-slate-200 p-3 dark:border-slate-700">
-                                {filteredProducts.map((product) => (
-                                    <button
-                                        key={product.id}
-                                        type="button"
-                                        onClick={() => addItemFromProduct(product)}
-                                        className="flex w-full items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-left text-sm transition hover:border-primary-200 hover:bg-primary-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-primary-700 dark:hover:bg-primary-950/20"
-                                    >
-                                        <div>
-                                            <p className="font-medium text-slate-800 dark:text-slate-200">{product.title}</p>
-                                            <p className="text-xs text-slate-500">{product.sku || "-"} &bull; Stok: {product.stock}</p>
-                                        </div>
-                                        <span className="text-xs text-slate-500">{formatCurrency(product.buy_price)}</span>
-                                    </button>
-                                ))}
+                                {filteredProducts.map((product) => {
+                                    const stockInWh = data.warehouse_id && product.warehouse_stocks && product.warehouse_stocks[data.warehouse_id] !== undefined
+                                        ? product.warehouse_stocks[data.warehouse_id]
+                                        : product.stock;
+                                    return (
+                                        <button
+                                            key={product.id}
+                                            type="button"
+                                            onClick={() => addItemFromProduct(product)}
+                                            className="flex w-full items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-left text-sm transition hover:border-primary-200 hover:bg-primary-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-primary-700 dark:hover:bg-primary-950/20"
+                                        >
+                                            <div>
+                                                <p className="font-medium text-slate-800 dark:text-slate-200">{product.title}</p>
+                                                <p className="text-xs text-slate-500">{product.sku || "-"} &bull; Stok Gudang: {stockInWh}</p>
+                                            </div>
+                                            <span className="text-xs text-slate-500">{formatCurrency(product.buy_price)}</span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         )}
 
@@ -258,8 +341,10 @@ export default function Create({ suppliers, goodsReceivings, products }) {
                                     <thead>
                                         <tr className="border-b border-slate-200 dark:border-slate-700">
                                             <th className="px-3 py-2 text-left font-semibold text-slate-700 dark:text-slate-200">Produk</th>
+                                            <th className="px-3 py-2 text-left font-semibold text-slate-700 dark:text-slate-200">Satuan</th>
+                                            <th className="px-3 py-2 text-left font-semibold text-slate-700 dark:text-slate-200">No. Batch</th>
                                             <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Qty</th>
-                                            <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Harga</th>
+                                            <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Harga Satuan</th>
                                             <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">Subtotal</th>
                                             <th className="px-3 py-2 text-left font-semibold text-slate-700 dark:text-slate-200">Alasan</th>
                                             <th className="w-16 px-3 py-2"></th>
@@ -271,6 +356,21 @@ export default function Create({ suppliers, goodsReceivings, products }) {
                                                 <td className="px-3 py-3">
                                                     <p className="font-medium text-slate-800 dark:text-slate-200">{item.product_title}</p>
                                                     <p className="text-xs text-slate-500">{item.product_sku}</p>
+                                                </td>
+                                                <td className="px-3 py-3">
+                                                    <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                                        {item.unit_name || "Pcs"}
+                                                        {item.conversion_factor > 1 && ` (@${item.conversion_factor})`}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-3">
+                                                    <input
+                                                        type="text"
+                                                        value={item.batch_number || ""}
+                                                        onChange={(e) => updateItem(index, "batch_number", e.target.value)}
+                                                        placeholder="Batch"
+                                                        className="h-10 w-28 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                                    />
                                                 </td>
                                                 <td className="px-3 py-3 text-right">
                                                     <input
@@ -317,7 +417,7 @@ export default function Create({ suppliers, goodsReceivings, products }) {
                                     </tbody>
                                     <tfoot>
                                         <tr className="border-t-2 border-slate-200 dark:border-slate-700">
-                                            <td colSpan={3} className="px-3 py-3 text-right font-bold text-slate-800 dark:text-slate-200">Total</td>
+                                            <td colSpan={5} className="px-3 py-3 text-right font-bold text-slate-800 dark:text-slate-200">Total Nilai Retur</td>
                                             <td className="px-3 py-3 text-right font-bold text-danger-600">{formatCurrency(total)}</td>
                                             <td colSpan={2}></td>
                                         </tr>
@@ -327,7 +427,7 @@ export default function Create({ suppliers, goodsReceivings, products }) {
                         ) : (
                             <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center dark:border-slate-700">
                                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                                    Pilih supplier, lalu tambahkan item dari GR atau cari produk di atas.
+                                    Pilih gudang dan supplier, lalu tambahkan item dari GR atau cari master produk di atas.
                                 </p>
                             </div>
                         )}

@@ -311,7 +311,8 @@ class StockMutationService
         int $stockBefore,
         int $stockAfter,
         ?string $notes = null,
-        ?int $userId = null
+        ?int $userId = null,
+        ?string $batchNumber = null
     ): StockMutation {
         $mutation = StockMutation::create([
             'product_id' => $product->id,
@@ -322,6 +323,7 @@ class StockMutationService
             'qty' => $qty,
             'stock_before' => $stockBefore,
             'stock_after' => $stockAfter,
+            'batch_number' => $batchNumber,
             'notes' => $notes ?: 'Retur barang ke supplier.',
             'created_by' => $userId,
         ]);
@@ -351,6 +353,7 @@ class StockMutationService
                 'document_number' => $supplierReturn->document_number,
                 'mutation_type' => $mutation->mutation_type,
                 'qty' => $qty,
+                'batch_number' => $batchNumber,
             ],
         );
 

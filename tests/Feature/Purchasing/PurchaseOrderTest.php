@@ -545,4 +545,26 @@ class PurchaseOrderTest extends TestCase
             'document_number' => $expectedDoc,
         ]);
     }
+
+    public function test_public_purchase_order_cannot_be_accessed_via_plain_integer_id(): void
+    {
+        $supplier = Supplier::create([
+            'name' => 'Supplier Public Security',
+            'phone' => '08123456789',
+        ]);
+
+        $po = PurchaseOrder::create([
+            'supplier_id' => $supplier->id,
+            'document_number' => 'PO-HQ-20260911-9999',
+            'status' => 'ordered',
+        ]);
+
+        // Access via document_number should work
+        $this->get(route('purchase-orders.public', $po->document_number))
+            ->assertOk();
+
+        // Access via plain integer ID should return 404
+        $this->get(route('purchase-orders.public', (string) $po->id))
+            ->assertNotFound();
+    }
 }

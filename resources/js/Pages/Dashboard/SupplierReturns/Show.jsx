@@ -123,6 +123,8 @@ export default function Show({ return: ret }) {
                             <Table.Thead>
                                 <tr>
                                     <Table.Th>Produk</Table.Th>
+                                    <Table.Th>Satuan</Table.Th>
+                                    <Table.Th>No. Batch</Table.Th>
                                     <Table.Th>Qty Retur</Table.Th>
                                     <Table.Th>Harga</Table.Th>
                                     <Table.Th>Subtotal</Table.Th>
@@ -139,6 +141,19 @@ export default function Show({ return: ret }) {
                                                 </p>
                                                 <p className="text-xs text-slate-500">{item.product?.sku || "-"}</p>
                                             </Table.Td>
+                                            <Table.Td>
+                                                <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                                    {item.unit?.name || "Pcs"}
+                                                    {item.conversion_factor > 1 && ` (@${item.conversion_factor})`}
+                                                </span>
+                                            </Table.Td>
+                                            <Table.Td className="text-xs text-slate-500">
+                                                {item.batch_number ? (
+                                                    <span className="rounded bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                                                        {item.batch_number}
+                                                    </span>
+                                                ) : "-"}
+                                            </Table.Td>
                                             <Table.Td className="font-semibold">{item.qty_returned}</Table.Td>
                                             <Table.Td>{formatCurrency(item.unit_price)}</Table.Td>
                                             <Table.Td className="font-semibold">
@@ -148,7 +163,7 @@ export default function Show({ return: ret }) {
                                         </tr>
                                     ))
                                 ) : (
-                                    <Table.Empty colSpan={5} message={
+                                    <Table.Empty colSpan={7} message={
                                         <div className="text-slate-500 dark:text-slate-400">Tidak ada item.</div>
                                     }>
                                         <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
@@ -184,6 +199,14 @@ export default function Show({ return: ret }) {
                                 <span className="text-slate-500">Dokumen</span>
                                 <span className="font-semibold text-slate-800 dark:text-white">{ret.document_number}</span>
                             </div>
+                            {ret.warehouse && (
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Gudang</span>
+                                    <span className="font-semibold text-slate-800 dark:text-white">
+                                        {ret.warehouse.code} - {ret.warehouse.name}
+                                    </span>
+                                </div>
+                            )}
                             {ret.goodsReceiving && (
                                 <div className="flex justify-between">
                                     <span className="text-slate-500">GR Referensi</span>

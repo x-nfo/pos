@@ -85,7 +85,7 @@ class GoodsReceivingTest extends TestCase
             'purchase-orders-access',
         ]);
 
-        $product = $this->createProduct(10);
+        $product = $this->createProduct(0);
         $this->assertEquals(50000, $product->buy_price); // initial buy price
 
         $supplier = Supplier::create([
@@ -197,8 +197,12 @@ class GoodsReceivingTest extends TestCase
             'qty_received' => 20,
         ]);
 
-        // Verify product buy_price is synced with the latest PO cost
-        $this->assertEquals($newBuyPrice, $product->fresh()->buy_price);
+        // Verify product buy_price is recalculated using Perpetual Moving Average
+        // Existing: 10 pcs @ 50,000 = 500,000
+        // Incoming: 20 pcs @ 55,000 = 1,100,000
+        // Total: 30 pcs, Moving Average = 1,600,000 / 30 = 53,333
+        $expectedMovingAverage = (int) round(((10 * 50000) + (20 * $newBuyPrice)) / 30);
+        $this->assertEquals($expectedMovingAverage, $product->fresh()->buy_price);
     }
 
     public function test_authorized_user_can_receive_goods_with_multi_uom_conversion(): void
@@ -314,6 +318,9 @@ class GoodsReceivingTest extends TestCase
         // Master stock converted: 0 + (2 * 12) = 24
         $this->assertSame(24, (int) $product->fresh()->stock);
 
+        // Buy price converted to base unit (265,000 / 12 = 22,083) since initial stock is 0
+        $this->assertEquals(22083, $product->fresh()->buy_price);
+
         // Payable automatically created: 2 * 265000 = 530000
         $this->assertDatabaseHas('payables', [
             'purchase_order_id' => $po->id,
@@ -403,5 +410,121 @@ class GoodsReceivingTest extends TestCase
             'batch_number' => 'BATCH-EXISTING-01',
             'stock' => 25,
         ]);
+    }
+
+    public function test_receiving_goods_fails_when_qty_exceeds_outstanding_with_friendly_message(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'goods-receivings-access',
+            'goods-receivings-create',
+            'purchase-orders-access',
+        ]);
+
+        $product = $this->createProduct(0);
+
+        $warehouse = Warehouse::create([
+            'code' => 'GUDANG-OVER',
+            'name' => 'Gudang Over Qty',
+            'type' => 'main',
+            'is_active' => true,
+        ]);
+
+        $po = PurchaseOrder::create([
+            'supplier_id' => null,
+            'warehouse_id' => $warehouse->id,
+            'document_number' => 'PO-20260825-9999',
+            'status' => 'ordered',
+            'created_by' => $user->id,
+            'ordered_at' => now(),
+        ]);
+
+        $poItem = PurchaseOrderItem::create([
+            'purchase_order_id' => $po->id,
+            'product_id' => $product->id,
+            'qty_ordered' => 10,
+            'qty_received' => 0,
+            'unit_price' => 20000,
+        ]);
+
+        // Coba terima 15 (melebihi 10)
+        $response = $this->actingAs($user)
+            ->from(route('goods-receivings.create'))
+            ->post(route('goods-receivings.store'), [
+                'purchase_order_id' => $po->id,
+                'items' => [
+                    [
+                        'purchase_order_item_id' => $poItem->id,
+                        'qty_received' => 15,
+                    ],
+                ],
+            ]);
+
+        $response->assertRedirect(route('goods-receivings.create'));
+        $response->assertSessionHas('error');
+        $this->assertStringContainsString($product->title, session('error'));
+        $this->assertDatabaseCount('goods_receivings', 0);
+    }
+
+    public function test_goods_receiving_calculates_perpetual_moving_average_buy_price(): void
+    {
+        $user = $this->createUserWithPermissions([
+            'goods-receivings-access',
+            'goods-receivings-create',
+            'purchase-orders-access',
+        ]);
+
+        $product = $this->createProduct(0);
+        $product->update(['buy_price' => 10000]);
+
+        $warehouse = Warehouse::create([
+            'code' => 'GUDANG-MA',
+            'name' => 'Gudang Moving Average',
+            'type' => 'main',
+            'is_active' => true,
+        ]);
+
+        // Skenario 1: Stok awal 100 pcs @ Rp 10.000 (Valuasi = Rp 1.000.000)
+        ProductWarehouse::create([
+            'product_id' => $product->id,
+            'warehouse_id' => $warehouse->id,
+            'stock' => 100,
+        ]);
+
+        $supplier = Supplier::create([
+            'name' => 'Supplier MA',
+            'phone' => '0899887766',
+        ]);
+
+        $po = PurchaseOrder::create([
+            'supplier_id' => $supplier->id,
+            'warehouse_id' => $warehouse->id,
+            'document_number' => 'PO-MA-001',
+            'status' => 'ordered',
+            'created_by' => $user->id,
+            'ordered_at' => now(),
+        ]);
+
+        // Masuk 10 pcs @ Rp 15.000 (Valuasi masuk = Rp 150.000)
+        // Total valuasi = 1.150.000, Total qty = 110 pcs
+        // Expected Moving Average = 1.150.000 / 110 = 10.455
+        $poItem = PurchaseOrderItem::create([
+            'purchase_order_id' => $po->id,
+            'product_id' => $product->id,
+            'qty_ordered' => 10,
+            'qty_received' => 0,
+            'unit_price' => 15000,
+        ]);
+
+        $this->actingAs($user)->post(route('goods-receivings.store'), [
+            'purchase_order_id' => $po->id,
+            'items' => [
+                [
+                    'purchase_order_item_id' => $poItem->id,
+                    'qty_received' => 10,
+                ],
+            ],
+        ])->assertSessionHasNoErrors();
+
+        $this->assertEquals(10455, $product->fresh()->buy_price);
     }
 }
