@@ -65,19 +65,37 @@ class PublicCatalogController extends Controller
         $categories = Category::query()
             ->whereHas('products', function ($q) use ($branchId) {
                 $q->whereNull('deleted_at')
-                    ->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $branchId));
+                    ->where(function ($sub) use ($branchId) {
+                        $sub->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $branchId))
+                            ->orWhereHas('variants.warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $branchId));
+                    });
             })
             ->withCount(['products' => function ($q) use ($branchId) {
                 $q->whereNull('deleted_at')
-                    ->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $branchId));
+                    ->whereNull('parent_id')
+                    ->where(function ($sub) use ($branchId) {
+                        $sub->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $branchId))
+                            ->orWhereHas('variants.warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $branchId));
+                    });
             }])
             ->orderBy('name')
             ->get(['id', 'name', 'image']);
 
         // 4. Fetch products in this specific branch (including out-of-stock items)
         $productsQuery = Product::query()
-            ->with(['category:id,name', 'units', 'warehouses'])
-            ->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $branchId))
+            ->with([
+                'category:id,name',
+                'units',
+                'warehouses',
+                'variants' => function ($v) {
+                    $v->with(['warehouses']);
+                },
+            ])
+            ->whereNull('parent_id')
+            ->where(function ($q) use ($branchId) {
+                $q->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $branchId))
+                    ->orWhereHas('variants.warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $branchId));
+            })
             ->when($categoryId && $categoryId !== 'all', function ($q) use ($categoryId) {
                 $q->where('category_id', $categoryId);
             })
@@ -87,7 +105,12 @@ class PublicCatalogController extends Controller
                     $sub->where('title', 'like', $term)
                         ->orWhere('description', 'like', $term)
                         ->orWhere('barcode', 'like', $term)
-                        ->orWhere('sku', 'like', $term);
+                        ->orWhere('sku', 'like', $term)
+                        ->orWhereHas('variants', function ($vq) use ($term) {
+                            $vq->where('title', 'like', $term)
+                                ->orWhere('barcode', 'like', $term)
+                                ->orWhere('sku', 'like', $term);
+                        });
                 });
             })
             ->orderBy('title');
@@ -105,7 +128,33 @@ class PublicCatalogController extends Controller
                 ? (int) round((($originalPrice - $finalPrice) / $originalPrice) * 100)
                 : 0;
 
-            $branchStock = (int) ($product->warehouses->firstWhere('id', $branchId)?->pivot->stock ?? 0);
+            $hasVariants = (bool) $product->has_variants;
+            $variants = $product->variants->map(function ($v) use ($branchId, $hasDiscount, $discountPercentage) {
+                $vStock = (int) ($v->warehouses->firstWhere('id', $branchId)?->pivot->stock ?? 0);
+                $vOrigPrice = (int) $v->sell_price;
+                $vFinalPrice = $vOrigPrice;
+                if ($hasDiscount && $discountPercentage > 0) {
+                    $vFinalPrice = (int) round($vOrigPrice * (1 - ($discountPercentage / 100)));
+                }
+
+                return [
+                    'id' => $v->id,
+                    'parent_id' => $v->parent_id,
+                    'barcode' => $v->barcode,
+                    'sku' => $v->sku,
+                    'title' => $v->title,
+                    'sell_price' => $vOrigPrice,
+                    'final_price' => $vFinalPrice,
+                    'stock' => $vStock,
+                    'is_sold_out' => $vStock <= 0,
+                    'variant_attributes' => $v->variant_attributes,
+                    'image' => $v->image,
+                ];
+            })->values()->toArray();
+
+            $branchStock = $hasVariants
+                ? collect($variants)->sum('stock')
+                : (int) ($product->warehouses->firstWhere('id', $branchId)?->pivot->stock ?? 0);
 
             $units = $product->units->map(function ($u) use ($product, $hasDiscount, $discountPercentage, $originalPrice) {
                 $isBase = (bool) ($u->pivot->is_base ?? false);
@@ -149,6 +198,10 @@ class PublicCatalogController extends Controller
 
             return [
                 'id' => $product->id,
+                'parent_id' => $product->parent_id,
+                'has_variants' => $hasVariants,
+                'variant_attributes' => $product->variant_attributes,
+                'variants' => $variants,
                 'barcode' => $product->barcode,
                 'sku' => $product->sku,
                 'title' => $product->title,

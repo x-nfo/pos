@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use App\Models\CashierShift;
 use App\Models\CatalogOrder;
-use App\Models\DineOrder;
 use App\Models\Payable;
 use App\Models\Receivable;
 use App\Models\Setting;

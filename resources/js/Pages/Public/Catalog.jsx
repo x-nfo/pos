@@ -22,12 +22,14 @@ import {
     IconAlertCircle,
     IconCheck,
     IconClock,
+    IconRulerMeasure,
 } from "@tabler/icons-react";
 import toast from "react-hot-toast";
 import PromoBannerCarousel from "@/Components/Public/PromoBannerCarousel";
 import BranchSelectorModal from "@/Components/Public/BranchSelectorModal";
 import StorefrontHeader from "@/Components/Public/StorefrontHeader";
 import StaticPromoBanner from "@/Components/Public/StaticPromoBanner";
+import SizeChartModal from "@/Components/Public/SizeChartModal";
 import {
     formatRupiah,
     generateWhatsAppOrderMessage,
@@ -270,9 +272,11 @@ export default function Catalog({
         };
     }, [latestActiveOrder?.access_token, latestActiveOrder?.status]);
 
-    // Detail modal quantity & selected unit (UOM)
+    // Detail modal quantity & selected unit (UOM) & variants
     const [modalQty, setModalQty] = useState(1);
     const [selectedUnit, setSelectedUnit] = useState(null);
+    const [selectedVariant, setSelectedVariant] = useState(null);
+    const [showSizeChart, setShowSizeChart] = useState(false);
 
     // Persist customer info to localStorage when rememberCustomer is enabled
     useEffect(() => {
@@ -333,19 +337,73 @@ export default function Catalog({
         }
     }, [cart]);
 
-    // Reset modal unit and quantity when selecting a different product
+    // Reset modal unit, variant, and quantity when selecting a different product
     useEffect(() => {
         if (selectedProduct) {
             const baseU = selectedProduct.units?.find((u) => u.is_base) || selectedProduct.units?.[0] || null;
             setSelectedUnit(baseU);
-            const factor = Number(baseU?.conversion_factor) || 1;
-            const maxUnitStock = factor > 0 ? Math.floor(selectedProduct.stock / factor) : 0;
-            setModalQty(selectedProduct.stock <= 0 || maxUnitStock <= 0 ? 0 : 1);
+
+            if (selectedProduct.has_variants && Array.isArray(selectedProduct.variants) && selectedProduct.variants.length > 0) {
+                const initVar = selectedProduct.variants.find((v) => v.stock > 0) || selectedProduct.variants[0];
+                setSelectedVariant(initVar);
+                setModalQty(initVar && initVar.stock > 0 ? 1 : 0);
+            } else {
+                setSelectedVariant(null);
+                const factor = Number(baseU?.conversion_factor) || 1;
+                const maxUnitStock = factor > 0 ? Math.floor(selectedProduct.stock / factor) : 0;
+                setModalQty(selectedProduct.stock <= 0 || maxUnitStock <= 0 ? 0 : 1);
+            }
         } else {
             setSelectedUnit(null);
+            setSelectedVariant(null);
             setModalQty(1);
         }
     }, [selectedProduct]);
+
+    const hasModalVariants = Boolean(selectedProduct?.has_variants) && Array.isArray(selectedProduct?.variants) && selectedProduct.variants.length > 0;
+
+    const availableColors = useMemo(() => {
+        if (!hasModalVariants) return [];
+        const map = new Map();
+        selectedProduct.variants.forEach((v) => {
+            const col = v.variant_attributes?.warna || "Default";
+            const hex = v.variant_attributes?.color_hex || "#1e293b";
+            if (!map.has(col)) {
+                map.set(col, { name: col, hex });
+            }
+        });
+        return Array.from(map.values());
+    }, [selectedProduct, hasModalVariants]);
+
+    const activeColor = selectedVariant?.variant_attributes?.warna || availableColors[0]?.name || "";
+
+    const availableSizesForColor = useMemo(() => {
+        if (!hasModalVariants) return [];
+        return selectedProduct.variants.filter(
+            (v) => (v.variant_attributes?.warna || "Default") === activeColor
+        );
+    }, [selectedProduct, hasModalVariants, activeColor]);
+
+    const handleSelectColor = (colorName) => {
+        const currentSize = selectedVariant?.variant_attributes?.ukuran;
+        const match =
+            selectedProduct.variants.find(
+                (v) => v.variant_attributes?.warna === colorName && v.variant_attributes?.ukuran === currentSize
+            ) ||
+            selectedProduct.variants.find(
+                (v) => v.variant_attributes?.warna === colorName && v.stock > 0
+            ) ||
+            selectedProduct.variants.find(
+                (v) => v.variant_attributes?.warna === colorName
+            );
+        setSelectedVariant(match || null);
+        setModalQty(match && match.stock > 0 ? 1 : 0);
+    };
+
+    const handleSelectSizeVariant = (variant) => {
+        setSelectedVariant(variant);
+        setModalQty(variant && variant.stock > 0 ? 1 : 0);
+    };
 
     const activeModalUnit = useMemo(() => {
         if (!selectedProduct) return null;
@@ -354,19 +412,28 @@ export default function Catalog({
 
     const activeModalUnitPrice = useMemo(() => {
         if (!selectedProduct) return 0;
+        if (hasModalVariants && selectedVariant) {
+            return selectedVariant.final_price || selectedVariant.sell_price || 0;
+        }
         return activeModalUnit?.final_price || activeModalUnit?.sell_price || selectedProduct.final_price || selectedProduct.sell_price || 0;
-    }, [selectedProduct, activeModalUnit]);
+    }, [selectedProduct, activeModalUnit, hasModalVariants, selectedVariant]);
 
     const activeModalUnitOriginalPrice = useMemo(() => {
         if (!selectedProduct) return 0;
+        if (hasModalVariants && selectedVariant) {
+            return selectedVariant.sell_price || 0;
+        }
         return activeModalUnit?.sell_price || selectedProduct.sell_price || 0;
-    }, [selectedProduct, activeModalUnit]);
+    }, [selectedProduct, activeModalUnit, hasModalVariants, selectedVariant]);
 
     const activeModalMaxQty = useMemo(() => {
         if (!selectedProduct) return 0;
+        if (hasModalVariants && selectedVariant) {
+            return selectedVariant.stock || 0;
+        }
         const factor = Number(activeModalUnit?.conversion_factor) || 1;
         return factor > 0 ? Math.floor(selectedProduct.stock / factor) : 0;
-    }, [selectedProduct, activeModalUnit]);
+    }, [selectedProduct, activeModalUnit, hasModalVariants, selectedVariant]);
 
     // Filter products based on search term and category
     const filteredProducts = useMemo(() => {
@@ -969,6 +1036,7 @@ export default function Catalog({
                             const price = product.final_price || product.sell_price;
                             const isSoldOut = product.stock <= 0;
                             const hasMultiUnits = Array.isArray(product.units) && product.units.length > 1;
+                            const hasProductVariants = Boolean(product.has_variants) && Array.isArray(product.variants) && product.variants.length > 0;
                             const baseUnit = product.units?.find((u) => u.is_base) || product.units?.[0];
 
                             return (
@@ -1035,6 +1103,11 @@ export default function Catalog({
                                                         {product.units.length} Satuan
                                                     </span>
                                                 )}
+                                                {hasProductVariants && (
+                                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 border border-violet-200/50 dark:border-violet-800/40 shrink-0 flex items-center gap-0.5">
+                                                        <span>👗</span> {product.variants.length} Varian
+                                                    </span>
+                                                )}
                                             </div>
 
                                             <h3
@@ -1086,6 +1159,27 @@ export default function Catalog({
                                                 >
                                                     Habis
                                                 </span>
+                                            ) : hasProductVariants ? (
+                                                <button
+                                                    type="button"
+                                                    disabled={!isStoreOpen}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedProduct(product);
+                                                    }}
+                                                    className={`px-2 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-1 shrink-0 shadow-xs transition-all ${
+                                                        !isStoreOpen
+                                                            ? "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-none"
+                                                            : "bg-violet-600 hover:bg-violet-700 active:scale-95 text-white cursor-pointer"
+                                                    }`}
+                                                    title={
+                                                        !isStoreOpen
+                                                            ? `Toko Sedang Tutup (${opStatus.badge_text || "Tutup"})`
+                                                            : "Pilih Varian (Warna & Ukuran)"
+                                                    }
+                                                >
+                                                    <span>Pilih Varian</span>
+                                                </button>
                                             ) : hasMultiUnits ? (
                                                 inCartQty > 0 ? (
                                                     <button
@@ -1636,25 +1730,25 @@ export default function Catalog({
                         </button>
 
                         <div className="aspect-square sm:aspect-[4/3] max-h-[320px] sm:max-h-[380px] w-full rounded-xl sm:rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-hidden mb-3 sm:mb-4 flex items-center justify-center border border-slate-200/80 dark:border-slate-700 relative">
-                            {selectedProduct.image ? (
+                            {((hasModalVariants && selectedVariant?.image) || selectedProduct.image) ? (
                                 <img
-                                    src={selectedProduct.image}
+                                    src={(hasModalVariants && selectedVariant?.image) || selectedProduct.image}
                                     alt={selectedProduct.title}
                                     className={`w-full h-full object-cover object-center ${
-                                        selectedProduct.stock <= 0
+                                        activeModalMaxQty <= 0
                                             ? "opacity-45 grayscale contrast-75 brightness-90"
                                             : ""
                                     }`}
                                 />
                             ) : (
-                                <div className={`flex flex-col items-center text-slate-400 ${selectedProduct.stock <= 0 ? "opacity-40" : ""}`}>
+                                <div className={`flex flex-col items-center text-slate-400 ${activeModalMaxQty <= 0 ? "opacity-40" : ""}`}>
                                     <IconPhotoOff size={40} />
                                     <span className="text-xs mt-1">Foto Belum Tersedia</span>
                                 </div>
                             )}
 
                             {/* Sold Out Overlay Badge in Modal */}
-                            {selectedProduct.stock <= 0 && (
+                            {activeModalMaxQty <= 0 && (
                                 <div className="absolute inset-0 bg-slate-900/30 dark:bg-slate-950/50 flex items-center justify-center pointer-events-none p-4">
                                     <span className="px-4 py-2 rounded-full bg-slate-900/90 dark:bg-black/90 text-white font-bold text-xs sm:text-sm tracking-wider uppercase shadow-md border border-white/20">
                                         Sold Out · Stok Habis
@@ -1673,10 +1767,23 @@ export default function Catalog({
                             {selectedProduct.title}
                         </h2>
 
+                        {hasModalVariants && selectedVariant && (
+                            <div className="flex items-center gap-1.5 mt-1">
+                                <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300">
+                                    {selectedVariant.variant_attributes?.warna || "Warna"} · Size {selectedVariant.variant_attributes?.ukuran || "All"}
+                                </span>
+                                {selectedVariant.barcode && (
+                                    <span className="text-[10px] font-mono text-slate-400">
+                                        {selectedVariant.barcode}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
                         {/* Price & Stock info */}
                         <div className="flex items-center gap-2.5 my-2">
                             <span className={`text-lg sm:text-xl font-extrabold ${
-                                selectedProduct.stock <= 0 ? "text-slate-500 dark:text-slate-400" : "text-primary-600 dark:text-primary-400"
+                                activeModalMaxQty <= 0 ? "text-slate-500 dark:text-slate-400" : "text-primary-600 dark:text-primary-400"
                             }`}>
                                 {formatRupiah(activeModalUnitPrice)}
                             </span>
@@ -1690,7 +1797,7 @@ export default function Catalog({
                                     </span>
                                 </>
                             )}
-                            {activeModalUnit && (
+                            {activeModalUnit && !hasModalVariants && (
                                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                                     / {activeModalUnit.name || activeModalUnit.code}
                                 </span>
@@ -1700,14 +1807,14 @@ export default function Catalog({
                         <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 py-1.5 border-y border-slate-100 dark:border-slate-800">
                             <span>
                                 Stok:{" "}
-                                {selectedProduct.stock <= 0 || activeModalMaxQty <= 0 ? (
+                                {activeModalMaxQty <= 0 ? (
                                     <span className="inline-flex items-center gap-1 font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-md">
-                                        {selectedProduct.stock <= 0 ? "Stok Habis (0 unit)" : "Stok Tidak Cukup untuk Satuan Ini"}
+                                        Stok Habis (0 unit)
                                     </span>
                                 ) : (
                                     <strong className="text-slate-800 dark:text-slate-200">
-                                        {activeModalMaxQty} {activeModalUnit?.name || activeModalUnit?.code || "unit"}{" "}
-                                        {activeModalUnit && !activeModalUnit.is_base && (
+                                        {activeModalMaxQty} {hasModalVariants ? "pcs" : (activeModalUnit?.name || activeModalUnit?.code || "unit")}{" "}
+                                        {activeModalUnit && !activeModalUnit.is_base && !hasModalVariants && (
                                             <span className="font-normal text-slate-400">
                                                 (Total {selectedProduct.stock} unit dasar)
                                             </span>
@@ -1715,15 +1822,103 @@ export default function Catalog({
                                     </strong>
                                 )}
                             </span>
-                            {selectedProduct.sku && (
+                            {((hasModalVariants && selectedVariant?.sku) || selectedProduct.sku) && (
                                 <span>
                                     SKU:{" "}
                                     <strong className="text-slate-800 dark:text-slate-200">
-                                        {selectedProduct.sku}
+                                        {(hasModalVariants && selectedVariant?.sku) || selectedProduct.sku}
                                     </strong>
                                 </span>
                             )}
                         </div>
+
+                        {/* Fashion Variant Selector: Warna & Ukuran */}
+                        {hasModalVariants && (
+                            <div className="my-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700">
+                                {/* Warna Swatches */}
+                                {availableColors.length > 0 && (
+                                    <div className="mb-3">
+                                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 flex items-center justify-between">
+                                            <span>Pilih Warna:</span>
+                                            <span className="font-bold text-slate-800 dark:text-slate-200 normal-case text-xs">
+                                                {activeColor}
+                                            </span>
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {availableColors.map((col) => {
+                                                const isSelected = activeColor === col.name;
+                                                return (
+                                                    <button
+                                                        key={col.name}
+                                                        type="button"
+                                                        onClick={() => handleSelectColor(col.name)}
+                                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                                                            isSelected
+                                                                ? "border-violet-600 bg-violet-50 dark:bg-violet-950/40 text-violet-900 dark:text-violet-200 ring-2 ring-violet-500/30 shadow-xs"
+                                                                : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300"
+                                                        }`}
+                                                    >
+                                                        <span
+                                                            className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0 shadow-2xs"
+                                                            style={{ backgroundColor: col.hex }}
+                                                        />
+                                                        <span>{col.name}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Ukuran Pills */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                            <span>Pilih Ukuran:</span>
+                                            <span className="font-bold text-slate-800 dark:text-slate-200 normal-case text-xs">
+                                                {selectedVariant?.variant_attributes?.ukuran || "-"}
+                                            </span>
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowSizeChart(true)}
+                                            className="text-[11px] font-bold text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1"
+                                        >
+                                            <IconRulerMeasure size={14} />
+                                            <span>Panduan Ukuran</span>
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {availableSizesForColor.map((v) => {
+                                            const isSelected = selectedVariant?.id === v.id;
+                                            const hasStock = v.stock > 0;
+                                            return (
+                                                <button
+                                                    key={v.id}
+                                                    type="button"
+                                                    disabled={!hasStock}
+                                                    onClick={() => handleSelectSizeVariant(v)}
+                                                    className={`min-w-[48px] px-3 py-1.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center ${
+                                                        isSelected
+                                                            ? "border-violet-600 bg-violet-600 text-white font-black shadow-md shadow-violet-600/30 ring-2 ring-violet-500/20 scale-[1.03]"
+                                                            : hasStock
+                                                            ? "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold hover:border-violet-300"
+                                                            : "border-slate-200/60 dark:border-slate-800/60 bg-slate-100/60 dark:bg-slate-900/40 text-slate-350 dark:text-slate-600 line-through cursor-not-allowed opacity-60"
+                                                    }`}
+                                                >
+                                                    <span className="text-xs uppercase">{v.variant_attributes?.ukuran || "All"}</span>
+                                                    <span className={`text-[9px] font-normal leading-none mt-0.5 ${
+                                                        isSelected ? "text-violet-100" : hasStock ? "text-slate-400" : "text-rose-400"
+                                                    }`}>
+                                                        {hasStock ? `sisa ${v.stock}` : "habis"}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* UOM Selector Pills */}
                         {selectedProduct.units && selectedProduct.units.length > 1 && (
@@ -1856,14 +2051,15 @@ export default function Catalog({
                                     disabled={!isStoreOpen || activeModalMaxQty <= 0}
                                     onClick={() => {
                                         if (activeModalMaxQty <= 0) {
-                                            toast.error("Maaf, produk ini sedang habis.");
+                                            toast.error("Maaf, produk atau varian ini sedang habis.");
                                             return;
                                         }
                                         if (!isStoreOpen) {
                                             toast.error(`Maaf, toko sedang tutup (${opStatus.badge_text || "Tutup"})`);
                                             return;
                                         }
-                                        addToCart(selectedProduct, modalQty, true, activeModalUnit);
+                                        const targetItem = (hasModalVariants && selectedVariant) ? selectedVariant : selectedProduct;
+                                        addToCart(targetItem, modalQty, true, activeModalUnit);
                                         setSelectedProduct(null);
                                     }}
                                     className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition ${
@@ -1890,11 +2086,12 @@ export default function Catalog({
                                 <button
                                     type="button"
                                     onClick={() => {
+                                        const targetItem = (hasModalVariants && selectedVariant) ? selectedVariant : selectedProduct;
                                         if (activeModalMaxQty <= 0) {
                                             const targetNumber = store.wa_number || "6281234567890";
                                             const unitLabel = activeModalUnit ? ` (Satuan ${activeModalUnit.name || activeModalUnit.code})` : "";
                                             const text = encodeURIComponent(
-                                                `Halo ${store.name || "Admin Toko"}, saya ingin menanyakan apakah produk *${selectedProduct.title}${unitLabel}* yang sedang habis akan segera restock/tersedia kembali? Terima kasih.`
+                                                `Halo ${store.name || "Admin Toko"}, saya ingin menanyakan apakah produk *${targetItem.title}${unitLabel}* yang sedang habis akan segera restock/tersedia kembali? Terima kasih.`
                                             );
                                             window.open(`https://wa.me/${targetNumber}?text=${text}`, "_blank");
                                             return;
@@ -1903,7 +2100,7 @@ export default function Catalog({
                                             toast.error(`Maaf, toko sedang tutup (${opStatus.badge_text || "Tutup"})`);
                                             return;
                                         }
-                                        handleInstantBuy(selectedProduct, modalQty, activeModalUnit);
+                                        handleInstantBuy(targetItem, modalQty, activeModalUnit);
                                     }}
                                     className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition ${
                                         activeModalMaxQty <= 0
@@ -1940,6 +2137,12 @@ export default function Catalog({
                 branches={branches}
                 activeBranch={activeBranch}
                 onSelectBranch={handleSelectBranch}
+            />
+
+            {/* Size Chart Guide Modal */}
+            <SizeChartModal
+                isOpen={showSizeChart}
+                onClose={() => setShowSizeChart(false)}
             />
         </PublicLayout>
     );

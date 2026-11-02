@@ -565,7 +565,8 @@ export function ThermalReceipt58mm({
             )}
 
             <pre>{line}</pre>
-            <p className="text-center">Terima kasih!</p>
+            <p className="text-center font-bold">Terima kasih!</p>
+            <p className="text-center text-[10px] leading-tight">Barang yang sudah dibeli tidak dapat ditukar/dikembalikan</p>
             <SimpleBarcode value={transaction?.invoice} />
 
             <style>{`

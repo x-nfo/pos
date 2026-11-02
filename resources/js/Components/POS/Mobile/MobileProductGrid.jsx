@@ -11,6 +11,7 @@ import { getProductImageUrl } from "@/Utils/imageUrl";
 import BarcodeScanner from "../BarcodeScanner";
 
 import ProductUnitModal from "../ProductUnitModal";
+import FashionVariantSelectorModal from "../FashionVariantSelectorModal";
 
 const formatPrice = (value = 0) =>
     Number(value || 0).toLocaleString("id-ID", {
@@ -19,7 +20,7 @@ const formatPrice = (value = 0) =>
         minimumFractionDigits: 0,
     });
 
-function MobileProductCard({ product, onAddToCart, onSelectUnit, isAdding }) {
+function MobileProductCard({ product, onAddToCart, onSelectUnit, onSelectVariant, isAdding }) {
     const hasStock = product.stock > 0;
     const lowStock = product.stock > 0 && product.stock <= 5;
     const promoBadge = product.pricing_badge;
@@ -28,10 +29,13 @@ function MobileProductCard({ product, onAddToCart, onSelectUnit, isAdding }) {
     const showPromo = promoBadge && promoPrice > 0 && promoPrice < basePrice;
     const showBadge = Boolean(promoBadge?.label);
     const hasMultiUnits = Array.isArray(product.units) && product.units.length > 1;
+    const hasVariants = Boolean(product.has_variants) && Array.isArray(product.variants) && product.variants.length > 0;
 
     const handleClick = () => {
         if (!hasStock) return;
-        if (hasMultiUnits && onSelectUnit) {
+        if (hasVariants && onSelectVariant) {
+            onSelectVariant(product);
+        } else if (hasMultiUnits && onSelectUnit) {
             onSelectUnit(product);
         } else {
             onAddToCart(product, product.units?.[0] || null);
@@ -78,6 +82,13 @@ function MobileProductCard({ product, onAddToCart, onSelectUnit, isAdding }) {
                     </span>
                 )}
 
+                {/* Variant Badge */}
+                {hasVariants && (
+                    <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 text-[9px] font-black bg-violet-600/95 text-white rounded-md shadow-sm backdrop-blur-xs flex items-center gap-0.5">
+                        <span>👗</span> {product.variants.length} Varian
+                    </span>
+                )}
+
                 {/* Low Stock Badge */}
                 {lowStock && (
                     <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-extrabold bg-amber-500 text-white rounded-md shadow-sm">
@@ -107,6 +118,8 @@ function MobileProductCard({ product, onAddToCart, onSelectUnit, isAdding }) {
                     >
                         {isAdding ? (
                             <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : hasVariants ? (
+                            <span>Varian</span>
                         ) : hasMultiUnits ? (
                             <span>Pilih</span>
                         ) : (
@@ -169,6 +182,7 @@ export default function MobileProductGrid({
 }) {
     const [showScanner, setShowScanner] = useState(false);
     const [selectedUnitProduct, setSelectedUnitProduct] = useState(null);
+    const [selectedVariantProduct, setSelectedVariantProduct] = useState(null);
 
     const normalizedSelectedCategory =
         selectedCategory === null ? null : Number(selectedCategory);
@@ -276,6 +290,7 @@ export default function MobileProductGrid({
                                 product={product}
                                 onAddToCart={onAddToCart}
                                 onSelectUnit={(prod) => setSelectedUnitProduct(prod)}
+                                onSelectVariant={(prod) => setSelectedVariantProduct(prod)}
                                 isAdding={addingProductId === product.id}
                             />
                         ))}
@@ -309,6 +324,17 @@ export default function MobileProductGrid({
                     setSelectedUnitProduct(null);
                 }}
                 isAdding={addingProductId === selectedUnitProduct?.id}
+            />
+
+            {/* Fashion Variant Selection Modal */}
+            <FashionVariantSelectorModal
+                isOpen={Boolean(selectedVariantProduct)}
+                product={selectedVariantProduct}
+                onClose={() => setSelectedVariantProduct(null)}
+                onSelectVariant={(variant) => {
+                    onAddToCart(variant);
+                    setSelectedVariantProduct(null);
+                }}
             />
 
             {/* Fullscreen Camera Barcode Scanner */}

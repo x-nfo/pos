@@ -4,7 +4,13 @@ namespace Tests\Feature\Products;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\User;
+use App\Models\Warehouse;
+use App\Services\CashierShiftService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class FashionProductVariantTest extends TestCase
@@ -90,13 +96,13 @@ class FashionProductVariantTest extends TestCase
 
     public function test_can_store_product_with_matrix_variants_via_controller(): void
     {
-        $role = \Spatie\Permission\Models\Role::create(['name' => 'admin']);
-        $permission = \Spatie\Permission\Models\Permission::create(['name' => 'products-create']);
+        $role = Role::create(['name' => 'admin']);
+        $permission = Permission::create(['name' => 'products-create']);
         $role->givePermissionTo($permission);
-        $user = \App\Models\User::factory()->create();
+        $user = User::factory()->create();
         $user->assignRole('admin');
 
-        $warehouse = \App\Models\Warehouse::create([
+        $warehouse = Warehouse::create([
             'code' => 'PST',
             'name' => 'Gudang Pusat',
             'type' => 'main',
@@ -173,5 +179,131 @@ class FashionProductVariantTest extends TestCase
         $this->assertEquals(10, $variantNavy->stock);
         $this->assertSame('Navy - XL', $variantNavy->variant_label);
     }
-}
 
+    public function test_public_catalog_returns_parent_products_with_variants_and_attributes(): void
+    {
+        $warehouse = Warehouse::create([
+            'code' => 'PST',
+            'name' => 'Toko Fashion Utama',
+            'type' => 'main',
+            'is_active' => true,
+        ]);
+
+        $category = Category::create([
+            'name' => 'Koleksi Lebaran',
+            'image' => 'categories/lebaran.png',
+        ]);
+
+        $master = Product::create([
+            'category_id' => $category->id,
+            'title' => 'Gamis Silk Premium',
+            'barcode' => 'GMS-SLK-001',
+            'sku' => 'GMS-SLK-001',
+            'buy_price' => 150000,
+            'sell_price' => 350000,
+            'tax_rate' => 0,
+            'has_variants' => true,
+        ]);
+
+        $variantSage = Product::create([
+            'parent_id' => $master->id,
+            'category_id' => $category->id,
+            'title' => 'Gamis Silk Premium - Sage L',
+            'barcode' => 'GMS-SLK-SGE-L',
+            'sku' => 'GMS-SLK-SGE-L',
+            'buy_price' => 150000,
+            'sell_price' => 350000,
+            'tax_rate' => 0,
+            'has_variants' => false,
+            'variant_attributes' => [
+                'warna' => 'Sage Green',
+                'color_hex' => '#9caf88',
+                'ukuran' => 'L',
+            ],
+        ]);
+
+        $variantSage->warehouses()->attach($warehouse->id, ['stock' => 8]);
+
+        $response = $this->get(route('catalog.index'));
+        $response->assertOk();
+
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Public/Catalog')
+            ->has('products', 1)
+            ->where('products.0.title', 'Gamis Silk Premium')
+            ->where('products.0.has_variants', true)
+            ->where('products.0.stock', 8)
+            ->has('products.0.variants', 1)
+            ->where('products.0.variants.0.barcode', 'GMS-SLK-SGE-L')
+            ->where('products.0.variants.0.variant_attributes.warna', 'Sage Green')
+        );
+    }
+
+    public function test_pos_search_product_by_hangtag_barcode_returns_variant_directly(): void
+    {
+        $role = Role::create(['name' => 'kasir']);
+        $permission = Permission::create(['name' => 'transactions-access']);
+        $role->givePermissionTo($permission);
+        $user = User::factory()->create();
+        $user->assignRole('kasir');
+
+        $warehouse = Warehouse::create([
+            'code' => 'TKO',
+            'name' => 'Toko Kasir',
+            'type' => 'branch',
+            'is_active' => true,
+        ]);
+
+        $category = Category::create([
+            'name' => 'Denim',
+            'image' => 'categories/denim.png',
+        ]);
+
+        $master = Product::create([
+            'category_id' => $category->id,
+            'title' => 'Selvedge Jeans 14oz',
+            'barcode' => 'JNS-SLV-001',
+            'sku' => 'JNS-SLV-001',
+            'buy_price' => 200000,
+            'sell_price' => 450000,
+            'tax_rate' => 0,
+            'has_variants' => true,
+        ]);
+
+        $variant32 = Product::create([
+            'parent_id' => $master->id,
+            'category_id' => $category->id,
+            'title' => 'Selvedge Jeans 14oz - Indigo 32',
+            'barcode' => 'JNS-SLV-IDG-32',
+            'sku' => 'JNS-SLV-IDG-32',
+            'buy_price' => 200000,
+            'sell_price' => 450000,
+            'tax_rate' => 0,
+            'has_variants' => false,
+            'variant_attributes' => [
+                'warna' => 'Indigo Deep Blue',
+                'color_hex' => '#1b2a47',
+                'ukuran' => '32',
+            ],
+        ]);
+
+        $variant32->warehouses()->attach($warehouse->id, ['stock' => 5]);
+
+        // Open shift for cashier in this warehouse
+        app(CashierShiftService::class)->openShift($user, $user, 100000, null, $warehouse->id);
+
+        $response = $this->actingAs($user)->postJson(route('transactions.searchProduct'), [
+            'barcode' => 'JNS-SLV-IDG-32',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'data' => [
+                'id' => $variant32->id,
+                'barcode' => 'JNS-SLV-IDG-32',
+                'stock' => 5,
+            ],
+        ]);
+    }
+}

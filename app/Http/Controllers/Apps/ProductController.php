@@ -192,10 +192,10 @@ class ProductController extends Controller
 
                 $masterBarcode = ! empty($request->barcode)
                     ? $request->barcode
-                    : ('ART-'.strtoupper(\Illuminate\Support\Str::slug($request->title)).'-'.rand(100, 999));
+                    : ('ART-'.strtoupper(Str::slug($request->title)).'-'.rand(100, 999));
                 $masterSku = ! empty($request->sku)
                     ? $request->sku
-                    : ('ART-'.strtoupper(\Illuminate\Support\Str::slug($request->title)));
+                    : ('ART-'.strtoupper(Str::slug($request->title)));
 
                 $product = Product::create([
                     'image' => $imageName,
@@ -220,10 +220,10 @@ class ProductController extends Controller
                     $vStock = max(0, (int) ($v['stock'] ?? 0));
                     $vBarcode = ! empty($v['barcode'])
                         ? trim($v['barcode'])
-                        : ($masterBarcode.'-'.strtoupper(\Illuminate\Support\Str::slug($colorName ?: 'CLR')).'-'.strtoupper(\Illuminate\Support\Str::slug($size ?: 'SZ')));
+                        : ($masterBarcode.'-'.strtoupper(Str::slug($colorName ?: 'CLR')).'-'.strtoupper(Str::slug($size ?: 'SZ')));
                     $vSku = ! empty($v['sku'])
                         ? trim($v['sku'])
-                        : ($masterSku.'-'.strtoupper(\Illuminate\Support\Str::slug($colorName ?: 'CLR')).'-'.strtoupper(\Illuminate\Support\Str::slug($size ?: 'SZ')));
+                        : ($masterSku.'-'.strtoupper(Str::slug($colorName ?: 'CLR')).'-'.strtoupper(Str::slug($size ?: 'SZ')));
 
                     $variant = Product::create([
                         'parent_id' => $product->id,

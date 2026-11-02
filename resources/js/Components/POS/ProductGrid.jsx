@@ -12,6 +12,7 @@ import { getProductImageUrl } from "@/Utils/imageUrl";
 import BarcodeScanner from "./BarcodeScanner";
 
 import ProductUnitModal from "./ProductUnitModal";
+import FashionVariantSelectorModal from "./FashionVariantSelectorModal";
 
 const formatPrice = (value = 0) =>
     Number(value || 0).toLocaleString("id-ID", {
@@ -21,7 +22,7 @@ const formatPrice = (value = 0) =>
     });
 
 // Single Product Card
-function ProductCard({ product, onAddToCart, onSelectUnit, isAdding }) {
+function ProductCard({ product, onAddToCart, onSelectUnit, onSelectVariant, isAdding }) {
     const hasStock = product.stock > 0;
     const lowStock = product.stock > 0 && product.stock <= 5;
     const promoBadge = product.pricing_badge;
@@ -30,10 +31,13 @@ function ProductCard({ product, onAddToCart, onSelectUnit, isAdding }) {
     const showPromo = promoBadge && promoPrice > 0 && promoPrice < basePrice;
     const showBadge = Boolean(promoBadge?.label);
     const hasMultiUnits = Array.isArray(product.units) && product.units.length > 1;
+    const hasVariants = Boolean(product.has_variants) && Array.isArray(product.variants) && product.variants.length > 0;
 
     const handleClick = () => {
         if (!hasStock) return;
-        if (hasMultiUnits && onSelectUnit) {
+        if (hasVariants && onSelectVariant) {
+            onSelectVariant(product);
+        } else if (hasMultiUnits && onSelectUnit) {
             onSelectUnit(product);
         } else {
             onAddToCart(product, product.units?.[0] || null);
@@ -87,6 +91,13 @@ function ProductCard({ product, onAddToCart, onSelectUnit, isAdding }) {
                     </span>
                 )}
 
+                {/* Variant Badge */}
+                {hasVariants && (
+                    <span className="absolute bottom-2 left-2 px-2 py-0.5 text-[10px] font-bold bg-violet-600/95 text-white rounded-lg shadow-md backdrop-blur-xs flex items-center gap-1">
+                        <span>👗</span> {product.variants.length} Varian
+                    </span>
+                )}
+
                 {/* Out of Stock Overlay */}
                 {!hasStock && (
                     <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center">
@@ -100,7 +111,7 @@ function ProductCard({ product, onAddToCart, onSelectUnit, isAdding }) {
                 {hasStock && (
                     <div className="absolute inset-0 bg-primary-500/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-center justify-center">
                         <div className="bg-primary-500 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
-                            {hasMultiUnits ? "Pilih Satuan" : "+ Tambah"}
+                            {hasVariants ? "Pilih Varian" : hasMultiUnits ? "Pilih Satuan" : "+ Tambah"}
                         </div>
                     </div>
                 )}
@@ -258,6 +269,7 @@ export default function ProductGrid({
     onAddNewProduct,
 }) {
     const [selectedUnitProduct, setSelectedUnitProduct] = useState(null);
+    const [selectedVariantProduct, setSelectedVariantProduct] = useState(null);
 
     const normalizedSelectedCategory =
         selectedCategory === null ? null : Number(selectedCategory);
@@ -321,6 +333,7 @@ export default function ProductGrid({
                                 product={product}
                                 onAddToCart={onAddToCart}
                                 onSelectUnit={(prod) => setSelectedUnitProduct(prod)}
+                                onSelectVariant={(prod) => setSelectedVariantProduct(prod)}
                                 isAdding={addingProductId === product.id}
                             />
                         ))}
@@ -359,6 +372,17 @@ export default function ProductGrid({
                     setSelectedUnitProduct(null);
                 }}
                 isAdding={addingProductId === selectedUnitProduct?.id}
+            />
+
+            {/* Fashion Variant Selection Modal */}
+            <FashionVariantSelectorModal
+                isOpen={Boolean(selectedVariantProduct)}
+                product={selectedVariantProduct}
+                onClose={() => setSelectedVariantProduct(null)}
+                onSelectVariant={(variant) => {
+                    onAddToCart(variant);
+                    setSelectedVariantProduct(null);
+                }}
             />
         </div>
     );

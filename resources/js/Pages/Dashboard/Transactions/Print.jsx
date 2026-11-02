@@ -1337,8 +1337,11 @@ export default function Print({
                                 </p>
                                 <SimpleBarcode value={transaction.invoice} />
                                 <div className="text-center mt-4">
-                                    <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest font-semibold">
                                         Terima kasih telah berbelanja
+                                    </p>
+                                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                                        Barang yang sudah dibeli tidak dapat ditukar atau dikembalikan
                                     </p>
                                 </div>
                             </div>

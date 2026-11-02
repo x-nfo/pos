@@ -143,23 +143,62 @@ class TransactionController extends Controller
         // get all customers
         $customers = Customer::latest()->get();
 
-        // get products with stock > 0 in active warehouse
-        $products = Product::with(['category:id,name', 'units', 'warehouses'])
-            ->select('id', 'barcode', 'title', 'description', 'image', 'buy_price', 'sell_price', 'category_id')
-            ->when($warehouseId, function ($q) use ($warehouseId) {
-                $q->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $warehouseId)
-                    ->where('product_warehouse.stock', '>', 0));
-            }, function ($q) {
-                $q->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.stock', '>', 0));
+        // get products with stock > 0 in active warehouse (or whose variants have stock > 0)
+        $products = Product::with([
+            'category:id,name',
+            'units',
+            'warehouses',
+            'variants' => function ($v) {
+                $v->with(['warehouses']);
+            },
+        ])
+            ->select('id', 'parent_id', 'has_variants', 'variant_attributes', 'barcode', 'title', 'description', 'image', 'buy_price', 'sell_price', 'category_id')
+            ->whereNull('parent_id')
+            ->where(function ($query) use ($warehouseId) {
+                $query->where(function ($q) use ($warehouseId) {
+                    $q->where('has_variants', false)
+                        ->whereHas('warehouses', fn ($w) => $warehouseId
+                            ? $w->where('product_warehouse.warehouse_id', $warehouseId)->where('product_warehouse.stock', '>', 0)
+                            : $w->where('product_warehouse.stock', '>', 0)
+                        );
+                })->orWhere(function ($q) use ($warehouseId) {
+                    $q->where('has_variants', true)
+                        ->whereHas('variants.warehouses', fn ($w) => $warehouseId
+                            ? $w->where('product_warehouse.warehouse_id', $warehouseId)->where('product_warehouse.stock', '>', 0)
+                            : $w->where('product_warehouse.stock', '>', 0)
+                        );
+                });
             })
             ->orderBy('title')
             ->get();
         $pricingBadges = $this->pricingService->previewProducts($products, null);
         $products = $products->map(function (Product $product) use ($pricingBadges, $warehouseId) {
             $pricing = $pricingBadges->get($product->id);
-            $warehouseStock = $warehouseId
-                ? (int) ($product->warehouses->firstWhere('id', $warehouseId)?->pivot->stock ?? 0)
-                : (int) $product->stock;
+
+            $variants = $product->variants->map(function ($variant) use ($warehouseId) {
+                $vStock = $warehouseId
+                    ? (int) ($variant->warehouses->firstWhere('id', $warehouseId)?->pivot->stock ?? 0)
+                    : (int) $variant->stock;
+
+                return [
+                    'id' => $variant->id,
+                    'parent_id' => $variant->parent_id,
+                    'barcode' => $variant->barcode,
+                    'title' => $variant->title,
+                    'sell_price' => (int) $variant->sell_price,
+                    'buy_price' => (int) $variant->buy_price,
+                    'stock' => $vStock,
+                    'variant_attributes' => $variant->variant_attributes,
+                    'image' => $variant->image,
+                ];
+            })->values()->toArray();
+
+            $totalVariantStock = collect($variants)->sum('stock');
+            $warehouseStock = $product->has_variants
+                ? $totalVariantStock
+                : ($warehouseId
+                    ? (int) ($product->warehouses->firstWhere('id', $warehouseId)?->pivot->stock ?? 0)
+                    : (int) $product->stock);
 
             $units = $product->units->map(function ($u) use ($product) {
                 $isBase = (bool) ($u->pivot->is_base ?? false);
@@ -202,6 +241,7 @@ class TransactionController extends Controller
 
             return [
                 ...$product->toArray(),
+                'variants' => $variants,
                 'stock' => $warehouseStock,
                 'other_warehouses' => $otherWarehouses,
                 'warehouse_stocks' => $warehouseStocks->values()->toArray(),

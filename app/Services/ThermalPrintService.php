@@ -255,6 +255,7 @@ class ThermalPrintService
 
         $lines[] = '================================';
         $lines[] = 'Terima kasih atas kunjungan Anda!';
+        $lines[] = 'Barang yang sudah dibeli tidak dapat ditukar/dikembalikan.';
         $lines[] = '--------------------------------';
         $lines[] = '*Lihat Nota Online:*';
         $lines[] = route('transactions.public', $transaction->invoice, true);
