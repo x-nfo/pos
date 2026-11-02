@@ -25,12 +25,7 @@ class LandingPageResolverService
             return 'transactions.index';
         }
 
-        // 3. Kitchen / Bar / Waiter staff land directly on Dine-in Kitchen Orders
-        if ($user->can('dine-orders-access')) {
-            return 'dine-orders.index';
-        }
-
-        // 4. Warehouse & Logistics staff land on Goods Receiving or Stock Transfers
+        // 3. Warehouse & Logistics staff land on Goods Receiving or Stock Transfers
         if ($user->can('goods-receivings-access')) {
             return 'goods-receivings.index';
         }

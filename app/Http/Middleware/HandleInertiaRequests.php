@@ -118,10 +118,6 @@ class HandleInertiaRequests extends Middleware
                     ->toArray();
             }
 
-            if ($user->can('dine-orders-access')) {
-                $pendingDineOrdersCount = DineOrder::pending()->count();
-            }
-
             if ($user->can('catalog-orders-access')) {
                 $pendingCatalogOrdersCount = CatalogOrder::pending()
                     ->when($scopedWarehouseId, fn ($q) => $q->where('warehouse_id', $scopedWarehouseId))

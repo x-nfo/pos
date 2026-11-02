@@ -47,14 +47,6 @@ class LandingPageResolutionTest extends TestCase
         $this->assertSame('transactions.index', $this->resolver->resolveRouteName($user));
     }
 
-    public function test_kitchen_staff_resolves_to_dine_orders(): void
-    {
-        $user = User::factory()->create();
-        $user->assignRole('kitchen-staff');
-
-        $this->assertSame('dine-orders.index', $this->resolver->resolveRouteName($user));
-    }
-
     public function test_warehouse_staff_resolves_to_goods_receivings(): void
     {
         $user = User::factory()->create();

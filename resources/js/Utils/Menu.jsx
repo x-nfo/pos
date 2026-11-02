@@ -106,64 +106,6 @@ export default function Menu() {
                             : null,
                 },
                 {
-                    title: t("sidebar.items.salesReturns"),
-                    href: route("sales-returns.index"),
-                    active: cleanUrl.startsWith("/dashboard/sales-returns"),
-                    icon: <IconFileCertificate size={20} strokeWidth={1.5} />,
-                    permissions: hasAnyPermission(["sales-returns-access"]),
-                },
-                {
-                    title: t("sidebar.items.receivablesGroup", { defaultValue: "Piutang & Aging" }),
-                    icon: <IconFileInvoice size={20} strokeWidth={1.5} />,
-                    permissions: hasAnyPermission(["receivables-access"]),
-                    subdetails: [
-                        {
-                            title: t("sidebar.items.receivables"),
-                            href: route("receivables.index"),
-                            active:
-                                cleanUrl.startsWith("/dashboard/receivables") &&
-                                !cleanUrl.startsWith("/dashboard/aging"),
-                            icon: <IconFileInvoice size={18} strokeWidth={1.5} />,
-                            permissions: hasAnyPermission(["receivables-access"]),
-                        },
-                        {
-                            title: t("sidebar.items.agingReminders"),
-                            href: route("aging.index"),
-                            active: cleanUrl.startsWith("/dashboard/aging"),
-                            icon: <IconChartBar size={18} strokeWidth={1.5} />,
-                            permissions: hasAnyPermission(["receivables-access"]),
-                        },
-                    ],
-                },
-                {
-                    title: t("sidebar.items.dineInGroup", { defaultValue: "Resto & Dine-In" }),
-                    icon: <IconToolsKitchen2 size={20} strokeWidth={1.5} />,
-                    permissions: hasAnyPermission(["dine-orders-access", "dine-tables-access"]),
-                    subdetails: [
-                        {
-                            title: t("sidebar.items.dineOrders"),
-                            href: route("dine-orders.index"),
-                            active: cleanUrl.startsWith("/dashboard/dine-orders"),
-                            icon: <IconToolsKitchen2 size={18} strokeWidth={1.5} />,
-                            permissions: hasAnyPermission(["dine-orders-access"]),
-                        },
-                        {
-                            title: t("sidebar.items.dineTables"),
-                            href: route("dine-tables.index"),
-                            active: cleanUrl.startsWith("/dashboard/dine-tables"),
-                            icon: <IconTable size={18} strokeWidth={1.5} />,
-                            permissions: hasAnyPermission(["dine-tables-access"]),
-                        },
-                        {
-                            title: t("sidebar.items.dineAreas"),
-                            href: route("dine-areas.index"),
-                            active: cleanUrl.startsWith("/dashboard/dine-areas"),
-                            icon: <IconFolder size={18} strokeWidth={1.5} />,
-                            permissions: hasAnyPermission(["dine-tables-access"]),
-                        },
-                    ],
-                },
-                {
                     title: t("sidebar.items.discountApproval"),
                     href: route("discount-approvals.pending"),
                     active: cleanUrl.startsWith("/dashboard/discount-approvals"),
@@ -525,13 +467,6 @@ export default function Menu() {
                             active: cleanUrl.startsWith("/dashboard/settings/bank-accounts"),
                             icon: <IconBuildingBank size={18} strokeWidth={1.5} />,
                             permissions: hasAnyPermission(["payment-settings-access"]),
-                        },
-                        {
-                            title: t("sidebar.items.whatsApp"),
-                            href: route("settings.whatsapp"),
-                            active: cleanUrl.startsWith("/dashboard/settings/whatsapp"),
-                            icon: <IconBrandWhatsapp size={18} strokeWidth={1.5} />,
-                            permissions: hasAnyPermission(["whatsapp-settings-access"]),
                         },
                         {
                             title: t("sidebar.items.warehouses"),
