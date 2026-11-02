@@ -284,7 +284,7 @@ class TransactionController extends Controller
         $warehouseId = $activeShift?->warehouse_id;
         $barcode = (string) $request->barcode;
 
-        $product = Product::with(['units', 'warehouses'])
+        $product = Product::with(['units', 'warehouses', 'parent'])
             ->where(function ($q) use ($barcode) {
                 $q->where('barcode', $barcode)
                     ->orWhereHas('units', fn ($uq) => $uq->where('product_units.barcode', $barcode));

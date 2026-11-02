@@ -23,11 +23,13 @@ import {
     IconCamera,
     IconPlus,
     IconBuildingStore,
+    IconColorSwatch,
 } from "@tabler/icons-react";
 import ProductUnitsInput from "@/Components/Dashboard/ProductUnitsInput";
 import ImageCaptureUpload from "@/Components/Dashboard/ImageCaptureUpload";
 import BarcodeScanner from "@/Components/POS/BarcodeScanner";
 import QuickCategoryModal from "@/Components/Dashboard/QuickCategoryModal";
+import FashionVariantMatrixGenerator from "@/Components/Dashboard/FashionVariantMatrixGenerator";
 
 export default function Create({ categories = [], units = [], warehouses = [] }) {
     const { errors } = usePage().props;
@@ -52,6 +54,8 @@ export default function Create({ categories = [], units = [], warehouses = [] })
         warehouse_stocks: initialWarehouseStocks,
         min_stock: "",
         max_stock: "",
+        has_variants: false,
+        variants: [],
         units: [],
     });
 
@@ -584,6 +588,47 @@ export default function Create({ categories = [], units = [], warehouses = [] })
                                         </div>
                                     </div>
                                 )
+                            )}
+                        </div>
+
+                        {/* Fashion Variants Matrix Generator */}
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="p-2 bg-primary-50 dark:bg-primary-950/50 text-primary-600 dark:text-primary-400 rounded-xl">
+                                        <IconColorSwatch size={20} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                                            Varian Fashion (Warna × Ukuran)
+                                        </h3>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                                            Aktifkan jika produk ini memiliki pilihan warna dan ukuran pakaian/sepatu.
+                                        </p>
+                                    </div>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={data.has_variants}
+                                        onChange={(e) => setData("has_variants", e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                                </label>
+                            </div>
+
+                            {data.has_variants && (
+                                <div className="pt-2">
+                                    <FashionVariantMatrixGenerator
+                                        variants={data.variants}
+                                        onChange={(newVariants) => setData("variants", newVariants)}
+                                        baseBuyPrice={Number(data.buy_price) || 0}
+                                        baseSellPrice={Number(data.sell_price) || 0}
+                                        productTitle={data.title}
+                                        productSku={data.sku}
+                                    />
+                                </div>
                             )}
                         </div>
 

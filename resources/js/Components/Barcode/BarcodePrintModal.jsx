@@ -23,7 +23,9 @@ export default function BarcodePrintModal({
     const [copies, setCopies] = useState(1);
     const printRef = useRef(null);
 
-    const productsToPrint = singleProduct ? [singleProduct] : products;
+    const productsToPrint = singleProduct
+        ? (singleProduct.has_variants && singleProduct.variants?.length > 0 ? singleProduct.variants : [singleProduct])
+        : products;
 
     const handlePrint = () => {
         const printContent = printRef.current;
@@ -130,7 +132,8 @@ export default function BarcodePrintModal({
                                 onChange={(e) => setSize(e.target.value)}
                                 className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
                             >
-                                <option value="50x30">50 x 30 mm</option>
+                                <option value="40x30">40 x 30 mm (Hangtag Baju)</option>
+                                <option value="50x30">50 x 30 mm (Standar Pakaian)</option>
                                 <option value="70x50">70 x 50 mm</option>
                                 <option value="100x50">100 x 50 mm</option>
                             </select>

@@ -570,7 +570,12 @@ export default function Index({ products, warehouses = [], filters = {} }) {
                                                             <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
                                                                 {product.title}
                                                             </p>
-                                                            <div className="text-xs text-slate-500 dark:text-slate-400 space-y-0.5">
+                                                            {product.has_variants && (
+                                                                <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-800">
+                                                                    👗 {product.variants?.length || 0} Varian (Warna & Size)
+                                                                </span>
+                                                            )}
+                                                            <div className="text-xs text-slate-500 dark:text-slate-400 space-y-0.5 mt-0.5">
                                                                 {product.barcode && (
                                                                     <p>
                                                                         Barcode: {product.barcode}

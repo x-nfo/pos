@@ -16,6 +16,12 @@ export default function BarcodeLabel({
     const barcodeRef = useRef(null);
 
     const sizes = {
+        "40x30": {
+            width: "40mm",
+            height: "30mm",
+            barcodeWidth: 1.3,
+            barcodeHeight: 32,
+        },
         "50x30": {
             width: "50mm",
             height: "30mm",
@@ -76,11 +82,27 @@ export default function BarcodeLabel({
         >
             {/* Product Name */}
             <p
-                className="text-center font-semibold text-slate-800 leading-tight mb-1 line-clamp-2"
-                style={{ fontSize: size === "50x30" ? "10px" : "12px" }}
+                className="text-center font-semibold text-slate-800 leading-tight mb-0.5 line-clamp-2"
+                style={{ fontSize: size === "40x30" ? "9px" : size === "50x30" ? "10px" : "12px" }}
             >
                 {product.title}
             </p>
+
+            {/* Fashion Variant Details (Warna & Ukuran Bold) */}
+            {(product.variant_attributes?.size || product.variant_attributes?.color_name || product.variant_label) && (
+                <div className="flex items-center justify-center gap-1.5 my-0.5">
+                    {product.variant_attributes?.color_name && (
+                        <span className="text-[10px] font-bold text-slate-600 uppercase">
+                            {product.variant_attributes.color_name}
+                        </span>
+                    )}
+                    {product.variant_attributes?.size && (
+                        <span className="text-[11px] px-1.5 py-0.2 bg-slate-900 text-white rounded font-black tracking-wider">
+                            {product.variant_attributes.size}
+                        </span>
+                    )}
+                </div>
+            )}
 
             {/* Barcode */}
             <svg ref={barcodeRef} className="max-w-full" />
