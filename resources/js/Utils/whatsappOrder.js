@@ -30,8 +30,19 @@ export function generateWhatsAppOrderMessage({
     customerPhone = "",
     deliveryMethod = "pickup", // 'pickup' | 'delivery'
     deliveryAddress = "",
+    shippingCourier = "",
+    shippingService = "",
+    shippingCost = 0,
+    shippingEtd = "",
+    shippingDestination = "",
     notes = "",
     totalAmount = 0,
+    couponCode = "",
+    discountAmount = 0,
+    bankName = "",
+    bankAccountNumber = "",
+    bankAccountName = "",
+    hasPaymentProof = false,
 }) {
     const lines = [];
 
@@ -51,7 +62,23 @@ export function generateWhatsAppOrderMessage({
     });
 
     lines.push("");
-    lines.push(`💰 *Total Belanja:* *${formatRupiah(totalAmount)}*`);
+    lines.push(`🛍️ *Subtotal Produk:* ${formatRupiah(totalAmount)}`);
+
+    if (discountAmount > 0) {
+        lines.push(`🏷️ *Diskon Kupon (${couponCode || "PROMO"}):* -${formatRupiah(discountAmount)}`);
+    }
+
+    const discountedTotal = Math.max(0, Number(totalAmount) - Number(discountAmount));
+    const hasShipping = deliveryMethod === "delivery" && (Number(shippingCost) > 0 || shippingCourier);
+    if (hasShipping) {
+        const courierInfo = [shippingCourier, shippingService].filter(Boolean).join(" ");
+        const etdInfo = shippingEtd ? ` (${shippingEtd} hari)` : "";
+        lines.push(`🚚 *Ongkos Kirim (${courierInfo}${etdInfo}):* ${formatRupiah(shippingCost)}`);
+        lines.push(`💰 *Grand Total (Termasuk Ongkir):* *${formatRupiah(discountedTotal + Number(shippingCost))}*`);
+    } else {
+        lines.push(`💰 *Total Belanja:* *${formatRupiah(discountedTotal)}*`);
+    }
+
     lines.push("");
     lines.push("👤 *DATA PEMESAN:*");
     lines.push(`• *Nama:* ${customerName || "-"}`);
@@ -62,12 +89,31 @@ export function generateWhatsAppOrderMessage({
         `• *Pengambilan:* ${deliveryMethod === "delivery" ? "🚚 Kirim ke Alamat" : "🏪 Ambil di Toko"}`
     );
 
-    if (deliveryMethod === "delivery" && deliveryAddress) {
-        lines.push(`• *Alamat Pengiriman:* ${deliveryAddress}`);
+    if (deliveryMethod === "delivery") {
+        if (shippingDestination) {
+            lines.push(`• *Kecamatan/Kota Tujuan:* ${shippingDestination}`);
+        }
+        if (deliveryAddress) {
+            lines.push(`• *Alamat Lengkap:* ${deliveryAddress}`);
+        }
+        if (shippingCourier) {
+            lines.push(`• *Kurir Pilihan:* ${shippingCourier} - ${shippingService || "Reguler"}`);
+        }
     }
 
     if (notes) {
         lines.push(`• *Catatan:* ${notes}`);
+    }
+
+    lines.push("");
+    lines.push("💳 *PEMBAYARAN:*");
+    lines.push("• *Metode:* Transfer Bank");
+    if (bankName) {
+        const accInfo = [bankAccountNumber, bankAccountName ? `a/n ${bankAccountName}` : ""].filter(Boolean).join(" ");
+        lines.push(`• *Rekening Tujuan:* ${bankName}${accInfo ? ` (${accInfo})` : ""}`);
+    }
+    if (hasPaymentProof) {
+        lines.push("• *Bukti Transfer:* ✅ Sudah diunggah ke sistem (saya juga melampirkan foto bukti transfer di chat ini)");
     }
 
     if (trackingUrl) {
@@ -76,7 +122,7 @@ export function generateWhatsAppOrderMessage({
     }
 
     lines.push("");
-    lines.push("Mohon konfirmasi ketersediaan stok & rincian berikutnya ya. Terima kasih! 🙏");
+    lines.push("Mohon konfirmasi pesanan & verifikasi pembayarannya ya. Terima kasih! 🙏");
 
     return lines.join("\n");
 }

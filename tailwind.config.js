@@ -18,13 +18,35 @@ export default {
                     "Plus Jakarta Sans",
                     ...defaultTheme.fontFamily.sans,
                 ],
+                serif: [
+                    "Marcellus",
+                    ...defaultTheme.fontFamily.serif,
+                ],
                 mono: [
                     "JetBrains Mono",
                     "Fira Code",
                     ...defaultTheme.fontFamily.mono,
                 ],
             },
+            fontSize: {
+                xxs: "0.625rem", // 10px
+                micro: "0.5625rem", // 9px
+                nano: "0.5rem", // 8px
+            },
+            aspectRatio: {
+                portrait: "2/3",
+                classic: "3/4",
+            },
             colors: {
+                // Karima Luxury Boutique Palette
+                karima: {
+                    brand: "#4a201e",
+                    accent: "#8c544f",
+                    base: "#f0ebe5",
+                    ink: "#261f1d",
+                    gold: "#c5a059",
+                    card: "#fdfbf9",
+                },
                 // Primary - Dynamic CSS Variables
                 primary: {
                     50: "rgb(var(--color-primary-50) / <alpha-value>)",

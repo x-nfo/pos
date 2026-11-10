@@ -41,8 +41,22 @@ class CatalogOrder extends Model
         'delivery_address',
         'notes',
         'subtotal',
+        'customer_voucher_id',
+        'coupon_code',
+        'discount_amount',
         'shipping_cost',
+        'shipping_courier',
+        'shipping_service',
+        'shipping_etd',
+        'shipping_weight',
+        'shipping_destination_id',
+        'shipping_destination_label',
+        'shipping_tracking_number',
         'grand_total',
+        'payment_method',
+        'bank_account_id',
+        'payment_proof',
+        'payment_proof_uploaded_at',
         'status',
         'cancellation_reason',
         'cashier_id',
@@ -52,12 +66,23 @@ class CatalogOrder extends Model
         'cancelled_at',
     ];
 
+    protected $appends = [
+        'payment_proof_url',
+        'payment_proof_is_pdf',
+    ];
+
     protected function casts(): array
     {
         return [
             'subtotal' => 'integer',
+            'discount_amount' => 'integer',
+            'customer_voucher_id' => 'integer',
             'shipping_cost' => 'integer',
+            'shipping_weight' => 'integer',
+            'shipping_destination_id' => 'integer',
             'grand_total' => 'integer',
+            'bank_account_id' => 'integer',
+            'payment_proof_uploaded_at' => 'datetime',
             'confirmed_at' => 'datetime',
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',
@@ -117,5 +142,41 @@ class CatalogOrder extends Model
     public function transaction(): BelongsTo
     {
         return $this->belongsTo(Transaction::class);
+    }
+
+    public function bankAccount(): BelongsTo
+    {
+        return $this->belongsTo(BankAccount::class);
+    }
+
+    public function customerVoucher(): BelongsTo
+    {
+        return $this->belongsTo(CustomerVoucher::class, 'customer_voucher_id');
+    }
+
+    public function getPaymentProofUrlAttribute(): ?string
+    {
+        if (! $this->payment_proof) {
+            return null;
+        }
+
+        if (str_starts_with($this->payment_proof, 'http://') || str_starts_with($this->payment_proof, 'https://')) {
+            return $this->payment_proof;
+        }
+
+        if (! empty($this->access_token)) {
+            return route('catalog.order.payment-proof.show', $this->access_token);
+        }
+
+        return null;
+    }
+
+    public function getPaymentProofIsPdfAttribute(): bool
+    {
+        if (! $this->payment_proof) {
+            return false;
+        }
+
+        return str_ends_with(strtolower($this->payment_proof), '.pdf');
     }
 }

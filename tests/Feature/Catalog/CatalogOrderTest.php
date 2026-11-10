@@ -2,12 +2,14 @@
 
 namespace Tests\Feature\Catalog;
 
+use App\Models\BankAccount;
 use App\Models\CashierShift;
 use App\Models\CatalogOrder;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductUnit;
 use App\Models\ProductWarehouse;
+use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\Unit;
 use App\Models\User;
@@ -15,6 +17,8 @@ use App\Models\Warehouse;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -140,6 +144,51 @@ class CatalogOrderTest extends TestCase
         $response = $this->postJson(route('catalog.checkout'), $payload);
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['delivery_address']);
+    }
+
+    public function test_cannot_order_pickup_when_pickup_disabled_in_store_settings(): void
+    {
+        Setting::set('catalog_pickup_enabled', '0');
+
+        $payload = [
+            'warehouse_id' => $this->warehouse->id,
+            'customer_name' => 'Budi Santoso',
+            'customer_phone' => '081234567890',
+            'delivery_method' => 'pickup',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'qty' => 1,
+                ],
+            ],
+        ];
+
+        $response = $this->postJson(route('catalog.checkout'), $payload);
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['delivery_method']);
+    }
+
+    public function test_cannot_order_pickup_when_pickup_disabled_at_branch_level(): void
+    {
+        Setting::set('catalog_pickup_enabled', '1');
+        $this->warehouse->update(['catalog_pickup_enabled' => false]);
+
+        $payload = [
+            'warehouse_id' => $this->warehouse->id,
+            'customer_name' => 'Budi Santoso',
+            'customer_phone' => '081234567890',
+            'delivery_method' => 'pickup',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'qty' => 1,
+                ],
+            ],
+        ];
+
+        $response = $this->postJson(route('catalog.checkout'), $payload);
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['delivery_method']);
     }
 
     public function test_customer_can_view_order_status_page(): void
@@ -674,5 +723,305 @@ class CatalogOrderTest extends TestCase
                 ->has('transactions.data', 1)
                 ->where('transactions.data.0.invoice', 'TRX-WALKIN-1')
         );
+    }
+
+    public function test_customer_can_submit_catalog_order_with_payment_proof_and_bank_account(): void
+    {
+        Storage::fake('local');
+
+        $bankAccount = BankAccount::create([
+            'warehouse_id' => $this->warehouse->id,
+            'bank_name' => 'BCA',
+            'account_number' => '1234567890',
+            'account_name' => 'Toko Resmi',
+            'is_active' => true,
+        ]);
+
+        $file = UploadedFile::fake()->image('bukti_transfer.jpg', 600, 600);
+
+        $payload = [
+            'warehouse_id' => $this->warehouse->id,
+            'customer_name' => 'Siti Aisyah',
+            'customer_phone' => '08987654321',
+            'delivery_method' => 'pickup',
+            'bank_account_id' => $bankAccount->id,
+            'payment_proof' => $file,
+            'items' => json_encode([
+                [
+                    'product_id' => $this->product->id,
+                    'qty' => 1,
+                ],
+            ]),
+        ];
+
+        $response = $this->post(route('catalog.checkout'), $payload, [
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $orderData = $response->json('order');
+
+        $this->assertNotNull($orderData['payment_proof']);
+        $this->assertNotNull($orderData['payment_proof_url']);
+
+        Storage::disk('local')->assertExists($orderData['payment_proof']);
+
+        $this->assertDatabaseHas('catalog_orders', [
+            'customer_name' => 'Siti Aisyah',
+            'bank_account_id' => $bankAccount->id,
+            'payment_method' => 'bank_transfer',
+        ]);
+    }
+
+    public function test_customer_can_upload_or_replace_payment_proof(): void
+    {
+        Storage::fake('local');
+
+        $order = CatalogOrder::create([
+            'warehouse_id' => $this->warehouse->id,
+            'customer_name' => 'Dewi',
+            'customer_phone' => '08123456789',
+            'delivery_method' => 'pickup',
+            'subtotal' => 5000,
+            'grand_total' => 5000,
+            'status' => CatalogOrder::STATUS_SUBMITTED,
+        ]);
+
+        $file = UploadedFile::fake()->image('new_proof.png', 400, 400);
+
+        $response = $this->post(route('catalog.order.payment-proof', $order->access_token), [
+            'payment_proof' => $file,
+        ], [
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+
+        $order->refresh();
+        $this->assertNotNull($order->payment_proof);
+        Storage::disk('local')->assertExists($order->payment_proof);
+    }
+
+    public function test_old_payment_proof_file_is_deleted_when_replaced(): void
+    {
+        Storage::fake('local');
+
+        $order = CatalogOrder::create([
+            'warehouse_id' => $this->warehouse->id,
+            'customer_name' => 'Rini',
+            'customer_phone' => '08123456788',
+            'delivery_method' => 'pickup',
+            'subtotal' => 5000,
+            'grand_total' => 5000,
+            'status' => CatalogOrder::STATUS_SUBMITTED,
+        ]);
+
+        $firstFile = UploadedFile::fake()->image('proof_one.jpg', 300, 300);
+        $this->post(route('catalog.order.payment-proof', $order->access_token), [
+            'payment_proof' => $firstFile,
+        ], ['Accept' => 'application/json'])->assertOk();
+
+        $order->refresh();
+        $firstPath = $order->payment_proof;
+        Storage::disk('local')->assertExists($firstPath);
+
+        $secondFile = UploadedFile::fake()->image('proof_two.png', 300, 300);
+        $this->post(route('catalog.order.payment-proof', $order->access_token), [
+            'payment_proof' => $secondFile,
+        ], ['Accept' => 'application/json'])->assertOk();
+
+        $order->refresh();
+        $secondPath = $order->payment_proof;
+        $this->assertNotEquals($firstPath, $secondPath);
+        Storage::disk('local')->assertMissing($firstPath);
+        Storage::disk('local')->assertExists($secondPath);
+    }
+
+    public function test_customer_can_securely_view_payment_proof_via_access_token(): void
+    {
+        Storage::fake('local');
+
+        $order = CatalogOrder::create([
+            'warehouse_id' => $this->warehouse->id,
+            'customer_name' => 'Budi',
+            'customer_phone' => '08123456787',
+            'delivery_method' => 'pickup',
+            'subtotal' => 5000,
+            'grand_total' => 5000,
+            'status' => CatalogOrder::STATUS_SUBMITTED,
+        ]);
+
+        $file = UploadedFile::fake()->image('transfer_receipt.jpg', 300, 300);
+        $this->post(route('catalog.order.payment-proof', $order->access_token), [
+            'payment_proof' => $file,
+        ], ['Accept' => 'application/json'])->assertOk();
+
+        $response = $this->get(route('catalog.order.payment-proof.show', $order->access_token));
+        $response->assertOk();
+        $response->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+    }
+
+    public function test_cannot_upload_payment_proof_if_order_is_already_confirmed_or_cancelled(): void
+    {
+        Storage::fake('local');
+
+        $order = CatalogOrder::create([
+            'warehouse_id' => $this->warehouse->id,
+            'customer_name' => 'Sari',
+            'customer_phone' => '08123456786',
+            'delivery_method' => 'pickup',
+            'subtotal' => 5000,
+            'grand_total' => 5000,
+            'status' => CatalogOrder::STATUS_CONFIRMED,
+        ]);
+
+        $file = UploadedFile::fake()->image('late_proof.jpg', 300, 300);
+        $response = $this->post(route('catalog.order.payment-proof', $order->access_token), [
+            'payment_proof' => $file,
+        ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(422);
+        $response->assertJsonPath('success', false);
+    }
+
+    public function test_customer_can_upload_pdf_payment_proof(): void
+    {
+        Storage::fake('local');
+
+        $order = CatalogOrder::create([
+            'warehouse_id' => $this->warehouse->id,
+            'customer_name' => 'Doni',
+            'customer_phone' => '08123456785',
+            'delivery_method' => 'pickup',
+            'subtotal' => 5000,
+            'grand_total' => 5000,
+            'status' => CatalogOrder::STATUS_SUBMITTED,
+        ]);
+
+        $pdfFile = UploadedFile::fake()->create('struk_bca.pdf', 150, 'application/pdf');
+
+        $response = $this->post(route('catalog.order.payment-proof', $order->access_token), [
+            'payment_proof' => $pdfFile,
+        ], ['Accept' => 'application/json']);
+
+        $response->assertOk();
+        $response->assertJsonPath('payment_proof_is_pdf', true);
+
+        $order->refresh();
+        $this->assertTrue($order->payment_proof_is_pdf);
+        Storage::disk('local')->assertExists($order->payment_proof);
+    }
+
+    public function test_authenticated_staff_can_view_payment_proof_in_dashboard(): void
+    {
+        Storage::fake('local');
+
+        $order = CatalogOrder::create([
+            'warehouse_id' => $this->warehouse->id,
+            'customer_name' => 'Eka',
+            'customer_phone' => '08123456784',
+            'delivery_method' => 'pickup',
+            'subtotal' => 5000,
+            'grand_total' => 5000,
+            'status' => CatalogOrder::STATUS_SUBMITTED,
+        ]);
+
+        $file = UploadedFile::fake()->image('staff_check.jpg', 300, 300);
+        $this->post(route('catalog.order.payment-proof', $order->access_token), [
+            'payment_proof' => $file,
+        ], ['Accept' => 'application/json'])->assertOk();
+
+        // Guest / unauthenticated cannot access
+        $this->get(route('catalog-orders.payment-proof', $order->id))->assertRedirect(route('login'));
+
+        // Staff with permission
+        $admin = User::factory()->create(['warehouse_id' => $this->warehouse->id]);
+        $admin->assignRole('super-admin');
+
+        $this->actingAs($admin);
+        $response = $this->get(route('catalog-orders.payment-proof', $order->id));
+        $response->assertOk();
+        $response->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+    }
+
+    public function test_cannot_checkout_with_xss_or_malicious_script_in_customer_name(): void
+    {
+        $payload = [
+            'warehouse_id' => $this->warehouse->id,
+            'customer_name' => '<script>alert("hacked")</script>',
+            'customer_phone' => '081234567890',
+            'delivery_method' => 'pickup',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'qty' => 1,
+                ],
+            ],
+        ];
+
+        $response = $this->postJson(route('catalog.checkout'), $payload);
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['customer_name']);
+    }
+
+    public function test_cannot_checkout_with_invalid_phone_number_format(): void
+    {
+        $payload = [
+            'warehouse_id' => $this->warehouse->id,
+            'customer_name' => 'Budi Santoso',
+            'customer_phone' => 'invalid-phone-string-xyz',
+            'delivery_method' => 'pickup',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'qty' => 1,
+                ],
+            ],
+        ];
+
+        $response = $this->postJson(route('catalog.checkout'), $payload);
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['customer_phone']);
+    }
+
+    public function test_checkout_sanitizes_html_tags_in_delivery_address_and_notes(): void
+    {
+        $payload = [
+            'warehouse_id' => $this->warehouse->id,
+            'customer_name' => 'Ahmad Dahlan',
+            'customer_phone' => '081234567890',
+            'delivery_method' => 'delivery',
+            'delivery_address' => '<b>Jl. Melati Putih No. 12</b><script>alert(1)</script>',
+            'notes' => '<i>Tolong dibungkus rapi</i><iframe src="evil.com"></iframe>',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'qty' => 1,
+                    'note' => '<strong>Warna biru</strong>',
+                ],
+            ],
+        ];
+
+        $response = $this->postJson(route('catalog.checkout'), $payload);
+        $response->assertOk();
+
+        $order = CatalogOrder::where('customer_name', 'Ahmad Dahlan')->firstOrFail();
+        $this->assertEquals('Jl. Melati Putih No. 12', $order->delivery_address);
+        $this->assertEquals('Tolong dibungkus rapi', $order->notes);
+        $this->assertEquals('Warna biru', $order->items->first()->note);
+    }
+
+    public function test_check_coupon_rejects_special_characters_or_injection_payloads(): void
+    {
+        $response = $this->postJson(route('catalog.coupon.check'), [
+            'code' => '<script>alert(1)</script>',
+            'subtotal' => 100000,
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['code']);
     }
 }

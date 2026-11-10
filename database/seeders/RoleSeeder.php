@@ -26,6 +26,7 @@ class RoleSeeder extends Seeder
         $this->createRoleWithPermissions('categories-access', '%categories%');
         $this->createRoleWithPermissions('products-access', '%products%');
         $this->createRoleWithPermissions('units-access', '%units%');
+        $this->createRoleWithPermissions('size-charts-access', '%size-charts%');
         $this->createRoleWithPermissions('pricing-rules-access', '%pricing-rules%');
         $this->createRoleWithPermissions('customers-access', '%customers%');
         $this->createRoleWithPermissions('customer-vouchers-access', '%customer-vouchers%');
@@ -67,6 +68,8 @@ class RoleSeeder extends Seeder
         $this->createRoleWithPermissions('printer-settings-access', '%printer-settings%');
         $this->createRoleWithPermissions('loyalty-settings-access', '%loyalty-settings%');
         $this->createRoleWithPermissions('target-settings-access', '%target-settings%');
+        $this->createRoleWithPermissions('shipping-settings-access', '%shipping-settings%');
+        $this->createRoleWithPermissions('shipping-rates-access', 'shipping-rates-access');
         $this->createRoleWithPermissions('catalog-orders-access', '%catalog-orders%');
 
         $superAdminRole = Role::firstOrCreate(['name' => 'super-admin']);
@@ -119,6 +122,9 @@ class RoleSeeder extends Seeder
             'catalog-orders-cancel',
             'store-settings-access',
             'store-settings-update',
+            'shipping-settings-access',
+            'shipping-settings-update',
+            'shipping-rates-access',
         ])->get();
         $managerRole->syncPermissions($managerPermissions);
 
@@ -126,6 +132,7 @@ class RoleSeeder extends Seeder
         $cashierRole = Role::firstOrCreate(['name' => 'cashier']);
         $cashierPermissions = Permission::whereIn('name', [
             'transactions-access',
+            'shipping-rates-access',
             'cashier-shifts-access',
             'cashier-shifts-open',
             'cashier-shifts-close',

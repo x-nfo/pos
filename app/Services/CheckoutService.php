@@ -142,6 +142,10 @@ class CheckoutService
                 }
             }
 
+            if ($catalogOrder?->customer_voucher_id && ! $voucher) {
+                $voucher = CustomerVoucher::find($catalogOrder->customer_voucher_id);
+            }
+
             // Validate stock availability for all products in the cart using lockForUpdate
             $productRequests = [];
             foreach ($carts as $c) {
@@ -221,6 +225,13 @@ class CheckoutService
                 'customer_voucher_code' => data_get($checkoutPreview, 'voucher.code'),
                 'customer_voucher_name' => data_get($checkoutPreview, 'voucher.name'),
                 'shipping_cost' => $shippingCost,
+                'shipping_courier' => $payload['shipping_courier'] ?? null,
+                'shipping_service' => $payload['shipping_service'] ?? null,
+                'shipping_etd' => $payload['shipping_etd'] ?? null,
+                'shipping_weight' => isset($payload['shipping_weight']) ? (int) $payload['shipping_weight'] : null,
+                'shipping_destination_id' => isset($payload['shipping_destination_id']) ? (int) $payload['shipping_destination_id'] : null,
+                'shipping_destination_label' => $payload['shipping_destination_label'] ?? null,
+                'shipping_tracking_number' => $payload['shipping_tracking_number'] ?? null,
                 'grand_total' => $grandTotal,
                 'payment_method' => $isPayLater ? 'pay_later' : ($paymentGateway ?: 'cash'),
                 'payment_status' => $isCashPayment ? 'paid' : ($isPayLater ? 'unpaid' : 'pending'),

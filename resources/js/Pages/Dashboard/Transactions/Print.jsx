@@ -353,8 +353,8 @@ export default function Print({
             transaction?.payment_method === "pay_later"
                 ? "Belum Lunas"
                 : transaction?.payment_method === "bank_transfer"
-                ? "Belum Dikonfirmasi"
-                : "Menunggu",
+                    ? "Belum Dikonfirmasi"
+                    : "Menunggu",
         pending_approval: "Menunggu Approval Diskon",
         failed: "Gagal",
         expired: "Kedaluwarsa",
@@ -579,8 +579,8 @@ export default function Print({
                                                 {printMode === "invoice"
                                                     ? "Cetak Invoice A4"
                                                     : printMode === "shipping"
-                                                    ? "Cetak Resi"
-                                                    : "Cetak Struk Sekarang"}
+                                                        ? "Cetak Resi"
+                                                        : "Cetak Struk Sekarang"}
                                             </span>
                                             <kbd className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-mono font-normal">P</kbd>
                                         </button>
@@ -824,44 +824,40 @@ export default function Print({
                                     <div className="inline-flex items-center p-1 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
                                         <button
                                             onClick={() => setPrintMode("thermal58")}
-                                            className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                                                printMode === "thermal58"
+                                            className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${printMode === "thermal58"
                                                     ? "bg-slate-900 dark:bg-slate-700 text-white shadow-xs"
                                                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                            }`}
+                                                }`}
                                         >
                                             <IconReceipt size={14} className="inline mr-1" />
                                             Struk 58mm
                                         </button>
                                         <button
                                             onClick={() => setPrintMode("thermal80")}
-                                            className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                                                printMode === "thermal80"
+                                            className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${printMode === "thermal80"
                                                     ? "bg-slate-900 dark:bg-slate-700 text-white shadow-xs"
                                                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                            }`}
+                                                }`}
                                         >
                                             <IconReceipt size={14} className="inline mr-1" />
                                             Struk 80mm
                                         </button>
                                         <button
                                             onClick={() => setPrintMode("invoice")}
-                                            className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                                                printMode === "invoice"
+                                            className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${printMode === "invoice"
                                                     ? "bg-slate-900 dark:bg-slate-700 text-white shadow-xs"
                                                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                            }`}
+                                                }`}
                                         >
                                             <IconFileInvoice size={14} className="inline mr-1" />
                                             Invoice A4
                                         </button>
                                         <button
                                             onClick={() => setPrintMode("shipping")}
-                                            className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                                                printMode === "shipping"
+                                            className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${printMode === "shipping"
                                                     ? "bg-slate-900 dark:bg-slate-700 text-white shadow-xs"
                                                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                                            }`}
+                                                }`}
                                         >
                                             <IconTruck size={14} className="inline mr-1" />
                                             Resi
@@ -869,489 +865,489 @@ export default function Print({
                                     </div>
                                 </div>
 
-                    {/* Thermal Receipt Preview */}
-                    {(printMode === "thermal80" || printMode === "thermal58") && (
-                        <div className="flex justify-center print:block">
-                            <div className="bg-white text-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl p-4 print:shadow-none print:border-0 print:p-0 print:rounded-none">
-                                {printMode === "thermal80" ? (
-                                    <ThermalReceipt
-                                        transaction={transaction}
-                                        storeName={store.name}
-                                        storeAddress={store.address}
-                                        storePhone={store.phone}
-                                        storeEmail={store.email}
-                                        storeWebsite={store.website}
-                                    />
-                                ) : (
-                                    <ThermalReceipt58mm
-                                        transaction={transaction}
-                                        storeName={store.name}
-                                        storeAddress={store.address}
-                                        storePhone={store.phone}
-                                        storeEmail={store.email}
-                                        storeWebsite={store.website}
-                                    />
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Shipping Label Preview */}
-                    {printMode === "shipping" && (
-                        <div className="w-full flex justify-center items-center py-2 sm:py-6 print:py-0 print:block">
-                            <div className="w-full max-w-full sm:max-w-[425.2pt] mx-auto flex justify-center print:block print:max-w-none print:w-auto">
-                                <ShippingLabel
-                                    transaction={transaction}
-                                    store={store}
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Invoice View */}
-                    {printMode === "invoice" && (
-                        <div className="w-full max-w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-md print:shadow-none print:border-slate-300">
-                            {/* Header */}
-                            <div className="bg-gradient-to-r from-primary-500 to-primary-700 px-4 sm:px-6 py-5 sm:py-6 text-white print:bg-slate-100 print:text-slate-900">
-                                <div className="flex flex-col items-center text-center gap-4 sm:gap-5 sm:grid sm:grid-cols-[1.4fr,1fr] sm:text-left sm:items-start">
-                                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 min-w-0">
-                                        <div className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center p-1 flex-shrink-0">
-                                            {store.logo ? (
-                                                <img
-                                                    src={store.logo}
-                                                    alt={store.name}
-                                                    className="max-w-full max-h-full object-contain"
+                                {/* Thermal Receipt Preview */}
+                                {(printMode === "thermal80" || printMode === "thermal58") && (
+                                    <div className="flex justify-center print:block">
+                                        <div className="bg-white text-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl p-4 print:shadow-none print:border-0 print:p-0 print:rounded-none">
+                                            {printMode === "thermal80" ? (
+                                                <ThermalReceipt
+                                                    transaction={transaction}
+                                                    storeName={store.name}
+                                                    storeAddress={store.address}
+                                                    storePhone={store.phone}
+                                                    storeEmail={store.email}
+                                                    storeWebsite={store.website}
                                                 />
                                             ) : (
-                                                <span className="text-lg font-bold text-white print:text-slate-800">
-                                                    {store.name.charAt(0)}
-                                                </span>
+                                                <ThermalReceipt58mm
+                                                    transaction={transaction}
+                                                    storeName={store.name}
+                                                    storeAddress={store.address}
+                                                    storePhone={store.phone}
+                                                    storeEmail={store.email}
+                                                    storeWebsite={store.website}
+                                                />
                                             )}
                                         </div>
-                                        <div className="text-white print:text-slate-800 space-y-1 min-w-0 text-center sm:text-left">
-                                            <p className="text-base sm:text-lg font-bold leading-tight">
-                                                {store.name}
-                                            </p>
-                                            {store.address && (
-                                                <p className="text-[11px] sm:text-xs opacity-90 leading-snug break-words">
-                                                    {store.address}
-                                                </p>
-                                            )}
-                                            {(store.phone ||
-                                                store.email ||
-                                                store.website) && (
-                                                <p className="text-[11px] sm:text-xs opacity-90 space-x-2 leading-snug flex flex-wrap justify-center sm:justify-start gap-x-2 gap-y-1">
-                                                    {store.phone && (
-                                                        <span>
-                                                            Telp: {store.phone}
-                                                        </span>
-                                                    )}
-                                                    {store.email && (
-                                                        <span>
-                                                            Email: {store.email}
-                                                        </span>
-                                                    )}
-                                                    {store.website && (
-                                                        <span>{store.website}</span>
-                                                    )}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="text-center sm:text-right">
-                                        <div className="inline-flex flex-col items-center sm:items-end bg-white/5 print:bg-transparent rounded-xl px-3 py-2 sm:px-4 sm:py-3 min-w-[180px] sm:min-w-[200px]">
-                                            <div className="flex items-center gap-2 mb-1 justify-center sm:justify-end">
-                                                <IconReceipt size={20} className="sm:w-6 sm:h-6" />
-                                                <span className="text-xs sm:text-sm font-medium opacity-90 print:opacity-100">
-                                                    INVOICE
-                                                </span>
-                                            </div>
-                                            <p className="text-lg sm:text-2xl font-bold leading-tight">
-                                                {transaction.invoice}
-                                            </p>
-                                            <p className="text-xs sm:text-sm opacity-80 print:opacity-100 mt-1">
-                                                {formatDateTime(
-                                                    transaction.created_at
-                                                )}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Info Grid */}
-                            <div className="grid md:grid-cols-2 gap-4 sm:gap-6 px-4 sm:px-6 py-4 sm:py-6 border-b border-slate-100 dark:border-slate-800">
-                                <div className="bg-slate-50/60 dark:bg-slate-800/40 rounded-xl p-3 sm:p-4">
-                                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
-                                        Pelanggan
-                                    </p>
-                                    <p className="text-base font-semibold text-slate-900 dark:text-white">
-                                        {transaction.customer?.name ?? "Umum"}
-                                    </p>
-                                    {transaction.customer?.address && (
-                                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                                            {transaction.customer.address}
-                                        </p>
-                                    )}
-                                    {transaction.customer?.phone && (
-                                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                                            {transaction.customer.phone}
-                                        </p>
-                                    )}
-                                </div>
-                                <div className="bg-slate-50/60 dark:bg-slate-800/40 rounded-xl p-3 sm:p-4">
-                                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
-                                        Kasir
-                                    </p>
-                                    <div className="flex items-start justify-between gap-3">
-                                        <p className="text-base font-semibold text-slate-900 dark:text-white">
-                                            {transaction.cashier?.name ?? "-"}
-                                        </p>
-                                        <div className="flex flex-wrap gap-2 justify-end">
-                                            <span
-                                                className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${paymentStatusColor}`}
-                                            >
-                                                {paymentStatusLabel}
-                                            </span>
-                                            <span className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                                                {paymentMethodLabel}
-                                            </span>
-                                            {transaction.payment_method ===
-                                                "pay_later" &&
-                                                transaction.receivable && (
-                                                    <span className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
-                                                        Jatuh tempo:{" "}
-                                                        {formatDate(transaction.receivable?.due_date)}
-                                                    </span>
-                                                )}
-                                            {transaction.payment_confirmer && (
-                                                <span className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
-                                                    Dikonfirmasi:{" "}
-                                                    {transaction.payment_confirmer.name}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Bank Transfer Info */}
-                            {paymentMethodKey === "bank_transfer" &&
-                                transaction.bank_account && (
-                                    <div className="mx-6 mb-6 p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                                            Silakan Transfer ke Rekening
-                                        </p>
-                                        <p className="text-lg font-bold text-slate-900 dark:text-white">
-                                            {transaction.bank_account.bank_name}
-                                        </p>
-                                        <p className="text-base font-semibold text-primary-600 dark:text-primary-400">
-                                            {
-                                                transaction.bank_account
-                                                    .account_number
-                                            }
-                                        </p>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                                            a.n.{" "}
-                                            {
-                                                transaction.bank_account
-                                                    .account_name
-                                            }
-                                        </p>
                                     </div>
                                 )}
 
-                            {/* QRISLY Dynamic QR Code Info */}
-                            {paymentMethodKey === "qrisly" &&
-                                (transaction.payment_url ? (
-                                    <div className="mx-6 mb-6 p-5 rounded-2xl bg-teal-50/70 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-900/60 flex flex-col sm:flex-row items-center gap-5">
-                                        <div className="flex-shrink-0">
-                                            <QrisCode value={transaction.payment_url} size={160} />
-                                        </div>
-                                        <div className="flex-1 text-center sm:text-left space-y-1.5">
-                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300">
-                                                <IconQrcode size={14} />
-                                                QRIS Dinamis (QRISLY)
-                                            </div>
-                                            <h4 className="text-base font-bold text-slate-900 dark:text-white">
-                                                Scan QRIS untuk Membayar
-                                            </h4>
-                                            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                                                Buka aplikasi m-Banking (BCA, Mandiri, BRI, BNI) atau E-Wallet (DANA, GoPay, OVO, ShopeePay) lalu pindai QRIS di samping.
-                                            </p>
-                                            <div className="pt-1 flex items-center justify-center sm:justify-start gap-3">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => router.reload({ only: ['transaction'] })}
-                                                    className="inline-flex items-center gap-1 text-xs font-medium text-teal-700 dark:text-teal-400 hover:underline"
-                                                >
-                                                    <IconRefresh size={14} /> Cek Status Pembayaran
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setIsRetryingQris(true);
-                                                        router.post(
-                                                            route("transactions.qrisly-retry", transaction.invoice),
-                                                            {},
-                                                            {
-                                                                preserveScroll: true,
-                                                                onFinish: () => setIsRetryingQris(false),
-                                                            }
-                                                        );
-                                                    }}
-                                                    disabled={isRetryingQris}
-                                                    className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 hover:underline disabled:opacity-50"
-                                                >
-                                                    <IconRefresh size={14} className={isRetryingQris ? "animate-spin" : ""} />
-                                                    Generate Ulang
-                                                </button>
-                                            </div>
+                                {/* Shipping Label Preview */}
+                                {printMode === "shipping" && (
+                                    <div className="w-full flex justify-center items-center py-2 sm:py-6 print:py-0 print:block">
+                                        <div className="w-full max-w-full sm:max-w-[425.2pt] mx-auto flex justify-center print:block print:max-w-none print:w-auto">
+                                            <ShippingLabel
+                                                transaction={transaction}
+                                                store={store}
+                                            />
                                         </div>
                                     </div>
-                                ) : transaction.payment_status === "pending" ? (
-                                    <div className="mx-6 mb-6 p-5 rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 flex flex-col sm:flex-row items-center gap-4">
-                                        <div className="p-3 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-2xl">
-                                            <IconAlertCircle size={28} />
-                                        </div>
-                                        <div className="flex-1 text-center sm:text-left">
-                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 mb-1">
-                                                <IconQrcode size={14} />
-                                                QRIS Gagal Dibuat
-                                            </div>
-                                            <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                                                QR Code Belum Tersedia
-                                            </h4>
-                                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                                                Permintaan generate QRIS ke server QRISLY mengalami kendala (misalnya saldo QRISLY / Komerce belum mencukupi atau koneksi terputus).
-                                            </p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setIsRetryingQris(true);
-                                                router.post(
-                                                    route("transactions.qrisly-retry", transaction.invoice),
-                                                    {},
-                                                    {
-                                                        preserveScroll: true,
-                                                        onFinish: () => setIsRetryingQris(false),
-                                                    }
-                                                );
-                                            }}
-                                            disabled={isRetryingQris}
-                                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-sm transition-colors disabled:opacity-50 whitespace-nowrap"
-                                        >
-                                            <IconRefresh size={16} className={isRetryingQris ? "animate-spin" : ""} />
-                                            {isRetryingQris ? "Membuat QRIS..." : "Generate Ulang QRIS"}
-                                        </button>
-                                    </div>
-                                ) : null)}
+                                )}
 
-                            {/* Items Table */}
-                            <div className="px-4 sm:px-6 py-6">
-                                <div className="w-full overflow-x-auto">
-                                    <table className="w-full min-w-[620px] text-sm">
-                                        <thead>
-                                            <tr className="border-b border-slate-100 dark:border-slate-800">
-                                                <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                                                    Produk
-                                                </th>
-                                                <th className="pb-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                                                    Harga
-                                                </th>
-                                                <th className="pb-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                                                    Qty
-                                                </th>
-                                                <th className="pb-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                                                    Subtotal
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                            {items.map((item, index) => {
-                                                const quantity =
-                                                    Number(item.qty) || 1;
-                                                const subtotal =
-                                                    Number(item.price) || 0;
-                                                const unitPrice =
-                                                    Number(
-                                                        item.unit_price || 0
-                                                    ) || subtotal / quantity;
-                                                const baseUnitPrice =
-                                                    Number(
-                                                        item.base_unit_price || 0
-                                                    ) || unitPrice;
-                                                const hasPromo =
-                                                    Number(
-                                                        item.discount_total || 0
-                                                    ) > 0 &&
-                                                    baseUnitPrice > unitPrice;
-
-                                                return (
-                                                    <tr
-                                                        key={item.id ?? index}
-                                                        className={
-                                                            index % 2 === 0
-                                                                ? "bg-slate-50/60 dark:bg-slate-800/30"
-                                                                : ""
-                                                        }
-                                                    >
-                                                        <td className="py-3">
-                                                            <p className="font-medium text-slate-900 dark:text-white">
-                                                                {
-                                                                    item.product
-                                                                        ?.title
-                                                                }
+                                {/* Invoice View */}
+                                {printMode === "invoice" && (
+                                    <div className="w-full max-w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-md print:shadow-none print:border-slate-300">
+                                        {/* Header */}
+                                        <div className="bg-gradient-to-r from-primary-500 to-primary-700 px-4 sm:px-6 py-5 sm:py-6 text-white print:bg-slate-100 print:text-slate-900">
+                                            <div className="flex flex-col items-center text-center gap-4 sm:gap-5 sm:grid sm:grid-cols-[1.4fr,1fr] sm:text-left sm:items-start">
+                                                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 min-w-0">
+                                                    <div className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center p-1 flex-shrink-0">
+                                                        {store.logo ? (
+                                                            <img
+                                                                src={store.logo}
+                                                                alt={store.name}
+                                                                className="max-w-full max-h-full object-contain"
+                                                            />
+                                                        ) : (
+                                                            <span className="text-lg font-bold text-white print:text-slate-800">
+                                                                {store.name.charAt(0)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-white print:text-slate-800 space-y-1 min-w-0 text-center sm:text-left">
+                                                        <p className="text-base sm:text-lg font-bold leading-tight">
+                                                            {store.name}
+                                                        </p>
+                                                        {store.address && (
+                                                            <p className="text-[11px] sm:text-xs opacity-90 leading-snug break-words">
+                                                                {store.address}
                                                             </p>
-                                                            {hasPromo && (
-                                                                <p className="text-xs font-medium text-rose-500 dark:text-rose-400">
-                                                                    {item.pricing_group_label ||
-                                                                        item.pricing_rule_name ||
-                                                                        "Promo aktif"}
-                                                                </p>
-                                                            )}
-                                                            {item.product
-                                                                ?.barcode && (
-                                                                <p className="text-xs text-slate-500 dark:text-slate-400">
-                                                                    {
-                                                                        item.product
-                                                                            .barcode
-                                                                    }
-                                                                </p>
-                                                            )}
-                                                        </td>
-                                                        <td className="py-3 text-right text-slate-600 dark:text-slate-400">
-                                                            <div>
-                                                                {hasPromo && (
-                                                                    <p className="text-xs text-slate-400 line-through">
-                                                                        {formatPrice(
-                                                                            baseUnitPrice
-                                                                        )}
-                                                                    </p>
-                                                                )}
-                                                                <p>
-                                                                    {formatPrice(
-                                                                        unitPrice
+                                                        )}
+                                                        {(store.phone ||
+                                                            store.email ||
+                                                            store.website) && (
+                                                                <p className="text-[11px] sm:text-xs opacity-90 space-x-2 leading-snug flex flex-wrap justify-center sm:justify-start gap-x-2 gap-y-1">
+                                                                    {store.phone && (
+                                                                        <span>
+                                                                            Telp: {store.phone}
+                                                                        </span>
+                                                                    )}
+                                                                    {store.email && (
+                                                                        <span>
+                                                                            Email: {store.email}
+                                                                        </span>
+                                                                    )}
+                                                                    {store.website && (
+                                                                        <span>{store.website}</span>
                                                                     )}
                                                                 </p>
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-3 text-center text-slate-600 dark:text-slate-400">
-                                                            {quantity} {item.unit?.symbol || ""}
-                                                        </td>
-                                                        <td className="py-3 text-right font-semibold text-slate-900 dark:text-white">
-                                                            {formatPrice(
-                                                                subtotal
                                                             )}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                                                    </div>
+                                                </div>
 
-                            {/* Summary */}
-                            <div className="bg-slate-50 dark:bg-slate-800/50 px-6 py-6">
-                                <div className="max-w-xs ml-auto space-y-2 text-sm">
-                                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                                        <span>Subtotal</span>
-                                        <span>{formatPrice(baseSubtotal)}</span>
-                                    </div>
-                                    {promoDiscountTotal > 0 && (
-                                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                                            <span>Promo Otomatis</span>
-                                            <span>
-                                                -{" "}
-                                                {formatPrice(
-                                                    promoDiscountTotal
+                                                <div className="text-center sm:text-right">
+                                                    <div className="inline-flex flex-col items-center sm:items-end bg-white/5 print:bg-transparent rounded-xl px-3 py-2 sm:px-4 sm:py-3 min-w-[180px] sm:min-w-[200px]">
+                                                        <div className="flex items-center gap-2 mb-1 justify-center sm:justify-end">
+                                                            <IconReceipt size={20} className="sm:w-6 sm:h-6" />
+                                                            <span className="text-xs sm:text-sm font-medium opacity-90 print:opacity-100">
+                                                                INVOICE
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-lg sm:text-2xl font-bold leading-tight">
+                                                            {transaction.invoice}
+                                                        </p>
+                                                        <p className="text-xs sm:text-sm opacity-80 print:opacity-100 mt-1">
+                                                            {formatDateTime(
+                                                                transaction.created_at
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Info Grid */}
+                                        <div className="grid md:grid-cols-2 gap-4 sm:gap-6 px-4 sm:px-6 py-4 sm:py-6 border-b border-slate-100 dark:border-slate-800">
+                                            <div className="bg-slate-50/60 dark:bg-slate-800/40 rounded-xl p-3 sm:p-4">
+                                                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
+                                                    Pelanggan
+                                                </p>
+                                                <p className="text-base font-semibold text-slate-900 dark:text-white">
+                                                    {transaction.customer?.name ?? "Umum"}
+                                                </p>
+                                                {transaction.customer?.address && (
+                                                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                                                        {transaction.customer.address}
+                                                    </p>
                                                 )}
-                                            </span>
-                                        </div>
-                                    )}
-                                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                                        <span>Diskon Manual</span>
-                                        <span>
-                                            -{" "}
-                                            {formatPrice(transaction.discount)}
-                                        </span>
-                                    </div>
-                                    {transaction.shipping_cost > 0 && (
-                                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                                            <span>Ongkos Kirim</span>
-                                            <span>
-                                                +{" "}
-                                                {formatPrice(
-                                                    transaction.shipping_cost
+                                                {transaction.customer?.phone && (
+                                                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                                                        {transaction.customer.phone}
+                                                    </p>
                                                 )}
-                                            </span>
+                                            </div>
+                                            <div className="bg-slate-50/60 dark:bg-slate-800/40 rounded-xl p-3 sm:p-4">
+                                                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
+                                                    Kasir
+                                                </p>
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <p className="text-base font-semibold text-slate-900 dark:text-white">
+                                                        {transaction.cashier?.name ?? "-"}
+                                                    </p>
+                                                    <div className="flex flex-wrap gap-2 justify-end">
+                                                        <span
+                                                            className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${paymentStatusColor}`}
+                                                        >
+                                                            {paymentStatusLabel}
+                                                        </span>
+                                                        <span className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                                            {paymentMethodLabel}
+                                                        </span>
+                                                        {transaction.payment_method ===
+                                                            "pay_later" &&
+                                                            transaction.receivable && (
+                                                                <span className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                                                                    Jatuh tempo:{" "}
+                                                                    {formatDate(transaction.receivable?.due_date)}
+                                                                </span>
+                                                            )}
+                                                        {transaction.payment_confirmer && (
+                                                            <span className="inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
+                                                                Dikonfirmasi:{" "}
+                                                                {transaction.payment_confirmer.name}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                    )}
-                                    {transaction.tax_total > 0 && (
-                                        <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                                            <span>PPN {transaction.tax_rate ? Number(transaction.tax_rate).toFixed(0) : "11"}%</span>
-                                            <span>
-                                                +{" "}
-                                                {formatPrice(transaction.tax_total)}
-                                            </span>
-                                        </div>
-                                    )}
-                                    <div className="flex justify-between text-lg font-bold text-slate-900 dark:text-white pt-2 border-t border-slate-200 dark:border-slate-700">
-                                        <span>Total</span>
-                                        <span>
-                                            {formatPrice(
-                                                transaction.grand_total
+
+                                        {/* Bank Transfer Info */}
+                                        {paymentMethodKey === "bank_transfer" &&
+                                            transaction.bank_account && (
+                                                <div className="mx-6 mb-6 p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                                                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                                                        Silakan Transfer ke Rekening
+                                                    </p>
+                                                    <p className="text-lg font-bold text-slate-900 dark:text-white">
+                                                        {transaction.bank_account.bank_name}
+                                                    </p>
+                                                    <p className="text-base font-semibold text-primary-600 dark:text-primary-400">
+                                                        {
+                                                            transaction.bank_account
+                                                                .account_number
+                                                        }
+                                                    </p>
+                                                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                                                        a.n.{" "}
+                                                        {
+                                                            transaction.bank_account
+                                                                .account_name
+                                                        }
+                                                    </p>
+                                                </div>
                                             )}
-                                        </span>
-                                    </div>
-                                    {paymentMethodKey === "cash" && (
-                                        <>
-                                            <div className="flex justify-between text-slate-600 dark:text-slate-400 pt-2">
-                                                <span>Tunai</span>
-                                                <span>
-                                                    {formatPrice(
-                                                        transaction.cash
-                                                    )}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between text-success-600 dark:text-success-400 font-medium">
-                                                <span>Kembali</span>
-                                                <span>
-                                                    {formatPrice(
-                                                        transaction.change
-                                                    )}
-                                                </span>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
 
-                            {/* Barcode + Footer */}
-                            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800">
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    Invoice: {transaction.invoice}
-                                </p>
-                                <SimpleBarcode value={transaction.invoice} />
-                                <div className="text-center mt-4">
-                                    <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest font-semibold">
-                                        Terima kasih telah berbelanja
-                                    </p>
-                                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                                        Barang yang sudah dibeli tidak dapat ditukar atau dikembalikan
-                                    </p>
-                                </div>
+                                        {/* QRISLY Dynamic QR Code Info */}
+                                        {paymentMethodKey === "qrisly" &&
+                                            (transaction.payment_url ? (
+                                                <div className="mx-6 mb-6 p-5 rounded-2xl bg-teal-50/70 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-900/60 flex flex-col sm:flex-row items-center gap-5">
+                                                    <div className="flex-shrink-0">
+                                                        <QrisCode value={transaction.payment_url} size={160} />
+                                                    </div>
+                                                    <div className="flex-1 text-center sm:text-left space-y-1.5">
+                                                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300">
+                                                            <IconQrcode size={14} />
+                                                            QRIS Dinamis (QRISLY)
+                                                        </div>
+                                                        <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                                                            Scan QRIS untuk Membayar
+                                                        </h4>
+                                                        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                                                            Buka aplikasi m-Banking (BCA, Mandiri, BRI, BNI) atau E-Wallet (DANA, GoPay, OVO, ShopeePay) lalu pindai QRIS di samping.
+                                                        </p>
+                                                        <div className="pt-1 flex items-center justify-center sm:justify-start gap-3">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => router.reload({ only: ['transaction'] })}
+                                                                className="inline-flex items-center gap-1 text-xs font-medium text-teal-700 dark:text-teal-400 hover:underline"
+                                                            >
+                                                                <IconRefresh size={14} /> Cek Status Pembayaran
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setIsRetryingQris(true);
+                                                                    router.post(
+                                                                        route("transactions.qrisly-retry", transaction.invoice),
+                                                                        {},
+                                                                        {
+                                                                            preserveScroll: true,
+                                                                            onFinish: () => setIsRetryingQris(false),
+                                                                        }
+                                                                    );
+                                                                }}
+                                                                disabled={isRetryingQris}
+                                                                className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 hover:underline disabled:opacity-50"
+                                                            >
+                                                                <IconRefresh size={14} className={isRetryingQris ? "animate-spin" : ""} />
+                                                                Generate Ulang
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : transaction.payment_status === "pending" ? (
+                                                <div className="mx-6 mb-6 p-5 rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 flex flex-col sm:flex-row items-center gap-4">
+                                                    <div className="p-3 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-2xl">
+                                                        <IconAlertCircle size={28} />
+                                                    </div>
+                                                    <div className="flex-1 text-center sm:text-left">
+                                                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 mb-1">
+                                                            <IconQrcode size={14} />
+                                                            QRIS Gagal Dibuat
+                                                        </div>
+                                                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                                                            QR Code Belum Tersedia
+                                                        </h4>
+                                                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                                                            Permintaan generate QRIS ke server QRISLY mengalami kendala (misalnya saldo QRISLY / Komerce belum mencukupi atau koneksi terputus).
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setIsRetryingQris(true);
+                                                            router.post(
+                                                                route("transactions.qrisly-retry", transaction.invoice),
+                                                                {},
+                                                                {
+                                                                    preserveScroll: true,
+                                                                    onFinish: () => setIsRetryingQris(false),
+                                                                }
+                                                            );
+                                                        }}
+                                                        disabled={isRetryingQris}
+                                                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-sm transition-colors disabled:opacity-50 whitespace-nowrap"
+                                                    >
+                                                        <IconRefresh size={16} className={isRetryingQris ? "animate-spin" : ""} />
+                                                        {isRetryingQris ? "Membuat QRIS..." : "Generate Ulang QRIS"}
+                                                    </button>
+                                                </div>
+                                            ) : null)}
+
+                                        {/* Items Table */}
+                                        <div className="px-4 sm:px-6 py-6">
+                                            <div className="w-full overflow-x-auto">
+                                                <table className="w-full min-w-[620px] text-sm">
+                                                    <thead>
+                                                        <tr className="border-b border-slate-100 dark:border-slate-800">
+                                                            <th className="pb-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                                                Produk
+                                                            </th>
+                                                            <th className="pb-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                                                Harga
+                                                            </th>
+                                                            <th className="pb-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                                                Qty
+                                                            </th>
+                                                            <th className="pb-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                                                Subtotal
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                                        {items.map((item, index) => {
+                                                            const quantity =
+                                                                Number(item.qty) || 1;
+                                                            const subtotal =
+                                                                Number(item.price) || 0;
+                                                            const unitPrice =
+                                                                Number(
+                                                                    item.unit_price || 0
+                                                                ) || subtotal / quantity;
+                                                            const baseUnitPrice =
+                                                                Number(
+                                                                    item.base_unit_price || 0
+                                                                ) || unitPrice;
+                                                            const hasPromo =
+                                                                Number(
+                                                                    item.discount_total || 0
+                                                                ) > 0 &&
+                                                                baseUnitPrice > unitPrice;
+
+                                                            return (
+                                                                <tr
+                                                                    key={item.id ?? index}
+                                                                    className={
+                                                                        index % 2 === 0
+                                                                            ? "bg-slate-50/60 dark:bg-slate-800/30"
+                                                                            : ""
+                                                                    }
+                                                                >
+                                                                    <td className="py-3">
+                                                                        <p className="font-medium text-slate-900 dark:text-white">
+                                                                            {
+                                                                                item.product
+                                                                                    ?.title
+                                                                            }
+                                                                        </p>
+                                                                        {hasPromo && (
+                                                                            <p className="text-xs font-medium text-rose-500 dark:text-rose-400">
+                                                                                {item.pricing_group_label ||
+                                                                                    item.pricing_rule_name ||
+                                                                                    "Promo aktif"}
+                                                                            </p>
+                                                                        )}
+                                                                        {item.product
+                                                                            ?.barcode && (
+                                                                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                                                    {
+                                                                                        item.product
+                                                                                            .barcode
+                                                                                    }
+                                                                                </p>
+                                                                            )}
+                                                                    </td>
+                                                                    <td className="py-3 text-right text-slate-600 dark:text-slate-400">
+                                                                        <div>
+                                                                            {hasPromo && (
+                                                                                <p className="text-xs text-slate-400 line-through">
+                                                                                    {formatPrice(
+                                                                                        baseUnitPrice
+                                                                                    )}
+                                                                                </p>
+                                                                            )}
+                                                                            <p>
+                                                                                {formatPrice(
+                                                                                    unitPrice
+                                                                                )}
+                                                                            </p>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="py-3 text-center text-slate-600 dark:text-slate-400">
+                                                                        {quantity} {item.unit?.symbol || ""}
+                                                                    </td>
+                                                                    <td className="py-3 text-right font-semibold text-slate-900 dark:text-white">
+                                                                        {formatPrice(
+                                                                            subtotal
+                                                                        )}
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        {/* Summary */}
+                                        <div className="bg-slate-50 dark:bg-slate-800/50 px-6 py-6">
+                                            <div className="max-w-xs ml-auto space-y-2 text-sm">
+                                                <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                                                    <span>Subtotal</span>
+                                                    <span>{formatPrice(baseSubtotal)}</span>
+                                                </div>
+                                                {promoDiscountTotal > 0 && (
+                                                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                                                        <span>Promo Otomatis</span>
+                                                        <span>
+                                                            -{" "}
+                                                            {formatPrice(
+                                                                promoDiscountTotal
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                                                    <span>Diskon Manual</span>
+                                                    <span>
+                                                        -{" "}
+                                                        {formatPrice(transaction.discount)}
+                                                    </span>
+                                                </div>
+                                                {transaction.shipping_cost > 0 && (
+                                                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                                                        <span>Ongkos Kirim</span>
+                                                        <span>
+                                                            +{" "}
+                                                            {formatPrice(
+                                                                transaction.shipping_cost
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {transaction.tax_total > 0 && (
+                                                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                                                        <span>PPN {transaction.tax_rate ? Number(transaction.tax_rate).toFixed(0) : "11"}%</span>
+                                                        <span>
+                                                            +{" "}
+                                                            {formatPrice(transaction.tax_total)}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between text-lg font-bold text-slate-900 dark:text-white pt-2 border-t border-slate-200 dark:border-slate-700">
+                                                    <span>Total</span>
+                                                    <span>
+                                                        {formatPrice(
+                                                            transaction.grand_total
+                                                        )}
+                                                    </span>
+                                                </div>
+                                                {paymentMethodKey === "cash" && (
+                                                    <>
+                                                        <div className="flex justify-between text-slate-600 dark:text-slate-400 pt-2">
+                                                            <span>Tunai</span>
+                                                            <span>
+                                                                {formatPrice(
+                                                                    transaction.cash
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex justify-between text-success-600 dark:text-success-400 font-medium">
+                                                            <span>Kembali</span>
+                                                            <span>
+                                                                {formatPrice(
+                                                                    transaction.change
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Barcode + Footer */}
+                                        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+                                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                Invoice: {transaction.invoice}
+                                            </p>
+                                            <SimpleBarcode value={transaction.invoice} />
+                                            <div className="text-center mt-4">
+                                                <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest font-semibold">
+                                                    Terima kasih telah berbelanja
+                                                </p>
+                                                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                                                    Barang yang sudah dibeli tidak dapat ditukar atau dikembalikan
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    )}
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
             {/* Confirmation Modal */}
             {showConfirmModal && canConfirmPayment && (

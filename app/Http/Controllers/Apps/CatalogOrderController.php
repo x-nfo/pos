@@ -10,8 +10,10 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class CatalogOrderController extends Controller
 {
@@ -39,7 +41,7 @@ class CatalogOrderController extends Controller
         ];
 
         $ordersQuery = (clone $baseQuery)
-            ->with(['warehouse:id,code,name,phone', 'cashier:id,name', 'items.product:id,title,barcode,image', 'items.unit:id,name,code,symbol', 'transaction:id,invoice'])
+            ->with(['warehouse:id,code,name,phone', 'cashier:id,name', 'bankAccount:id,bank_name,account_number,account_name,logo', 'items.product:id,title,barcode,image', 'items.unit:id,name,code,symbol', 'transaction:id,invoice', 'customerVoucher:id,code,name,discount_type,discount_value'])
             ->when($status !== 'all', function ($q) use ($status) {
                 if ($status === 'active') {
                     $q->whereIn('status', [
@@ -147,7 +149,8 @@ class CatalogOrderController extends Controller
         ]);
 
         try {
-            $this->catalogOrderService->cancelOrder($catalogOrder, $validated['reason'], auth()->id());
+            $sanitizedReason = trim(strip_tags((string) $validated['reason']));
+            $this->catalogOrderService->cancelOrder($catalogOrder, $sanitizedReason, auth()->id());
 
             return back()->with('success', "Pesanan {$catalogOrder->order_number} berhasil dibatalkan.");
         } catch (\Throwable $e) {
@@ -164,5 +167,48 @@ class CatalogOrderController extends Controller
         } catch (\Throwable $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * Stream payment proof securely for authenticated staff with RBAC check
+     */
+    public function paymentProof(CatalogOrder $catalogOrder): SymfonyResponse
+    {
+        $user = auth()->user();
+        if ($user && $user->warehouse_id && (int) $catalogOrder->warehouse_id !== (int) $user->warehouse_id) {
+            abort(403, 'Anda tidak memiliki akses ke pesanan cabang ini.');
+        }
+
+        if (! $catalogOrder->payment_proof) {
+            abort(404, 'Bukti transfer belum diunggah untuk pesanan ini.');
+        }
+
+        $configuredDisk = config('filesystems.payment_proof_disk', 'local');
+        $disk = null;
+
+        if (Storage::disk($configuredDisk)->exists($catalogOrder->payment_proof)) {
+            $disk = $configuredDisk;
+        } elseif (Storage::disk('local')->exists($catalogOrder->payment_proof)) {
+            $disk = 'local';
+        } elseif (Storage::disk('public')->exists($catalogOrder->payment_proof)) {
+            $disk = 'public';
+        }
+
+        if (! $disk) {
+            abort(404, 'File bukti transfer tidak ditemukan di penyimpanan server.');
+        }
+
+        $mimeType = Storage::disk($disk)->mimeType($catalogOrder->payment_proof) ?: 'application/octet-stream';
+        $extension = pathinfo($catalogOrder->payment_proof, PATHINFO_EXTENSION) ?: 'jpg';
+        $filename = 'bukti-transfer-'.$catalogOrder->order_number.'.'.$extension;
+
+        return Storage::disk($disk)->response($catalogOrder->payment_proof, $filename, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            'Cache-Control' => 'private, no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+            'X-Robots-Tag' => 'noindex, nofollow',
+        ]);
     }
 }

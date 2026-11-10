@@ -38,6 +38,16 @@ export default function Button({
     const sizeStyles = "px-4 py-2.5 text-sm rounded-xl";
     const smallStyles = "px-3 py-2 rounded-xl";
 
+    const iconElement = React.useMemo(() => {
+        if (!icon) return null;
+        if (React.isValidElement(icon)) return icon;
+        if (typeof icon === "function" || (typeof icon === "object" && icon?.$$typeof)) {
+            const IconComponent = icon;
+            return <IconComponent size={18} />;
+        }
+        return icon;
+    }, [icon]);
+
     return (
         <>
             {type === "link" &&
@@ -47,7 +57,7 @@ export default function Button({
                         className={`${baseStyles} ${sizeStyles} ${className}`}
                         {...props}
                     >
-                        {icon}{" "}
+                        {iconElement}{" "}
                         <span
                             className={`${added === true ? "hidden lg:block" : ""}`}
                         >
@@ -60,7 +70,7 @@ export default function Button({
                         className={`${baseStyles} ${sizeStyles} ${className}`}
                         {...props}
                     >
-                        {icon}{" "}
+                        {iconElement}{" "}
                         <span
                             className={`${added === true ? "hidden lg:block" : ""}`}
                         >
@@ -73,7 +83,7 @@ export default function Button({
                     className={`${baseStyles} ${sizeStyles} ${className}`}
                     {...props}
                 >
-                    {icon}{" "}
+                    {iconElement}{" "}
                     <span
                         className={`${added === true ? "hidden md:block" : ""}`}
                     >
@@ -87,7 +97,7 @@ export default function Button({
                     className={`${baseStyles} ${sizeStyles} ${className}`}
                     {...props}
                 >
-                    {icon}{" "}
+                    {iconElement}{" "}
                     <span
                         className={`${added === true ? "hidden lg:block" : ""}`}
                     >
@@ -101,7 +111,7 @@ export default function Button({
                     className={`${baseStyles} ${smallStyles} ${className}`}
                     {...props}
                 >
-                    {icon} {label && <span>{label}</span>}
+                    {iconElement} {label && <span>{label}</span>}
                 </button>
             )}
             {type === "modal" && (
@@ -109,7 +119,7 @@ export default function Button({
                     className={`${baseStyles} ${smallStyles} ${className}`}
                     {...props}
                 >
-                    {icon}
+                    {iconElement}
                 </button>
             )}
             {type === "edit" && (
@@ -118,7 +128,7 @@ export default function Button({
                     className={`${baseStyles} ${smallStyles} ${className}`}
                     {...props}
                 >
-                    {icon}
+                    {iconElement}
                 </Link>
             )}
             {type === "bulk" && (
@@ -126,7 +136,7 @@ export default function Button({
                     {...props}
                     className={`${baseStyles} ${sizeStyles} ${className}`}
                 >
-                    {icon}{" "}
+                    {iconElement}{" "}
                     <span
                         className={`${added === true ? "hidden lg:block" : ""}`}
                     >

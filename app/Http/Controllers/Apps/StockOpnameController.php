@@ -119,6 +119,7 @@ class StockOpnameController extends Controller
         $availableProducts = blank($productFilters['search'])
             ? collect()
             : Product::query()
+                ->where('has_variants', false)
                 ->with('category:id,name')
                 ->where(function ($builder) use ($productFilters) {
                     $builder
@@ -171,6 +172,7 @@ class StockOpnameController extends Controller
         $categoryId = $request->input('category_id');
 
         $query = Product::query()
+            ->where('has_variants', false)
             ->when($categoryId, fn ($q, $catId) => $q->where('category_id', $catId));
 
         $products = $query->get();
@@ -217,6 +219,12 @@ class StockOpnameController extends Controller
         $this->ensureDraft($stockOpname);
 
         $product = Product::findOrFail($request->validated('product_id'));
+
+        if ($product->has_variants) {
+            throw ValidationException::withMessages([
+                'product_id' => 'Produk utama memiliki varian fashion. Silakan pilih varian ukuran/warna yang spesifik untuk stock opname.',
+            ]);
+        }
 
         if ($stockOpname->items()->where('product_id', $product->id)->exists()) {
             throw ValidationException::withMessages([

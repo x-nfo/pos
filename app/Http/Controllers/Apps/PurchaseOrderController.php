@@ -11,6 +11,7 @@ use App\Models\Supplier;
 use App\Models\Warehouse;
 use App\Services\PurchaseOrderService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class PurchaseOrderController extends Controller
@@ -71,7 +72,8 @@ class PurchaseOrderController extends Controller
         $user = auth()->user();
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
         $categories = Category::orderBy('name')->get(['id', 'name']);
-        $products = Product::with(['units', 'category:id,name', 'warehouses'])
+        $products = Product::where('has_variants', false)
+            ->with(['units', 'category:id,name', 'warehouses'])
             ->orderBy('title')
             ->get(['id', 'category_id', 'title', 'sku', 'barcode', 'buy_price', 'sell_price', 'min_stock', 'max_stock'])
             ->map(function ($product) {
@@ -131,6 +133,13 @@ class PurchaseOrderController extends Controller
 
         if ($user && ! $user->isHQ()) {
             $data['warehouse_id'] = $user->warehouse_id;
+        }
+
+        $productIds = collect($data['items'])->pluck('product_id');
+        if (Product::whereIn('id', $productIds)->where('has_variants', true)->exists()) {
+            throw ValidationException::withMessages([
+                'items' => 'Produk utama yang memiliki varian tidak dapat dipesan langsung. Pilih varian warna/ukuran spesifik.',
+            ]);
         }
 
         $order = $this->purchaseOrderService->createOrder($data, $data['items'], $user->id);
@@ -206,7 +215,8 @@ class PurchaseOrderController extends Controller
         $user = $request->user();
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
         $categories = Category::orderBy('name')->get(['id', 'name']);
-        $products = Product::with(['units', 'category:id,name', 'warehouses'])
+        $products = Product::where('has_variants', false)
+            ->with(['units', 'category:id,name', 'warehouses'])
             ->orderBy('title')
             ->get(['id', 'category_id', 'title', 'sku', 'barcode', 'buy_price', 'sell_price', 'min_stock', 'max_stock'])
             ->map(function ($product) {
@@ -275,6 +285,13 @@ class PurchaseOrderController extends Controller
 
         if ($user && ! $user->isHQ()) {
             $data['warehouse_id'] = $user->warehouse_id;
+        }
+
+        $productIds = collect($data['items'])->pluck('product_id');
+        if (Product::whereIn('id', $productIds)->where('has_variants', true)->exists()) {
+            throw ValidationException::withMessages([
+                'items' => 'Produk utama yang memiliki varian tidak dapat dipesan langsung. Pilih varian warna/ukuran spesifik.',
+            ]);
         }
 
         $this->purchaseOrderService->updateOrder($purchaseOrder, $data, $data['items'], $user->id);

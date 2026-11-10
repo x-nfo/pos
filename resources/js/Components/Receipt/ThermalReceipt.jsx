@@ -466,12 +466,12 @@ export function ThermalReceipt58mm({
                 <span>
                     {formatPrice(
                         (transaction?.grand_total || 0) +
-                            (transaction?.discount || 0) -
-                            (transaction?.shipping_cost || 0) -
-                            (transaction?.tax_total || 0) +
-                            promoDiscount +
-                            loyaltyDiscount +
-                            voucherDiscount
+                        (transaction?.discount || 0) -
+                        (transaction?.shipping_cost || 0) -
+                        (transaction?.tax_total || 0) +
+                        promoDiscount +
+                        loyaltyDiscount +
+                        voucherDiscount
                     )}
                 </span>
             </div>

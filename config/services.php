@@ -59,4 +59,13 @@ return [
         'google_sheet_csv_url' => env('GOOGLE_SHEET_CATALOG_URL', 'https://docs.google.com/spreadsheets/d/1vv25vH3x2TSTOSvOOYXVzb-mIkp8g__LnZT7b90pdQM/export?format=csv&gid=1120260489'),
     ],
 
+    'rajaongkir' => [
+        'api_key' => env('RAJAONGKIR_API_KEY'),
+        'base_url' => env('RAJAONGKIR_BASE_URL', 'https://rajaongkir.komerce.id/api/v1'),
+        'origin_id' => env('RAJAONGKIR_ORIGIN_ID'),
+        'origin_label' => env('RAJAONGKIR_ORIGIN_LABEL'),
+        'default_weight' => env('RAJAONGKIR_DEFAULT_WEIGHT', 1000),
+        'enabled_couriers' => env('RAJAONGKIR_COURIERS', 'jne,jnt,sicepat,pos,tiki,anteraja'),
+    ],
+
 ];

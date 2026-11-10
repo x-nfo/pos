@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             PaymentSettingSeeder::class,
             SampleDataSeeder::class,
+            SizeChartSeeder::class,
             OperationalCoreSeeder::class,
             FeatureCoverageSeeder::class,
             DineInSettingsSeeder::class,

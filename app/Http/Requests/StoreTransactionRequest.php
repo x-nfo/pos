@@ -30,6 +30,13 @@ class StoreTransactionRequest extends FormRequest
             'customer_voucher_id' => ['nullable', 'integer', 'exists:customer_vouchers,id'],
             'discount' => ['nullable', 'numeric', 'min:0'],
             'shipping_cost' => ['nullable', 'numeric', 'min:0'],
+            'shipping_courier' => ['nullable', 'string', 'max:50'],
+            'shipping_service' => ['nullable', 'string', 'max:50'],
+            'shipping_etd' => ['nullable', 'string', 'max:50'],
+            'shipping_weight' => ['nullable', 'numeric', 'min:0'],
+            'shipping_destination_id' => ['nullable', 'integer'],
+            'shipping_destination_label' => ['nullable', 'string', 'max:255'],
+            'shipping_tracking_number' => ['nullable', 'string', 'max:100'],
             'redeem_points' => [
                 'nullable',
                 'numeric',

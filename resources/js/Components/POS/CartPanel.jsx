@@ -49,7 +49,7 @@ function CartItem({ item, pricingItem, onUpdateQty, onRemove, isRemoving }) {
             {/* Product Image */}
             <div className="w-14 h-14 rounded-lg bg-slate-200 dark:bg-slate-700 overflow-hidden flex-shrink-0">
                 <img
-                    src={getProductImageUrl(item.product?.image, true)}
+                    src={getProductImageUrl(item.product?.image || item.product?.parent?.image, true)}
                     alt={item.product?.title || "Produk"}
                     className="w-full h-full object-cover"
                     onError={(e) => {

@@ -216,9 +216,29 @@
                                 <td>Item</td>
                                 <td style="text-align: right;">{{ $transaction->details->count() }} unit</td>
                             </tr>
+                            @if ($transaction->shipping_courier)
                             <tr>
-                                <td style="padding-top: 15pt;" class="text-bold">Total</td>
-                                <td style="padding-top: 15pt; text-align: right;" class="text-bold">
+                                <td>Kurir</td>
+                                <td style="text-align: right; font-weight: bold; text-transform: uppercase;">
+                                    {{ $transaction->shipping_courier }} {{ $transaction->shipping_service ? '('.$transaction->shipping_service.')' : '' }}
+                                </td>
+                            </tr>
+                            @endif
+                            @if ($transaction->shipping_weight)
+                            <tr>
+                                <td>Berat</td>
+                                <td style="text-align: right;">{{ number_format($transaction->shipping_weight / 1000, 1) }} kg</td>
+                            </tr>
+                            @endif
+                            @if ($transaction->shipping_tracking_number)
+                            <tr>
+                                <td>No. Resi</td>
+                                <td style="text-align: right; font-weight: bold;">{{ $transaction->shipping_tracking_number }}</td>
+                            </tr>
+                            @endif
+                            <tr>
+                                <td style="padding-top: 6pt;" class="text-bold">Total</td>
+                                <td style="padding-top: 6pt; text-align: right;" class="text-bold">
                                     {{ $formatPrice($transaction->grand_total) }}</td>
                             </tr>
                         </table>

@@ -135,8 +135,9 @@ export default function StorefrontHeader({
                 <div className="flex items-center justify-between gap-3">
                     {/* 1. Single Store Logo & Name */}
                     <Link
-                        href="/katalog"
+                        href="/"
                         className="flex items-center gap-2.5 sm:gap-3 min-w-0 group"
+                        title="Kembali ke Beranda"
                     >
                         {store.logo ? (
                             <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white p-1 border border-white/20 shadow-xs shrink-0 flex items-center justify-center group-hover:scale-105 transition-transform">

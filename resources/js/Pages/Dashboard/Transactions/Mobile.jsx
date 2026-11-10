@@ -17,6 +17,7 @@ import { WALK_IN_CUSTOMER } from "@/Components/POS/CustomerSelect";
 import QuickAddProductModal from "@/Components/POS/QuickAddProductModal";
 import OfflineReceiptModal from "@/Components/POS/OfflineReceiptModal";
 import WarehouseSelect from "@/Components/POS/WarehouseSelect";
+import RajaOngkirModal from "@/Components/POS/RajaOngkirModal";
 import useBarcodeScanner from "@/Hooks/useBarcodeScanner";
 import { useHaptic } from "@/Hooks/useHaptic";
 import { useWebShare } from "@/Hooks/useWebShare";
@@ -104,6 +105,8 @@ export default function Mobile({
     const [redeemPointsInput, setRedeemPointsInput] = useState("");
     const [cashInput, setCashInput] = useState("");
     const [shippingInput, setShippingInput] = useState("");
+    const [shippingMeta, setShippingMeta] = useState(null);
+    const [showRajaOngkirModal, setShowRajaOngkirModal] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState(
         defaultPaymentGateway ?? "cash"
     );
@@ -140,6 +143,7 @@ export default function Mobile({
     const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
     const [quickAddInitialData, setQuickAddInitialData] = useState({});
     const [offlineReceiptData, setOfflineReceiptData] = useState(null);
+    const [variantModalProduct, setVariantModalProduct] = useState(null);
 
     const searchInputRef = useRef(null);
 
@@ -534,23 +538,83 @@ export default function Mobile({
         async (barcode) => {
             if (!barcode) return;
             const clean = String(barcode).trim();
+            const cleanLower = clean.toLowerCase();
+
+            // 1. Check if scanned barcode matches a specific variant hangtag in local productList
+            let matchedVariant = null;
+            for (const p of productList) {
+                if (p.has_variants && Array.isArray(p.variants)) {
+                    const foundV = p.variants.find(
+                        (v) => v.barcode?.toLowerCase() === cleanLower
+                    );
+                    if (foundV) {
+                        matchedVariant = foundV;
+                        break;
+                    }
+                }
+            }
+
+            if (matchedVariant) {
+                triggerHaptic("scan");
+                if (matchedVariant.stock > 0 || !navigator.onLine) {
+                    handleAddToCart(matchedVariant, null);
+                } else {
+                    toast.error(`${matchedVariant.title} stok habis`);
+                }
+                return;
+            }
+
+            // 2. Check if scanned barcode matches a product (master article or regular product) in local productList
             const product = productList.find(
                 (p) =>
-                    p.barcode?.toLowerCase() === clean.toLowerCase() ||
-                    p.units?.some((u) => u.barcode?.toLowerCase() === clean.toLowerCase())
+                    p.barcode?.toLowerCase() === cleanLower ||
+                    p.units?.some((u) => u.barcode?.toLowerCase() === cleanLower)
             );
 
             if (product) {
                 triggerHaptic("scan");
+                // If master product has variants, open variant selector modal so cashier selects color & size
+                if (product.has_variants && Array.isArray(product.variants) && product.variants.length > 0) {
+                    setVariantModalProduct(product);
+                    toast.info(`Pilih warna dan ukuran untuk ${product.title}`);
+                    return;
+                }
+
                 if (product.stock > 0 || !navigator.onLine) {
                     const matchedUnit = product.units?.find(
-                        (u) => u.barcode?.toLowerCase() === clean.toLowerCase()
+                        (u) => u.barcode?.toLowerCase() === cleanLower
                     );
                     handleAddToCart(product, matchedUnit || null);
                 } else {
                     toast.error(`${product.title} stok habis`);
                 }
                 return;
+            }
+
+            // 3. Fallback: Search online via transactions.searchProduct API if online
+            if (navigator.onLine) {
+                try {
+                    const searchRes = await axios.post(route("transactions.searchProduct"), {
+                        barcode: clean,
+                    });
+                    if (searchRes.data?.success && searchRes.data?.data) {
+                        const sProd = searchRes.data.data;
+                        triggerHaptic("scan");
+                        if (sProd.has_variants) {
+                            setVariantModalProduct(sProd);
+                            toast.info(`Pilih warna dan ukuran untuk ${sProd.title}`);
+                            return;
+                        }
+                        if (sProd.stock > 0) {
+                            handleAddToCart(sProd, null);
+                        } else {
+                            toast.error(`${sProd.title} stok habis`);
+                        }
+                        return;
+                    }
+                } catch (_) {
+                    // proceed to lookup catalog
+                }
             }
 
             if (!navigator.onLine) {
@@ -691,6 +755,12 @@ export default function Mobile({
                     ? selectedVoucherId || null
                     : null,
                 shipping_cost: shipping,
+                shipping_courier: shippingMeta?.courier ?? null,
+                shipping_service: shippingMeta?.service ?? null,
+                shipping_etd: shippingMeta?.etd ?? null,
+                shipping_weight: shippingMeta?.weight ?? null,
+                shipping_destination_id: shippingMeta?.destination_id ?? null,
+                shipping_destination_label: shippingMeta?.destination_label ?? null,
                 grand_total: payable,
                 cash: isCash ? cash : payable,
                 payment_gateway: payLater ? null : isCash ? null : paymentMethod,
@@ -720,6 +790,7 @@ export default function Mobile({
                 setRedeemPointsInput("");
                 setCashInput("");
                 setShippingInput("");
+                setShippingMeta(null);
                 setSelectedCustomer(WALK_IN_CUSTOMER);
                 setPricingPreview(initialPricingPreview);
                 setIsPaymentSheetOpen(false);
@@ -743,6 +814,12 @@ export default function Mobile({
                     ? selectedVoucherId || null
                     : null,
                 shipping_cost: shipping,
+                shipping_courier: shippingMeta?.courier ?? null,
+                shipping_service: shippingMeta?.service ?? null,
+                shipping_etd: shippingMeta?.etd ?? null,
+                shipping_weight: shippingMeta?.weight ?? null,
+                shipping_destination_id: shippingMeta?.destination_id ?? null,
+                shipping_destination_label: shippingMeta?.destination_label ?? null,
                 grand_total: payable,
                 cash: isCash ? cash : payable,
                 change: isCash ? Math.max(cash - payable, 0) : 0,
@@ -760,6 +837,7 @@ export default function Mobile({
                     setRedeemPointsInput("");
                     setCashInput("");
                     setShippingInput("");
+                    setShippingMeta(null);
                     setSelectedCustomer(WALK_IN_CUSTOMER);
                     setSelectedBankAccount(null);
                     setSelectedVoucherId("");
@@ -846,6 +924,8 @@ export default function Mobile({
                                 addingProductId={addingProductId}
                                 searchInputRef={searchInputRef}
                                 onAddNewProduct={() => router.get(route('products.create'))}
+                                variantModalProduct={variantModalProduct}
+                                onVariantModalProductChange={setVariantModalProduct}
                             />
 
                             {/* Floating Cart Bar */}
@@ -877,6 +957,12 @@ export default function Mobile({
                             onDiscountChange={setDiscountInput}
                             shippingInput={shippingInput}
                             onShippingChange={setShippingInput}
+                            shippingMeta={shippingMeta}
+                            onOpenRajaOngkir={() => setShowRajaOngkirModal(true)}
+                            onClearShippingMeta={() => {
+                                setShippingMeta(null);
+                                setShippingInput("");
+                            }}
                             redeemPointsInput={redeemPointsInput}
                             onRedeemPointsChange={setRedeemPointsInput}
                             selectedVoucherId={selectedVoucherId}
@@ -1008,6 +1094,27 @@ export default function Mobile({
                         </div>
                     </div>
                 )}
+
+                {/* RajaOngkir Shipping Modal */}
+                <RajaOngkirModal
+                    isOpen={showRajaOngkirModal}
+                    onClose={() => setShowRajaOngkirModal(false)}
+                    onSelectShipping={(ship) => {
+                        setShippingInput(String(ship.cost));
+                        setShippingMeta(ship);
+                    }}
+                    initialWeight={activeCarts.reduce(
+                        (acc, c) => acc + c.qty * (c.product?.weight || 1000),
+                        0
+                    )}
+                    customerLocation={[
+                        selectedCustomer?.address,
+                        selectedCustomer?.district_name,
+                        selectedCustomer?.regency_name,
+                    ]
+                        .filter(Boolean)
+                        .join(", ")}
+                />
             </div>
         </div>
     );

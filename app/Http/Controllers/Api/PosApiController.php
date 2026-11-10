@@ -276,6 +276,10 @@ class PosApiController extends Controller
             return $this->notFound('Produk tidak ditemukan.');
         }
 
+        if ($product->has_variants) {
+            return $this->error('Produk ini memiliki varian pakaian. Silakan pilih warna dan ukuran.', 422);
+        }
+
         if ($product->is_composite) {
             $product->load('components');
             foreach ($product->components as $component) {

@@ -324,17 +324,60 @@ class TransactionController extends Controller
         $warehouseId = $activeShift?->warehouse_id;
         $barcode = (string) $request->barcode;
 
-        $product = Product::with(['units', 'warehouses', 'parent'])
+        $product = Product::with([
+            'units',
+            'warehouses',
+            'parent',
+            'variants' => fn ($vq) => $vq->with('warehouses'),
+        ])
             ->where(function ($q) use ($barcode) {
                 $q->where('barcode', $barcode)
                     ->orWhereHas('units', fn ($uq) => $uq->where('product_units.barcode', $barcode));
             })
             ->when($warehouseId, function ($q) use ($warehouseId) {
-                $q->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $warehouseId));
+                $q->where(function ($sq) use ($warehouseId) {
+                    $sq->whereHas('warehouses', fn ($w) => $w->where('product_warehouse.warehouse_id', $warehouseId))
+                        ->orWhere(function ($vq) use ($warehouseId) {
+                            $vq->where('has_variants', true)
+                                ->whereHas('variants.warehouses', fn ($vw) => $vw->where('product_warehouse.warehouse_id', $warehouseId));
+                        });
+                });
             })
             ->first();
 
         if ($product) {
+            if ($product->has_variants) {
+                $variants = $product->variants->map(function ($variant) use ($warehouseId) {
+                    $vStock = $warehouseId
+                        ? (int) ($variant->warehouses->firstWhere('id', $warehouseId)?->pivot->stock ?? 0)
+                        : (int) $variant->stock;
+
+                    return [
+                        'id' => $variant->id,
+                        'parent_id' => $variant->parent_id,
+                        'barcode' => $variant->barcode,
+                        'title' => $variant->title,
+                        'sell_price' => (int) $variant->sell_price,
+                        'buy_price' => (int) $variant->buy_price,
+                        'stock' => $vStock,
+                        'variant_attributes' => $variant->variant_attributes,
+                        'image' => $variant->image,
+                    ];
+                })->values()->toArray();
+
+                $totalVariantStock = collect($variants)->sum('stock');
+
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        ...$product->toArray(),
+                        'stock' => $totalVariantStock,
+                        'variants' => $variants,
+                        'scanned_unit_id' => null,
+                    ],
+                ]);
+            }
+
             $pivotStock = $warehouseId
                 ? (int) ($product->warehouses()->where('warehouse_id', $warehouseId)->first()?->pivot->stock ?? 0)
                 : (int) $product->stock;
@@ -458,6 +501,10 @@ class TransactionController extends Controller
 
         if (! $product) {
             return redirect()->back()->with('error', 'Product not found.');
+        }
+
+        if ($product->has_variants) {
+            return redirect()->back()->with('error', 'Produk ini memiliki varian pakaian. Silakan pilih warna dan ukuran.');
         }
 
         // Composite: check component stock

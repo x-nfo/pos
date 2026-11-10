@@ -20,6 +20,9 @@ class CustomerVoucher extends Model
         'discount_type',
         'discount_value',
         'minimum_order',
+        'max_discount',
+        'usage_limit',
+        'times_used',
         'is_active',
         'is_used',
         'starts_at',
@@ -34,6 +37,9 @@ class CustomerVoucher extends Model
         'customer_id' => 'integer',
         'discount_value' => 'float',
         'minimum_order' => 'integer',
+        'max_discount' => 'integer',
+        'usage_limit' => 'integer',
+        'times_used' => 'integer',
         'is_active' => 'boolean',
         'is_used' => 'boolean',
         'starts_at' => 'datetime',
@@ -58,6 +64,29 @@ class CustomerVoucher extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function isGeneral(): bool
+    {
+        return is_null($this->customer_id);
+    }
+
+    public function calculateDiscount(int $subtotal): int
+    {
+        if ($this->minimum_order > 0 && $subtotal < $this->minimum_order) {
+            return 0;
+        }
+
+        if ($this->discount_type === self::TYPE_PERCENTAGE) {
+            $discount = (int) round($subtotal * ($this->discount_value / 100));
+            if ($this->max_discount !== null && $this->max_discount > 0) {
+                $discount = min($discount, (int) $this->max_discount);
+            }
+        } else {
+            $discount = (int) round((float) $this->discount_value);
+        }
+
+        return min($subtotal, max(0, $discount));
+    }
+
     public function currentStatusLabel(): string
     {
         if ($this->is_used) {
@@ -66,6 +95,10 @@ class CustomerVoucher extends Model
 
         if (! $this->is_active) {
             return 'inactive';
+        }
+
+        if ($this->usage_limit !== null && $this->times_used >= $this->usage_limit) {
+            return 'exhausted';
         }
 
         if ($this->starts_at && $this->starts_at->isFuture()) {

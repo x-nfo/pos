@@ -47,6 +47,7 @@ function ProductCard({
     canUpdate,
     canDelete,
     selectedWarehouseName,
+    onViewVariants,
 }) {
     const lowStock = product.min_stock > 0
         ? product.stock > 0 && product.stock <= product.min_stock
@@ -55,11 +56,10 @@ function ProductCard({
 
     return (
         <div
-            className={`group bg-white dark:bg-slate-900 rounded-2xl border overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col ${
-                isSelected
-                    ? "border-primary-500 ring-2 ring-primary-500/20"
-                    : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
-            }`}
+            className={`group bg-white dark:bg-slate-900 rounded-2xl border overflow-hidden hover:shadow-lg transition-all duration-200 flex flex-col ${isSelected
+                ? "border-primary-500 ring-2 ring-primary-500/20"
+                : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
+                }`}
         >
             {/* Product Image */}
             <div className="relative aspect-square bg-slate-100 dark:bg-slate-800 overflow-hidden">
@@ -137,6 +137,15 @@ function ProductCard({
                     <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 line-clamp-2 mb-1">
                         {product.title}
                     </h3>
+                    {product.has_variants && (
+                        <button
+                            type="button"
+                            onClick={() => onViewVariants && onViewVariants(product)}
+                            className="inline-flex items-center gap-1 mb-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-800 hover:bg-primary-100 transition-colors cursor-pointer"
+                        >
+                            👗 {product.variants?.length || 0} Varian
+                        </button>
+                    )}
                     {(product.barcode || product.sku) && (
                         <div className="space-y-0.5 mb-2">
                             {product.barcode && (
@@ -183,6 +192,7 @@ export default function Index({ products, warehouses = [], filters = {} }) {
     const [showBarcodeModal, setShowBarcodeModal] = useState(false);
     const [singleProductBarcode, setSingleProductBarcode] = useState(null);
     const [selectedProducts, setSelectedProducts] = useState([]);
+    const [viewingVariantsProduct, setViewingVariantsProduct] = useState(null);
     const canCreateProducts = can("products-create");
     const canEditProducts = can("products-edit");
     const canDeleteProducts = can("products-delete");
@@ -380,7 +390,7 @@ export default function Index({ products, warehouses = [], filters = {} }) {
                             type="checkbox"
                             checked={
                                 selectedProducts.length ===
-                                    products.data.length &&
+                                products.data.length &&
                                 products.data.length > 0
                             }
                             onChange={toggleSelectAll}
@@ -405,22 +415,20 @@ export default function Index({ products, warehouses = [], filters = {} }) {
                     <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
                         <button
                             onClick={() => setViewMode("grid")}
-                            className={`p-2 rounded-lg transition-colors ${
-                                viewMode === "grid"
-                                    ? "bg-white text-primary-600 shadow-xs dark:bg-slate-700 dark:text-primary-400 font-bold"
-                                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                            }`}
+                            className={`p-2 rounded-lg transition-colors ${viewMode === "grid"
+                                ? "bg-white text-primary-600 shadow-xs dark:bg-slate-700 dark:text-primary-400 font-bold"
+                                : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                }`}
                             title="Grid View"
                         >
                             <IconLayoutGrid size={18} />
                         </button>
                         <button
                             onClick={() => setViewMode("list")}
-                            className={`p-2 rounded-lg transition-colors ${
-                                viewMode === "list"
-                                    ? "bg-white text-primary-600 shadow-xs dark:bg-slate-700 dark:text-primary-400 font-bold"
-                                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                            }`}
+                            className={`p-2 rounded-lg transition-colors ${viewMode === "list"
+                                ? "bg-white text-primary-600 shadow-xs dark:bg-slate-700 dark:text-primary-400 font-bold"
+                                : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                }`}
                             title="List View"
                         >
                             <IconList size={18} />
@@ -446,6 +454,7 @@ export default function Index({ products, warehouses = [], filters = {} }) {
                                 canUpdate={canEditProducts}
                                 canDelete={canDeleteProducts}
                                 selectedWarehouseName={selectedWarehouseName}
+                                onViewVariants={setViewingVariantsProduct}
                             />
                         ))}
                     </div>
@@ -471,13 +480,12 @@ export default function Index({ products, warehouses = [], filters = {} }) {
                                         subtitle={product.category?.name || "Tanpa Kategori"}
                                         badge={
                                             <span
-                                                className={`px-2 py-0.5 text-xs font-bold rounded-lg ${
-                                                    outOfStock
-                                                        ? "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400"
-                                                        : lowStock
+                                                className={`px-2 py-0.5 text-xs font-bold rounded-lg ${outOfStock
+                                                    ? "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400"
+                                                    : lowStock
                                                         ? "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400"
                                                         : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
-                                                }`}
+                                                    }`}
                                             >
                                                 {selectedWarehouseName ? `${selectedWarehouseName}: ` : "Total: "}
                                                 {product.stock}
@@ -505,19 +513,19 @@ export default function Index({ products, warehouses = [], filters = {} }) {
                                         actions={[
                                             canEditProducts
                                                 ? {
-                                                      label: "Edit",
-                                                      icon: <IconPencilCog size={15} />,
-                                                      onClick: () =>
-                                                          router.get(route("products.edit", product.id)),
-                                                  }
+                                                    label: "Edit",
+                                                    icon: <IconPencilCog size={15} />,
+                                                    onClick: () =>
+                                                        router.get(route("products.edit", product.id)),
+                                                }
                                                 : null,
                                             canDeleteProducts
                                                 ? {
-                                                      label: "Hapus",
-                                                      variant: "danger",
-                                                      icon: <IconTrash size={15} />,
-                                                      onClick: () => handleDelete(product.id),
-                                                  }
+                                                    label: "Hapus",
+                                                    variant: "danger",
+                                                    icon: <IconTrash size={15} />,
+                                                    onClick: () => handleDelete(product.id),
+                                                }
                                                 : null,
                                         ].filter(Boolean)}
                                     />
@@ -549,15 +557,15 @@ export default function Index({ products, warehouses = [], filters = {} }) {
                                                 <Table.Td className="text-center">
                                                     {++i +
                                                         (products.current_page - 1) *
-                                                            products.per_page}
+                                                        products.per_page}
                                                 </Table.Td>
                                                 <Table.Td>
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden flex-shrink-0">
                                                             <img
                                                                 src={getProductImageUrl(
-                                                                  product.image,
-                                                                  true
+                                                                    product.image,
+                                                                    true
                                                                 )}
                                                                 alt={product.title}
                                                                 className="w-full h-full object-cover"
@@ -571,9 +579,14 @@ export default function Index({ products, warehouses = [], filters = {} }) {
                                                                 {product.title}
                                                             </p>
                                                             {product.has_variants && (
-                                                                <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-800">
-                                                                    👗 {product.variants?.length || 0} Varian (Warna & Size)
-                                                                </span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setViewingVariantsProduct(product)}
+                                                                    className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-800 hover:bg-primary-100 dark:hover:bg-primary-900 transition-colors cursor-pointer"
+                                                                    title="Klik untuk melihat foto & detail varian"
+                                                                >
+                                                                    👗 {product.variants?.length || 0} Varian (Foto & Detail)
+                                                                </button>
                                                             )}
                                                             <div className="text-xs text-slate-500 dark:text-slate-400 space-y-0.5 mt-0.5">
                                                                 {product.barcode && (
@@ -601,13 +614,12 @@ export default function Index({ products, warehouses = [], filters = {} }) {
                                                     <div>
                                                         <div className="flex items-center gap-1.5">
                                                             <span
-                                                                className={`px-2.5 py-1 text-xs font-bold rounded-lg ${
-                                                                    product.stock === 0
-                                                                        ? "bg-danger-100 text-danger-700 dark:bg-danger-900/50 dark:text-danger-400"
-                                                                        : (product.min_stock > 0 ? product.stock <= product.min_stock : product.stock <= 5)
+                                                                className={`px-2.5 py-1 text-xs font-bold rounded-lg ${product.stock === 0
+                                                                    ? "bg-danger-100 text-danger-700 dark:bg-danger-900/50 dark:text-danger-400"
+                                                                    : (product.min_stock > 0 ? product.stock <= product.min_stock : product.stock <= 5)
                                                                         ? "bg-warning-100 text-warning-700 dark:bg-warning-900/50 dark:text-warning-400"
                                                                         : "bg-success-100 text-success-700 dark:bg-success-900/50 dark:text-success-400"
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 {selectedWarehouseName ? `Stok: ${product.stock}` : `Total: ${product.total_stock ?? product.stock}`}
                                                             </span>
@@ -620,11 +632,10 @@ export default function Index({ products, warehouses = [], filters = {} }) {
                                                                     <span
                                                                         key={ws.id}
                                                                         title={`${ws.name} (${ws.type === 'main' ? 'Utama' : 'Cabang'})`}
-                                                                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium border ${
-                                                                            String(ws.id) === String(filters.warehouse_id)
-                                                                                ? "border-primary-400 bg-primary-50 text-primary-800 dark:bg-primary-950/60 dark:text-primary-300 font-bold ring-1 ring-primary-500/20"
-                                                                                : "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300"
-                                                                        }`}
+                                                                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium border ${String(ws.id) === String(filters.warehouse_id)
+                                                                            ? "border-primary-400 bg-primary-50 text-primary-800 dark:bg-primary-950/60 dark:text-primary-300 font-bold ring-1 ring-primary-500/20"
+                                                                            : "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300"
+                                                                            }`}
                                                                     >
                                                                         <span className="font-mono text-[10px] font-bold text-slate-500 dark:text-slate-400">
                                                                             {ws.code}:
@@ -736,6 +747,7 @@ export default function Index({ products, warehouses = [], filters = {} }) {
                     setShowBarcodeModal(false);
                     setSingleProductBarcode(null);
                 }}
+                singleProduct={singleProductBarcode}
                 products={
                     singleProductBarcode
                         ? [singleProductBarcode]
@@ -781,14 +793,139 @@ export default function Index({ products, warehouses = [], filters = {} }) {
                         />
                     </div>
                     <div className="flex justify-end pt-2">
-                        <Button 
-                            type="submit" 
+                        <Button
+                            type="submit"
                             disabled={importing}
                             className="bg-primary-500 hover:bg-primary-600 text-white shadow-lg shadow-primary-500/30"
                             label={importing ? "Mengimport..." : "Import Produk"}
                         />
                     </div>
                 </form>
+            </Modal>
+
+            {/* View Product Variants Modal */}
+            <Modal
+                show={Boolean(viewingVariantsProduct)}
+                title={`Varian Produk: ${viewingVariantsProduct?.title || ""}`}
+                icon={<IconPackage size={20} />}
+                onClose={() => setViewingVariantsProduct(null)}
+                maxWidth="3xl"
+            >
+                <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+                    <div className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-700 overflow-hidden shrink-0 border border-slate-200 dark:border-slate-600">
+                                <img
+                                    src={getProductImageUrl(viewingVariantsProduct?.image, true)}
+                                    alt={viewingVariantsProduct?.title}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                                    {viewingVariantsProduct?.title}
+                                </h4>
+                                <p className="text-xs text-slate-500">
+                                    Total: {viewingVariantsProduct?.variants?.length || 0} varian · Stok: {viewingVariantsProduct?.stock || 0} pcs
+                                </p>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                handlePrintSingleBarcode(viewingVariantsProduct);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/30 dark:hover:bg-primary-900/50 text-primary-600 dark:text-primary-400 rounded-lg text-xs font-semibold transition-colors shrink-0 border border-primary-200 dark:border-primary-800"
+                            title="Cetak barcode/hangtag untuk seluruh varian produk ini"
+                        >
+                            <IconPrinter size={15} />
+                            <span>Cetak Semua Hangtag</span>
+                        </button>
+                    </div>
+
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                        <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+                            <thead className="bg-slate-50 dark:bg-slate-900/80 text-[11px] uppercase font-bold text-slate-500 border-b border-slate-200 dark:border-slate-700">
+                                <tr>
+                                    <th className="py-2.5 px-3 w-14 text-center">Foto</th>
+                                    <th className="py-2.5 px-3">Varian</th>
+                                    <th className="py-2.5 px-3">Barcode</th>
+                                    <th className="py-2.5 px-3">SKU</th>
+                                    <th className="py-2.5 px-3 text-right">Harga Jual</th>
+                                    <th className="py-2.5 px-3 text-center">Stok</th>
+                                    <th className="py-2.5 px-3 text-center w-16">Hangtag</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                {viewingVariantsProduct?.variants?.map((v) => (
+                                    <tr key={v.id || v.barcode} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                                        <td className="py-2 px-3 text-center">
+                                            <div className="w-9 h-9 mx-auto rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shrink-0">
+                                                <img
+                                                    src={getProductImageUrl(v.image || viewingVariantsProduct?.image, true)}
+                                                    alt={v.title}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                        </td>
+                                        <td className="py-2 px-3">
+                                            <div className="flex items-center gap-1.5">
+                                                {v.variant_attributes?.color_hex && (
+                                                    <span
+                                                        className="w-3 h-3 rounded-full border border-slate-300 shrink-0"
+                                                        style={{ backgroundColor: v.variant_attributes.color_hex }}
+                                                    />
+                                                )}
+                                                <span className="font-semibold text-slate-800 dark:text-slate-100">
+                                                    {v.variant_attributes?.color_name || "Varian"}
+                                                </span>
+                                                {v.variant_attributes?.size && (
+                                                    <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px]">
+                                                        {v.variant_attributes.size}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="py-2 px-3 font-mono text-[11px] text-slate-500">
+                                            {v.barcode || "-"}
+                                        </td>
+                                        <td className="py-2 px-3 font-mono text-[11px] text-slate-500">
+                                            {v.sku || "-"}
+                                        </td>
+                                        <td className="py-2 px-3 text-right font-semibold text-primary-600 dark:text-primary-400">
+                                            {formatCurrency(v.sell_price)}
+                                        </td>
+                                        <td className="py-2 px-3 text-center">
+                                            <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${v.stock <= 0
+                                                    ? "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400"
+                                                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                                }`}>
+                                                {v.stock} pcs
+                                            </span>
+                                        </td>
+                                        <td className="py-2 px-3 text-center">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    handlePrintSingleBarcode({
+                                                        ...v,
+                                                        has_variants: false,
+                                                        title: `${viewingVariantsProduct.title} - ${v.variant_label || [v.variant_attributes?.color_name, v.variant_attributes?.size].filter(Boolean).join(" ") || v.title}`,
+                                                    });
+                                                }}
+                                                className="p-1.5 rounded-lg text-slate-500 hover:text-primary-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                                title="Cetak Hangtag Varian Ini"
+                                            >
+                                                <IconPrinter size={15} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </Modal>
         </>
     );

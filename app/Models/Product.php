@@ -23,6 +23,7 @@ class Product extends Model
         'deleted_at' => 'datetime',
         'buy_price' => 'integer',
         'sell_price' => 'integer',
+        'weight' => 'integer',
         'tax_rate' => 'decimal:2',
         'min_stock' => 'integer',
         'max_stock' => 'integer',
@@ -35,6 +36,7 @@ class Product extends Model
     protected $fillable = [
         'parent_id',
         'has_variants',
+        'variant_display_type',
         'variant_attributes',
         'image',
         'barcode',
@@ -43,7 +45,9 @@ class Product extends Model
         'description',
         'buy_price',
         'sell_price',
+        'weight',
         'category_id',
+        'size_chart_id',
         'tax_type',
         'tax_rate',
         'min_stock',
@@ -107,6 +111,16 @@ class Product extends Model
     public function category()
     {
         return $this->belongsTo(Category::class)->withTrashed();
+    }
+
+    public function sizeChart(): BelongsTo
+    {
+        return $this->belongsTo(SizeChart::class);
+    }
+
+    public function getResolvedSizeChartAttribute(): ?SizeChart
+    {
+        return SizeChart::resolveForProduct($this);
     }
 
     public function parent(): BelongsTo
@@ -293,6 +307,13 @@ class Product extends Model
                 if ($this->_pending_stock !== null) {
                     return $this->_pending_stock;
                 }
+                if ($this->has_variants) {
+                    if ($this->relationLoaded('variants')) {
+                        return (int) $this->variants->sum(fn ($v) => $v->stock);
+                    }
+
+                    return (int) $this->variants()->get()->sum(fn ($v) => $v->stock);
+                }
                 if ($this->relationLoaded('warehouses')) {
                     return (int) $this->warehouses->sum(fn ($w) => $w->pivot->stock ?? 0);
                 }
@@ -358,6 +379,17 @@ class Product extends Model
                 }
 
                 return asset('/storage/products/'.ltrim($value, '/'));
+            },
+            set: function ($value) {
+                if (! $value) {
+                    return null;
+                }
+
+                if (is_string($value) && str_contains($value, '/storage/products/')) {
+                    return basename(parse_url($value, PHP_URL_PATH));
+                }
+
+                return $value;
             }
         );
     }

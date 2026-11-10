@@ -13,13 +13,14 @@ import {
 } from "@tabler/icons-react";
 import { getCategoryImageUrl } from "@/Utils/imageUrl";
 
-export default function Edit({ category }) {
+export default function Edit({ category, sizeCharts = [] }) {
     const { errors } = usePage().props;
 
     const { data, setData, post, processing } = useForm({
         id: category.id,
         name: category.name,
         description: category.description,
+        size_chart_id: category.size_chart_id || "",
         image: "",
         _method: "PUT",
     });
@@ -39,6 +40,7 @@ export default function Edit({ category }) {
     const submit = (e) => {
         e.preventDefault();
         post(route("categories.update", category.id), {
+            forceFormData: true,
             onSuccess: () => toast.success("Kategori berhasil diperbarui"),
             onError: () => toast.error("Gagal memperbarui kategori"),
         });
@@ -105,6 +107,26 @@ export default function Edit({ category }) {
                                     value={data.description}
                                     rows={4}
                                 />
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                                        Default Panduan Ukuran (Size Chart)
+                                    </label>
+                                    <select
+                                        value={data.size_chart_id || ""}
+                                        onChange={(e) => setData("size_chart_id", e.target.value)}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 text-sm"
+                                    >
+                                        <option value="">— Tidak Ada / Manual —</option>
+                                        {sizeCharts.map((sc) => (
+                                            <option key={sc.id} value={sc.id}>
+                                                {sc.name} ({sc.code})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="text-[11px] text-slate-400 mt-1">
+                                        Produk di kategori ini otomatis mewarisi panduan ukuran ini kecuali diatur berbeda per produk.
+                                    </p>
+                                </div>
                             </div>
                         </div>
 

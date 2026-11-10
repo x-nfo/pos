@@ -53,6 +53,10 @@ class PermissionSeeder extends Seeder
         $create('units-create');
         $create('units-edit');
         $create('units-delete');
+        $create('size-charts-access');
+        $create('size-charts-create');
+        $create('size-charts-edit');
+        $create('size-charts-delete');
         $create('pricing-rules-access');
         $create('pricing-rules-create');
         $create('pricing-rules-update');
@@ -196,6 +200,11 @@ class PermissionSeeder extends Seeder
         // sales target settings
         $create('target-settings-access');
         $create('target-settings-update');
+
+        // shipping & rajaongkir permissions
+        $create('shipping-settings-access');
+        $create('shipping-settings-update');
+        $create('shipping-rates-access');
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }

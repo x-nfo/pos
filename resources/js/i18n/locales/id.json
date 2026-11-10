@@ -220,6 +220,8 @@
             "whatsApp": "WhatsApp",
             "printers": "Pengaturan Printer",
             "branding": "Branding & Tampilan",
+            "shippingCalculator": "Cek Ongkir (RajaOngkir)",
+            "shippingSettings": "Pengiriman (RajaOngkir)",
             "searchPlaceholder": "Cari menu... (/)",
             "noMenuFound": "Menu tidak ditemukan"
         },

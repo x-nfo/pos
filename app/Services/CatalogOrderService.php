@@ -5,10 +5,12 @@ namespace App\Services;
 use App\Models\Cart;
 use App\Models\CatalogOrder;
 use App\Models\Customer;
+use App\Models\CustomerVoucher;
 use App\Models\Product;
 use App\Models\ProductWarehouse;
 use App\Models\Warehouse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class CatalogOrderService
@@ -78,6 +80,12 @@ class CatalogOrderService
                 $product = $products->firstWhere('id', $item['product_id']);
                 if (! $product) {
                     continue;
+                }
+
+                if ($product->has_variants) {
+                    throw ValidationException::withMessages([
+                        'items' => "Produk {$product->title} memiliki varian warna/ukuran. Silakan pilih varian spesifik.",
+                    ]);
                 }
 
                 $branchStock = (int) ($product->warehouses->firstWhere('id', $warehouseId)?->pivot->stock ?? 0);
@@ -152,8 +160,48 @@ class CatalogOrderService
                 ]);
             }
 
+            // Calculate coupon discount if coupon_code is provided
+            $couponCode = trim((string) ($data['coupon_code'] ?? ''));
+            $discountAmount = 0;
+            $appliedVoucher = null;
+
+            if (! empty($couponCode)) {
+                $voucher = CustomerVoucher::where('code', $couponCode)
+                    ->orWhereRaw('UPPER(code) = ?', [strtoupper($couponCode)])
+                    ->first();
+
+                if ($voucher) {
+                    $now = now();
+                    $isTimeValid = (! $voucher->starts_at || $voucher->starts_at->lte($now)) &&
+                                   (! $voucher->expires_at || $voucher->expires_at->gte($now));
+                    $isQuotaValid = $voucher->usage_limit === null || $voucher->times_used < $voucher->usage_limit;
+                    $isNotUsed = ! $voucher->is_used;
+                    $isMinOrderMet = $subtotal >= (int) $voucher->minimum_order;
+
+                    if ($voucher->is_active && $isTimeValid && $isQuotaValid && $isNotUsed && $isMinOrderMet) {
+                        $canApply = true;
+                        if ($voucher->customer_id) {
+                            $phone = trim((string) ($data['customer_phone'] ?? ''));
+                            $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+                            $custPhone = preg_replace('/[^0-9]/', '', (string) $voucher->customer?->no_telp);
+                            if (empty($cleanPhone) || empty($custPhone) || (
+                                ! str_ends_with($cleanPhone, substr($custPhone, -8)) &&
+                                ! str_ends_with($custPhone, substr($cleanPhone, -8))
+                            )) {
+                                $canApply = false;
+                            }
+                        }
+
+                        if ($canApply) {
+                            $discountAmount = $voucher->calculateDiscount($subtotal);
+                            $appliedVoucher = $voucher;
+                        }
+                    }
+                }
+            }
+
             $shippingCost = (int) ($data['shipping_cost'] ?? 0);
-            $grandTotal = $subtotal + $shippingCost;
+            $grandTotal = max(0, $subtotal - $discountAmount) + $shippingCost;
 
             $customer = $this->findOrCreateCustomer(
                 $data['customer_name'],
@@ -165,19 +213,45 @@ class CatalogOrderService
             $order = CatalogOrder::create([
                 'warehouse_id' => $warehouseId,
                 'customer_id' => $customerId,
-                'customer_name' => trim($data['customer_name']),
-                'customer_phone' => trim($data['customer_phone'] ?? ''),
+                'customer_name' => $this->sanitizePlainText($data['customer_name']),
+                'customer_phone' => $this->sanitizePlainText($data['customer_phone'] ?? ''),
                 'delivery_method' => $data['delivery_method'] ?? CatalogOrder::DELIVERY_PICKUP,
-                'delivery_address' => $data['delivery_method'] === CatalogOrder::DELIVERY_SHIPPING ? trim($data['delivery_address'] ?? '') : null,
-                'notes' => trim($data['notes'] ?? ''),
+                'delivery_address' => $data['delivery_method'] === CatalogOrder::DELIVERY_SHIPPING ? $this->sanitizePlainText($data['delivery_address'] ?? '') : null,
+                'shipping_courier' => ! empty($data['shipping_courier']) ? $this->sanitizePlainText($data['shipping_courier']) : null,
+                'shipping_service' => ! empty($data['shipping_service']) ? $this->sanitizePlainText($data['shipping_service']) : null,
+                'shipping_etd' => ! empty($data['shipping_etd']) ? $this->sanitizePlainText($data['shipping_etd']) : null,
+                'shipping_weight' => isset($data['shipping_weight']) ? (int) $data['shipping_weight'] : null,
+                'shipping_destination_id' => isset($data['shipping_destination_id']) ? (int) $data['shipping_destination_id'] : null,
+                'shipping_destination_label' => ! empty($data['shipping_destination_label']) ? $this->sanitizePlainText($data['shipping_destination_label']) : null,
+                'notes' => $this->sanitizePlainText($data['notes'] ?? ''),
                 'subtotal' => $subtotal,
+                'customer_voucher_id' => $appliedVoucher?->id,
+                'coupon_code' => $appliedVoucher?->code ?? (! empty($couponCode) && $discountAmount > 0 ? strtoupper((string) $this->sanitizePlainText($couponCode)) : null),
+                'discount_amount' => $discountAmount,
                 'shipping_cost' => $shippingCost,
                 'grand_total' => $grandTotal,
+                'payment_method' => $data['payment_method'] ?? 'bank_transfer',
+                'bank_account_id' => ! empty($data['bank_account_id']) ? (int) $data['bank_account_id'] : null,
+                'payment_proof' => $data['payment_proof'] ?? null,
+                'payment_proof_uploaded_at' => $data['payment_proof_uploaded_at'] ?? (! empty($data['payment_proof']) ? now() : null),
                 'status' => CatalogOrder::STATUS_SUBMITTED,
             ]);
 
             foreach ($orderItems as $item) {
+                if (isset($item['note'])) {
+                    $item['note'] = $this->sanitizePlainText($item['note']);
+                }
                 $order->items()->create($item);
+            }
+
+            if ($appliedVoucher) {
+                $appliedVoucher->increment('times_used');
+                if ($appliedVoucher->customer_id) {
+                    $appliedVoucher->update([
+                        'is_used' => true,
+                        'used_at' => now(),
+                    ]);
+                }
             }
 
             $this->auditLogService->log(
@@ -187,8 +261,41 @@ class CatalogOrderService
                 description: "Pesanan online baru {$order->order_number} dibuat oleh {$order->customer_name}",
             );
 
-            return $order->load(['items.product', 'warehouse']);
+            return $order->load(['items.product', 'warehouse', 'bankAccount', 'customerVoucher']);
         });
+    }
+
+    /**
+     * Update payment proof for an existing order
+     */
+    public function updatePaymentProof(CatalogOrder $order, string $filePath, ?int $bankAccountId = null): CatalogOrder
+    {
+        $oldPath = $order->payment_proof;
+        $disk = config('filesystems.payment_proof_disk', 'local');
+
+        // Best practice e-commerce: Hapus file lama jika customer mengunggah ulang bukti transfer
+        if ($oldPath && $oldPath !== $filePath) {
+            if (Storage::disk($disk)->exists($oldPath)) {
+                Storage::disk($disk)->delete($oldPath);
+            } elseif (Storage::disk('public')->exists($oldPath)) {
+                Storage::disk('public')->delete($oldPath);
+            }
+        }
+
+        $order->update([
+            'payment_proof' => $filePath,
+            'payment_proof_uploaded_at' => now(),
+            'bank_account_id' => $bankAccountId ?: $order->bank_account_id,
+        ]);
+
+        $this->auditLogService->log(
+            event: 'catalog_order.payment_proof_uploaded',
+            module: 'catalog',
+            auditable: $order,
+            description: "Bukti transfer diunggah untuk pesanan {$order->order_number}",
+        );
+
+        return $order->load(['items.product', 'warehouse', 'bankAccount']);
     }
 
     /**
@@ -367,6 +474,22 @@ class CatalogOrderService
                 ->orWhere('catalog_order_id', $order->id)
                 ->delete();
 
+            // Restore coupon usage if order had a coupon
+            if ($order->customer_voucher_id) {
+                $voucher = CustomerVoucher::find($order->customer_voucher_id);
+                if ($voucher) {
+                    if ($voucher->times_used > 0) {
+                        $voucher->decrement('times_used');
+                    }
+                    if ($voucher->customer_id) {
+                        $voucher->update([
+                            'is_used' => false,
+                            'used_at' => null,
+                        ]);
+                    }
+                }
+            }
+
             $order->update([
                 'status' => CatalogOrder::STATUS_CANCELLED,
                 'cancellation_reason' => $reason,
@@ -437,7 +560,7 @@ class CatalogOrderService
     public function findOrCreateCustomer(string $name, ?string $phone, ?string $address = null): ?Customer
     {
         $cleanPhone = preg_replace('/[^0-9]/', '', (string) $phone);
-        $trimmedName = trim($name);
+        $trimmedName = $this->sanitizePlainText($name) ?: '';
 
         if (! $cleanPhone && empty($trimmedName)) {
             return null;
@@ -465,8 +588,9 @@ class CatalogOrderService
 
         if ($customer) {
             // Update address if missing on existing customer
-            if ((empty($customer->address) || $customer->address === '-') && ! empty(trim($address ?? ''))) {
-                $customer->update(['address' => trim($address)]);
+            $cleanAddress = $this->sanitizePlainText($address);
+            if ((empty($customer->address) || $customer->address === '-') && ! empty($cleanAddress)) {
+                $customer->update(['address' => $cleanAddress]);
             }
 
             return $customer;
@@ -475,7 +599,31 @@ class CatalogOrderService
         return Customer::create([
             'name' => $trimmedName ?: 'Pelanggan Online',
             'no_telp' => (int) ($formattedPhone ?: ($cleanPhone ?: 0)),
-            'address' => trim($address ?? '') ?: '-',
+            'address' => $this->sanitizePlainText($address) ?: '-',
         ]);
+    }
+
+    /**
+     * Sanitize user text input by stripping tags, scripts, styles, control characters, and null bytes
+     */
+    public function sanitizePlainText(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        // Strip script, style, and iframe blocks completely including inner content
+        $cleaned = preg_replace('#<script\b[^>]*>(.*?)</script>#is', '', $value);
+        $cleaned = preg_replace('#<style\b[^>]*>(.*?)</style>#is', '', (string) $cleaned);
+        $cleaned = preg_replace('#<iframe\b[^>]*>(.*?)</iframe>#is', '', (string) $cleaned);
+
+        // Strip any remaining HTML tags
+        $cleaned = strip_tags((string) $cleaned);
+
+        // Normalize multiple spaces/newlines and strip null bytes
+        $cleaned = str_replace("\0", '', (string) $cleaned);
+        $cleaned = preg_replace("/[\r\n]{3,}/", "\n\n", (string) $cleaned);
+
+        return trim((string) $cleaned);
     }
 }

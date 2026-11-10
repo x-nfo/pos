@@ -11,8 +11,8 @@ import { getProductImageUrl } from "@/Utils/imageUrl";
 export default function FashionVariantSelectorModal({
     isOpen = false,
     product = null,
-    onClose = () => {},
-    onSelectVariant = () => {},
+    onClose = () => { },
+    onSelectVariant = () => { },
     isAdding = false,
 }) {
     const variants = product?.variants || [];
@@ -41,17 +41,37 @@ export default function FashionVariantSelectorModal({
         }
     }, [isOpen, product]);
 
-    // Available sizes for currently selected color
+    // Available sizes for currently selected color (Deduplicated by size)
     const availableSizesForColor = useMemo(() => {
         if (!selectedColor) return [];
-        return variants
+
+        const sizeMap = new Map();
+        variants
             .filter((v) => (v.variant_attributes?.color_name || "Default") === selectedColor)
-            .map((v) => ({
-                size: v.variant_attributes?.size || "All Size",
-                stock: v.stock || 0,
-                price: v.sell_price || product?.sell_price || 0,
-                variant: v,
-            }));
+            .forEach((v) => {
+                const sName = v.variant_attributes?.size || "All Size";
+                const vStock = Number(v.stock) || 0;
+                const vPrice = Number(v.sell_price || product?.sell_price || 0);
+
+                if (!sizeMap.has(sName)) {
+                    sizeMap.set(sName, {
+                        size: sName,
+                        stock: vStock,
+                        price: vPrice,
+                        variant: v,
+                    });
+                } else {
+                    const existing = sizeMap.get(sName);
+                    existing.stock += vStock;
+                    // Prefer variant with stock > 0 as active selection target
+                    if ((existing.variant?.stock || 0) <= 0 && vStock > 0) {
+                        existing.variant = v;
+                        existing.price = vPrice;
+                    }
+                }
+            });
+
+        return Array.from(sizeMap.values());
     }, [selectedColor, variants, product]);
 
     // Current selected variant object
@@ -59,6 +79,20 @@ export default function FashionVariantSelectorModal({
         if (!selectedColor || !selectedSize) return null;
         return availableSizesForColor.find((s) => s.size === selectedSize)?.variant || null;
     }, [selectedColor, selectedSize, availableSizesForColor]);
+
+    // Active image: Row-selected variant -> Color variant -> Master product
+    const activeModalImage = useMemo(() => {
+        if (currentVariantItem?.image) {
+            return currentVariantItem.image;
+        }
+        if (selectedColor) {
+            const colorVariant = variants.find(
+                (v) => (v.variant_attributes?.color_name || "Default") === selectedColor && v.image
+            );
+            if (colorVariant?.image) return colorVariant.image;
+        }
+        return product?.image;
+    }, [currentVariantItem, selectedColor, variants, product]);
 
     if (!isOpen || !product) return null;
 
@@ -83,9 +117,9 @@ export default function FashionVariantSelectorModal({
                     <div className="flex items-center gap-3 min-w-0">
                         <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden flex-shrink-0 border border-slate-200 dark:border-slate-700">
                             <img
-                                src={getProductImageUrl(product.image, true)}
+                                src={getProductImageUrl(activeModalImage, true)}
                                 alt={product.title}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover transition-all duration-200"
                             />
                         </div>
                         <div className="min-w-0">
@@ -117,6 +151,9 @@ export default function FashionVariantSelectorModal({
                         <div className="flex flex-wrap gap-2">
                             {availableColors.map((c) => {
                                 const isSelected = selectedColor === c.name;
+                                const colorVariantImage = variants.find(
+                                    (v) => (v.variant_attributes?.color_name || "Default") === c.name && v.image
+                                )?.image;
                                 return (
                                     <button
                                         key={c.name}
@@ -125,16 +162,23 @@ export default function FashionVariantSelectorModal({
                                             setSelectedColor(c.name);
                                             setSelectedSize(null);
                                         }}
-                                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
-                                            isSelected
+                                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${isSelected
                                                 ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900 dark:border-white shadow-md scale-105"
                                                 : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-400"
-                                        }`}
+                                            }`}
                                     >
-                                        <span
-                                            className="w-3.5 h-3.5 rounded-full border border-slate-300 flex-shrink-0"
-                                            style={{ backgroundColor: c.hex }}
-                                        />
+                                        {colorVariantImage ? (
+                                            <img
+                                                src={getProductImageUrl(colorVariantImage)}
+                                                alt={c.name}
+                                                className="w-4 h-4 rounded-full object-cover border border-slate-300 flex-shrink-0"
+                                            />
+                                        ) : (
+                                            <span
+                                                className="w-3.5 h-3.5 rounded-full border border-slate-300 flex-shrink-0"
+                                                style={{ backgroundColor: c.hex }}
+                                            />
+                                        )}
                                         {c.name}
                                         {isSelected && <IconCheck size={14} />}
                                     </button>
@@ -156,27 +200,25 @@ export default function FashionVariantSelectorModal({
                                 const isOutOfStock = s.stock <= 0;
                                 return (
                                     <button
-                                        key={s.size}
+                                        key={`${selectedColor}-${s.size}`}
                                         type="button"
                                         disabled={isOutOfStock}
                                         onClick={() => setSelectedSize(s.size)}
-                                        className={`flex flex-col items-center justify-center py-3 px-2 rounded-2xl border transition-all ${
-                                            isSelected
+                                        className={`flex flex-col items-center justify-center py-3 px-2 rounded-2xl border transition-all ${isSelected
                                                 ? "bg-primary-600 text-white border-primary-600 shadow-md scale-105"
                                                 : isOutOfStock
-                                                ? "bg-slate-50 dark:bg-slate-800/40 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed opacity-60"
-                                                : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-primary-400"
-                                        }`}
+                                                    ? "bg-slate-50 dark:bg-slate-800/40 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed opacity-60"
+                                                    : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-primary-400"
+                                            }`}
                                     >
                                         <span className="text-sm font-black tracking-wide">{s.size}</span>
                                         <span
-                                            className={`text-[10px] mt-0.5 font-medium ${
-                                                isSelected
+                                            className={`text-[10px] mt-0.5 font-medium ${isSelected
                                                     ? "text-primary-100"
                                                     : isOutOfStock
-                                                    ? "text-rose-500 font-bold"
-                                                    : "text-slate-400"
-                                            }`}
+                                                        ? "text-rose-500 font-bold"
+                                                        : "text-slate-400"
+                                                }`}
                                         >
                                             {isOutOfStock ? "Habis" : `Sisa ${s.stock}`}
                                         </span>
@@ -218,11 +260,10 @@ export default function FashionVariantSelectorModal({
                         type="button"
                         disabled={!currentVariantItem || isAdding}
                         onClick={handleConfirm}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md ${
-                            currentVariantItem && !isAdding
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md ${currentVariantItem && !isAdding
                                 ? "bg-primary-600 hover:bg-primary-700 text-white active:scale-95"
                                 : "bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed"
-                        }`}
+                            }`}
                     >
                         <IconShoppingCartPlus size={16} />
                         <span>Tambah ke Kasir</span>

@@ -17,6 +17,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Payment Proof Filesystem Disk
+    |--------------------------------------------------------------------------
+    |
+    | Private disk used for sensitive customer payment proofs / transfer slips.
+    | Defaults to "local" (storage/app) to prevent direct public access.
+    |
+    */
+    'payment_proof_disk' => env('PAYMENT_PROOF_DISK', 'local'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |

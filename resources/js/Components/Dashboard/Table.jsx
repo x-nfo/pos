@@ -127,6 +127,17 @@ const Td = ({ className = "", children, ...props }) => {
     );
 };
 
+const Tr = ({ className = "", children, ...props }) => {
+    return (
+        <tr
+            className={`transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/40 ${className}`}
+            {...props}
+        >
+            {children}
+        </tr>
+    );
+};
+
 const Empty = ({ colSpan = 1, message = "Tidak ada data yang ditemukan", children }) => {
     return (
         <tr>
@@ -147,6 +158,7 @@ const Empty = ({ colSpan = 1, message = "Tidak ada data yang ditemukan", childre
 Table.Card = Card;
 Table.Thead = Thead;
 Table.Tbody = Tbody;
+Table.Tr = Tr;
 Table.Td = Td;
 Table.Th = Th;
 Table.Empty = Empty;

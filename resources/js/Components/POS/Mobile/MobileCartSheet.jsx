@@ -13,6 +13,8 @@ import {
     IconReceipt,
     IconUser,
     IconPlus as IconAddCustomer,
+    IconTruckDelivery,
+    IconX,
 } from "@tabler/icons-react";
 import { getProductImageUrl } from "@/Utils/imageUrl";
 import CustomerSelect, { WALK_IN_CUSTOMER } from "../CustomerSelect";
@@ -46,6 +48,9 @@ export default function MobileCartSheet({
     onDiscountChange,
     shippingInput,
     onShippingChange,
+    shippingMeta,
+    onOpenRajaOngkir,
+    onClearShippingMeta,
     redeemPointsInput,
     onRedeemPointsChange,
     selectedVoucherId,
@@ -484,9 +489,21 @@ export default function MobileCartSheet({
 
                                 {/* Shipping Cost */}
                                 <div>
-                                    <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                                        Ongkos Kirim (Rp)
-                                    </label>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                                            Ongkos Kirim (Rp)
+                                        </label>
+                                        {onOpenRajaOngkir && (
+                                            <button
+                                                type="button"
+                                                onClick={onOpenRajaOngkir}
+                                                className="text-[10px] font-bold text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1 cursor-pointer"
+                                            >
+                                                <IconTruckDelivery size={13} />
+                                                Cek RajaOngkir
+                                            </button>
+                                        )}
+                                    </div>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
                                             Rp
@@ -495,15 +512,32 @@ export default function MobileCartSheet({
                                             type="text"
                                             inputMode="numeric"
                                             value={shippingInput}
-                                            onChange={(e) =>
+                                            onChange={(e) => {
                                                 onShippingChange(
                                                     e.target.value.replace(/[^\d]/g, "")
-                                                )
-                                            }
+                                                );
+                                                if (!e.target.value && onClearShippingMeta) onClearShippingMeta();
+                                            }}
                                             placeholder="0"
                                             className="w-full h-9 pl-8 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
                                         />
                                     </div>
+                                    {shippingMeta && (
+                                        <div className="mt-1.5 p-1.5 rounded-lg bg-primary-50 dark:bg-primary-950/40 border border-primary-200 dark:border-primary-800 text-[11px] flex items-center justify-between text-primary-800 dark:text-primary-200">
+                                            <span className="font-bold uppercase">
+                                                {shippingMeta.courier} ({shippingMeta.service})
+                                            </span>
+                                            {onClearShippingMeta && (
+                                                <button
+                                                    type="button"
+                                                    onClick={onClearShippingMeta}
+                                                    className="text-slate-400 hover:text-rose-500"
+                                                >
+                                                    <IconX size={12} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}

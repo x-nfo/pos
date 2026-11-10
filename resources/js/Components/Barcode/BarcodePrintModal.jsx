@@ -23,9 +23,20 @@ export default function BarcodePrintModal({
     const [copies, setCopies] = useState(1);
     const printRef = useRef(null);
 
-    const productsToPrint = singleProduct
-        ? (singleProduct.has_variants && singleProduct.variants?.length > 0 ? singleProduct.variants : [singleProduct])
-        : products;
+    const rawList = singleProduct ? [singleProduct] : products;
+    const productsToPrint = (rawList || []).flatMap((item) => {
+        if (!item) return [];
+        if (item.has_variants && item.variants?.length > 0) {
+            return item.variants.map((v) => ({
+                ...v,
+                title:
+                    v.title && v.title !== item.title && v.title.includes(item.title)
+                        ? v.title
+                        : `${item.title} - ${v.variant_label || [v.variant_attributes?.color_name, v.variant_attributes?.size].filter(Boolean).join(" ") || v.title}`,
+            }));
+        }
+        return [item];
+    });
 
     const handlePrint = () => {
         const printContent = printRef.current;

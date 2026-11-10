@@ -16,6 +16,9 @@ import {
     IconFilter,
     IconEye,
     IconReceipt2,
+    IconBuildingBank,
+    IconTicket,
+    IconFileText,
 } from "@tabler/icons-react";
 import { useAuthorization } from "@/Utils/authorization";
 import { formatRupiah, cleanWhatsAppNumber } from "@/Utils/whatsappOrder";
@@ -61,6 +64,7 @@ export default function Index({ orders, metrics, warehouses, filters }) {
     const canProcess = can("catalog-orders-process");
 
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [viewingProofUrl, setViewingProofUrl] = useState(null);
     const [cancelModalOrder, setCancelModalOrder] = useState(null);
     const [cancelReason, setCancelReason] = useState("");
     const [searchTerm, setSearchTerm] = useState(filters.q || "");
@@ -381,6 +385,24 @@ export default function Index({ orders, metrics, warehouses, filters }) {
                                                 <div className="text-[10px] text-slate-400">
                                                     Cabang: {order.warehouse?.name || "-"}
                                                 </div>
+                                                {order.payment_proof_url ? (
+                                                    <div className="mt-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setViewingProofUrl({
+                                                                url: order.payment_proof_url,
+                                                                isPdf: order.payment_proof_is_pdf,
+                                                                orderNumber: order.order_number,
+                                                                customerName: order.customer_name,
+                                                            })}
+                                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition cursor-pointer"
+                                                            title="Klik untuk melihat bukti transfer pembayaran"
+                                                        >
+                                                            {order.payment_proof_is_pdf ? <IconFileText size={11} /> : <IconEye size={11} />}
+                                                            Bukti Transfer
+                                                        </button>
+                                                    </div>
+                                                ) : null}
                                             </td>
 
                                             {/* Customer */}
@@ -676,6 +698,79 @@ export default function Index({ orders, metrics, warehouses, filters }) {
                                         </span>
                                     </div>
                                 )}
+
+                                {/* Bukti Transfer Section */}
+                                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700 space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-slate-500 flex items-center gap-1 font-semibold">
+                                            <IconBuildingBank size={14} className="text-primary-500" />
+                                            Bukti Transfer:
+                                        </span>
+                                        {selectedOrder.payment_proof_url ? (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                                <IconCheck size={11} />
+                                                Terlampir
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold italic">
+                                                Belum Diunggah
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {selectedOrder.bank_account && (
+                                        <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                                            Rekening: <strong className="text-slate-800 dark:text-white">{selectedOrder.bank_account.bank_name} {selectedOrder.bank_account.account_number}</strong> (a/n {selectedOrder.bank_account.account_name})
+                                        </div>
+                                    )}
+
+                                    {selectedOrder.payment_proof_url && (
+                                        <div className="flex items-center gap-2.5 pt-1">
+                                            <div
+                                                onClick={() => setViewingProofUrl({
+                                                    url: selectedOrder.payment_proof_url,
+                                                    isPdf: selectedOrder.payment_proof_is_pdf,
+                                                    orderNumber: selectedOrder.order_number,
+                                                    customerName: selectedOrder.customer_name,
+                                                })}
+                                                className="w-14 h-14 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 cursor-pointer group relative shrink-0 shadow-xs flex items-center justify-center bg-slate-50 dark:bg-slate-800"
+                                            >
+                                                {selectedOrder.payment_proof_is_pdf ? (
+                                                    <IconFileText size={24} className="text-rose-500" />
+                                                ) : (
+                                                    <img
+                                                        src={selectedOrder.payment_proof_url}
+                                                        alt="Bukti Transfer"
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition"
+                                                    />
+                                                )}
+                                                <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
+                                                    <IconEye size={14} />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setViewingProofUrl({
+                                                        url: selectedOrder.payment_proof_url,
+                                                        isPdf: selectedOrder.payment_proof_is_pdf,
+                                                        orderNumber: selectedOrder.order_number,
+                                                        customerName: selectedOrder.customer_name,
+                                                    })}
+                                                    className="text-xs font-bold text-primary-600 dark:text-primary-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                                                >
+                                                    <IconEye size={13} />
+                                                    {selectedOrder.payment_proof_is_pdf ? "Lihat Dokumen PDF" : "Lihat Foto Penuh"}
+                                                </button>
+                                                <span className="text-[10px] text-slate-400 block mt-0.5">
+                                                    {selectedOrder.payment_proof_uploaded_at
+                                                        ? `Upload: ${new Date(selectedOrder.payment_proof_uploaded_at).toLocaleString("id-ID")}`
+                                                        : "Tersimpan"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Items List */}
@@ -700,6 +795,31 @@ export default function Index({ orders, metrics, warehouses, filters }) {
                                         </div>
                                     ))}
                                 </div>
+                            </div>
+
+                            <div className="space-y-1.5 text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <div className="flex justify-between text-slate-500">
+                                    <span>Subtotal Produk</span>
+                                    <span>{formatRupiah(selectedOrder.subtotal)}</span>
+                                </div>
+                                {Number(selectedOrder.discount_amount) > 0 && (
+                                    <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                                        <span className="flex items-center gap-1">
+                                            <IconTicket size={13} />
+                                            <span>Diskon Kupon {selectedOrder.coupon_code ? `(${selectedOrder.coupon_code})` : ""}</span>
+                                        </span>
+                                        <span className="font-semibold">-{formatRupiah(selectedOrder.discount_amount)}</span>
+                                    </div>
+                                )}
+                                {Number(selectedOrder.shipping_cost) > 0 && (
+                                    <div className="flex justify-between text-slate-500">
+                                        <span>
+                                            Ongkos Kirim
+                                            {selectedOrder.shipping_courier && ` (${selectedOrder.shipping_courier.toUpperCase()})`}
+                                        </span>
+                                        <span>{formatRupiah(selectedOrder.shipping_cost)}</span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="pt-2 flex justify-between items-center text-base font-black">
@@ -779,6 +899,68 @@ export default function Index({ orders, metrics, warehouses, filters }) {
                             </button>
                         </div>
                     </form>
+                </div>
+            )}
+
+            {/* Modal Zoom Foto / PDF Bukti Transfer */}
+            {viewingProofUrl && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-xs"
+                    onClick={() => setViewingProofUrl(null)}
+                >
+                    <div
+                        className="bg-white dark:bg-slate-900 rounded-2xl max-w-xl w-full p-4 overflow-hidden shadow-2xl relative border border-slate-200 dark:border-slate-800"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-3">
+                            <div>
+                                <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                                    <IconBuildingBank size={16} className="text-primary-500" />
+                                    <span>Bukti Transfer Pembayaran</span>
+                                </h4>
+                                {(viewingProofUrl.orderNumber || viewingProofUrl.customerName) && (
+                                    <p className="text-[11px] text-slate-400 mt-0.5">
+                                        {viewingProofUrl.orderNumber} {viewingProofUrl.customerName ? `· ${viewingProofUrl.customerName}` : ""}
+                                    </p>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setViewingProofUrl(null)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                            >
+                                <IconX size={18} />
+                            </button>
+                        </div>
+                        {(viewingProofUrl.isPdf || (typeof viewingProofUrl.url === "string" && viewingProofUrl.url.toLowerCase().endsWith(".pdf"))) ? (
+                            <div className="w-full space-y-3">
+                                <iframe
+                                    src={viewingProofUrl.url || viewingProofUrl}
+                                    title="Dokumen Bukti Transfer PDF"
+                                    className="w-full h-[60vh] rounded-xl border border-slate-200 dark:border-slate-800"
+                                />
+                                <div className="flex justify-end">
+                                    <a
+                                        href={viewingProofUrl.url || viewingProofUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-primary-600 text-white hover:bg-primary-700 transition"
+                                    >
+                                        <IconExternalLink size={14} />
+                                        Buka Dokumen PDF di Tab Baru
+                                    </a>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="max-h-[70vh] overflow-auto flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-950 p-2">
+                                <img
+                                    src={viewingProofUrl.url || viewingProofUrl}
+                                    alt="Bukti Transfer Penuh"
+                                    className="max-w-full max-h-[65vh] object-contain rounded-lg shadow-sm"
+                                />
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
         </DashboardLayout>

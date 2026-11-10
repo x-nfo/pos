@@ -52,10 +52,9 @@ function ProductCard({ product, onAddToCart, onSelectUnit, onSelectVariant, isAd
                 group relative flex flex-col bg-white dark:bg-slate-900
                 rounded-2xl border border-slate-200 dark:border-slate-800
                 overflow-hidden transition-all duration-200 text-left
-                ${
-                    hasStock
-                        ? "hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer"
-                        : "opacity-60 cursor-not-allowed"
+                ${hasStock
+                    ? "hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer"
+                    : "opacity-60 cursor-not-allowed"
                 }
             `}
         >
@@ -160,10 +159,9 @@ function CategoryTab({ category, isActive, onClick }) {
             className={`
                 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap
                 transition-all duration-200 min-h-touch
-                ${
-                    isActive
-                        ? "bg-primary-500 text-white shadow-md shadow-primary-500/30"
-                        : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                ${isActive
+                    ? "bg-primary-500 text-white shadow-md shadow-primary-500/30"
+                    : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700"
                 }
             `}
         >
@@ -267,23 +265,71 @@ export default function ProductGrid({
     addingProductId,
     searchInputRef,
     onAddNewProduct,
+    variantModalProduct,
+    onVariantModalProductChange,
 }) {
     const [selectedUnitProduct, setSelectedUnitProduct] = useState(null);
-    const [selectedVariantProduct, setSelectedVariantProduct] = useState(null);
+    const [internalVariantProduct, setInternalVariantProduct] = useState(null);
+
+    const activeVariantProduct = variantModalProduct !== undefined ? variantModalProduct : internalVariantProduct;
+    const handleSetVariantProduct = (val) => {
+        if (onVariantModalProductChange) {
+            onVariantModalProductChange(val);
+        } else {
+            setInternalVariantProduct(val);
+        }
+    };
 
     const normalizedSelectedCategory =
         selectedCategory === null ? null : Number(selectedCategory);
 
-    // Filter products by category and search
+    // Filter products by category and search (including fashion variants)
     const filteredProducts = products.filter((product) => {
         const matchesCategory =
             normalizedSelectedCategory === null ||
             Number(product.category_id) === normalizedSelectedCategory;
-        const matchesSearch =
-            !searchQuery ||
-            product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            product.barcode?.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesCategory && matchesSearch;
+
+        if (!matchesCategory) return false;
+        const q = searchQuery ? searchQuery.toLowerCase().trim() : "";
+        if (!q) return true;
+
+        const matchesDirect =
+            product.title?.toLowerCase().includes(q) ||
+            product.barcode?.toLowerCase().includes(q) ||
+            product.sku?.toLowerCase().includes(q) ||
+            product.units?.some((u) => u.barcode?.toLowerCase().includes(q));
+
+        if (matchesDirect) return true;
+
+        if (product.has_variants && Array.isArray(product.variants)) {
+            return product.variants.some((v) => {
+                const vTitle = v.title?.toLowerCase() || "";
+                const vBarcode = v.barcode?.toLowerCase() || "";
+                const vSku = v.sku?.toLowerCase() || "";
+                let attrs = v.variant_attributes;
+                if (typeof attrs === "string") {
+                    try {
+                        attrs = JSON.parse(attrs);
+                    } catch (_) {
+                        attrs = {};
+                    }
+                }
+                const vColor = (attrs?.color_name || attrs?.warna || "").toLowerCase();
+                const vSize = (attrs?.size || attrs?.ukuran || "").toLowerCase();
+                const vLabel = (v.variant_label || "").toLowerCase();
+
+                return (
+                    vTitle.includes(q) ||
+                    vBarcode.includes(q) ||
+                    vSku.includes(q) ||
+                    vColor.includes(q) ||
+                    vSize.includes(q) ||
+                    vLabel.includes(q)
+                );
+            });
+        }
+
+        return false;
     });
 
     return (
@@ -333,7 +379,7 @@ export default function ProductGrid({
                                 product={product}
                                 onAddToCart={onAddToCart}
                                 onSelectUnit={(prod) => setSelectedUnitProduct(prod)}
-                                onSelectVariant={(prod) => setSelectedVariantProduct(prod)}
+                                onSelectVariant={(prod) => handleSetVariantProduct(prod)}
                                 isAdding={addingProductId === product.id}
                             />
                         ))}
@@ -376,12 +422,12 @@ export default function ProductGrid({
 
             {/* Fashion Variant Selection Modal */}
             <FashionVariantSelectorModal
-                isOpen={Boolean(selectedVariantProduct)}
-                product={selectedVariantProduct}
-                onClose={() => setSelectedVariantProduct(null)}
+                isOpen={Boolean(activeVariantProduct)}
+                product={activeVariantProduct}
+                onClose={() => handleSetVariantProduct(null)}
                 onSelectVariant={(variant) => {
                     onAddToCart(variant);
-                    setSelectedVariantProduct(null);
+                    handleSetVariantProduct(null);
                 }}
             />
         </div>

@@ -58,10 +58,10 @@ class PublicCatalogTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Public/Catalog')
-            ->has('products', 1)
+            ->has('products.data', 1)
             ->has('categories', 1)
-            ->where('products.0.title', 'Kopi Susu Gula Aren')
-            ->where('products.0.final_price', 18000)
+            ->where('products.data.0.title', 'Kopi Susu Gula Aren')
+            ->where('products.data.0.final_price', 18000)
             ->has('store')
         );
     }
@@ -98,8 +98,8 @@ class PublicCatalogTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Public/Catalog')
-            ->has('products', 1)
-            ->where('products.0.title', 'Es Teh Manis')
+            ->has('products.data', 1)
+            ->where('products.data.0.title', 'Es Teh Manis')
         );
     }
 
@@ -136,8 +136,8 @@ class PublicCatalogTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Public/Catalog')
-            ->has('products', 1)
-            ->where('products.0.title', 'Kopi Arabika Gayo')
+            ->has('products.data', 1)
+            ->where('products.data.0.title', 'Kopi Arabika Gayo')
         );
     }
 
@@ -161,14 +161,14 @@ class PublicCatalogTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Public/Catalog')
-            ->has('products', 1)
-            ->where('products.0.title', 'Keripik Singkong (Habis)')
-            ->where('products.0.stock', 0)
-            ->where('products.0.is_sold_out', true)
+            ->has('products.data', 1)
+            ->where('products.data.0.title', 'Keripik Singkong (Habis)')
+            ->where('products.data.0.stock', 0)
+            ->where('products.data.0.is_sold_out', true)
         );
     }
 
-    public function test_root_url_renders_catalog_when_landing_page_mode_is_storefront(): void
+    public function test_root_url_renders_storefront_when_landing_page_mode_is_storefront(): void
     {
         Setting::set('landing_page_mode', 'storefront');
 
@@ -176,7 +176,17 @@ class PublicCatalogTest extends TestCase
 
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
-            ->component('Public/Catalog')
+            ->component('Public/Home')
+        );
+    }
+
+    public function test_pos_welcome_page_can_be_rendered(): void
+    {
+        $response = $this->get(route('pos.welcome'));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('Welcome')
         );
     }
 
@@ -276,6 +286,27 @@ class PublicCatalogTest extends TestCase
         );
     }
 
+    public function test_public_catalog_reflects_pickup_enabled_and_disabled_setting(): void
+    {
+        // Default is enabled
+        $response = $this->get(route('catalog.index'));
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('Public/Catalog')
+            ->where('store.pickup_enabled', true)
+        );
+
+        // Disabled by admin
+        Setting::set('catalog_pickup_enabled', '0');
+
+        $responseDisabled = $this->get(route('catalog.index'));
+        $responseDisabled->assertOk();
+        $responseDisabled->assertInertia(fn (Assert $page) => $page
+            ->component('Public/Catalog')
+            ->where('store.pickup_enabled', false)
+        );
+    }
+
     public function test_store_profile_setting_can_toggle_delivery_option(): void
     {
         $this->seed([PermissionSeeder::class, RoleSeeder::class, UserSeeder::class]);
@@ -368,13 +399,13 @@ class PublicCatalogTest extends TestCase
             ->where('store.wa_number', '6281234567890')
             ->where('store.address', 'Jl. Tebet Raya No. 10')
             ->where('store.branch_name', 'Cabang Tebet')
-            ->has('products', 2)
-            ->where('products.0.title', 'Cold Brew Kemang Exclusive')
-            ->where('products.0.stock', 0)
-            ->where('products.0.is_sold_out', true)
-            ->where('products.1.title', 'Espresso Tebet Exclusive')
-            ->where('products.1.stock', 12)
-            ->where('products.1.is_sold_out', false)
+            ->has('products.data', 2)
+            ->where('products.data.0.title', 'Cold Brew Kemang Exclusive')
+            ->where('products.data.0.stock', 0)
+            ->where('products.data.0.is_sold_out', true)
+            ->where('products.data.1.title', 'Espresso Tebet Exclusive')
+            ->where('products.data.1.stock', 12)
+            ->where('products.data.1.is_sold_out', false)
         );
 
         // Request Catalog for Branch 2
@@ -388,13 +419,13 @@ class PublicCatalogTest extends TestCase
             ->where('store.wa_number', '6289876543210')
             ->where('store.address', 'Jl. Kemang Selatan No. 20')
             ->where('store.branch_name', 'Cabang Kemang')
-            ->has('products', 2)
-            ->where('products.0.title', 'Cold Brew Kemang Exclusive')
-            ->where('products.0.stock', 18)
-            ->where('products.0.is_sold_out', false)
-            ->where('products.1.title', 'Espresso Tebet Exclusive')
-            ->where('products.1.stock', 0)
-            ->where('products.1.is_sold_out', true)
+            ->has('products.data', 2)
+            ->where('products.data.0.title', 'Cold Brew Kemang Exclusive')
+            ->where('products.data.0.stock', 18)
+            ->where('products.data.0.is_sold_out', false)
+            ->where('products.data.1.title', 'Espresso Tebet Exclusive')
+            ->where('products.data.1.stock', 0)
+            ->where('products.data.1.is_sold_out', true)
         );
     }
 
@@ -635,5 +666,133 @@ class PublicCatalogTest extends TestCase
         $response->assertInertia(fn (Assert $page) => $page
             ->where('staticBanner', null)
         );
+    }
+
+    public function test_public_catalog_supports_pagination_sorting_and_stock_filtering(): void
+    {
+        $category = Category::create(['name' => 'Fashion', 'description' => 'Pakaian']);
+
+        // Create 25 products
+        for ($i = 1; $i <= 25; $i++) {
+            Product::create([
+                'category_id' => $category->id,
+                'barcode' => sprintf('PROD-%03d', $i),
+                'title' => sprintf('Produk %02d', $i),
+                'buy_price' => 10000,
+                'sell_price' => $i * 10000,
+                'stock' => $i % 2 === 0 ? 0 : 10, // even sold out, odd in stock
+                'tax_rate' => 0,
+            ]);
+        }
+
+        // Test page 1 with per_page=10
+        $responsePage1 = $this->get(route('catalog.index', ['per_page' => 10, 'page' => 1]));
+        $responsePage1->assertOk();
+        $responsePage1->assertInertia(fn (Assert $page) => $page
+            ->has('products.data', 10)
+            ->where('products.current_page', 1)
+            ->where('products.last_page', 3)
+            ->where('products.total', 25)
+            ->where('products.per_page', 10)
+        );
+
+        // Test page 3 (remaining 5)
+        $responsePage3 = $this->get(route('catalog.index', ['per_page' => 10, 'page' => 3]));
+        $responsePage3->assertOk();
+        $responsePage3->assertInertia(fn (Assert $page) => $page
+            ->has('products.data', 5)
+            ->where('products.current_page', 3)
+        );
+
+        // Test stock filter: only odd products (13 products in total)
+        $responseInStock = $this->get(route('catalog.index', ['in_stock' => 1, 'per_page' => 20]));
+        $responseInStock->assertOk();
+        $responseInStock->assertInertia(fn (Assert $page) => $page
+            ->has('products.data', 13)
+            ->where('products.total', 13)
+        );
+
+        // Test sort by price descending
+        $responseSort = $this->get(route('catalog.index', ['sort' => 'price-desc', 'per_page' => 5]));
+        $responseSort->assertOk();
+        $responseSort->assertInertia(fn (Assert $page) => $page
+            ->where('products.data.0.title', 'Produk 25')
+            ->where('products.data.0.final_price', 250000)
+        );
+    }
+
+    public function test_public_home_page_can_be_rendered(): void
+    {
+        $category = Category::create([
+            'name' => 'Abaya & Gamis',
+            'description' => 'Koleksi Busana Muslimah Mewah',
+        ]);
+
+        $product = Product::create([
+            'category_id' => $category->id,
+            'barcode' => 'ABY-001',
+            'title' => 'Abaya Silk Premium Emerald',
+            'buy_price' => 200000,
+            'sell_price' => 450000,
+            'stock' => 10,
+            'tax_rate' => 0,
+        ]);
+        $product->warehouses()->attach($this->warehouse->id, ['stock' => 10]);
+
+        $banner = PromoBanner::create([
+            'title' => 'Koleksi Hari Raya',
+            'subtitle' => 'Sentuhan sutra dengan siluet anggun',
+            'image' => 'banners/raya.jpg',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $response = $this->get(route('home'));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('Public/Home')
+            ->has('heroBanner')
+            ->has('featuredProducts', 1)
+            ->has('featuredCollections', 1)
+            ->has('store')
+            ->has('branches')
+        );
+    }
+
+    public function test_public_home_redirects_when_direct_login_mode(): void
+    {
+        Setting::set('landing_page_mode', 'direct_login');
+
+        $response = $this->get(route('home'));
+
+        $response->assertRedirect(route('login'));
+    }
+
+    public function test_newsletter_subscription_succeeds_with_valid_email(): void
+    {
+        $response = $this->postJson(route('newsletter.subscribe'), [
+            'email' => 'customer.vip@example.com',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'status' => 'success',
+        ]);
+
+        $this->assertDatabaseHas('newsletter_subscribers', [
+            'email' => 'customer.vip@example.com',
+            'is_active' => true,
+        ]);
+    }
+
+    public function test_newsletter_subscription_fails_with_invalid_email(): void
+    {
+        $response = $this->postJson(route('newsletter.subscribe'), [
+            'email' => 'invalid-email-string',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['email']);
     }
 }

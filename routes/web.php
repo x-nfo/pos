@@ -23,10 +23,13 @@ use App\Http\Controllers\Apps\ProductCatalogController;
 use App\Http\Controllers\Apps\ProductController;
 use App\Http\Controllers\Apps\PromoBannerController;
 use App\Http\Controllers\Apps\PurchaseOrderController;
+use App\Http\Controllers\Apps\RajaOngkirController;
 use App\Http\Controllers\Apps\ReceivableController;
 use App\Http\Controllers\Apps\ReceivablePaymentApprovalController;
 use App\Http\Controllers\Apps\SalesReturnController;
 use App\Http\Controllers\Apps\SettingController;
+use App\Http\Controllers\Apps\ShippingSettingController;
+use App\Http\Controllers\Apps\SizeChartController;
 use App\Http\Controllers\Apps\StockMutationController;
 use App\Http\Controllers\Apps\StockOpnameController;
 use App\Http\Controllers\Apps\StockTransferController;
@@ -64,8 +67,8 @@ Route::get('/', function (Request $request) {
         return redirect()->route('login');
     }
 
-    if (Schema::hasTable('settings') && Setting::get('landing_page_mode') === 'storefront') {
-        return app(PublicCatalogController::class)->index($request);
+    if (Schema::hasTable('warehouses') && Schema::hasTable('products')) {
+        return app(PublicCatalogController::class)->home($request);
     }
 
     return Inertia::render('Welcome', [
@@ -74,12 +77,29 @@ Route::get('/', function (Request $request) {
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
-});
+})->name('home');
+
+Route::get('/pos-welcome', function () {
+    return Inertia::render('Welcome', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => config('security.auth.public_registration'),
+        'laravelVersion' => Application::VERSION,
+        'phpVersion' => PHP_VERSION,
+    ]);
+})->name('pos.welcome');
+
+Route::post('/newsletter/subscribe', [PublicCatalogController::class, 'subscribeNewsletter'])->middleware('throttle:6,1')->name('newsletter.subscribe');
 
 Route::get('/katalog', [PublicCatalogController::class, 'index'])->name('catalog.index');
-Route::post('/katalog/order', [PublicCatalogController::class, 'checkout'])->name('catalog.checkout');
+Route::get('/katalog/produk/{product}', [PublicCatalogController::class, 'show'])->name('catalog.product.show');
+Route::post('/katalog/order', [PublicCatalogController::class, 'checkout'])->middleware('throttle:20,1')->name('catalog.checkout');
 Route::get('/katalog/order/{accessToken}', [PublicCatalogController::class, 'orderStatus'])->name('catalog.order.status');
 Route::get('/katalog/order/{accessToken}/check', [PublicCatalogController::class, 'orderStatusCheck'])->name('catalog.order.status-check');
+Route::get('/katalog/order/{accessToken}/payment-proof', [PublicCatalogController::class, 'showPaymentProof'])->middleware('throttle:60,1')->name('catalog.order.payment-proof.show');
+Route::post('/katalog/order/{accessToken}/payment-proof', [PublicCatalogController::class, 'uploadPaymentProof'])->middleware('throttle:10,1')->name('catalog.order.payment-proof');
+Route::get('/katalog/shipping/destinations', [PublicCatalogController::class, 'searchDestinations'])->middleware('throttle:60,1')->name('catalog.shipping.destinations');
+Route::post('/katalog/shipping/calculate', [PublicCatalogController::class, 'calculateShipping'])->middleware('throttle:30,1')->name('catalog.shipping.calculate');
+Route::post('/katalog/coupon/check', [PublicCatalogController::class, 'checkCoupon'])->middleware('throttle:30,1')->name('catalog.coupon.check');
 
 Route::get('/manifest.json', ManifestController::class)->name('manifest');
 
@@ -161,6 +181,15 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::post('/units/quick-store', [UnitController::class, 'quickStore'])
         ->middleware('permission:units-create|products-create')
         ->name('units.quick-store');
+
+    Route::get('/size-charts/list-active', [SizeChartController::class, 'listActive'])
+        ->middleware('permission:products-access|categories-access|size-charts-access')
+        ->name('size-charts.list-active');
+    Route::resource('size-charts', SizeChartController::class)
+        ->middlewareFor(['index', 'show'], 'permission:size-charts-access')
+        ->middlewareFor(['create', 'store'], 'permission:size-charts-create')
+        ->middlewareFor(['edit', 'update'], 'permission:size-charts-edit')
+        ->middlewareFor('destroy', 'permission:size-charts-delete');
 
     // import/export
     Route::get('/export/products', [ImportExportController::class, 'exportProducts'])->middleware('permission:products-export')->name('export.products');
@@ -432,6 +461,18 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
         ->middlewareFor('update', 'permission:warehouses-update')
         ->middlewareFor('destroy', 'permission:warehouses-delete');
 
+    // settings shipping / RajaOngkir
+    Route::get('/settings/shipping', [ShippingSettingController::class, 'edit'])->middleware('permission:shipping-settings-access')->name('settings.shipping.edit');
+    Route::post('/settings/shipping', [ShippingSettingController::class, 'update'])->middleware('permission:shipping-settings-update')->name('settings.shipping.update');
+    Route::post('/settings/shipping/test', [ShippingSettingController::class, 'test'])->middleware('permission:shipping-settings-update')->name('settings.shipping.test');
+    Route::post('/settings/shipping/clear-cache', [ShippingSettingController::class, 'clearCache'])->middleware('permission:shipping-settings-update')->name('settings.shipping.clear-cache');
+
+    // shipping & rajaongkir operations
+    Route::get('/shipping/calculator', [RajaOngkirController::class, 'calculator'])->middleware('permission:shipping-rates-access|transactions-access')->name('shipping.calculator');
+    Route::get('/shipping/rajaongkir/destinations', [RajaOngkirController::class, 'searchDestinations'])->middleware('permission:shipping-rates-access|transactions-access')->name('shipping.rajaongkir.destinations');
+    Route::post('/shipping/rajaongkir/calculate', [RajaOngkirController::class, 'calculate'])->middleware('permission:shipping-rates-access|transactions-access')->name('shipping.rajaongkir.calculate');
+    Route::get('/shipping/rajaongkir/info', [RajaOngkirController::class, 'info'])->middleware('permission:shipping-rates-access|transactions-access')->name('shipping.rajaongkir.info');
+
     // confirm payment for bank transfer
     Route::patch('/transactions/{transaction}/confirm-payment', [TransactionController::class, 'confirmPayment'])->middleware(['permission:transactions-confirm-payment', 'step_up'])->name('transactions.confirm-payment');
 
@@ -454,6 +495,7 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
     Route::post('/catalog-orders/{catalogOrder}/status', [CatalogOrderController::class, 'updateStatus'])->middleware('permission:catalog-orders-process')->name('catalog-orders.status');
     Route::post('/catalog-orders/{catalogOrder}/cancel', [CatalogOrderController::class, 'cancel'])->middleware('permission:catalog-orders-process')->name('catalog-orders.cancel');
     Route::post('/catalog-orders/{catalogOrder}/load-to-pos', [CatalogOrderController::class, 'loadToPos'])->middleware('permission:catalog-orders-process')->name('catalog-orders.load-to-pos');
+    Route::get('/catalog-orders/{catalogOrder}/payment-proof', [CatalogOrderController::class, 'paymentProof'])->middleware('permission:catalog-orders-access')->name('catalog-orders.payment-proof');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

@@ -48,11 +48,12 @@ class StockTransferController extends Controller
     public function create(): Response
     {
         $warehouses = Warehouse::active()->orderBy('sort_order')->orderBy('code')->get(['id', 'code', 'name']);
-        $products = Product::with([
-            'warehouses:id,code,name',
-            'units:id,code,name,symbol',
-            'category:id,name',
-        ])
+        $products = Product::where('has_variants', false)
+            ->with([
+                'warehouses:id,code,name',
+                'units:id,code,name,symbol',
+                'category:id,name',
+            ])
             ->orderBy('title')
             ->get(['id', 'category_id', 'title', 'sku', 'barcode'])
             ->map(function ($product) {
@@ -112,6 +113,13 @@ class StockTransferController extends Controller
                     'source_warehouse_id' => 'Transfer stok harus melibatkan cabang penugasan Anda sebagai asal atau tujuan.',
                 ]);
             }
+        }
+
+        $productIds = collect($data['items'])->pluck('product_id');
+        if (Product::whereIn('id', $productIds)->where('has_variants', true)->exists()) {
+            throw ValidationException::withMessages([
+                'items' => 'Produk utama yang memiliki varian tidak dapat ditransfer langsung. Pilih varian warna/ukuran spesifik.',
+            ]);
         }
 
         $transfer = $this->stockTransferService->createDraft($data, $data['items'], $user->id);

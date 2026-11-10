@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Category extends Model
@@ -24,8 +25,13 @@ class Category extends Model
      * @var array
      */
     protected $fillable = [
-        'image', 'name', 'description',
+        'image', 'name', 'description', 'size_chart_id',
     ];
+
+    public function sizeChart(): BelongsTo
+    {
+        return $this->belongsTo(SizeChart::class);
+    }
 
     /**
      * products

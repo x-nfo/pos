@@ -49,10 +49,9 @@ function MobileProductCard({ product, onAddToCart, onSelectUnit, onSelectVariant
                 group relative flex flex-col bg-white dark:bg-slate-900
                 rounded-2xl border border-slate-200/80 dark:border-slate-800
                 overflow-hidden transition-all duration-150 active:scale-[0.97] select-none
-                ${
-                    hasStock
-                        ? "cursor-pointer hover:border-primary-400 dark:hover:border-primary-600 hover:shadow-md"
-                        : "opacity-55 cursor-not-allowed bg-slate-50 dark:bg-slate-900/50"
+                ${hasStock
+                    ? "cursor-pointer hover:border-primary-400 dark:hover:border-primary-600 hover:shadow-md"
+                    : "opacity-55 cursor-not-allowed bg-slate-50 dark:bg-slate-900/50"
                 }
             `}
         >
@@ -179,24 +178,72 @@ export default function MobileProductGrid({
     addingProductId,
     searchInputRef,
     onAddNewProduct,
+    variantModalProduct,
+    onVariantModalProductChange,
 }) {
     const [showScanner, setShowScanner] = useState(false);
     const [selectedUnitProduct, setSelectedUnitProduct] = useState(null);
-    const [selectedVariantProduct, setSelectedVariantProduct] = useState(null);
+    const [internalVariantProduct, setInternalVariantProduct] = useState(null);
+
+    const activeVariantProduct = variantModalProduct !== undefined ? variantModalProduct : internalVariantProduct;
+    const handleSetVariantProduct = (val) => {
+        if (onVariantModalProductChange) {
+            onVariantModalProductChange(val);
+        } else {
+            setInternalVariantProduct(val);
+        }
+    };
 
     const normalizedSelectedCategory =
         selectedCategory === null ? null : Number(selectedCategory);
 
-    // Filter products
+    // Filter products (including fashion variants)
     const filteredProducts = products.filter((product) => {
         const matchesCategory =
             normalizedSelectedCategory === null ||
             Number(product.category_id) === normalizedSelectedCategory;
-        const matchesSearch =
-            !searchQuery ||
-            product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            product.barcode?.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesCategory && matchesSearch;
+
+        if (!matchesCategory) return false;
+        const q = searchQuery ? searchQuery.toLowerCase().trim() : "";
+        if (!q) return true;
+
+        const matchesDirect =
+            product.title?.toLowerCase().includes(q) ||
+            product.barcode?.toLowerCase().includes(q) ||
+            product.sku?.toLowerCase().includes(q) ||
+            product.units?.some((u) => u.barcode?.toLowerCase().includes(q));
+
+        if (matchesDirect) return true;
+
+        if (product.has_variants && Array.isArray(product.variants)) {
+            return product.variants.some((v) => {
+                const vTitle = v.title?.toLowerCase() || "";
+                const vBarcode = v.barcode?.toLowerCase() || "";
+                const vSku = v.sku?.toLowerCase() || "";
+                let attrs = v.variant_attributes;
+                if (typeof attrs === "string") {
+                    try {
+                        attrs = JSON.parse(attrs);
+                    } catch (_) {
+                        attrs = {};
+                    }
+                }
+                const vColor = (attrs?.color_name || attrs?.warna || "").toLowerCase();
+                const vSize = (attrs?.size || attrs?.ukuran || "").toLowerCase();
+                const vLabel = (v.variant_label || "").toLowerCase();
+
+                return (
+                    vTitle.includes(q) ||
+                    vBarcode.includes(q) ||
+                    vSku.includes(q) ||
+                    vColor.includes(q) ||
+                    vSize.includes(q) ||
+                    vLabel.includes(q)
+                );
+            });
+        }
+
+        return false;
     });
 
     return (
@@ -251,11 +298,10 @@ export default function MobileProductGrid({
                     <button
                         type="button"
                         onClick={() => onCategoryChange(null)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all active:scale-95 ${
-                            normalizedSelectedCategory === null
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all active:scale-95 ${normalizedSelectedCategory === null
                                 ? "bg-primary-600 text-white shadow-xs"
                                 : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-750"
-                        }`}
+                            }`}
                     >
                         Semua ({products.length})
                     </button>
@@ -267,11 +313,10 @@ export default function MobileProductGrid({
                                 key={cat.id}
                                 type="button"
                                 onClick={() => onCategoryChange(Number(cat.id))}
-                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all active:scale-95 ${
-                                    isActive
+                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all active:scale-95 ${isActive
                                         ? "bg-primary-600 text-white shadow-xs"
                                         : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-750"
-                                }`}
+                                    }`}
                             >
                                 {cat.name}
                             </button>
@@ -290,7 +335,7 @@ export default function MobileProductGrid({
                                 product={product}
                                 onAddToCart={onAddToCart}
                                 onSelectUnit={(prod) => setSelectedUnitProduct(prod)}
-                                onSelectVariant={(prod) => setSelectedVariantProduct(prod)}
+                                onSelectVariant={(prod) => handleSetVariantProduct(prod)}
                                 isAdding={addingProductId === product.id}
                             />
                         ))}
@@ -328,12 +373,12 @@ export default function MobileProductGrid({
 
             {/* Fashion Variant Selection Modal */}
             <FashionVariantSelectorModal
-                isOpen={Boolean(selectedVariantProduct)}
-                product={selectedVariantProduct}
-                onClose={() => setSelectedVariantProduct(null)}
+                isOpen={Boolean(activeVariantProduct)}
+                product={activeVariantProduct}
+                onClose={() => handleSetVariantProduct(null)}
                 onSelectVariant={(variant) => {
                     onAddToCart(variant);
-                    setSelectedVariantProduct(null);
+                    handleSetVariantProduct(null);
                 }}
             />
 

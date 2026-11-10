@@ -58,6 +58,7 @@
 
   /* === Typography === */
   --font-family-sans: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-family-serif: 'Marcellus', serif;
   --font-family-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
   /* Font Sizes */

@@ -10,6 +10,7 @@ use App\Models\SupplierReturn;
 use App\Models\Warehouse;
 use App\Services\SupplierReturnService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class SupplierReturnController extends Controller
@@ -96,7 +97,10 @@ class SupplierReturnController extends Controller
             $goodsReceivings = $grQuery->get();
         }
 
-        $products = Product::with(['warehouses', 'units'])->orderBy('title')->get(['id', 'title', 'sku', 'buy_price'])
+        $products = Product::where('has_variants', false)
+            ->with(['warehouses', 'units'])
+            ->orderBy('title')
+            ->get(['id', 'title', 'sku', 'buy_price'])
             ->map(fn ($p) => [
                 'id' => $p->id,
                 'title' => $p->title,
@@ -146,6 +150,13 @@ class SupplierReturnController extends Controller
 
         if ($user && ! $user->isHQ()) {
             $data['warehouse_id'] = $user->warehouse_id;
+        }
+
+        $productIds = collect($data['items'])->pluck('product_id');
+        if (Product::whereIn('id', $productIds)->where('has_variants', true)->exists()) {
+            throw ValidationException::withMessages([
+                'items' => 'Produk utama yang memiliki varian tidak dapat diretur langsung ke supplier. Pilih varian warna/ukuran spesifik.',
+            ]);
         }
 
         $return = $this->supplierReturnService->createReturn(

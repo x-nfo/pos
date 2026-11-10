@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Apps;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\SizeChart;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -37,7 +38,11 @@ class CategoryController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Dashboard/Categories/Create');
+        $sizeCharts = SizeChart::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code', 'apparel_type']);
+
+        return Inertia::render('Dashboard/Categories/Create', [
+            'sizeCharts' => $sizeCharts,
+        ]);
     }
 
     /**
@@ -54,6 +59,7 @@ class CategoryController extends Controller
             'image' => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
             'name' => 'required',
             'description' => 'nullable',
+            'size_chart_id' => 'nullable|integer|exists:size_charts,id',
         ]);
 
         // upload image
@@ -69,6 +75,7 @@ class CategoryController extends Controller
             'image' => $imageName,
             'name' => $request->name,
             'description' => $request->description,
+            'size_chart_id' => $request->size_chart_id,
         ]);
 
         // redirect
@@ -114,8 +121,11 @@ class CategoryController extends Controller
      */
     public function edit(Category $category)
     {
+        $sizeCharts = SizeChart::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code', 'apparel_type']);
+
         return Inertia::render('Dashboard/Categories/Edit', [
             'category' => $category,
+            'sizeCharts' => $sizeCharts,
         ]);
     }
 
@@ -133,6 +143,7 @@ class CategoryController extends Controller
         $request->validate([
             'name' => 'required',
             'description' => 'nullable',
+            'size_chart_id' => 'nullable|integer|exists:size_charts,id',
         ]);
 
         // check image update
@@ -152,6 +163,7 @@ class CategoryController extends Controller
                 'image' => $image->hashName(),
                 'name' => $request->name,
                 'description' => $request->description,
+                'size_chart_id' => $request->size_chart_id,
             ]);
         }
 
@@ -159,6 +171,7 @@ class CategoryController extends Controller
         $category->update([
             'name' => $request->name,
             'description' => $request->description,
+            'size_chart_id' => $request->size_chart_id,
         ]);
 
         // redirect

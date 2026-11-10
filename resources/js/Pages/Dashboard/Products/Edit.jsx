@@ -14,14 +14,16 @@ import {
     IconCurrencyDollar,
     IconCamera,
     IconPlus,
+    IconColorSwatch,
 } from "@tabler/icons-react";
 import { getProductImageUrl } from "@/Utils/imageUrl";
 import ProductUnitsInput from "@/Components/Dashboard/ProductUnitsInput";
 import ImageCaptureUpload from "@/Components/Dashboard/ImageCaptureUpload";
 import BarcodeScanner from "@/Components/POS/BarcodeScanner";
 import QuickCategoryModal from "@/Components/Dashboard/QuickCategoryModal";
+import FashionVariantMatrixGenerator from "@/Components/Dashboard/FashionVariantMatrixGenerator";
 
-export default function Edit({ categories = [], product, units = [] }) {
+export default function Edit({ categories = [], product, units = [], sizeCharts = [] }) {
     const { errors } = usePage().props;
 
     const initialUnits = (product.units || []).map((u) => ({
@@ -43,11 +45,16 @@ export default function Edit({ categories = [], product, units = [] }) {
         sku: product.sku || "",
         title: product.title || "",
         category_id: product.category_id || "",
+        size_chart_id: product.size_chart_id || "",
         description: product.description || "",
         buy_price: product.buy_price ?? "",
         sell_price: product.sell_price ?? "",
         min_stock: product.min_stock ?? 0,
         max_stock: product.max_stock ?? 0,
+        has_variants: Boolean(product.has_variants),
+        variant_display_type: product.variant_display_type || "color",
+        variants: product.variants_data || [],
+        color_images: product.color_images || {},
         units: initialUnits,
         _method: "PUT",
     });
@@ -95,6 +102,7 @@ export default function Edit({ categories = [], product, units = [] }) {
     const submit = (e) => {
         e.preventDefault();
         post(route("products.update", product.id), {
+            forceFormData: true,
             onSuccess: () => toast.success("Produk berhasil diperbarui"),
             onError: () => toast.error("Gagal memperbarui produk"),
         });
@@ -171,6 +179,27 @@ export default function Edit({ categories = [], product, units = [] }) {
                                         searchable={true}
                                         displayKey="name"
                                     />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                                        Panduan Ukuran (Size Guide)
+                                    </label>
+                                    <select
+                                        value={data.size_chart_id || ""}
+                                        onChange={(e) => setData("size_chart_id", e.target.value)}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 text-sm"
+                                    >
+                                        <option value="">— Ikuti Default Kategori —</option>
+                                        {sizeCharts.map((sc) => (
+                                            <option key={sc.id} value={sc.id}>
+                                                {sc.name} ({sc.code})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p className="text-[11px] text-slate-400 mt-1">
+                                        Pilih template ukuran khusus atau kosongkan untuk mewarisi dari kategori.
+                                    </p>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
@@ -363,6 +392,107 @@ export default function Edit({ categories = [], product, units = [] }) {
                                             </p>
                                         </div>
                                     </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Varian Pakaian & Foto (Fashion Matrix) Card */}
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                        <IconColorSwatch size={18} />
+                                        Varian Pakaian & Foto (Warna × Ukuran)
+                                    </h3>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        Kelola variasi warna, ukuran, dan foto masing-masing varian.
+                                    </p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={data.has_variants}
+                                        onChange={(e) => setData("has_variants", e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-primary-600"></div>
+                                </label>
+                            </div>
+
+                            {data.has_variants && (
+                                <div className="pt-2 space-y-4">
+                                    {/* Variant Display Mode Selector */}
+                                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                                        <div className="mb-2.5">
+                                            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                                                Tampilan Varian di Katalog (Storefront)
+                                            </span>
+                                            <p className="text-xxs text-slate-500 dark:text-slate-400 mt-0.5">
+                                                Pilih gaya tampilan pemilih varian warna untuk pelanggan di halaman katalog dan detail produk
+                                            </p>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => setData("variant_display_type", "color")}
+                                                className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+                                                    data.variant_display_type === "color"
+                                                        ? "border-primary-500 bg-primary-50/50 dark:bg-primary-950/20 ring-1 ring-primary-500"
+                                                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300"
+                                                }`}
+                                            >
+                                                <div className="w-5 h-5 rounded-full border border-black/20 shrink-0 mt-0.5 shadow-2xs" style={{ background: "linear-gradient(135deg, #f43f5e, #8b5cf6, #06b6d4)" }} />
+                                                <div className="min-w-0">
+                                                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200">Lingkaran Warna</div>
+                                                    <div className="text-xxs text-slate-500 dark:text-slate-400 mt-0.5">Bulatan warna saja tanpa foto & tanpa teks</div>
+                                                </div>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setData("variant_display_type", "image")}
+                                                className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+                                                    data.variant_display_type === "image"
+                                                        ? "border-primary-500 bg-primary-50/50 dark:bg-primary-950/20 ring-1 ring-primary-500"
+                                                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300"
+                                                }`}
+                                            >
+                                                <IconPhoto size={18} className="text-primary-600 dark:text-primary-400 shrink-0 mt-0.5" />
+                                                <div className="min-w-0">
+                                                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200">Foto Baju Saja</div>
+                                                    <div className="text-xxs text-slate-500 dark:text-slate-400 mt-0.5">Thumbnail foto baju tanpa tulisan teks</div>
+                                                </div>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setData("variant_display_type", "pill")}
+                                                className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+                                                    data.variant_display_type === "pill"
+                                                        ? "border-primary-500 bg-primary-50/50 dark:bg-primary-950/20 ring-1 ring-primary-500"
+                                                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300"
+                                                }`}
+                                            >
+                                                <IconColorSwatch size={18} className="text-slate-500 shrink-0 mt-0.5" />
+                                                <div className="min-w-0">
+                                                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200">Pill Teks & Icon</div>
+                                                    <div className="text-xxs text-slate-500 dark:text-slate-400 mt-0.5">Tombol pill berisi nama warna & icon</div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <FashionVariantMatrixGenerator
+                                        variants={data.variants}
+                                        onChange={(newVariants) => setData("variants", newVariants)}
+                                        colorImages={data.color_images || {}}
+                                        onColorImagesChange={(newColorImages) => setData("color_images", newColorImages)}
+                                        parentImage={imagePreview || product.image}
+                                        baseBuyPrice={Number(data.buy_price) || 0}
+                                        baseSellPrice={Number(data.sell_price) || 0}
+                                        productTitle={data.title}
+                                        productSku={data.sku}
+                                    />
                                 </div>
                             )}
                         </div>

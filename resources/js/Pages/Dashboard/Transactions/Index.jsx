@@ -22,6 +22,7 @@ import HeldTransactions, {
 import QuickAddProductModal from "@/Components/POS/QuickAddProductModal";
 import OfflineReceiptModal from "@/Components/POS/OfflineReceiptModal";
 import WarehouseSelect from "@/Components/POS/WarehouseSelect";
+import RajaOngkirModal from "@/Components/POS/RajaOngkirModal";
 import useBarcodeScanner from "@/Hooks/useBarcodeScanner";
 import { getProductImageUrl, getBankLogoUrl } from "@/Utils/imageUrl";
 import { useAuthorization } from "@/Utils/authorization";
@@ -44,6 +45,8 @@ import {
     IconChevronDown,
     IconChevronUp,
     IconSparkles,
+    IconTruckDelivery,
+    IconX,
 } from "@tabler/icons-react";
 
 const formatPrice = (value = 0) =>
@@ -100,6 +103,8 @@ export default function Index({
     const [redeemPointsInput, setRedeemPointsInput] = useState("");
     const [cashInput, setCashInput] = useState("");
     const [shippingInput, setShippingInput] = useState("");
+    const [shippingMeta, setShippingMeta] = useState(null);
+    const [showRajaOngkirModal, setShowRajaOngkirModal] = useState(false);
     const [showDiscounts, setShowDiscounts] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState(
         defaultPaymentGateway ?? "cash"
@@ -126,6 +131,7 @@ export default function Index({
     const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
     const [quickAddInitialData, setQuickAddInitialData] = useState({});
     const [offlineReceiptData, setOfflineReceiptData] = useState(null);
+    const [variantModalProduct, setVariantModalProduct] = useState(null);
 
     useEffect(() => {
         if (warehouses.length > 0 && !shiftWarehouseId) {
@@ -557,16 +563,49 @@ export default function Index({
         async (barcode) => {
             if (!barcode) return;
             const cleanBarcode = String(barcode).trim();
+            const cleanLower = cleanBarcode.toLowerCase();
+
+            // 1. Check if scanned barcode matches a specific variant hangtag in local productList
+            let matchedVariant = null;
+            for (const p of productList) {
+                if (p.has_variants && Array.isArray(p.variants)) {
+                    const foundV = p.variants.find(
+                        (v) => v.barcode?.toLowerCase() === cleanLower
+                    );
+                    if (foundV) {
+                        matchedVariant = foundV;
+                        break;
+                    }
+                }
+            }
+
+            if (matchedVariant) {
+                if (matchedVariant.stock > 0 || !navigator.onLine) {
+                    handleAddToCart(matchedVariant, null);
+                } else {
+                    toast.error(`${matchedVariant.title} stok habis`);
+                }
+                return;
+            }
+
+            // 2. Check if scanned barcode matches a product (master article or regular product) in local productList
             const product = productList.find(
                 (p) =>
-                    p.barcode?.toLowerCase() === cleanBarcode.toLowerCase() ||
-                    p.units?.some((u) => u.barcode?.toLowerCase() === cleanBarcode.toLowerCase())
+                    p.barcode?.toLowerCase() === cleanLower ||
+                    p.units?.some((u) => u.barcode?.toLowerCase() === cleanLower)
             );
 
             if (product) {
+                // If master product has variants, open variant selector modal so cashier selects color & size
+                if (product.has_variants && Array.isArray(product.variants) && product.variants.length > 0) {
+                    setVariantModalProduct(product);
+                    toast.info(`Pilih warna dan ukuran untuk ${product.title}`);
+                    return;
+                }
+
                 if (product.stock > 0 || !navigator.onLine) {
                     const matchedUnit = product.units?.find(
-                        (u) => u.barcode?.toLowerCase() === cleanBarcode.toLowerCase()
+                        (u) => u.barcode?.toLowerCase() === cleanLower
                     );
                     handleAddToCart(product, matchedUnit || null);
                 } else {
@@ -575,12 +614,37 @@ export default function Index({
                 return;
             }
 
+            // 3. Fallback: Search online via transactions.searchProduct API if online
+            if (navigator.onLine) {
+                try {
+                    const searchRes = await axios.post(route("transactions.searchProduct"), {
+                        barcode: cleanBarcode,
+                    });
+                    if (searchRes.data?.success && searchRes.data?.data) {
+                        const sProd = searchRes.data.data;
+                        if (sProd.has_variants) {
+                            setVariantModalProduct(sProd);
+                            toast.info(`Pilih warna dan ukuran untuk ${sProd.title}`);
+                            return;
+                        }
+                        if (sProd.stock > 0) {
+                            handleAddToCart(sProd, null);
+                        } else {
+                            toast.error(`${sProd.title} stok habis`);
+                        }
+                        return;
+                    }
+                } catch (_) {
+                    // proceed to lookup catalog
+                }
+            }
+
             if (!navigator.onLine) {
                 toast.error(`Produk barcode "${cleanBarcode}" tidak ditemukan di database lokal`);
                 return;
             }
 
-            // Product not in store: lookup in Reference Catalog
+            // 4. Product not in store: lookup in Reference Catalog
             const lookupToast = toast.loading(`Mencari "${cleanBarcode}" di katalog referensi...`);
             try {
                 const response = await axios.get(route("products.lookup-catalog"), {
@@ -860,6 +924,12 @@ export default function Index({
                 redeem_points: Number(redeemPointsInput || 0),
                 customer_voucher_id: selectedCustomer?.id ? (selectedVoucherId || null) : null,
                 shipping_cost: shipping,
+                shipping_courier: shippingMeta?.courier ?? null,
+                shipping_service: shippingMeta?.service ?? null,
+                shipping_etd: shippingMeta?.etd ?? null,
+                shipping_weight: shippingMeta?.weight ?? null,
+                shipping_destination_id: shippingMeta?.destination_id ?? null,
+                shipping_destination_label: shippingMeta?.destination_label ?? null,
                 grand_total: payable,
                 cash: isCashPayment ? cash : payable,
                 payment_gateway: payLater ? null : isCashPayment ? null : paymentMethod,
@@ -886,6 +956,7 @@ export default function Index({
                 setRedeemPointsInput("");
                 setCashInput("");
                 setShippingInput("");
+                setShippingMeta(null);
                 setShowDiscounts(false);
                 setSelectedCustomer(WALK_IN_CUSTOMER);
                 setPricingPreview(initialPricingPreview);
@@ -904,6 +975,12 @@ export default function Index({
                 redeem_points: Number(redeemPointsInput || 0),
                 customer_voucher_id: selectedCustomer?.id ? (selectedVoucherId || null) : null,
                 shipping_cost: shipping,
+                shipping_courier: shippingMeta?.courier ?? null,
+                shipping_service: shippingMeta?.service ?? null,
+                shipping_etd: shippingMeta?.etd ?? null,
+                shipping_weight: shippingMeta?.weight ?? null,
+                shipping_destination_id: shippingMeta?.destination_id ?? null,
+                shipping_destination_label: shippingMeta?.destination_label ?? null,
                 grand_total: payable,
                 cash: isCashPayment ? cash : payable,
                 change: isCashPayment ? Math.max(cash - payable, 0) : 0,
@@ -920,6 +997,7 @@ export default function Index({
                     setRedeemPointsInput("");
                     setCashInput("");
                     setShippingInput("");
+                    setShippingMeta(null);
                     setShowDiscounts(false);
                     setSelectedCustomer(WALK_IN_CUSTOMER);
                     setSelectedBankAccount(null);
@@ -938,21 +1016,54 @@ export default function Index({
         );
     };
 
-    // Filter products including out of stock
+    // Filter products including out of stock and fashion variants
     const allProducts = useMemo(() => {
+        const q = searchQuery ? searchQuery.toLowerCase().trim() : "";
         return productList.filter((product) => {
             const matchesCategory =
                 normalizedSelectedCategory === null ||
                 Number(product.category_id) === normalizedSelectedCategory;
-            const matchesSearch =
-                !searchQuery ||
-                product.title
-                    .toLowerCase()
-                    .includes(searchQuery.toLowerCase()) ||
-                product.barcode
-                    ?.toLowerCase()
-                    .includes(searchQuery.toLowerCase());
-            return matchesCategory && matchesSearch;
+
+            if (!matchesCategory) return false;
+            if (!q) return true;
+
+            const matchesDirect =
+                product.title?.toLowerCase().includes(q) ||
+                product.barcode?.toLowerCase().includes(q) ||
+                product.sku?.toLowerCase().includes(q) ||
+                product.units?.some((u) => u.barcode?.toLowerCase().includes(q));
+
+            if (matchesDirect) return true;
+
+            if (product.has_variants && Array.isArray(product.variants)) {
+                return product.variants.some((v) => {
+                    const vTitle = v.title?.toLowerCase() || "";
+                    const vBarcode = v.barcode?.toLowerCase() || "";
+                    const vSku = v.sku?.toLowerCase() || "";
+                    let attrs = v.variant_attributes;
+                    if (typeof attrs === "string") {
+                        try {
+                            attrs = JSON.parse(attrs);
+                        } catch (_) {
+                            attrs = {};
+                        }
+                    }
+                    const vColor = (attrs?.color_name || attrs?.warna || "").toLowerCase();
+                    const vSize = (attrs?.size || attrs?.ukuran || "").toLowerCase();
+                    const vLabel = (v.variant_label || "").toLowerCase();
+
+                    return (
+                        vTitle.includes(q) ||
+                        vBarcode.includes(q) ||
+                        vSku.includes(q) ||
+                        vColor.includes(q) ||
+                        vSize.includes(q) ||
+                        vLabel.includes(q)
+                    );
+                });
+            }
+
+            return false;
         });
     }, [productList, normalizedSelectedCategory, searchQuery]);
 
@@ -1099,6 +1210,8 @@ export default function Index({
                         addingProductId={addingProductId}
                         searchInputRef={searchInputRef}
                         onAddNewProduct={() => router.get(route('products.create'))}
+                        variantModalProduct={variantModalProduct}
+                        onVariantModalProductChange={setVariantModalProduct}
                     />
                 </div>
 
@@ -1767,9 +1880,19 @@ export default function Index({
 
                                         {/* Shipping Cost */}
                                         <div>
-                                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                                                Ongkos Kirim (Rp)
-                                            </label>
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                                    Ongkos Kirim (Rp)
+                                                </label>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowRajaOngkirModal(true)}
+                                                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors cursor-pointer"
+                                                >
+                                                    <IconTruckDelivery size={14} />
+                                                    <span>Cek RajaOngkir</span>
+                                                </button>
+                                            </div>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
                                                     Rp
@@ -1778,26 +1901,55 @@ export default function Index({
                                                     type="text"
                                                     inputMode="numeric"
                                                     value={shippingInput}
-                                                    onChange={(e) =>
+                                                    onChange={(e) => {
                                                         setShippingInput(
                                                             e.target.value.replace(/[^\d]/g, "")
-                                                        )
-                                                    }
+                                                        );
+                                                        if (!e.target.value) setShippingMeta(null);
+                                                    }}
                                                     placeholder="0"
                                                     className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                                                 />
                                             </div>
+
+                                            {shippingMeta && (
+                                                <div className="mt-2 p-2 rounded-xl bg-primary-50 dark:bg-primary-950/40 border border-primary-200 dark:border-primary-800 text-xs flex items-center justify-between text-primary-800 dark:text-primary-200">
+                                                    <div className="flex items-center gap-1.5 truncate">
+                                                        <IconTruckDelivery size={15} className="shrink-0 text-primary-600 dark:text-primary-400" />
+                                                        <span className="font-bold uppercase">{shippingMeta.courier}</span>
+                                                        <span className="font-semibold">({shippingMeta.service})</span>
+                                                        {shippingMeta.etd && (
+                                                            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                                • {shippingMeta.etd.includes("day") || shippingMeta.etd.includes("hari") ? shippingMeta.etd : `${shippingMeta.etd} hari`}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setShippingMeta(null);
+                                                            setShippingInput("");
+                                                        }}
+                                                        className="text-slate-400 hover:text-rose-500 ml-2 cursor-pointer"
+                                                        title="Hapus kurir"
+                                                    >
+                                                        <IconX size={14} />
+                                                    </button>
+                                                </div>
+                                            )}
+
                                             {/* Quick Shipping Amounts */}
                                             <div className="grid grid-cols-4 gap-2 mt-2">
                                                 {[10000, 15000, 20000, 25000].map((amt) => (
                                                     <button
                                                         key={amt}
                                                         type="button"
-                                                        onClick={() =>
-                                                            setShippingInput(String(amt))
-                                                        }
+                                                        onClick={() => {
+                                                            setShippingInput(String(amt));
+                                                            setShippingMeta(null);
+                                                        }}
                                                         className={`py-1.5 px-1 rounded-lg text-xs font-medium transition-all ${
-                                                            Number(shippingInput) === amt
+                                                            Number(shippingInput) === amt && !shippingMeta
                                                                 ? "bg-primary-500 text-white"
                                                                 : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
                                                         }`}
@@ -2063,6 +2215,24 @@ export default function Index({
                 isOpen={Boolean(offlineReceiptData)}
                 onClose={() => setOfflineReceiptData(null)}
                 transactionData={offlineReceiptData}
+            />
+
+            {/* RajaOngkir Shipping Modal */}
+            <RajaOngkirModal
+                isOpen={showRajaOngkirModal}
+                onClose={() => setShowRajaOngkirModal(false)}
+                onSelectShipping={(ship) => {
+                    setShippingInput(String(ship.cost));
+                    setShippingMeta(ship);
+                }}
+                initialWeight={activeCarts.reduce((acc, c) => acc + (c.qty * (c.product?.weight || 1000)), 0)}
+                customerLocation={[
+                    selectedCustomer?.address,
+                    selectedCustomer?.district_name,
+                    selectedCustomer?.regency_name,
+                ]
+                    .filter(Boolean)
+                    .join(", ")}
             />
         </>
     );

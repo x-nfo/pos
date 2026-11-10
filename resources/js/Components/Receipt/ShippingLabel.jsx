@@ -221,7 +221,31 @@ export default function ShippingLabel({ transaction, store = {} }) {
                                 <span>Item</span>
                                 <span className="font-semibold">{itemCount} unit</span>
                             </div>
-                            <div className="flex justify-between items-baseline pt-1 sm:pt-[10pt] border-t border-slate-100 sm:border-0">
+                            {transaction?.shipping_courier && (
+                                <div className="flex justify-between items-center text-slate-700">
+                                    <span>Kurir</span>
+                                    <span className="font-semibold uppercase truncate max-w-[90px]">
+                                        {transaction.shipping_courier} {transaction.shipping_service ? `(${transaction.shipping_service})` : ""}
+                                    </span>
+                                </div>
+                            )}
+                            {transaction?.shipping_weight > 0 && (
+                                <div className="flex justify-between items-center text-slate-700">
+                                    <span>Berat</span>
+                                    <span className="font-semibold">
+                                        {(transaction.shipping_weight / 1000).toFixed(1)} kg
+                                    </span>
+                                </div>
+                            )}
+                            {transaction?.shipping_tracking_number && (
+                                <div className="flex justify-between items-center text-slate-700">
+                                    <span>Resi</span>
+                                    <span className="font-mono font-bold truncate max-w-[90px]">
+                                        {transaction.shipping_tracking_number}
+                                    </span>
+                                </div>
+                            )}
+                            <div className="flex justify-between items-baseline pt-1 sm:pt-[4pt] border-t border-slate-100 sm:border-0">
                                 <span className="font-bold text-slate-900 text-[10px] sm:text-[10pt]">Total</span>
                                 <span className="font-bold text-slate-900 text-[11px] sm:text-[10pt] text-right ml-1 whitespace-nowrap">
                                     {formatPrice(transaction?.grand_total)}

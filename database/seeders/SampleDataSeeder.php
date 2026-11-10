@@ -193,6 +193,42 @@ class SampleDataSeeder extends Seeder
                 'expires_at' => now()->addDays(30),
             ]);
         }
+
+        $publicCoupons = [
+            [
+                'code' => 'DISKON10',
+                'name' => 'Kupon Spesial Belanja 10%',
+                'discount_type' => 'percentage',
+                'discount_value' => 10,
+                'max_discount' => 25000,
+                'minimum_order' => 50000,
+                'usage_limit' => 500,
+            ],
+            [
+                'code' => 'HEMAT20',
+                'name' => 'Kupon Hemat Rp 20.000',
+                'discount_type' => 'fixed_amount',
+                'discount_value' => 20000,
+                'minimum_order' => 100000,
+                'usage_limit' => 250,
+            ],
+        ];
+
+        foreach ($publicCoupons as $pc) {
+            CustomerVoucher::create([
+                'customer_id' => null,
+                'code' => $pc['code'],
+                'name' => $pc['name'],
+                'discount_type' => $pc['discount_type'],
+                'discount_value' => $pc['discount_value'],
+                'max_discount' => $pc['max_discount'] ?? null,
+                'minimum_order' => $pc['minimum_order'],
+                'usage_limit' => $pc['usage_limit'],
+                'is_active' => true,
+                'starts_at' => now()->subDays(7),
+                'expires_at' => now()->addDays(60),
+            ]);
+        }
     }
 
     /**

@@ -94,6 +94,13 @@ export default function Menu() {
                     badge: pendingCatalogOrdersCount > 0 ? pendingCatalogOrdersCount : null,
                 },
                 {
+                    title: t("sidebar.items.shippingCalculator", { defaultValue: "Cek Ongkir (RajaOngkir)" }),
+                    href: route("shipping.calculator"),
+                    active: cleanUrl.startsWith("/dashboard/shipping") || cleanUrl.startsWith("/shipping/calculator"),
+                    icon: <IconTruckDelivery size={20} strokeWidth={1.5} />,
+                    permissions: hasAnyPermission(["shipping-rates-access", "transactions-access"]),
+                },
+                {
                     title: t("sidebar.items.transactionHistory"),
                     href: route("transactions.history"),
                     active: cleanUrl.startsWith("/dashboard/transactions/history"),
@@ -151,6 +158,13 @@ export default function Menu() {
                             active: cleanUrl.startsWith("/dashboard/units"),
                             icon: <IconRulerMeasure size={18} strokeWidth={1.5} />,
                             permissions: hasAnyPermission(["units-access"]),
+                        },
+                        {
+                            title: "Panduan Ukuran",
+                            href: route("size-charts.index"),
+                            active: cleanUrl.startsWith("/dashboard/size-charts"),
+                            icon: <IconRulerMeasure size={18} strokeWidth={1.5} />,
+                            permissions: hasAnyPermission(["size-charts-access"]),
                         },
                     ],
                 },
@@ -436,6 +450,7 @@ export default function Menu() {
                         "whatsapp-settings-access",
                         "warehouses-access",
                         "target-settings-access",
+                        "shipping-settings-access",
                     ]),
                     subdetails: [
                         {
@@ -481,6 +496,13 @@ export default function Menu() {
                             active: cleanUrl.startsWith("/dashboard/settings/target"),
                             icon: <IconTarget size={18} strokeWidth={1.5} />,
                             permissions: hasAnyPermission(["target-settings-access"]),
+                        },
+                        {
+                            title: t("sidebar.items.shippingSettings", { defaultValue: "Pengiriman (RajaOngkir)" }),
+                            href: route("settings.shipping.edit"),
+                            active: cleanUrl.startsWith("/dashboard/settings/shipping"),
+                            icon: <IconTruckDelivery size={18} strokeWidth={1.5} />,
+                            permissions: hasAnyPermission(["shipping-settings-access"]),
                         },
                     ],
                 },

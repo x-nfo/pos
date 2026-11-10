@@ -50,6 +50,7 @@ export default function Edit() {
             challenge: "Ubah Pengguna",
             onConfirmed: () => {
                 post(route("users.update", user.id), {
+                    forceFormData: true,
                     onSuccess: () => toast.success("Pengguna berhasil diperbarui"),
                     onError: () => toast.error("Gagal memperbarui pengguna"),
                 });
