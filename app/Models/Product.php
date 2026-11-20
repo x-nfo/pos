@@ -39,6 +39,7 @@ class Product extends Model
         'variant_display_type',
         'variant_attributes',
         'image',
+        'gallery_images',
         'barcode',
         'sku',
         'title',
@@ -178,6 +179,10 @@ class Product extends Model
 
     public function baseUnit(): ?Unit
     {
+        if ($this->relationLoaded('units')) {
+            return $this->units->first(fn ($u) => (bool) ($u->pivot->is_base ?? false));
+        }
+
         return $this->units()->wherePivot('is_base', true)->first();
     }
 
@@ -338,9 +343,13 @@ class Product extends Model
         if ($this->min_stock <= 0) {
             return false;
         }
-        $stock = $warehouseId
-            ? (int) ($this->warehouses()->where('warehouse_id', $warehouseId)->first()?->pivot->stock ?? 0)
-            : $this->stockTotal();
+        if ($warehouseId) {
+            $stock = $this->relationLoaded('warehouses')
+                ? (int) ($this->warehouses->firstWhere('id', $warehouseId)?->pivot->stock ?? 0)
+                : (int) ($this->warehouses()->where('warehouse_id', $warehouseId)->first()?->pivot->stock ?? 0);
+        } else {
+            $stock = $this->stockTotal();
+        }
 
         return $stock <= $this->min_stock;
     }
@@ -351,9 +360,13 @@ class Product extends Model
             return 0;
         }
 
-        $stock = $warehouseId
-            ? (int) ($this->warehouses()->where('warehouse_id', $warehouseId)->first()?->pivot->stock ?? 0)
-            : $this->stockTotal();
+        if ($warehouseId) {
+            $stock = $this->relationLoaded('warehouses')
+                ? (int) ($this->warehouses->firstWhere('id', $warehouseId)?->pivot->stock ?? 0)
+                : (int) ($this->warehouses()->where('warehouse_id', $warehouseId)->first()?->pivot->stock ?? 0);
+        } else {
+            $stock = $this->stockTotal();
+        }
 
         $incoming = $deductIncoming
             ? app(ReorderService::class)->getIncomingPoQty($this->id, $warehouseId)
@@ -390,6 +403,62 @@ class Product extends Model
                 }
 
                 return $value;
+            }
+        );
+    }
+
+    protected function galleryImages(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value) {
+                if (! $value) {
+                    return [];
+                }
+
+                $items = is_string($value) ? json_decode($value, true) : $value;
+                if (! is_array($items)) {
+                    return [];
+                }
+
+                return array_values(array_filter(array_map(function ($item) {
+                    if (! $item || ! is_string($item)) {
+                        return null;
+                    }
+
+                    if (
+                        str_starts_with($item, 'http://') ||
+                        str_starts_with($item, 'https://') ||
+                        str_starts_with($item, '/storage/')
+                    ) {
+                        return $item;
+                    }
+
+                    return asset('/storage/products/'.ltrim($item, '/'));
+                }, $items)));
+            },
+            set: function ($value) {
+                if (! $value) {
+                    return null;
+                }
+
+                $items = is_string($value) ? json_decode($value, true) : $value;
+                if (! is_array($items)) {
+                    return null;
+                }
+
+                $cleaned = array_values(array_filter(array_map(function ($item) {
+                    if (! $item || ! is_string($item)) {
+                        return null;
+                    }
+
+                    if (str_contains($item, '/storage/products/')) {
+                        return basename(parse_url($item, PHP_URL_PATH));
+                    }
+
+                    return basename(parse_url($item, PHP_URL_PATH) ?: $item);
+                }, $items)));
+
+                return empty($cleaned) ? null : json_encode($cleaned);
             }
         );
     }

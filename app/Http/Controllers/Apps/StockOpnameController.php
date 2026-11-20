@@ -120,7 +120,7 @@ class StockOpnameController extends Controller
             ? collect()
             : Product::query()
                 ->where('has_variants', false)
-                ->with('category:id,name')
+                ->with(['category:id,name', 'warehouses'])
                 ->where(function ($builder) use ($productFilters) {
                     $builder
                         ->where('title', 'like', '%'.$productFilters['search'].'%')
@@ -134,7 +134,7 @@ class StockOpnameController extends Controller
                 ->map(function ($product) use ($stockOpname) {
                     $pivotStock = 0;
                     if ($stockOpname->warehouse_id) {
-                        $wh = $product->warehouses()->where('warehouse_id', $stockOpname->warehouse_id)->first();
+                        $wh = $product->warehouses->firstWhere('id', $stockOpname->warehouse_id);
                         $pivotStock = $wh !== null ? (int) $wh->pivot->stock : (int) ($product->stock ?? 0);
                     } else {
                         $pivotStock = (int) $product->stockTotal();
@@ -173,6 +173,7 @@ class StockOpnameController extends Controller
 
         $query = Product::query()
             ->where('has_variants', false)
+            ->with('warehouses')
             ->when($categoryId, fn ($q, $catId) => $q->where('category_id', $catId));
 
         $products = $query->get();
@@ -181,6 +182,9 @@ class StockOpnameController extends Controller
         $addedCount = 0;
 
         DB::transaction(function () use ($products, $stockOpname, $existingProductIds, &$addedCount) {
+            $itemsToCreate = [];
+            $now = now();
+
             foreach ($products as $product) {
                 if (isset($existingProductIds[$product->id])) {
                     continue;
@@ -188,9 +192,9 @@ class StockOpnameController extends Controller
 
                 $systemStock = 0;
                 if ($stockOpname->warehouse_id) {
-                    $wh = $product->warehouses()->where('warehouse_id', $stockOpname->warehouse_id)->first();
+                    $wh = $product->warehouses->firstWhere('id', $stockOpname->warehouse_id);
                     if ($wh !== null) {
-                        $systemStock = (int) $wh->pivot->stock;
+                        $systemStock = (int) ($wh->pivot->stock ?? 0);
                     } else {
                         $systemStock = (int) ($product->stock ?? 0);
                         $product->warehouses()->syncWithoutDetaching([
@@ -201,12 +205,22 @@ class StockOpnameController extends Controller
                     $systemStock = (int) $product->stockTotal();
                 }
 
-                $stockOpname->items()->create([
+                $itemsToCreate[] = [
+                    'stock_opname_id' => $stockOpname->id,
                     'product_id' => $product->id,
                     'system_stock' => $systemStock,
-                ]);
+                    'physical_stock' => null,
+                    'difference' => null,
+                    'adjustment_reason' => null,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
 
                 $addedCount++;
+            }
+
+            if (! empty($itemsToCreate)) {
+                $stockOpname->items()->insert($itemsToCreate);
             }
         });
 

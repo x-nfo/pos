@@ -47,11 +47,25 @@ class StoreProductRequest extends FormRequest
             'min_stock' => ['nullable', 'integer', 'min:0'],
             'max_stock' => ['nullable', 'integer', 'min:0'],
             'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'gallery_images' => ['nullable', 'array'],
+            'gallery_images.*' => ['nullable', function ($attribute, $value, $fail) {
+                if ($value instanceof UploadedFile) {
+                    $allowedExt = ['jpeg', 'png', 'jpg', 'webp'];
+                    $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+                    if (! in_array(strtolower($value->getClientOriginalExtension()), $allowedExt) || ! in_array($value->getMimeType(), $allowedMimes)) {
+                        $fail('Format foto galeri harus jpeg, png, jpg, atau webp.');
+                    }
+                    if ($value->getSize() > 2048 * 1024) {
+                        $fail('Ukuran foto galeri maksimal 2MB per foto.');
+                    }
+                }
+            }],
             'color_images' => ['nullable', 'array'],
             'color_images.*' => ['nullable', function ($attribute, $value, $fail) {
                 if ($value instanceof UploadedFile) {
-                    $allowed = ['jpeg', 'png', 'jpg', 'webp'];
-                    if (! in_array(strtolower($value->getClientOriginalExtension()), $allowed)) {
+                    $allowedExt = ['jpeg', 'png', 'jpg', 'webp'];
+                    $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+                    if (! in_array(strtolower($value->getClientOriginalExtension()), $allowedExt) || ! in_array($value->getMimeType(), $allowedMimes)) {
                         $fail('Format gambar varian warna harus jpeg, png, jpg, atau webp.');
                     }
                     if ($value->getSize() > 2048 * 1024) {
@@ -70,8 +84,9 @@ class StoreProductRequest extends FormRequest
             'variants.*.stock' => ['nullable', 'integer', 'min:0'],
             'variants.*.image' => ['nullable', function ($attribute, $value, $fail) {
                 if ($value instanceof UploadedFile) {
-                    $allowed = ['jpeg', 'png', 'jpg', 'webp'];
-                    if (! in_array(strtolower($value->getClientOriginalExtension()), $allowed)) {
+                    $allowedExt = ['jpeg', 'png', 'jpg', 'webp'];
+                    $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+                    if (! in_array(strtolower($value->getClientOriginalExtension()), $allowedExt) || ! in_array($value->getMimeType(), $allowedMimes)) {
                         $fail('Format gambar varian harus jpeg, png, jpg, atau webp.');
                     }
                     if ($value->getSize() > 2048 * 1024) {

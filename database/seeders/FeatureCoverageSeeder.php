@@ -155,14 +155,14 @@ class FeatureCoverageSeeder extends Seeder
     private function seedStoreSettings(): void
     {
         $settings = [
-            'monthly_sales_target' => ['value' => '15000000', 'description' => 'Target penjualan bulanan'],
-            'store_name' => ['value' => 'Toko Rekasir', 'description' => 'Nama toko'],
+            'monthly_sales_target' => ['value' => '35000000', 'description' => 'Target penjualan bulanan'],
+            'store_name' => ['value' => 'VELOUR APPAREL & CO.', 'description' => 'Nama butik toko fashion'],
             'store_logo' => ['value' => null, 'description' => 'Logo toko'],
-            'store_address' => ['value' => 'Jl. Ciangsana Raya No. 008, Gn Putri Kab. Bogor', 'description' => 'Alamat lengkap toko'],
-            'store_phone' => ['value' => '021-87885611594', 'description' => 'Nomor telepon toko'],
-            'store_email' => ['value' => 'halo@rekasir.site', 'description' => 'Email toko'],
-            'store_website' => ['value' => 'https://rekasir.site', 'description' => 'Website atau sosial media'],
-            'store_city' => ['value' => 'Kab. Bogor', 'description' => 'Kota/Kabupaten toko'],
+            'store_address' => ['value' => 'Jl. Senopati No. 88, Kebayoran Baru, Jakarta Selatan, DKI Jakarta 12190', 'description' => 'Alamat lengkap toko'],
+            'store_phone' => ['value' => '0812-9988-7766', 'description' => 'Nomor telepon toko'],
+            'store_email' => ['value' => 'hello@velourapparel.test', 'description' => 'Email toko'],
+            'store_website' => ['value' => 'https://velourapparel.test', 'description' => 'Website atau sosial media'],
+            'store_city' => ['value' => 'Jakarta Selatan', 'description' => 'Kota/Kabupaten toko'],
         ];
 
         foreach ($settings as $key => $payload) {
@@ -181,22 +181,22 @@ class FeatureCoverageSeeder extends Seeder
         $rows = collect([
             [
                 'bank_name' => 'BCA',
-                'account_number' => '0149988776',
-                'account_name' => 'PT Sumber Teknologi Indonesia',
+                'account_number' => '8820192831',
+                'account_name' => 'PT Velour Kreasi Mode',
                 'is_active' => true,
                 'sort_order' => 0,
             ],
             [
                 'bank_name' => 'Mandiri',
-                'account_number' => '1370012345678',
-                'account_name' => 'PT Sumber Teknologi Indonesia',
+                'account_number' => '1370098765432',
+                'account_name' => 'PT Velour Kreasi Mode',
                 'is_active' => true,
                 'sort_order' => 1,
             ],
             [
                 'bank_name' => 'BRI',
                 'account_number' => '002401998877503',
-                'account_name' => 'PT Sumber Teknologi Indonesia',
+                'account_name' => 'PT Velour Kreasi Mode',
                 'is_active' => false,
                 'sort_order' => 2,
             ],
@@ -257,19 +257,19 @@ class FeatureCoverageSeeder extends Seeder
         $draftOrder = $purchaseOrderService->createOrder(
             [
                 'warehouse_id' => 1,
-                'supplier_id' => $suppliers->get('CV Makmur Jaya Distribusi')?->id,
-                'notes' => 'Draft pengadaan perlengkapan rumah tangga akhir minggu.',
+                'supplier_id' => $suppliers->get('UD Label & Aksesoris Mode')?->id ?? $suppliers->first()?->id,
+                'notes' => 'Draft pengadaan tote bag dan aksesoris butik akhir minggu.',
             ],
             [
                 [
-                    'product_id' => $products->get('RMH-0001')?->id,
+                    'product_id' => $products->get('APRL-ACC-001')?->id ?? $products->first()?->id,
                     'qty_ordered' => 18,
-                    'unit_price' => 14000,
+                    'unit_price' => 42000,
                 ],
                 [
-                    'product_id' => $products->get('RMH-0002')?->id,
+                    'product_id' => $products->get('APRL-ACC-002')?->id ?? $products->skip(1)->first()?->id,
                     'qty_ordered' => 12,
-                    'unit_price' => 11500,
+                    'unit_price' => 32000,
                 ],
             ],
             $admin->id,
@@ -283,19 +283,19 @@ class FeatureCoverageSeeder extends Seeder
         $cancelledOrder = $purchaseOrderService->createOrder(
             [
                 'warehouse_id' => 1,
-                'supplier_id' => $suppliers->get('UD Maju Retail Grosir')?->id,
-                'notes' => 'PO dibatalkan karena harga supplier berubah.',
+                'supplier_id' => $suppliers->get('PT Garment Bandung Textiles')?->id ?? $suppliers->first()?->id,
+                'notes' => 'PO dibatalkan karena kuota warna kain dari supplier habis.',
             ],
             [
                 [
-                    'product_id' => $products->get('PRW-0001')?->id,
+                    'product_id' => $products->get('APRL-ACC-003')?->id ?? $products->first()?->id,
                     'qty_ordered' => 30,
-                    'unit_price' => 3800,
+                    'unit_price' => 25000,
                 ],
                 [
-                    'product_id' => $products->get('PRW-0003')?->id,
+                    'product_id' => $products->get('APRL-TSH-001')?->id ?? $products->skip(1)->first()?->id,
                     'qty_ordered' => 20,
-                    'unit_price' => 11500,
+                    'unit_price' => 60000,
                 ],
             ],
             $admin->id,
@@ -312,19 +312,19 @@ class FeatureCoverageSeeder extends Seeder
         $partialOrder = $purchaseOrderService->createOrder(
             [
                 'warehouse_id' => 1,
-                'supplier_id' => $suppliers->get('PT Sumber Snack Indonesia')?->id,
-                'notes' => 'PO barang cepat laku untuk restock mingguan.',
+                'supplier_id' => $suppliers->get('PT Garment Bandung Textiles')?->id ?? $suppliers->first()?->id,
+                'notes' => 'PO restock kaos boxy dan essentials untuk persiapan akhir pekan.',
             ],
             [
                 [
-                    'product_id' => $products->get('MNM-0001')?->id,
+                    'product_id' => $products->get('TSH-OVR-BLK-M')?->id ?? $products->first()?->id,
                     'qty_ordered' => 48,
-                    'unit_price' => 2900,
+                    'unit_price' => 65000,
                 ],
                 [
-                    'product_id' => $products->get('SNK-0001')?->id,
+                    'product_id' => $products->get('TSH-OVR-WHT-L')?->id ?? $products->skip(1)->first()?->id,
                     'qty_ordered' => 24,
-                    'unit_price' => 7600,
+                    'unit_price' => 65000,
                 ],
             ],
             $admin->id,
@@ -343,12 +343,12 @@ class FeatureCoverageSeeder extends Seeder
                 [
                     'purchase_order_item_id' => $partialOrder->items[0]->id,
                     'qty_received' => 30,
-                    'notes' => 'Sebagian aqua diterima lebih awal.',
+                    'notes' => 'Sebagian kaos hitam diterima sesuai surat jalan pertama.',
                 ],
                 [
                     'purchase_order_item_id' => $partialOrder->items[1]->id,
                     'qty_received' => 10,
-                    'notes' => 'Sebagian snack diterima sesuai surat jalan pertama.',
+                    'notes' => 'Sebagian kaos putih diterima lebih awal.',
                 ],
             ],
             'Penerimaan pertama untuk PO restock mingguan.',
@@ -369,24 +369,24 @@ class FeatureCoverageSeeder extends Seeder
         $completedOrder = $purchaseOrderService->createOrder(
             [
                 'warehouse_id' => 1,
-                'supplier_id' => $suppliers->get('PT Fresh Food Sentosa')?->id,
-                'notes' => 'PO lengkap untuk frozen food dan produk susu.',
+                'supplier_id' => $suppliers->get('CV Denim Mill Nusantara')?->id ?? $suppliers->first()?->id,
+                'notes' => 'PO lengkap untuk celana chino dan denim selvedge reguler.',
             ],
             [
                 [
-                    'product_id' => $products->get('MKN-0002')?->id,
+                    'product_id' => $products->get('PNT-CHN-BLK-32')?->id ?? $products->first()?->id,
                     'qty_ordered' => 15,
-                    'unit_price' => 24800,
+                    'unit_price' => 115000,
                 ],
                 [
-                    'product_id' => $products->get('SSU-0001')?->id,
+                    'product_id' => $products->get('PNT-CHN-SND-32')?->id ?? $products->skip(1)->first()?->id,
                     'qty_ordered' => 20,
-                    'unit_price' => 15500,
+                    'unit_price' => 115000,
                 ],
                 [
-                    'product_id' => $products->get('SSU-0002')?->id,
+                    'product_id' => $products->get('DNM-RAW-IND-32')?->id ?? $products->skip(2)->first()?->id,
                     'qty_ordered' => 16,
-                    'unit_price' => 7600,
+                    'unit_price' => 180000,
                 ],
             ],
             $admin->id,
@@ -453,7 +453,7 @@ class FeatureCoverageSeeder extends Seeder
                 'supplier_id' => $completedOrder->supplier_id,
                 'goods_receiving_id' => $completedReceiving->id,
                 'payable_id' => $completedPayable?->id,
-                'notes' => 'Draft retur untuk yogurt penyok, menunggu persetujuan supplier.',
+                'notes' => 'Draft retur untuk celana dengan jahitan saku miring, menunggu pickup.',
             ],
             [
                 [
@@ -461,8 +461,8 @@ class FeatureCoverageSeeder extends Seeder
                     'product_id' => $completedReceiving->items->last()?->product_id,
                     'qty_returned' => 1,
                     'unit_price' => $completedReceiving->items->last()?->purchaseOrderItem?->unit_price ?? 0,
-                    'reason' => 'Kemasan penyok',
-                    'notes' => 'Belum diproses, masih menunggu pickup.',
+                    'reason' => 'Jahitan saku miring',
+                    'notes' => 'Belum diproses, masih menunggu pickup konveksi.',
                 ],
             ],
             $admin->id,
@@ -478,7 +478,7 @@ class FeatureCoverageSeeder extends Seeder
                 'supplier_id' => $completedOrder->supplier_id,
                 'goods_receiving_id' => $completedReceiving->id,
                 'payable_id' => $completedPayable?->id,
-                'notes' => 'Retur barang rusak dari batch frozen food.',
+                'notes' => 'Retur barang cacat tenun kain dari batch celana denim.',
             ],
             [
                 [
@@ -486,8 +486,8 @@ class FeatureCoverageSeeder extends Seeder
                     'product_id' => $completedReceiving->items->first()?->product_id,
                     'qty_returned' => 2,
                     'unit_price' => $completedReceiving->items->first()?->purchaseOrderItem?->unit_price ?? 0,
-                    'reason' => 'Segel kemasan rusak',
-                    'notes' => 'Dikembalikan saat inspeksi inbound.',
+                    'reason' => 'Cacat serat tenun kain',
+                    'notes' => 'Dikembalikan saat inspeksi inbound garmen.',
                 ],
             ],
             $admin->id,
@@ -510,16 +510,16 @@ class FeatureCoverageSeeder extends Seeder
             'warehouse_id' => 1,
             'code' => 'SO-DRAFT-001',
             'status' => 'draft',
-            'notes' => 'Sesi stock opname rak depan, belum semua item dihitung.',
+            'notes' => 'Sesi stock opname rak display depan, belum semua item dihitung.',
             'created_by' => $admin->id,
             'created_at' => now()->subHours(5),
             'updated_at' => now()->subHours(5),
         ]);
 
         $draftItems = [
-            $products->get('MNM-0002'),
-            $products->get('SNK-0002'),
-            $products->get('RMH-0002'),
+            $products->get('TSH-OVR-BLK-L') ?? $products->first(),
+            $products->get('SHT-OXF-WHT-M') ?? $products->skip(1)->first(),
+            $products->get('APRL-ACC-001') ?? $products->skip(2)->first(),
         ];
 
         foreach (collect($draftItems)->filter() as $product) {
@@ -536,7 +536,7 @@ class FeatureCoverageSeeder extends Seeder
             'warehouse_id' => 1,
             'code' => 'SO-FINAL-001',
             'status' => 'draft',
-            'notes' => 'Opname gudang pendingin untuk batch awal pekan.',
+            'notes' => 'Opname gudang display untuk batch busana awal pekan.',
             'created_by' => $admin->id,
             'created_at' => now()->subHours(3),
             'updated_at' => now()->subHours(3),
@@ -544,19 +544,19 @@ class FeatureCoverageSeeder extends Seeder
 
         $adjustments = collect([
             [
-                'product' => $products->get('MKN-0002'),
+                'product' => $products->get('PNT-CHN-BLK-32') ?? $products->first(),
                 'physical_stock' => null,
                 'adjustment' => -1,
-                'reason' => 'Satu pcs rusak saat bongkar muat.',
+                'reason' => 'Satu pcs kancing celana copot saat display rak.',
             ],
             [
-                'product' => $products->get('SSU-0001'),
+                'product' => $products->get('DNM-RAW-IND-32') ?? $products->skip(1)->first(),
                 'physical_stock' => null,
                 'adjustment' => 2,
-                'reason' => 'Temuan stok terselip di rak pendingin.',
+                'reason' => 'Temuan stok celana terselip di rak gudang belakang.',
             ],
             [
-                'product' => $products->get('SSU-0002'),
+                'product' => $products->get('SH-SNK-WHT-42') ?? $products->skip(2)->first(),
                 'physical_stock' => null,
                 'adjustment' => 0,
                 'reason' => null,

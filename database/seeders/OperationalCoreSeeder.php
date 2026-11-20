@@ -177,8 +177,8 @@ class OperationalCoreSeeder extends Seeder
                     cashier: $cashier,
                     shift: $historicalShift,
                     type: 'store_credit',
-                    returnReason: 'Pelanggan menerima credit note untuk item yang tidak sesuai.',
-                    notes: 'Retur sample untuk module 3 dengan store credit.',
+                    returnReason: 'Pelanggan menukar ukuran pakaian (Size Exchange) dan menerima store credit.',
+                    notes: 'Retur sample tukar ukuran busana dengan store credit.',
                     stockMutationService: $stockMutationService,
                 );
             }
@@ -196,8 +196,8 @@ class OperationalCoreSeeder extends Seeder
                     cashier: $cashier,
                     shift: $activeShift,
                     type: 'refund_cash',
-                    returnReason: 'Barang dikembalikan dan dana dikembalikan tunai.',
-                    notes: 'Retur sample untuk cash refund.',
+                    returnReason: 'Pakaian dikembalikan karena cacat kancing dan dana dikembalikan tunai.',
+                    notes: 'Retur sample busana untuk cash refund.',
                     stockMutationService: $stockMutationService,
                 );
             }
@@ -222,7 +222,7 @@ class OperationalCoreSeeder extends Seeder
                     'refund_amount' => $unitPrice,
                     'credited_amount' => 0,
                     'total_return_amount' => $unitPrice,
-                    'notes' => 'Draft retur sample yang belum difinalisasi.',
+                    'notes' => 'Draft retur tukar size pakaian yang belum difinalisasi.',
                 ]);
 
                 $draftReturn->items()->create([
@@ -233,7 +233,7 @@ class OperationalCoreSeeder extends Seeder
                     'qty_return' => 1,
                     'unit_price' => $unitPrice,
                     'subtotal' => $unitPrice,
-                    'return_reason' => 'Menunggu konfirmasi retur dari admin.',
+                    'return_reason' => 'Menunggu konfirmasi ketersediaan size pengganti.',
                     'restock_to_inventory' => true,
                 ]);
             }

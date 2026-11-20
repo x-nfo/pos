@@ -147,10 +147,11 @@ class CheckoutService
             }
 
             // Validate stock availability for all products in the cart using lockForUpdate
+            $carts->loadMissing(['product.components.warehouses', 'product.warehouses']);
             $productRequests = [];
             foreach ($carts as $c) {
                 if ($c->product->is_composite) {
-                    $c->product->load('components');
+                    $c->product->loadMissing('components');
                     foreach ($c->product->components as $component) {
                         $componentQty = (int) round((float) $component->pivot->qty * $c->qty);
                         if (! isset($productRequests[$component->id])) {
@@ -282,10 +283,10 @@ class CheckoutService
                     'total' => $profits,
                 ]);
 
-                $product = Product::find($cart->product_id);
+                $product = $cart->product ?: Product::find($cart->product_id);
 
                 if ($product->is_composite) {
-                    $product->load('components');
+                    $product->loadMissing('components');
                     foreach ($product->components as $component) {
                         $componentQty = (int) round((float) $component->pivot->qty * $cart->qty);
 

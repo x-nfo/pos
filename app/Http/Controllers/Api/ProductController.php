@@ -21,8 +21,10 @@ class ProductController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $this->authorizeProductAction($request, 'products-access');
+
         $products = Product::query()
-            ->with('category')
+            ->with(['category', 'warehouses', 'variants.warehouses'])
             ->when($request->string('search')->toString(), function ($q, $search) {
                 $q->where(function ($sub) use ($search) {
                     $sub->where('title', 'like', "%{$search}%")
@@ -44,6 +46,8 @@ class ProductController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $this->authorizeProductAction($request, 'products-create');
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -88,7 +92,7 @@ class ProductController extends Controller
             }
         }
 
-        return $this->created(new ProductResource($product->load('category')), 'Produk berhasil dibuat');
+        return $this->created(new ProductResource($product->load(['category', 'warehouses', 'variants.warehouses'])), 'Produk berhasil dibuat');
     }
 
     /**
@@ -96,7 +100,9 @@ class ProductController extends Controller
      */
     public function show(Request $request, Product $product): JsonResponse
     {
-        $product->load('category', 'warehouses');
+        $this->authorizeProductAction($request, 'products-access');
+
+        $product->load(['category', 'warehouses', 'variants.warehouses']);
 
         return $this->ok(new ProductResource($product));
     }
@@ -106,6 +112,8 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product): JsonResponse
     {
+        $this->authorizeProductAction($request, 'products-edit');
+
         $validated = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
@@ -125,7 +133,7 @@ class ProductController extends Controller
 
         $product->update($validated);
 
-        return $this->ok(new ProductResource($product->load('category')), 'Produk berhasil diperbarui');
+        return $this->ok(new ProductResource($product->load(['category', 'warehouses', 'variants.warehouses'])), 'Produk berhasil diperbarui');
     }
 
     /**
@@ -133,6 +141,8 @@ class ProductController extends Controller
      */
     public function destroy(Request $request, Product $product): JsonResponse
     {
+        $this->authorizeProductAction($request, 'products-delete');
+
         if ($product->hasHistoricalRelations()) {
             return $this->error('Produk tidak dapat dihapus karena sudah memiliki riwayat transaksi atau sisa stok.', 422);
         }
@@ -141,5 +151,27 @@ class ProductController extends Controller
         $product->delete();
 
         return $this->noContent();
+    }
+
+    private function authorizeProductAction(Request $request, string $permission): void
+    {
+        $user = $request->user();
+        if (! $user) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        if ($user->tokenCan('*') || $user->hasRole(['admin', 'superadmin', 'manager'])) {
+            return;
+        }
+
+        if ($user->tokenCan($permission) || $user->can($permission)) {
+            return;
+        }
+
+        if ($permission === 'products-access' && ($user->tokenCan('transactions-access') || $user->can('transactions-access'))) {
+            return;
+        }
+
+        abort(403, 'Anda tidak memiliki izin untuk melakukan tindakan ini.');
     }
 }

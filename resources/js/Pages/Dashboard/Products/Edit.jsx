@@ -19,6 +19,7 @@ import {
 import { getProductImageUrl } from "@/Utils/imageUrl";
 import ProductUnitsInput from "@/Components/Dashboard/ProductUnitsInput";
 import ImageCaptureUpload from "@/Components/Dashboard/ImageCaptureUpload";
+import ProductGalleryUpload from "@/Components/Dashboard/ProductGalleryUpload";
 import BarcodeScanner from "@/Components/POS/BarcodeScanner";
 import QuickCategoryModal from "@/Components/Dashboard/QuickCategoryModal";
 import FashionVariantMatrixGenerator from "@/Components/Dashboard/FashionVariantMatrixGenerator";
@@ -41,6 +42,8 @@ export default function Edit({ categories = [], product, units = [], sizeCharts 
 
     const { data, setData, post, processing } = useForm({
         image: "",
+        existing_gallery_images: Array.isArray(product.gallery_images) ? product.gallery_images : [],
+        gallery_images: [],
         barcode: product.barcode || "",
         sku: product.sku || "",
         title: product.title || "",
@@ -129,11 +132,11 @@ export default function Edit({ categories = [], product, units = [], sizeCharts 
 
             <form onSubmit={submit}>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left - Image */}
-                    <div className="lg:col-span-1">
+                    {/* Left - Image & Gallery */}
+                    <div className="lg:col-span-1 space-y-6">
                         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
                             <ImageCaptureUpload
-                                label="Gambar Produk"
+                                label="Gambar Utama (Cover)"
                                 currentPreview={imagePreview}
                                 onImageSelected={(file, previewUrl) => {
                                     setData("image", file);
@@ -144,6 +147,16 @@ export default function Edit({ categories = [], product, units = [], sizeCharts 
                                     setImagePreview(null);
                                 }}
                                 error={errors.image}
+                            />
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+                            <ProductGalleryUpload
+                                existingImages={data.existing_gallery_images || []}
+                                onExistingImagesChange={(updated) => setData("existing_gallery_images", updated)}
+                                newFiles={data.gallery_images || []}
+                                onNewFilesChange={(files) => setData("gallery_images", files)}
+                                error={errors.gallery_images}
                             />
                         </div>
                     </div>

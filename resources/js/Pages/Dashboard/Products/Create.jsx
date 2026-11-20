@@ -27,6 +27,7 @@ import {
 } from "@tabler/icons-react";
 import ProductUnitsInput from "@/Components/Dashboard/ProductUnitsInput";
 import ImageCaptureUpload from "@/Components/Dashboard/ImageCaptureUpload";
+import ProductGalleryUpload from "@/Components/Dashboard/ProductGalleryUpload";
 import BarcodeScanner from "@/Components/POS/BarcodeScanner";
 import QuickCategoryModal from "@/Components/Dashboard/QuickCategoryModal";
 import FashionVariantMatrixGenerator from "@/Components/Dashboard/FashionVariantMatrixGenerator";
@@ -43,6 +44,7 @@ export default function Create({ categories = [], units = [], warehouses = [], s
 
     const { data, setData, post, processing } = useForm({
         image: "",
+        gallery_images: [],
         barcode: "",
         sku: "",
         title: "",
@@ -215,11 +217,11 @@ export default function Create({ categories = [], units = [], warehouses = [], s
 
             <form onSubmit={submit}>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left Column - Image */}
-                    <div className="lg:col-span-1">
+                    {/* Left Column - Image & Gallery */}
+                    <div className="lg:col-span-1 space-y-6">
                         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
                             <ImageCaptureUpload
-                                label="Gambar Produk"
+                                label="Gambar Utama (Cover)"
                                 currentPreview={imagePreview}
                                 onImageSelected={(file, previewUrl) => {
                                     setData("image", file);
@@ -230,6 +232,14 @@ export default function Create({ categories = [], units = [], warehouses = [], s
                                     setImagePreview(null);
                                 }}
                                 error={errors.image}
+                            />
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+                            <ProductGalleryUpload
+                                newFiles={data.gallery_images || []}
+                                onNewFilesChange={(files) => setData("gallery_images", files)}
+                                error={errors.gallery_images}
                             />
                         </div>
                     </div>

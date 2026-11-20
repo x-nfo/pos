@@ -214,6 +214,16 @@ class ProductController extends Controller
                 $imageName = $image->hashName();
             }
 
+            $galleryImages = [];
+            if ($request->hasFile('gallery_images')) {
+                foreach ($request->file('gallery_images') as $gFile) {
+                    if ($gFile && $gFile->isValid()) {
+                        $gFile->storeAs('public/products', $gFile->hashName());
+                        $galleryImages[] = $gFile->hashName();
+                    }
+                }
+            }
+
             $hasVariants = $request->boolean('has_variants');
             $variantsInput = $request->input('variants', []);
 
@@ -232,6 +242,7 @@ class ProductController extends Controller
 
                 $product = Product::create([
                     'image' => $imageName,
+                    'gallery_images' => $galleryImages,
                     'barcode' => $masterBarcode,
                     'sku' => $masterSku,
                     'title' => $request->title,
@@ -365,6 +376,7 @@ class ProductController extends Controller
                 // create product
                 $product = Product::create([
                     'image' => $imageName,
+                    'gallery_images' => $galleryImages,
                     'barcode' => $request->barcode,
                     'sku' => $request->sku,
                     'title' => $request->title,
@@ -462,7 +474,8 @@ class ProductController extends Controller
                 ? $validated['sku']
                 : ('PRD-'.strtoupper(Str::random(6)));
 
-            $image = ! empty($validated['image']) ? $validated['image'] : '';
+            $rawImage = ! empty($validated['image']) ? $validated['image'] : '';
+            $image = $rawImage ? basename(parse_url($rawImage, PHP_URL_PATH) ?: $rawImage) : '';
 
             $product = Product::create([
                 'image' => $image,
@@ -523,7 +536,7 @@ class ProductController extends Controller
             return $product;
         });
 
-        $product->load('category');
+        $product->load(['category', 'warehouses']);
 
         return response()->json([
             'success' => true,
@@ -644,6 +657,50 @@ class ProductController extends Controller
                 $image = $request->file('image');
                 $image->storeAs('public/products', $image->hashName());
                 $imageName = $image->hashName();
+            }
+
+            // Handle gallery images update
+            $finalGallery = [];
+            if ($request->has('existing_gallery_images') && is_array($request->input('existing_gallery_images'))) {
+                foreach ($request->input('existing_gallery_images') as $cVal) {
+                    if (is_string($cVal) && ! empty($cVal) && ! str_starts_with($cVal, 'blob:')) {
+                        $cleanName = basename(parse_url($cVal, PHP_URL_PATH));
+                        if ($cleanName) {
+                            $finalGallery[] = $cleanName;
+                        }
+                    }
+                }
+            } elseif ($request->has('gallery_images') && is_array($request->input('gallery_images'))) {
+                foreach ($request->input('gallery_images') as $cVal) {
+                    if (is_string($cVal) && ! empty($cVal) && ! str_starts_with($cVal, 'blob:')) {
+                        $cleanName = basename(parse_url($cVal, PHP_URL_PATH));
+                        if ($cleanName && ! in_array($cleanName, $finalGallery)) {
+                            $finalGallery[] = $cleanName;
+                        }
+                    }
+                }
+            }
+            if ($request->hasFile('gallery_images')) {
+                foreach ($request->file('gallery_images') as $gFile) {
+                    if ($gFile && $gFile->isValid()) {
+                        $gFile->storeAs('public/products', $gFile->hashName());
+                        $finalGallery[] = $gFile->hashName();
+                    }
+                }
+            }
+
+            // Cleanup removed gallery images from disk
+            $rawOldGallery = $product->getRawOriginal('gallery_images');
+            $oldGalleryImages = is_string($rawOldGallery) ? json_decode($rawOldGallery, true) : (is_array($rawOldGallery) ? $rawOldGallery : []);
+            if (is_array($oldGalleryImages)) {
+                foreach ($oldGalleryImages as $oldImg) {
+                    if (! in_array($oldImg, $finalGallery) && $oldImg !== $imageName) {
+                        $usedElsewhere = Product::where('image', $oldImg)->exists();
+                        if (! $usedElsewhere) {
+                            Storage::disk('local')->delete('public/products/'.$oldImg);
+                        }
+                    }
+                }
             }
 
             $masterBarcode = ! empty($request->barcode)
@@ -809,6 +866,7 @@ class ProductController extends Controller
 
                 $product->update([
                     'image' => $imageName,
+                    'gallery_images' => $finalGallery,
                     'barcode' => $masterBarcode,
                     'sku' => $masterSku,
                     'title' => $request->title,
@@ -826,6 +884,7 @@ class ProductController extends Controller
             } else {
                 $product->update([
                     'image' => $imageName,
+                    'gallery_images' => $finalGallery,
                     'barcode' => $request->barcode,
                     'sku' => $request->sku,
                     'title' => $request->title,
@@ -924,6 +983,20 @@ class ProductController extends Controller
         // remove image
         if ($product->image) {
             Storage::disk('local')->delete('public/products/'.basename($product->image));
+        }
+
+        // clean gallery images
+        $rawGallery = $product->getRawOriginal('gallery_images');
+        $galleryList = is_string($rawGallery) ? json_decode($rawGallery, true) : (is_array($rawGallery) ? $rawGallery : []);
+        if (is_array($galleryList)) {
+            foreach ($galleryList as $gImg) {
+                if ($gImg && $gImg !== basename((string) $product->image)) {
+                    $usedElsewhere = Product::where('image', $gImg)->where('id', '!=', $product->id)->exists();
+                    if (! $usedElsewhere) {
+                        Storage::disk('local')->delete('public/products/'.basename($gImg));
+                    }
+                }
+            }
         }
 
         // clean unique variant images

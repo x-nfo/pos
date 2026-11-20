@@ -13,7 +13,7 @@ class ProductsExport implements FromCollection, ShouldAutoSize, WithHeadings, Wi
 {
     public function collection()
     {
-        return Product::with('category')->orderBy('title')->get();
+        return Product::with(['category', 'warehouses', 'variants.warehouses'])->orderBy('title')->get();
     }
 
     public function headings(): array

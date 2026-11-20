@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class ProductApiTest extends TestCase
@@ -23,7 +24,10 @@ class ProductApiTest extends TestCase
     {
         parent::setUp();
 
+        $role = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $this->user = User::factory()->create();
+        $this->user->assignRole($role);
+
         $this->category = Category::create([
             'name' => 'Kategori Test',
             'image' => '',
@@ -154,5 +158,21 @@ class ProductApiTest extends TestCase
 
         $this->assertSoftDeleted('products', ['id' => $product->id]);
         $this->assertNull(Product::find($product->id));
+    }
+
+    public function test_products_rejects_unauthorized_token(): void
+    {
+        $unauthorizedUser = User::factory()->create();
+        Sanctum::actingAs($unauthorizedUser, ['other-ability']);
+
+        $this->postJson('/api/v1/products', [
+            'title' => 'Produk Ilegal',
+            'barcode' => 'HACK-001',
+            'buy_price' => 1000,
+            'sell_price' => 2000,
+        ])->assertStatus(403);
+
+        $product = $this->makeProduct('Produk Aman', 'SEC-001');
+        $this->deleteJson("/api/v1/products/{$product->id}")->assertStatus(403);
     }
 }

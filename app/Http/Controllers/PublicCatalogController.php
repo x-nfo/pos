@@ -696,7 +696,7 @@ class PublicCatalogController extends Controller
         $formattedProduct = $this->formatProduct($product, $branchId);
 
         // Fetch related products in the same category or branch
-        $relatedProducts = Product::query()
+        $relatedProductsCollection = Product::query()
             ->with([
                 'category:id,name,size_chart_id',
                 'category.sizeChart',
@@ -715,8 +715,12 @@ class PublicCatalogController extends Controller
             })
             ->when($product->category_id, fn ($q) => $q->where('category_id', $product->category_id))
             ->limit(4)
-            ->get()
-            ->map(fn (Product $p) => $this->formatProduct($p, $branchId));
+            ->get();
+
+        $relatedBadges = $this->pricingService->previewProducts($relatedProductsCollection, null);
+        $relatedProducts = $relatedProductsCollection->map(
+            fn (Product $p) => $this->formatProduct($p, $branchId, $relatedBadges->get($p->id))
+        );
 
         $storeInfo = $this->getStoreInfo($activeBranch);
         $globalDelivery = Setting::getBool('catalog_delivery_enabled', true);
@@ -865,8 +869,10 @@ class PublicCatalogController extends Controller
             ];
         }
 
+        $extraGallery = is_array($product->gallery_images) ? $product->gallery_images : [];
         $galleryImages = array_values(array_unique(array_filter([
             $product->image,
+            ...$extraGallery,
             ...$product->variants->pluck('image')->filter()->toArray(),
         ])));
 

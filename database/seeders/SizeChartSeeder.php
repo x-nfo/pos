@@ -100,23 +100,103 @@ class SizeChartSeeder extends Seeder
             ]
         );
 
+        // 4. Standar Hoodie & Sweatshirt (Boxy / Oversized)
+        $hoodieChart = SizeChart::updateOrCreate(
+            ['code' => 'HOODIE-OVERSIZED'],
+            [
+                'name' => 'Standar Hoodie & Sweatshirt (Boxy Fit)',
+                'apparel_type' => 'tops',
+                'default_unit' => 'cm',
+                'columns' => [
+                    ['key' => 'ld', 'label' => 'Lingkar Dada (LD)'],
+                    ['key' => 'pb', 'label' => 'Panjang Badan'],
+                    ['key' => 'pl', 'label' => 'Panjang Lengan'],
+                ],
+                'measurements' => [
+                    ['size' => 'M', 'ld' => 114, 'pb' => 68, 'pl' => 60],
+                    ['size' => 'L', 'ld' => 120, 'pb' => 71, 'pl' => 62],
+                    ['size' => 'XL', 'ld' => 126, 'pb' => 74, 'pl' => 64],
+                    ['size' => 'XXL', 'ld' => 132, 'pb' => 77, 'pl' => 66],
+                ],
+                'fit_rules' => [
+                    ['size' => 'M', 'min_height' => 160, 'max_height' => 173, 'min_weight' => 55, 'max_weight' => 68],
+                    ['size' => 'L', 'min_height' => 170, 'max_height' => 180, 'min_weight' => 68, 'max_weight' => 78],
+                    ['size' => 'XL', 'min_height' => 175, 'max_height' => 186, 'min_weight' => 78, 'max_weight' => 88],
+                    ['size' => 'XXL', 'min_height' => 178, 'max_height' => 195, 'min_weight' => 88, 'max_weight' => 102],
+                ],
+                'how_to_measure_notes' => 'Cutting boxy dirancang loose-fit. Ukur lingkar dada tepat di bawah sambungan lengan.',
+                'is_active' => true,
+            ]
+        );
+
+        // 5. Standar Jaket & Outerwear
+        $outerChart = SizeChart::updateOrCreate(
+            ['code' => 'OUTER-STD'],
+            [
+                'name' => 'Standar Jaket & Outerwear (Trucker / Chore Jacket)',
+                'apparel_type' => 'outerwear',
+                'default_unit' => 'cm',
+                'columns' => [
+                    ['key' => 'ld', 'label' => 'Lingkar Dada (LD)'],
+                    ['key' => 'pb', 'label' => 'Panjang Badan'],
+                    ['key' => 'lb', 'label' => 'Lebar Bahu'],
+                    ['key' => 'pl', 'label' => 'Panjang Lengan'],
+                ],
+                'measurements' => [
+                    ['size' => 'S', 'ld' => 102, 'pb' => 64, 'lb' => 44, 'pl' => 60],
+                    ['size' => 'M', 'ld' => 108, 'pb' => 66, 'lb' => 46, 'pl' => 61],
+                    ['size' => 'L', 'ld' => 114, 'pb' => 68, 'lb' => 48, 'pl' => 62],
+                    ['size' => 'XL', 'ld' => 120, 'pb' => 70, 'lb' => 50, 'pl' => 63],
+                ],
+                'fit_rules' => [
+                    ['size' => 'S', 'min_height' => 155, 'max_height' => 168, 'min_weight' => 50, 'max_weight' => 60],
+                    ['size' => 'M', 'min_height' => 165, 'max_height' => 175, 'min_weight' => 60, 'max_weight' => 70],
+                    ['size' => 'L', 'min_height' => 172, 'max_height' => 182, 'min_weight' => 70, 'max_weight' => 80],
+                    ['size' => 'XL', 'min_height' => 176, 'max_height' => 188, 'min_weight' => 80, 'max_weight' => 92],
+                ],
+                'how_to_measure_notes' => 'Outerwear memiliki kelonggaran fitting ekstra 4-6 cm untuk mengakomodasi pakaian lapisan dalam.',
+                'is_active' => true,
+            ]
+        );
+
         // Hubungkan ke Kategori Fashion yang mungkin sudah ada
-        Category::where('name', 'like', '%kaos%')
-            ->orWhere('name', 'like', '%baju%')
-            ->orWhere('name', 'like', '%pakaian%')
-            ->orWhere('name', 'like', '%atasan%')
+        Category::where(function ($q) {
+            $q->where('name', 'like', '%kaos%')
+                ->orWhere('name', 'like', '%baju%')
+                ->orWhere('name', 'like', '%pakaian%')
+                ->orWhere('name', 'like', '%kemeja%')
+                ->orWhere('name', 'like', '%atasan%');
+        })
             ->whereNull('size_chart_id')
             ->update(['size_chart_id' => $topsChart->id]);
 
-        Category::where('name', 'like', '%celana%')
-            ->orWhere('name', 'like', '%bawahan%')
-            ->orWhere('name', 'like', '%jeans%')
+        Category::where(function ($q) {
+            $q->where('name', 'like', '%hoodie%')
+                ->orWhere('name', 'like', '%sweatshirt%');
+        })
+            ->whereNull('size_chart_id')
+            ->update(['size_chart_id' => $hoodieChart->id]);
+
+        Category::where(function ($q) {
+            $q->where('name', 'like', '%jaket%')
+                ->orWhere('name', 'like', '%outerwear%');
+        })
+            ->whereNull('size_chart_id')
+            ->update(['size_chart_id' => $outerChart->id]);
+
+        Category::where(function ($q) {
+            $q->where('name', 'like', '%celana%')
+                ->orWhere('name', 'like', '%bawahan%')
+                ->orWhere('name', 'like', '%jeans%');
+        })
             ->whereNull('size_chart_id')
             ->update(['size_chart_id' => $bottomsChart->id]);
 
-        Category::where('name', 'like', '%sepatu%')
-            ->orWhere('name', 'like', '%footwear%')
-            ->orWhere('name', 'like', '%sandal%')
+        Category::where(function ($q) {
+            $q->where('name', 'like', '%sepatu%')
+                ->orWhere('name', 'like', '%footwear%')
+                ->orWhere('name', 'like', '%sandal%');
+        })
             ->whereNull('size_chart_id')
             ->update(['size_chart_id' => $shoesChart->id]);
     }

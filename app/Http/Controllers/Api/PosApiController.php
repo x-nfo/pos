@@ -134,7 +134,7 @@ class PosApiController extends Controller
         $warehouseId = $shift?->warehouse_id;
 
         $products = Product::query()
-            ->with('category')
+            ->with(['category', 'warehouses', 'variants.warehouses'])
             ->when($request->string('search')->toString(), function ($q, $search) {
                 $q->where(function ($sub) use ($search) {
                     $sub->where('title', 'like', "%{$search}%")
@@ -150,7 +150,7 @@ class PosApiController extends Controller
         $products->through(function (Product $product) use ($warehouseId) {
             $data = (new ProductResource($product))->resolve();
             $data['stock'] = $warehouseId
-                ? (int) ($product->warehouses()->where('warehouse_id', $warehouseId)->first()?->pivot->stock ?? 0)
+                ? (int) ($product->warehouses->firstWhere('id', $warehouseId)?->pivot->stock ?? 0)
                 : (int) $product->stock;
 
             return $data;
@@ -173,7 +173,7 @@ class PosApiController extends Controller
         $warehouseId = $shift?->warehouse_id;
 
         $rawBarcode = strtolower($validated['barcode']);
-        $product = Product::with('units')
+        $product = Product::with(['units', 'category', 'warehouses', 'variants.warehouses'])
             ->where(function ($q) use ($rawBarcode) {
                 $q->whereRaw('LOWER(barcode) = ?', [$rawBarcode])
                     ->orWhereHas('units', fn ($uq) => $uq->whereRaw('LOWER(product_units.barcode) = ?', [$rawBarcode]));
@@ -186,12 +186,12 @@ class PosApiController extends Controller
         }
 
         $stock = $warehouseId
-            ? (int) ($product->warehouses()->where('warehouse_id', $warehouseId)->first()?->pivot->stock ?? 0)
+            ? (int) ($product->warehouses->firstWhere('id', $warehouseId)?->pivot->stock ?? 0)
             : (int) $product->stock;
 
         $matchedUnit = $product->units->first(fn ($u) => strtolower((string) ($u->pivot->barcode ?? '')) === $rawBarcode);
 
-        $data = (new ProductResource($product->load('category')))->resolve();
+        $data = (new ProductResource($product))->resolve();
         $data['stock'] = $stock;
         $data['scanned_unit_id'] = $matchedUnit?->id;
         $data['units'] = $product->units->map(fn ($u) => [
@@ -281,10 +281,10 @@ class PosApiController extends Controller
         }
 
         if ($product->is_composite) {
-            $product->load('components');
+            $product->load('components.warehouses');
             foreach ($product->components as $component) {
                 $needed = (float) $component->pivot->qty * $validated['qty'];
-                $avail = (int) ($component->warehouses()->where('warehouse_id', $warehouseId)->first()?->pivot->stock ?? 0);
+                $avail = (int) ($component->warehouses->firstWhere('id', $warehouseId)?->pivot->stock ?? 0);
                 if ($avail < $needed) {
                     return $this->error("Stok {$component->title} tidak mencukupi.", 422);
                 }

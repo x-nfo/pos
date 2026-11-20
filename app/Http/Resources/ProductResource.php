@@ -18,11 +18,23 @@ class ProductResource extends JsonResource
             'image' => $this->image
                 ? (str_starts_with($this->image, 'http') ? $this->image : url('storage/'.ltrim($this->image, '/')))
                 : null,
+            'gallery_images' => $this->gallery_images ?? [],
             'category' => $this->whenLoaded('category', fn () => [
                 'id' => $this->category->id,
                 'name' => $this->category->name,
             ]),
-            'buy_price' => (float) $this->buy_price,
+            'buy_price' => $this->when(
+                $request->user() === null ||
+                $request->user()->can('profits-access') ||
+                $request->user()->can('products-create') ||
+                $request->user()->can('products-edit') ||
+                $request->user()->tokenCan('profits-access') ||
+                $request->user()->tokenCan('products-create') ||
+                $request->user()->tokenCan('products-edit') ||
+                $request->user()->tokenCan('*') ||
+                $request->user()->hasRole(['admin', 'superadmin', 'manager']),
+                (float) $this->buy_price
+            ),
             'sell_price' => (float) $this->sell_price,
             'stock' => (int) $this->stock,
             'min_stock' => (int) $this->min_stock,

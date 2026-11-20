@@ -15,6 +15,9 @@ class ProductsImport implements OnEachRow, WithChunkReading, WithHeadingRow, Wit
 {
     private int $rowCount = 0;
 
+    /** @var array<string, Category> */
+    private array $categories = [];
+
     public function __construct(private int $warehouseId) {}
 
     public function prepareForValidation(array $data, int $index): array
@@ -44,10 +47,13 @@ class ProductsImport implements OnEachRow, WithChunkReading, WithHeadingRow, Wit
         $this->rowCount++;
 
         $categoryName = trim((string) ($data['kategori'] ?? '')) ?: 'Umum';
-        $category = Category::firstOrCreate(
-            ['name' => $categoryName],
-            ['description' => '', 'image' => 'default.png']
-        );
+        if (! isset($this->categories[$categoryName])) {
+            $this->categories[$categoryName] = Category::firstOrCreate(
+                ['name' => $categoryName],
+                ['description' => '', 'image' => 'default.png']
+            );
+        }
+        $category = $this->categories[$categoryName];
 
         $sku = trim((string) ($data['sku'] ?? ''));
         if ($sku === '') {
@@ -88,11 +94,15 @@ class ProductsImport implements OnEachRow, WithChunkReading, WithHeadingRow, Wit
         ]);
 
         if ($stock > 0) {
-            ProductWarehouse::create([
-                'product_id' => $product->id,
-                'warehouse_id' => $this->warehouseId,
-                'stock' => $stock,
-            ]);
+            ProductWarehouse::updateOrCreate(
+                [
+                    'product_id' => $product->id,
+                    'warehouse_id' => $this->warehouseId,
+                ],
+                [
+                    'stock' => $stock,
+                ]
+            );
         }
     }
 
