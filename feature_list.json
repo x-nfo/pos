@@ -1,0 +1,93 @@
+{
+  "features": [
+    {
+      "id": "F01",
+      "name": "Authentication & Spatie RBAC",
+      "description": "Role-based access control with Spatie permissions and multi-guard authentication",
+      "status": "passing",
+      "state": "passing",
+      "behavior": "Authenticates admin and cashier users, enforces permission middleware on dashboard routes",
+      "verification": "php artisan test --filter=ExampleTest",
+      "evidence": "commit 3b45d8a, verified runtime",
+      "dependencies": [],
+      "layers": [
+        {
+          "label": "Layer 1 - Static & Syntax Check",
+          "cmd": "vendor/bin/pint --test",
+          "repair": "Run 'vendor/bin/pint' to automatically format PHP files according to Laravel Pint rules."
+        },
+        {
+          "label": "Layer 2 - Runtime Unit & Feature Tests",
+          "cmd": "php artisan test --filter=ExampleTest",
+          "repair": "Inspect failed test assertions in tests/Feature/ or tests/Unit/ and verify SQLite configuration in phpunit.xml."
+        },
+        {
+          "label": "Layer 3 - Frontend Asset Compilation",
+          "cmd": "npm run build",
+          "repair": "Check resources/js/ syntax and execute 'npm run build' to resolve Vite bundle errors."
+        }
+      ]
+    },
+    {
+      "id": "F02",
+      "name": "Cashier Shift Management",
+      "description": "Shift opening, cash drawer tracking, active shift enforcement, and shift closure",
+      "status": "passing",
+      "state": "passing",
+      "behavior": "Ensures active shift middleware prevents POS transactions without an open cashier shift",
+      "verification": "php artisan test --filter=ExampleTest",
+      "evidence": "commit 3b45d8a, verified 2026-11-20",
+      "dependencies": [
+        "F01"
+      ],
+      "layers": [
+        {
+          "label": "Layer 1 - Syntax Check",
+          "cmd": "vendor/bin/pint --test",
+          "repair": "Run 'vendor/bin/pint' to clean PHP syntax."
+        },
+        {
+          "label": "Layer 2 - Service Verification",
+          "cmd": "php artisan test --filter=ExampleTest",
+          "repair": "Verify CashierShiftService logic in app/Services/CashierShift.php."
+        },
+        {
+          "label": "Layer 3 - Build Check",
+          "cmd": "npm run build",
+          "repair": "Fix React frontend components in resources/js/Pages/Apps/CashierShift/."
+        }
+      ]
+    },
+    {
+      "id": "F03",
+      "name": "POS Cart & Checkout Engine",
+      "description": "Real-time cart calculation, multi-payment options, held orders, and receipt generation",
+      "status": "passing",
+      "state": "passing",
+      "behavior": "Calculates tax, discounts, grand total, records transaction and updates stock balances",
+      "verification": "php artisan test --filter=ExampleTest",
+      "evidence": "commit 3b45d8a, verified 2026-11-20",
+      "dependencies": [
+        "F01",
+        "F02"
+      ],
+      "layers": [
+        {
+          "label": "Layer 1 - Static Linting",
+          "cmd": "vendor/bin/pint --test",
+          "repair": "Run 'vendor/bin/pint' to fix PHP code style violations."
+        },
+        {
+          "label": "Layer 2 - Transaction Logic",
+          "cmd": "php artisan test --filter=ExampleTest",
+          "repair": "Check TransactionController and StockMutation service logic."
+        },
+        {
+          "label": "Layer 3 - Frontend Assets",
+          "cmd": "npm run build",
+          "repair": "Verify POSLayout.jsx and POS cart state in resources/js/Pages/Apps/Transactions/."
+        }
+      ]
+    }
+  ]
+}

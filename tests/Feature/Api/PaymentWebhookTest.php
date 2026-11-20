@@ -406,6 +406,39 @@ class PaymentWebhookTest extends TestCase
         $this->assertSame('1778', $transaction->payment_reference);
     }
 
+    public function test_qrisly_webhook_rejects_ambiguous_amount_without_matching_identifier(): void
+    {
+        PaymentSetting::create([
+            'default_gateway' => 'qrisly',
+            'qrisly_enabled' => true,
+            'qrisly_api_key' => 'qrisly-secret-key',
+            'qrisly_qris_id' => 'qris-test-123',
+        ]);
+
+        $trx1 = $this->createPendingTransaction('qrisly');
+        $trx1->update(['payment_reference' => 'REF-001', 'grand_total' => 150000]);
+
+        $trx2 = $this->createPendingTransaction('qrisly');
+        $trx2->update(['payment_reference' => 'REF-002', 'grand_total' => 150000]);
+
+        // Incoming webhook with unknown history ID and no invoice, matching amount only
+        $response = $this->postJson(route('webhooks.qrisly'), [
+            'event' => 'payment.success',
+            'timestamp' => '2026-08-20T12:00:00Z',
+            'data' => [
+                'qris_history_id' => 99999,
+                'qris_id' => 'qris-test-123',
+                'amount' => 150000,
+                'original_amount' => 150000,
+                'status' => 'paid',
+            ],
+        ]);
+
+        $response->assertNotFound()->assertJson(['success' => false, 'message' => 'Transaction not found']);
+        $this->assertSame('pending', $trx1->fresh()->payment_status);
+        $this->assertSame('pending', $trx2->fresh()->payment_status);
+    }
+
     public function test_qrisly_webhook_handles_expired_event_and_restocks_inventory(): void
     {
         PaymentSetting::create([

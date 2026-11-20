@@ -1,0 +1,38 @@
+[
+  {
+    "id": "ARCH-001",
+    "description": "No direct DB facade calls in React frontend",
+    "check": "! grep -rnE 'DB::|Eloquent' resources/js",
+    "expect": "pass",
+    "what": "Database facade or Eloquent reference detected in resources/js frontend files.",
+    "why": "Frontend React components must interact exclusively via Inertia routes or API endpoints.",
+    "fix": "Remove the database reference from the JS file and expose required data through Inertia props in app/Http/Middleware/HandleInertiaRequests.php or controller response."
+  },
+  {
+    "id": "ARCH-002",
+    "description": "No raw debug statements (dd, dump, var_dump) in app code",
+    "check": "! grep -rnE '(dd\\(|dump\\(|var_dump\\()' app/",
+    "expect": "pass",
+    "what": "Debug statement (dd, dump, var_dump) committed in backend PHP code.",
+    "why": "Debug statements abort execution and must never reach production or test environments.",
+    "fix": "Remove dd(), dump(), or var_dump() from the affected PHP file in app/ before committing."
+  },
+  {
+    "id": "ARCH-003",
+    "description": "No hardcoded secrets or API tokens in JavaScript bundles",
+    "check": "! grep -rnE '(sk_live_[0-9a-zA-Z]{10,}|SB-Mid-server-[0-9a-zA-Z]{10,})' resources/js",
+    "expect": "pass",
+    "what": "Hardcoded live API secret found in client-side JavaScript code.",
+    "why": "Client-side code is public and expose private payment gateway keys.",
+    "fix": "Move secret keys to .env and access them exclusively via backend Laravel config in config/services.php."
+  },
+  {
+    "id": "ARCH-004",
+    "description": "Enforce constant-time hash_equals on cryptographic webhook signatures",
+    "check": "! grep -rnE '\\$signatureKey !==' app/Http/Controllers",
+    "expect": "pass",
+    "what": "Webhook signature verification using non-constant-time operator !== instead of hash_equals().",
+    "why": "Non-constant-time string comparison on signatures creates timing side-channel vulnerabilities.",
+    "fix": "Use hash_equals($expectedSignature, (string) $signatureKey) for all cryptographic comparisons."
+  }
+]

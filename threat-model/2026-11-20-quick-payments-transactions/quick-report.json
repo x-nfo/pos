@@ -1,0 +1,179 @@
+{
+  "contract": "https://grim-prompter.org/schema/v1/artifact-envelope.json",
+  "artifact_type": "TM_REPORT",
+  "model_id": "point-of-sales-pos-fashion",
+  "revision": "r01",
+  "parent_revision": null,
+  "status": "complete",
+  "analysis_depth": "quick",
+  "review_scope": "security",
+  "primary_architecture": "payments-transactions",
+  "secondary_architectures": [
+    "web"
+  ],
+  "selected_methods": [],
+  "elements": [
+    {
+      "id": "elem-webhook-controller",
+      "name": "PaymentWebhookController",
+      "kind": "process",
+      "description": "Receives and verifies async callbacks from Midtrans, Xendit, and QRISLY payment gateways",
+      "locator": "app/Http/Controllers/Api/PaymentWebhookController.php"
+    },
+    {
+      "id": "elem-checkout-service",
+      "name": "CheckoutService",
+      "kind": "process",
+      "description": "Encapsulates POS checkout calculation, shift lock, stock mutations, and ledger records",
+      "locator": "app/Services/CheckoutService.php"
+    },
+    {
+      "id": "elem-pos-api-controller",
+      "name": "PosApiController",
+      "kind": "process",
+      "description": "Sanctum-authenticated REST controller for mobile POS and cashier operations",
+      "locator": "app/Http/Controllers/Api/PosApiController.php"
+    },
+    {
+      "id": "elem-database-storage",
+      "name": "Relational Database Storage",
+      "kind": "datastore",
+      "description": "MySQL/SQLite persistent store holding transactions, cashier shifts, and stock balances",
+      "locator": "database/migrations/"
+    }
+  ],
+  "boundaries": [
+    {
+      "id": "bnd-public-webhooks",
+      "name": "Public Internet to Webhook Ingestion Boundary",
+      "kind": "trust_boundary",
+      "description": "Separates unauthenticated incoming webhook HTTP POST requests from internal settlement state"
+    },
+    {
+      "id": "bnd-cashier-pos",
+      "name": "Cashier Client to POS Core Boundary",
+      "kind": "trust_boundary",
+      "description": "Separates physical terminal client requests from transactional business operations"
+    }
+  ],
+  "threats": [
+    {
+      "id": "THREAT-001",
+      "title": "Timing Attack on Midtrans Webhook Signature Verification",
+      "category": "Tampering / Elevation of Privilege",
+      "affected_refs": [
+        "elem-webhook-controller",
+        "bnd-public-webhooks"
+      ],
+      "objective": "Prevent signature forgery by remote attackers seeking unauthorized payment settlement",
+      "actor_assumptions": "Unauthenticated remote adversary measuring response latency variance",
+      "prerequisites": "Midtrans payment gateway enabled and receiving webhooks",
+      "evidence_refs": [
+        "app/Http/Controllers/Api/PaymentWebhookController.php:70"
+      ],
+      "confidence_rationale": "Code uses standard string inequality !== instead of constant-time hash_equals(). In cryptographic signature checks, non-constant-time equality leaks character matching times."
+    },
+    {
+      "id": "THREAT-002",
+      "title": "Ambiguous Order Match via Price Collision in QRISLY Webhook Processing",
+      "category": "Spoofing / Data Integrity",
+      "affected_refs": [
+        "elem-webhook-controller",
+        "bnd-public-webhooks"
+      ],
+      "objective": "Maintain strictly deterministic 1:1 transaction settlement",
+      "actor_assumptions": "Shopper making concurrent purchases of equal amounts",
+      "prerequisites": "QRISLY notification received without explicit order_id or invoice identifier",
+      "evidence_refs": [
+        "app/Http/Controllers/Api/PaymentWebhookController.php:170"
+      ],
+      "confidence_rationale": "Fallback logic searches by grand_total and payment_status=pending without a unique identifier, creating race condition collisions when multiple transactions share the same price."
+    },
+    {
+      "id": "THREAT-003",
+      "title": "Unattended POS Terminal Impersonation",
+      "category": "Elevation of Privilege / Unauthorized Action",
+      "affected_refs": [
+        "elem-checkout-service",
+        "bnd-cashier-pos"
+      ],
+      "objective": "Prevent unauthorized sales processing or drawer operations during cashier absence",
+      "actor_assumptions": "Individual with physical proximity to an active cashier station",
+      "prerequisites": "Cashier opened a shift and left the terminal unlocked",
+      "evidence_refs": [
+        "app/Http/Middleware/EnsureActiveCashierShift.php:20",
+        "app/Services/CheckoutService.php:80"
+      ],
+      "confidence_rationale": "EnsureActiveCashierShift validates active shift status but has no idle-timeout or per-transaction PIN authorization."
+    }
+  ],
+  "controls": [
+    {
+      "id": "CTRL-001",
+      "title": "Xendit Callback Token Hash Verification",
+      "status": "implemented",
+      "threat_refs": [
+        "THREAT-001"
+      ],
+      "locator": "app/Http/Controllers/Api/PaymentWebhookController.php:130",
+      "description": "Uses hash_equals($expectedToken, $callbackToken) to protect against timing attacks on Xendit webhooks."
+    },
+    {
+      "id": "CTRL-002",
+      "title": "Pessimistic Shift & Inventory Locking",
+      "status": "implemented",
+      "threat_refs": [
+        "THREAT-003"
+      ],
+      "locator": "app/Services/CheckoutService.php:85",
+      "description": "Applies lockForUpdate on cashier shift and product records inside DB::transaction to prevent concurrent balance drift."
+    }
+  ],
+  "treatments": [
+    {
+      "id": "TRT-001",
+      "threat_id": "THREAT-001",
+      "status": "proposed",
+      "proposal": "Refactor Midtrans webhook signature check to use hash_equals($expectedSignature, (string) $signatureKey).",
+      "tradeoffs": "Zero performance cost; closes theoretical byte-by-byte timing leak."
+    },
+    {
+      "id": "TRT-002",
+      "threat_id": "THREAT-002",
+      "status": "proposed",
+      "proposal": "Remove amount-only fallback query in QRISLY webhook handler. Enforce mandatory invoice parameter or reject request.",
+      "tradeoffs": "Prevents catastrophic cross-transaction payment settlement at the expense of rejecting misformatted vendor payloads."
+    },
+    {
+      "id": "TRT-003",
+      "threat_id": "THREAT-003",
+      "status": "proposed",
+      "proposal": "Add client-side inactivity lock after 3 minutes idle time with cashier PIN confirmation requirement.",
+      "tradeoffs": "Slight increase in cashier friction, significantly higher physical security."
+    }
+  ],
+  "verifications": [
+    {
+      "id": "VERIF-001",
+      "threat_id": "THREAT-001",
+      "status": "not_run",
+      "command": "php artisan test --filter=PaymentWebhookTest",
+      "criteria": "Passes when invalid signature returns HTTP 403 and valid signature passes using hash_equals."
+    },
+    {
+      "id": "VERIF-002",
+      "threat_id": "THREAT-002",
+      "status": "not_run",
+      "command": "php artisan test --filter=PaymentWebhookTest::test_qrisly_rejects_ambiguous_payload",
+      "criteria": "Passes when payload without order_id is rejected with HTTP 422/404 instead of settling arbitrary transaction."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "GAP-001",
+      "kind": "topology",
+      "description": "Outbound network firewall egress controls for Midtrans and Xendit IP ranges not visible in application code.",
+      "evidence_needed": "Cloud/server firewall (ufw/iptables) rules or reverse proxy configuration."
+    }
+  ]
+}

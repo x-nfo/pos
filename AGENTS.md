@@ -1,131 +1,81 @@
-# AGENTS.md — Point of Sales
+# AGENTS.md — Point of Sales System
 
-Open-source POS system (200+ stars). Laravel 13 + Inertia 3.0 + React 19.
+This project is an open-source retail Point of Sales application built with Laravel 13, Inertia.js 3.0, and React 19.
+Stack: PHP 8.3+, Inertia 3.0, React 19, Tailwind CSS 3, Spatie Permission, SQLite (testing) / MySQL (prod).
+Detailed manuals: [Architecture](docs/architecture-overview.md) | [App Architecture](app/ARCHITECTURE.md) | [Config](docs/configuration.md) | [Quality](docs/quality-document.md)
 
-## Important: This Repo
+## Verification Commands
 
-**Remote:** `git@github.com:aryadwiputra/point-of-sales.git`
+- `./init.sh` — Single-command full environment setup and baseline health check.
+- `make check` — Primary verification pipeline (lint + test + build + check-arch). Must exit 0 before every commit.
+- `make test` — Runs backend PHPUnit suite (`php artisan test` using SQLite in-memory).
+- `make clean-check` — Idempotent 5-dimension clean-state verifier before session clock-out.
+- `make verify-feature F=<id>` — Harness gate running multi-layer validation for a feature.
 
-**Branch structure:**
-- `main` — production. Protected. PR only from `development`.
-- `development` — integration branch. Feature branches merge here via PR.
-- `release/*` — release candidates. Created from `development`, merged to `main` + tagged.
-- `revamp-frontend` — legacy UI overhaul branch (inactive).
-- `feature/*` — individual feature work. Branch from `development`, PR to `development`.
-- `fix/*` — hotfixes. Branch from `main`, PR to `main` + `development`.
+## Startup Workflow
 
-**Tags follow semver:** `v1.0.0`, `v2.1.0`, etc.
+Before writing code (Clock-in routine):
+1. Read `PROGRESS.md` to restore context, current state, and blockers.
+2. Run `make check` to confirm a green baseline before making any edits.
+3. Review `feature_list.json` to inspect current feature progress.
 
-## Stack
+## Definition of Done
 
-- **Backend**: Laravel 13 (PHP 8.3+)
-- **Frontend**: Inertia.js 3.0 + React 19, Vite 5
-- **Styling**: Tailwind CSS 3 (custom theme in `tailwind.config.js`)
-- **Auth/RBAC**: Spatie Laravel Permission + Laravel Breeze
-- **DB**: MySQL (default); SQLite in-memory for tests
-- **Payment gateways**: Midtrans, Xendit (webhooks in `routes/api.php`)
-- **WhatsApp**: whatsapp-web.js via separate Node service (`whatsapp-service/`)
+A task is complete when runtime evidence passes — not when code is written or the agent is confident. A feature is done only when all layers pass:
+- **Three-layer verification model**:
+  - **Layer 1 (syntax/static)**: `vendor/bin/pint --test` formatting check.
+  - **Layer 2 (runtime behavior)**: `php artisan test` feature and unit assertions.
+  - **Layer 3 (system confirmation / e2e)**: `npm run build` and UI ready state confirmation.
+- **Layer ordering rule**: Do not proceed to Layer N+1 if Layer N fails.
+- **Runtime signals**: Confirm app reaches ready state, side effects (DB writes, stock mutations) are correct, and no debug artifacts remain.
 
-## Developer Commands
+## Hard Constraints
 
-```bash
-# Initial setup
-cp .env.example .env
-composer install && npm install
-php artisan key:generate
-php artisan migrate --seed
-php artisan storage:link
+- **MUST** run all financial mutations inside `DB::transaction(...)` (# source: financial-audit, why: avoid partial ledger corruption).
+- **MUST NOT** import backend Eloquent models directly in React code (# source: client-server-boundary, why: violates Inertia protocol).
+- **MUST** update documentation in the same commit as code changes — no stale documentation (# source: harness-staleness-rule, why: keep repo source of record).
+- **MUST** create atomic commits: one logical operation per commit; the repo must be in a consistent state after every commit (# source: git-atomicity, why: bisectability).
 
-# Dev servers — run BOTH
-npm run dev          # Vite HMR
-php artisan serve    # Laravel
+## State Files & Repository as System of Record
 
-# Testing
-php artisan test                     # all
-php artisan test --filter=FooTest    # one class
-php artisan test --filter=test_name  # one method
+Durability and consistency across agent sessions are guaranteed by tracking state in git:
+- `PROGRESS.md`: Current state, active task, blockers, and next steps.
+- `feature_list.json`: Granular feature registry with verification commands and evidence.
+- `DECISIONS.md`: Architecture Decision Records (ADRs) explaining system choices.
+- Consistent-state predicate: The repo is consistent when `make check` exits 0.
 
-# WhatsApp Service (separate terminal)
-cd whatsapp-service
-npm install && npm start             # port 3001
+## Scope Boundaries
 
-# PM2 for production
-pm2 start whatsapp-service/server.js --name wa-service
+- **One feature at a time**: WIP=1 rule — only one feature may have state=active at a time. Complete and move to passing before activating the next.
+- **Stay in scope**: Each feature must be completable in one session. If it spans multiple sessions, split it before proceeding.
+- **Feature List Rules**: Never set state to passing directly — run `make verify-feature F=<id>` which automatically verifies layers and updates state.
+- **State machine**: `not_started` → `active` → `passing` (no skipping allowed).
 
-# Import/Export
-php artisan make:export ProductsExport --model=Product
-php artisan make:import ProductsImport --model=Product
+## Architecture Boundaries
 
-# Formatting
-vendor/bin/pint
+- `make check-arch` runs rules from `.harness/arch-rules.json` enforcing layer dependency invariants and outputting WHAT/WHY/FIX on violations.
+- Layer 3 (e2e) is required when changes cross component or domain boundaries.
+- Review-to-automation promotion principle: Every new error category caught in code review becomes a rule in `.harness/arch-rules.json`.
 
-# Production build
-npm run build
-```
+## Observability
 
-## Architecture
+- Before starting a sprint, negotiate scope and DoD using `templates/sprint-contract.md`.
+- Record runtime signals using `make session-start` and `make session-end` (wraps `scripts/session-trace.sh` into `.harness/traces/traces.jsonl`).
+- Score each completed sprint against `templates/evaluator-rubric.md` — every dimension must reach B or above.
 
-- **Controllers**: `app/Http/Controllers/Apps/` — per-module controllers
-- **Services**: `app/Services/` — business logic: AuditLog, CashierShift, StockMutation, Payments/, PricingService, CrmAutomationService, etc.
-- **Layouts**: `POSLayout.jsx` (POS), `DashboardLayout.jsx` (admin), `AuthenticatedLayout.jsx` (profile), `GuestLayout.jsx` (auth)
-- **Routes**: `routes/web.php` (~50+ dashboard routes), `routes/api.php` (webhooks), `routes/auth.php` (Breeze)
-- **Inertia shared props**: `HandleInertiaRequests.php` — auth, permissions, notifications (low stock, receivables, payables aging), active shift, store profile, appVersion
-- **Services**: `app/Services/` — ~21 services, latest: WhatsAppService (HTTP wrapper to Node)
+## End of Session
 
-## Middleware
+Before ending session (Clock-out routine):
+1. Run `make clean-check` before committing — confirms build passes, tests pass, feature list updated, no debug artifacts, and startup path works.
+2. Update `PROGRESS.md` with updated current state, accomplishments, and next steps.
+3. Update `docs/quality-document.md` for the module you touched (A/B/C/D per dimension).
+4. Dual-mode cleanup strategy: immediate cleanup at every session end + periodic (weekly/monthly) full-system sweep for structural drift.
+5. Commit guidance: Write commit messages that explain WHY the change was made, not just what changed.
+6. Context anxiety warning: If running low on context, do NOT rush to finish — stop, update `PROGRESS.md`, and commit a clean checkpoint.
 
-| Alias | Class | Applied to |
-|-------|-------|------------|
-| `permission` | Spatie PermissionMiddleware | Every dashboard route |
-| `step_up` | EnsureRecentPasswordConfirmation | Sensitive create/update/delete: roles, users, payment settings, bank accounts, payment confirm |
-| `active_shift` | EnsureActiveCashierShift | All POS transaction actions (cart CRUD, hold/resume, checkout) |
-| `bot.guard` | EnsureBotGuard | Login/register/forgot-password (honeypot + timer) |
-| `registration.enabled` | EnsurePublicRegistrationEnabled | Register route (default: off) |
+## Tools and Scoped Capabilities
 
-## Seeder Chain
-
-`DatabaseSeeder` runs in exact order with permission cache reset before & after:
-
-```
-PermissionSeeder → RoleSeeder → UserSeeder → PaymentSettingSeeder → SampleDataSeeder → OperationalCoreSeeder → FeatureCoverageSeeder
-```
-
-**Default users:** `admin@mail.com` / `password` (admin), `kasir@mail.com` / `password` (cashier)
-
-## Critical Gotchas
-
-1. **Permission cache stale after seed** — logout + login again. Seeder resets cache but session still holds old permissions.
-2. **Webhooks need public APP_URL** — Midtrans/Xendit won't work with localhost.
-3. **Product images need storage:link** — `php artisan storage:link` or images won't render.
-4. **Missing migrations cause 500 on new modules** — run `php artisan migrate` for newer modules (purchase orders, goods receiving, supplier returns, stock opname, etc.).
-5. **Tests force SQLite in-memory** — `phpunit.xml` sets `DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`. Don't assume MySQL features. **Set `tax_rate=0` on test Product::create** to avoid PPN changing grand_total.
-6. **Both dev servers required** — Vite serves JS/CSS via HMR. `php artisan serve` alone won't work.
-7. **WhatsApp service separate** — `whatsapp-service/` needs `npm start` in another terminal + `WA_SERVICE_URL` in .env
-8. **CRM campaign auto-send** — requires `wa_enabled=true` + connected device in Settings > WhatsApp
-9. **Version bump on release** — update `APP_VERSION` in `.env` + `.env.example` when tagging
-
-## Release Process
-
-1. `development` accumulates features → branch `release/X.Y.Z`
-2. QA/fix on `release/X.Y.Z` → merge to `main`
-3. Tag: `git tag -a vX.Y.Z -m "vX.Y.Z"` on `main`
-4. Merge `release/X.Y.Z` back to `development`
-5. GitHub Release created from tag
-
-## Frontend
-
-- **Icons**: `@tabler/icons-react`
-- **Alerts/confirm**: `react-hot-toast` + `sweetalert2`
-- **Charts**: `chart.js`
-- **Routing**: Ziggy `route()` helper available
-- **Tailwind tokens**: `primary` (indigo), `accent` (cyan), `success` (emerald), `warning` (amber), `danger` (rose)
-
-## Docs
-
-- Modules: `docs/features/`
-- Architecture: `docs/architecture-overview.md`
-- Config: `docs/configuration.md`
-- Planning: `planning/improvement-planning.md`
+Tool permissions are scoped in `.claude/settings.json`. Bash execution, file manipulation, and verification runners are permitted within workspace boundaries.
 
 <!-- graft:start -->
 ## Graft — repo context graph
@@ -141,30 +91,8 @@ Run `graft map` first — a token-budgeted orientation (dir clusters, hubs,
 hotspots), no LLM, no key.
 
 - Run `graft ask "<your question>" --source` → ranked nodes with the relevant
-  code spans inlined (each hit's ≤8-line crux by default; `--full` for whole
-  definitions when the crux isn't enough). Match the tool to the task shape:
-  for understanding or editing, the top node IS the answer — cite its
-  `covers:` file:line spans and edit straight from `--source`. For
-  exhaustive tasks ("every occurrence / every caller of this pattern"), ranked
-  results are top-N, not complete — run `graft grep "<literal>"` instead
-  (exhaustive over indexed files, grouped by enclosing symbol), falling back
-  to raw `grep -rn` only for unindexed files.
-- `graft skeleton <file>` → every definition's signature + span, ~10× cheaper
-  than reading the file; use it to skim an API surface.
+  code spans inlined.
 - `graft callers <symbol>` gives precomputed, exact edges — who calls this.
-  Add `--direction out` for what it calls, or `--depth N` to walk
-  transitively for the full blast radius. For structural questions, skip
-  ranking and use this directly.
-- Or browse: `graft/INDEX.md` lists every node; follow the links.
-- Monorepos and folders of multiple repos rank fairly across sub-projects —
-  hits carry `[scope/]` labels naming which one they're from. Narrow with
-  `graft ask "<task>" --in <scope>/` once you know where you're working.
-
-If a returned span is truncated ("+N more lines"), open the file at that exact
-range before finalizing. Only open source files when a node genuinely lacks a
-needed detail, and then at the exact file:line the node points to — never
-re-read whole files.
-
-After big code changes, refresh the graph with `graft build` (deterministic,
-no API key, $0).
+- Browse `graft/INDEX.md` to see every indexed node.
+- Refresh after large changes with `graft build`.
 <!-- graft:end -->

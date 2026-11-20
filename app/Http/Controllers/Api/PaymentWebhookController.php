@@ -48,11 +48,11 @@ class PaymentWebhookController extends Controller
             $grossAmount = $request->input('gross_amount');
             $serverKey = $paymentSetting->resolvedSecret('midtrans_server_key');
 
-            // Verify signature
+            // Verify signature (constant-time comparison)
             $signatureKey = $request->input('signature_key');
             $expectedSignature = hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey);
 
-            if ($signatureKey !== $expectedSignature) {
+            if (! is_string($signatureKey) || ! hash_equals($expectedSignature, $signatureKey)) {
                 Log::warning('Midtrans Webhook: Invalid signature', [
                     'provider' => 'midtrans',
                     'order_id' => $orderId,
@@ -263,21 +263,19 @@ class PaymentWebhookController extends Controller
             // Find transaction by payment_reference (history_id)
             $transaction = Transaction::where('payment_reference', (string) $historyId)->first();
 
-            // Fallback match by original amount for recent pending QRISLY transactions
-            if (! $transaction && ! empty($data['original_amount'])) {
-                $transaction = Transaction::where('payment_method', PaymentSetting::GATEWAY_QRISLY)
-                    ->where('payment_status', 'pending')
-                    ->where('grand_total', (int) $data['original_amount'])
-                    ->latest()
-                    ->first();
+            // Match by invoice if explicitly supplied in payload or metadata
+            $invoice = $data['invoice'] ?? $data['order_id'] ?? $request->input('invoice') ?? $request->input('order_id');
+            if (! $transaction && filled($invoice)) {
+                $transaction = Transaction::where('invoice', (string) $invoice)->first();
             }
 
             if (! $transaction) {
                 Log::warning('QRISLY Webhook: Transaction not found', [
                     'provider' => 'qrisly',
                     'history_id' => $historyId,
+                    'invoice' => $invoice ?? null,
                     'event' => $event,
-                    'verification_result' => 'valid',
+                    'verification_result' => 'unmatched',
                     'error_category' => 'transaction_not_found',
                 ]);
 

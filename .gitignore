@@ -42,3 +42,7 @@ frankenphp-worker.php
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# Harness traces
+.harness/traces/traces.jsonl
+

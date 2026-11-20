@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "run_command": true,
+    "read_file": true,
+    "edit_file": true,
+    "write_file": true
+  },
+  "tools": [
+    "bash",
+    "edit",
+    "read",
+    "write"
+  ],
+  "capabilities": [
+    "run-verification-tests",
+    "build-frontend-assets",
+    "lint-php-js-code"
+  ]
+}
